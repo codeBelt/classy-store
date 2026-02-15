@@ -9,6 +9,10 @@ const config: Config = {
   tagline: 'Class-based reactive state management for React',
   favicon: 'img/favicon.ico',
 
+  future: {
+    v4: true,
+  },
+
   url: 'https://codebelt.github.io',
   baseUrl: '/classy-store/',
 
@@ -17,12 +21,20 @@ const config: Config = {
   trailingSlash: false,
 
   onBrokenLinks: 'throw',
-  onBrokenMarkdownLinks: 'warn',
 
   i18n: {
     defaultLocale: 'en',
     locales: ['en'],
   },
+
+  markdown: {
+    mermaid: true,
+    hooks: {
+      onBrokenMarkdownLinks: 'warn',
+    },
+  },
+
+  themes: ['@docusaurus/theme-mermaid'],
 
   presets: [
     [
