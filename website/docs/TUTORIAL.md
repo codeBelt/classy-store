@@ -1,6 +1,6 @@
-# classyStore Tutorial
+# Classy Store Tutorial
 
-`classyStore` is a reactive state library for React built on ES proxies. You define state as plain classes, wrap them with `store()`, and read them with `useStore()`. There are no Providers, no observers, no reducers, and no extra TypeScript interfaces to define your state shape — just classes and a hook. The library is ~3.5 KB gzipped, batches synchronous mutations into a single re-render, and uses structural sharing for efficient change detection.
+`Classy Store` is a reactive state library for React built on ES proxies. You define state as plain classes, wrap them with `store()`, and read them with `useStore()`. There are no Providers, no observers, no reducers, and no extra TypeScript interfaces to define your state shape — just classes and a hook. The library is ~3.5 KB gzipped, batches synchronous mutations into a single re-render, and uses structural sharing for efficient change detection.
 
 ## Quick Start
 

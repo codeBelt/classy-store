@@ -1,4 +1,4 @@
-# classyStore — Architecture
+# Classy Store — Architecture
 
 Internal design documentation for contributors and maintainers.
 

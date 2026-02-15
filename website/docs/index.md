@@ -1,4 +1,4 @@
-# classyStore
+# Classy Store
 
 Class-based reactive state management for React. Write plain TypeScript classes — get fine-grained reactivity, immutable snapshots, and zero-boilerplate hooks.
 
@@ -516,7 +516,7 @@ For `Map` and `Set` semantics, use [`reactiveMap()`](#reactivemapk-vinitial) and
 
 ## Comparison with other libraries
 
-| Feature | classyStore | Zustand | MobX | Valtio |
+| Feature | Classy Store | Zustand | MobX | Valtio |
 |---------|-----------------|---------|------|--------|
 | Class-based stores | Yes | No | Yes | No |
 | No observer/Provider | Yes | Yes | No | Yes |
