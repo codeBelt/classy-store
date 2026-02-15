@@ -1,0 +1,416 @@
+import {useStore} from '@codebelt/classy-store';
+import {useEffect, useState} from 'react';
+import {Panel} from './Panel';
+import {kitchenSinkHandle, kitchenSinkStore} from './persistStores';
+import {RenderBadge} from './RenderBadge';
+import {useRenderCount} from './useRenderCount';
+
+// ── Hydration Status ────────────────────────────────────────────────────────
+
+function HydrationBadge() {
+  const [hydrated, setHydrated] = useState(kitchenSinkHandle.isHydrated);
+
+  useEffect(() => {
+    if (hydrated) return;
+    kitchenSinkHandle.hydrated.then(() => setHydrated(true));
+  }, [hydrated]);
+
+  return (
+    <span
+      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-mono border ${
+        hydrated
+          ? 'text-emerald-400 border-emerald-400/30'
+          : 'text-amber-400 border-amber-400/30 animate-pulse'
+      }`}
+    >
+      {hydrated ? 'hydrated' : 'hydrating...'}
+    </span>
+  );
+}
+
+// ── Notes Section (ReactiveMap) ─────────────────────────────────────────────
+
+function AddNoteForm() {
+  const [title, setTitle] = useState('');
+  const [body, setBody] = useState('');
+
+  const handleSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!title.trim()) return;
+    kitchenSinkStore.addNote(title.trim(), body.trim());
+    setTitle('');
+    setBody('');
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="flex gap-2">
+      <input
+        type="text"
+        value={title}
+        onChange={(event) => setTitle(event.target.value)}
+        placeholder="Note title"
+        className="flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-1.5 text-sm text-zinc-200 placeholder-zinc-500 outline-none focus:border-teal-500/50"
+      />
+      <input
+        type="text"
+        value={body}
+        onChange={(event) => setBody(event.target.value)}
+        placeholder="Body"
+        className="flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-1.5 text-sm text-zinc-200 placeholder-zinc-500 outline-none focus:border-teal-500/50"
+      />
+      <button
+        type="submit"
+        className="px-3 py-1.5 rounded-lg bg-teal-600 text-white text-sm font-medium hover:bg-teal-500 transition-colors cursor-pointer"
+      >
+        Add
+      </button>
+    </form>
+  );
+}
+
+function NotesList() {
+  const snap = useStore(kitchenSinkStore);
+  const renders = useRenderCount();
+  const notes = snap.filteredNotes;
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs text-zinc-500 uppercase tracking-wide">
+          Notes ({snap.noteCount})
+        </span>
+        <RenderBadge count={renders} />
+      </div>
+      {notes.length === 0 ? (
+        <p className="text-sm text-zinc-600 italic">
+          No notes yet. Add one above.
+        </p>
+      ) : (
+        <div
+          className={
+            snap.viewMode === 'grid'
+              ? 'grid grid-cols-2 gap-2'
+              : 'flex flex-col gap-2'
+          }
+        >
+          {notes.map(([id, note]) => (
+            <div
+              key={id}
+              className="bg-zinc-800/50 border border-zinc-700/50 rounded-lg px-3 py-2 flex items-start justify-between gap-2"
+            >
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-teal-400 truncate">
+                  {note.title}
+                </p>
+                {note.body && (
+                  <p className="text-xs text-zinc-400 mt-0.5 truncate">
+                    {note.body}
+                  </p>
+                )}
+                <p className="text-[10px] text-zinc-600 mt-1">
+                  {new Date(note.createdAt).toLocaleTimeString()}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => kitchenSinkStore.removeNote(id)}
+                className="text-zinc-600 hover:text-rose-400 text-sm transition-colors cursor-pointer shrink-0"
+                title="Delete note"
+              >
+                x
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Tags Section (ReactiveSet) ──────────────────────────────────────────────
+
+function TagsSection() {
+  const snap = useStore(kitchenSinkStore);
+  const renders = useRenderCount();
+  const [newTag, setNewTag] = useState('');
+  const tags = [...snap.tags];
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs text-zinc-500 uppercase tracking-wide">
+          Tags ({tags.length})
+        </span>
+        <RenderBadge count={renders} />
+      </div>
+      <div className="flex flex-wrap gap-1.5 mb-2">
+        {tags.map((tag) => (
+          <span
+            key={tag}
+            className="inline-flex items-center gap-1 bg-violet-500/10 border border-violet-500/20 rounded-full px-2.5 py-0.5 text-xs text-violet-400"
+          >
+            {tag}
+            <button
+              type="button"
+              onClick={() => kitchenSinkStore.removeTag(tag)}
+              className="text-violet-400/50 hover:text-rose-400 cursor-pointer"
+            >
+              x
+            </button>
+          </span>
+        ))}
+        {tags.length === 0 && (
+          <span className="text-xs text-zinc-600 italic">No tags</span>
+        )}
+      </div>
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (!newTag.trim()) return;
+          kitchenSinkStore.addTag(newTag.trim());
+          setNewTag('');
+        }}
+        className="flex gap-2"
+      >
+        <input
+          type="text"
+          value={newTag}
+          onChange={(event) => setNewTag(event.target.value)}
+          placeholder="Add tag"
+          className="flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-1 text-sm text-zinc-200 placeholder-zinc-500 outline-none focus:border-violet-500/50"
+        />
+        <button
+          type="submit"
+          className="px-3 py-1 rounded-lg bg-violet-600 text-white text-xs font-medium hover:bg-violet-500 transition-colors cursor-pointer"
+        >
+          + Tag
+        </button>
+      </form>
+    </div>
+  );
+}
+
+// ── View Controls ───────────────────────────────────────────────────────────
+
+function ViewControls() {
+  const viewMode = useStore(kitchenSinkStore, (state) => state.viewMode);
+  const sortBy = useStore(kitchenSinkStore, (state) => state.sortBy);
+  const renders = useRenderCount();
+
+  return (
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-3">
+        <div className="flex rounded-lg border border-zinc-700 overflow-hidden">
+          <button
+            type="button"
+            onClick={() => kitchenSinkStore.setViewMode('list')}
+            className={`px-2.5 py-1 text-xs cursor-pointer transition-colors ${
+              viewMode === 'list'
+                ? 'bg-teal-600 text-white'
+                : 'bg-zinc-800 text-zinc-400 hover:text-zinc-200'
+            }`}
+          >
+            List
+          </button>
+          <button
+            type="button"
+            onClick={() => kitchenSinkStore.setViewMode('grid')}
+            className={`px-2.5 py-1 text-xs cursor-pointer transition-colors ${
+              viewMode === 'grid'
+                ? 'bg-teal-600 text-white'
+                : 'bg-zinc-800 text-zinc-400 hover:text-zinc-200'
+            }`}
+          >
+            Grid
+          </button>
+        </div>
+        <select
+          value={sortBy}
+          onChange={(event) =>
+            kitchenSinkStore.setSortBy(event.target.value as 'date' | 'title')
+          }
+          className="bg-zinc-800 border border-zinc-700 rounded-lg px-2 py-1 text-xs text-zinc-300 cursor-pointer outline-none"
+        >
+          <option value="date">Sort: Date</option>
+          <option value="title">Sort: Title</option>
+        </select>
+      </div>
+      <RenderBadge count={renders} />
+    </div>
+  );
+}
+
+// ── Search ──────────────────────────────────────────────────────────────────
+
+function SearchInput() {
+  const searchQuery = useStore(kitchenSinkStore, (state) => state.searchQuery);
+  const renders = useRenderCount();
+
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <input
+        type="text"
+        value={searchQuery}
+        onChange={(event) => kitchenSinkStore.setSearch(event.target.value)}
+        placeholder="Search notes... (debounced 300ms)"
+        className="flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-1.5 text-sm text-zinc-200 placeholder-zinc-500 outline-none focus:border-teal-500/50"
+      />
+      <RenderBadge count={renders} />
+    </div>
+  );
+}
+
+// ── Last Edited (Date transform) ────────────────────────────────────────────
+
+function LastEdited() {
+  const lastEditedAt = useStore(
+    kitchenSinkStore,
+    (state) => state.lastEditedAt,
+  );
+  const renders = useRenderCount();
+
+  return (
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-zinc-500">Last edited:</span>
+        <span className="text-xs font-mono text-zinc-300">
+          {lastEditedAt instanceof Date
+            ? lastEditedAt.toLocaleString()
+            : String(lastEditedAt)}
+        </span>
+      </div>
+      <RenderBadge count={renders} />
+    </div>
+  );
+}
+
+// ── Storage Inspector ───────────────────────────────────────────────────────
+
+function StorageInspector() {
+  const [raw, setRaw] = useState(() => localStorage.getItem('kitchen-sink'));
+  const snap = useStore(kitchenSinkStore);
+
+  const current = localStorage.getItem('kitchen-sink');
+  if (current !== raw) {
+    setRaw(current);
+  }
+
+  // Read snap to trigger re-render on store changes
+  void snap;
+
+  return (
+    <div>
+      <span className="text-xs text-zinc-500 uppercase tracking-wide block mb-1.5">
+        localStorage["kitchen-sink"]
+      </span>
+      <pre className="text-[10px] bg-zinc-950 border border-zinc-800 rounded-lg p-3 overflow-x-auto text-teal-400/80 font-mono leading-relaxed max-h-48 overflow-y-auto">
+        {raw ? JSON.stringify(JSON.parse(raw), null, 2) : '(empty)'}
+      </pre>
+    </div>
+  );
+}
+
+// ── Control Panel ───────────────────────────────────────────────────────────
+
+function ControlPanel() {
+  const [status, setStatus] = useState('');
+
+  const showStatus = (message: string) => {
+    setStatus(message);
+    setTimeout(() => setStatus(''), 2000);
+  };
+
+  return (
+    <div>
+      <span className="text-xs text-zinc-500 uppercase tracking-wide block mb-2">
+        Persist Controls
+      </span>
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={async () => {
+            await kitchenSinkHandle.save();
+            showStatus('Saved!');
+          }}
+          className="px-3 py-1.5 rounded-lg bg-teal-600 text-white text-xs font-medium hover:bg-teal-500 transition-colors cursor-pointer"
+        >
+          Force Save
+        </button>
+        <button
+          type="button"
+          onClick={async () => {
+            await kitchenSinkHandle.clear();
+            showStatus('Storage cleared');
+          }}
+          className="px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-medium hover:bg-amber-500 transition-colors cursor-pointer"
+        >
+          Clear Storage
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            kitchenSinkHandle.unsubscribe();
+            showStatus('Unsubscribed - mutations no longer persisted');
+          }}
+          className="px-3 py-1.5 rounded-lg bg-rose-600 text-white text-xs font-medium hover:bg-rose-500 transition-colors cursor-pointer"
+        >
+          Unsubscribe
+        </button>
+        <button
+          type="button"
+          onClick={async () => {
+            await kitchenSinkHandle.rehydrate();
+            showStatus('Rehydrated from storage');
+          }}
+          className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-medium hover:bg-indigo-500 transition-colors cursor-pointer"
+        >
+          Rehydrate
+        </button>
+        <button
+          type="button"
+          onClick={async () => {
+            kitchenSinkStore.reset();
+            await kitchenSinkHandle.clear();
+            await kitchenSinkHandle.save();
+            showStatus('Reset to defaults');
+          }}
+          className="px-3 py-1.5 rounded-lg bg-zinc-700 text-zinc-300 text-xs font-medium hover:bg-zinc-600 transition-colors cursor-pointer"
+        >
+          Full Reset
+        </button>
+      </div>
+      {status && (
+        <p className="text-xs text-emerald-400 mt-2 font-mono">{status}</p>
+      )}
+    </div>
+  );
+}
+
+// ── Main Component ──────────────────────────────────────────────────────────
+
+export function KitchenSinkPersistDemo() {
+  return (
+    <Panel
+      title="Kitchen Sink Persist"
+      description="ReactiveMap + ReactiveSet + Date transforms + debounce + version migration + cross-tab sync."
+    >
+      <div className="flex items-center justify-between mb-4">
+        <HydrationBadge />
+        <span className="text-[10px] text-zinc-600">
+          Open another tab to see cross-tab sync
+        </span>
+      </div>
+
+      <div className="flex flex-col gap-5">
+        <SearchInput />
+        <ViewControls />
+        <AddNoteForm />
+        <NotesList />
+        <TagsSection />
+        <LastEdited />
+        <StorageInspector />
+        <ControlPanel />
+      </div>
+    </Panel>
+  );
+}

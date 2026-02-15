@@ -1,0 +1,4 @@
+
+[serve.static]
+plugins = ["bun-plugin-tailwind", "./dedupe-react.ts"]
+env = "BUN_PUBLIC_*"
