@@ -33,6 +33,12 @@ jobs:
       - name: Publish to npm
         if: steps.changesets.outputs.hasChangesets == 'false'
         run: |
-          npm config set registry https://registry.npmjs.org
           bun run build
-          npx changeset publish
+          npm publish --provenance --access public
+      - name: Create git tags
+        if: steps.changesets.outputs.hasChangesets == 'false'
+        run: |
+          npx changeset tag
+          git push --follow-tags
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
