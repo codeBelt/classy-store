@@ -1,4 +1,4 @@
-import {PROXYABLE} from './utils';
+import {PROXYABLE} from '../utils/internal/internal';
 
 // ── ReactiveMap ───────────────────────────────────────────────────────────────
 

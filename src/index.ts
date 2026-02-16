@@ -6,9 +6,9 @@
  *
  * @module @codebelt/classy-store
  */
-export type {ReactiveMap, ReactiveSet} from './collections';
-export {reactiveMap, reactiveSet} from './collections';
-export {getVersion, store, subscribe} from './core';
-export {snapshot} from './snapshot';
+export type {ReactiveMap, ReactiveSet} from './collections/collections';
+export {reactiveMap, reactiveSet} from './collections/collections';
+export {getVersion, store, subscribe} from './core/core';
+export {snapshot} from './snapshot/snapshot';
 export type {Snapshot} from './types';
-export {shallowEqual} from './utils';
+export {shallowEqual} from './utils/equality/equality';

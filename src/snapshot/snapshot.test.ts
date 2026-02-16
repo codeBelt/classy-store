@@ -1,5 +1,5 @@
 import {describe, expect, it} from 'bun:test';
-import {store} from './core';
+import {store} from '../core/core';
 import {snapshot} from './snapshot';
 
 /** Helper: flush the queueMicrotask-based batching. */

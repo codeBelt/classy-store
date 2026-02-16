@@ -19,12 +19,12 @@
     },
     "./react": {
       "import": {
-        "types": "./dist/react.d.mts",
-        "default": "./dist/react.mjs"
+        "types": "./dist/react/react.d.mts",
+        "default": "./dist/react/react.mjs"
       },
       "require": {
-        "types": "./dist/react.d.cts",
-        "default": "./dist/react.cjs"
+        "types": "./dist/react/react.d.cts",
+        "default": "./dist/react/react.cjs"
       }
     },
     "./utils": {

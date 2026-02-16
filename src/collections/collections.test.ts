@@ -1,5 +1,7 @@
 import {describe, expect, test} from 'bun:test';
-import {reactiveMap, reactiveSet, snapshot, store, subscribe} from './index';
+import {store, subscribe} from '../core/core';
+import {snapshot} from '../snapshot/snapshot';
+import {reactiveMap, reactiveSet} from './collections';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 

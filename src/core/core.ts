@@ -1,5 +1,5 @@
-import type {DepEntry, StoreInternal} from './types';
-import {canProxy, findGetterDescriptor} from './utils';
+import type {DepEntry, StoreInternal} from '../types';
+import {canProxy, findGetterDescriptor} from '../utils/internal/internal';
 
 // ── Global state ──────────────────────────────────────────────────────────────
 
