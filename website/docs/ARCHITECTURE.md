@@ -79,8 +79,8 @@ packages/store/
 │   ├── core.test.ts               # tests: mutations, batching, methods, getters, arrays
 │   ├── snapshot.test.ts           # tests: freezing, caching, structural sharing, getters
 │   ├── computed.test.tsx          # tests: write proxy + snapshot memoization, useStore integration
-│   ├── useStore.test.tsx          # tests: selector mode, auto-tracked mode, re-render control
-│   ├── useStore.behavior.test.tsx # tests: batching, set-then-revert, async, multi-component, unmount
+│   ├── react.test.tsx          # tests: selector mode, auto-tracked mode, re-render control
+│   ├── react.behavior.test.tsx # tests: batching, set-then-revert, async, multi-component, unmount
 │   ├── utils.test.ts              # Utility function tests: shallowEqual, isPlainObject, canProxy, findGetterDescriptor
 │   └── collections.test.ts        # tests: ReactiveMap, ReactiveSet, class store integration
 ├── package.json

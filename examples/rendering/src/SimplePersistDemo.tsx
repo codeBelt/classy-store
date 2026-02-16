@@ -1,4 +1,4 @@
-import {useStore} from '@codebelt/classy-store';
+import {useStore} from '@codebelt/classy-store/react';
 import {useState} from 'react';
 import {Panel} from './Panel';
 import {preferencesHandle, preferencesStore} from './persistStores';

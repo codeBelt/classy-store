@@ -2,8 +2,8 @@ import {afterEach, describe, expect, it, mock} from 'bun:test';
 import {act, type ReactNode} from 'react';
 import {createRoot} from 'react-dom/client';
 import {store} from './core';
+import {useStore} from './react';
 import {snapshot} from './snapshot';
-import {useStore} from './useStore';
 
 /** Helper: flush the queueMicrotask-based batching. */
 const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 0));

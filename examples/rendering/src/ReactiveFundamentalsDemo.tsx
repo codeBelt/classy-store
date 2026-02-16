@@ -1,4 +1,5 @@
-import {store, useStore} from '@codebelt/classy-store';
+import {store} from '@codebelt/classy-store';
+import {useStore} from '@codebelt/classy-store/react';
 import {useState} from 'react';
 import {Panel} from './Panel';
 import {RenderBadge} from './RenderBadge';
