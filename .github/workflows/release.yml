@@ -21,7 +21,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-          registry-url: 'https://registry.npmjs.org'
       - name: Create Release PR or Detect Publishable Versions
         id: changesets
         uses: changesets/action@v1
@@ -34,7 +33,6 @@ jobs:
       - name: Publish to npm
         if: steps.changesets.outputs.hasChangesets == 'false'
         run: |
+          npm config set registry https://registry.npmjs.org
           bun run build
           npx changeset publish
-        env:
-          NODE_AUTH_TOKEN: ''
