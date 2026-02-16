@@ -1,4 +1,5 @@
-import {snapshot, subscribe, useStore} from '@codebelt/classy-store';
+import {snapshot, subscribe} from '@codebelt/classy-store';
+import {useStore} from '@codebelt/classy-store/react';
 import {useEffect, useRef, useState} from 'react';
 import {Panel} from './Panel';
 import {documentStore} from './stores';

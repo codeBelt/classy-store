@@ -1,6 +1,7 @@
 import {describe, expect, it, mock} from 'bun:test';
-import type {ReactiveMap} from '../collections';
-import {reactiveMap, store} from '../index';
+import type {ReactiveMap} from '../../collections/collections';
+import {reactiveMap} from '../../collections/collections';
+import {store} from '../../core/core';
 import type {StorageAdapter} from './persist';
 import {persist} from './persist';
 

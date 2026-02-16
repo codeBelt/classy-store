@@ -1,8 +1,8 @@
 import {createProxy, isChanged} from 'proxy-compare';
 import {useCallback, useRef, useSyncExternalStore} from 'react';
-import {subscribe as coreSubscribe, getInternal} from './core';
-import {snapshot} from './snapshot';
-import type {Snapshot} from './types';
+import {subscribe as coreSubscribe, getInternal} from '../core/core';
+import {snapshot} from '../snapshot/snapshot';
+import type {Snapshot} from '../types';
 
 // ── Overloads ─────────────────────────────────────────────────────────────────
 

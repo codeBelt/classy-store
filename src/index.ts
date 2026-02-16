@@ -1,21 +1,14 @@
 /**
- * @codebelt/classy-store -- Class-based reactive state management for React.
+ * @codebelt/classy-store -- Class-based reactive state management (Core/Vanilla).
  *
- * Public API:
- * - `store(instance)` -- wrap a class instance in a reactive proxy
- * - `useStore(store, selector?)` -- React hook (selector or auto-tracked mode)
- * - `snapshot(store)` -- create an immutable frozen snapshot
- * - `subscribe(store, callback)` -- low-level change subscription
- * - `getVersion(store)` -- current version number (for debugging/caching)
- * - `shallowEqual(a, b)` -- shallow comparison helper for custom equality
- * - `reactiveMap(initial?)` / `reactiveSet(initial?)` -- proxy-compatible collections
+ * This entry point includes only the core logic.
+ * For React usage, import from `@codebelt/classy-store/react`.
  *
  * @module @codebelt/classy-store
  */
-export type {ReactiveMap, ReactiveSet} from './collections';
-export {reactiveMap, reactiveSet} from './collections';
-export {getVersion, store, subscribe} from './core';
-export {snapshot} from './snapshot';
+export type {ReactiveMap, ReactiveSet} from './collections/collections';
+export {reactiveMap, reactiveSet} from './collections/collections';
+export {getVersion, store, subscribe} from './core/core';
+export {snapshot} from './snapshot/snapshot';
 export type {Snapshot} from './types';
-export {useStore} from './useStore';
-export {shallowEqual} from './utils';
+export {shallowEqual} from './utils/equality/equality';

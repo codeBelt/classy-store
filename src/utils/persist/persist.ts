@@ -1,6 +1,6 @@
-import {subscribe} from '../core';
-import {snapshot} from '../snapshot';
-import {findGetterDescriptor} from '../utils';
+import {subscribe} from '../../core/core';
+import {snapshot} from '../../snapshot/snapshot';
+import {findGetterDescriptor} from '../internal/internal';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 

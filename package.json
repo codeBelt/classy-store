@@ -1,7 +1,7 @@
 {
   "name": "@codebelt/classy-store",
   "version": "0.0.1",
-  "description": "Class-based reactive state management for React — ES6 Proxy + immutable snapshots + useSyncExternalStore",
+  "description": "Class-based reactive state management — ES6 Proxy + immutable snapshots",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
@@ -15,6 +15,16 @@
       "require": {
         "types": "./dist/index.d.cts",
         "default": "./dist/index.cjs"
+      }
+    },
+    "./react": {
+      "import": {
+        "types": "./dist/react/react.d.mts",
+        "default": "./dist/react/react.mjs"
+      },
+      "require": {
+        "types": "./dist/react/react.d.cts",
+        "default": "./dist/react/react.cjs"
       }
     },
     "./utils": {
@@ -66,6 +76,11 @@
   "peerDependencies": {
     "react": ">=18.0.0"
   },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
+  },
   "devDependencies": {
     "@biomejs/biome": "2.4.0",
     "@changesets/changelog-github": "0.5.2",
@@ -90,5 +105,6 @@
     "react",
     "hooks"
   ],
-  "license": "MIT"
+  "license": "MIT",
+  "sideEffects": false
 }

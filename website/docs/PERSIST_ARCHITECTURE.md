@@ -51,9 +51,10 @@ packages/store/
   src/
     index.ts                    # Existing barrel (unchanged)
     utils/
-      index.ts                  # Barrel: export { persist } from './persist'
-      persist.ts                # persist(), types, and all logic
-      persist.test.ts           # 38 tests with mock storage adapters
+      index.ts                  # Barrel: export { persist } from './persist/persist'
+      persist/
+        persist.ts              # persist(), types, and all logic
+        persist.test.ts         # 38 tests with mock storage adapters
   package.json                  # "./utils" export entry
   tsdown.config.ts              # 'src/utils/index.ts' in entry array
 ```

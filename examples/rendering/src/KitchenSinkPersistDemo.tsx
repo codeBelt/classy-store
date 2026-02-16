@@ -1,4 +1,4 @@
-import {useStore} from '@codebelt/classy-store';
+import {useStore} from '@codebelt/classy-store/react';
 import {useEffect, useState} from 'react';
 import {Panel} from './Panel';
 import {kitchenSinkHandle, kitchenSinkStore} from './persistStores';

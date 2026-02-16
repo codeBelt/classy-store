@@ -1,6 +1,6 @@
-import {getInternal} from './core';
-import type {Snapshot, StoreInternal} from './types';
-import {canProxy, findGetterDescriptor} from './utils';
+import {getInternal} from '../core/core';
+import type {Snapshot, StoreInternal} from '../types';
+import {canProxy, findGetterDescriptor} from '../utils/internal/internal';
 
 // ── Caches ────────────────────────────────────────────────────────────────────
 

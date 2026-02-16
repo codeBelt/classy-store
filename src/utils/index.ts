@@ -12,5 +12,5 @@ export type {
   PersistOptions,
   PropertyTransform,
   StorageAdapter,
-} from './persist';
-export {persist} from './persist';
+} from './persist/persist';
+export {persist} from './persist/persist';

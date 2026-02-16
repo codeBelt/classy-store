@@ -66,23 +66,32 @@ flowchart TB
 packages/store/
 ├── src/
 │   ├── index.ts                   # Barrel export: store, useStore, snapshot, subscribe, getVersion, shallowEqual, Snapshot, reactiveMap, reactiveSet, ReactiveMap, ReactiveSet
-│   ├── core.ts                    # Layer 1: Write Proxy — store(), subscribe(), getVersion()
-│   ├── snapshot.ts                # Layer 2: Immutable Snapshots — snapshot()
-│   ├── useStore.ts                # Layer 3: React Hook — useStore()
-│   ├── types.ts                   # Shared types: Snapshot<T>, StoreInternal, DepEntry, ComputedEntry
-│   ├── utils.ts                   # Helpers: isPlainObject, canProxy, shallowEqual, findGetterDescriptor, PROXYABLE
-│   ├── collections.ts             # ReactiveMap and ReactiveSet implementations
+│   ├── collections/
+│   │   ├── collections.ts         # ReactiveMap and ReactiveSet implementations
+│   │   └── collections.test.ts    # tests: ReactiveMap, ReactiveSet, class store integration
+│   ├── core/
+│   │   ├── core.ts                # Layer 1: Write Proxy — store(), subscribe(), getVersion()
+│   │   ├── core.test.ts           # tests: mutations, batching, methods, getters, arrays
+│   │   └── computed.test.tsx      # tests: write proxy + snapshot memoization, useStore integration
+│   ├── react/
+│   │   ├── react.ts               # Layer 3: React Hook — useStore()
+│   │   ├── react.test.tsx         # tests: selector mode, auto-tracked mode, re-render control
+│   │   └── react.behavior.test.tsx # tests: batching, set-then-revert, async, multi-component, unmount
+│   ├── snapshot/
+│   │   ├── snapshot.ts            # Layer 2: Immutable Snapshots — snapshot()
+│   │   └── snapshot.test.ts       # tests: freezing, caching, structural sharing, getters
 │   ├── utils/
 │   │   ├── index.ts               # Barrel export for @codebelt/classy-store/utils: persist
-│   │   ├── persist.ts             # persist() utility: storage, transforms, versioning, cross-tab sync
-│   │   └── persist.test.ts        # tests: round-trip, transforms, debounce, migration, merge, SSR, cross-tab
-│   ├── core.test.ts               # tests: mutations, batching, methods, getters, arrays
-│   ├── snapshot.test.ts           # tests: freezing, caching, structural sharing, getters
-│   ├── computed.test.tsx          # tests: write proxy + snapshot memoization, useStore integration
-│   ├── useStore.test.tsx          # tests: selector mode, auto-tracked mode, re-render control
-│   ├── useStore.behavior.test.tsx # tests: batching, set-then-revert, async, multi-component, unmount
-│   ├── utils.test.ts              # Utility function tests: shallowEqual, isPlainObject, canProxy, findGetterDescriptor
-│   └── collections.test.ts        # tests: ReactiveMap, ReactiveSet, class store integration
+│   │   ├── equality/
+│   │   │   ├── equality.ts        # shallowEqual
+│   │   │   └── equality.test.ts   # tests for shallowEqual
+│   │   ├── internal/
+│   │   │   ├── internal.ts        # Internal helpers: isPlainObject, canProxy, findGetterDescriptor, PROXYABLE
+│   │   │   └── internal.test.ts   # tests for internal helpers
+│   │   ├── persist/
+│   │   │   ├── persist.ts         # persist() utility: storage, transforms, versioning, cross-tab sync
+│   │   │   └── persist.test.ts    # tests: round-trip, transforms, debounce, migration, merge, SSR, cross-tab
+│   ├── types.ts                   # Shared types: Snapshot<T>, StoreInternal, DepEntry, ComputedEntry
 ├── package.json
 ├── tsconfig.json
 ├── tsdown.config.ts
