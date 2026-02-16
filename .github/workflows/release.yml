@@ -33,6 +33,8 @@ jobs:
       - name: Publish to npm
         if: steps.changesets.outputs.hasChangesets == 'false'
         run: |
+          npm install -g npm@latest
+          npm --version
           bun run build
           npm publish --provenance --access public
       - name: Create git tags
