@@ -1,4 +1,8 @@
-import {reactiveMap, reactiveSet, store} from '@codebelt/classy-store';
+import {
+  createClassyStore,
+  reactiveMap,
+  reactiveSet,
+} from '@codebelt/classy-store';
 import {persist} from '@codebelt/classy-store/utils';
 
 // ── Simple Store ────────────────────────────────────────────────────────────
@@ -43,7 +47,7 @@ export class PreferencesStore {
   }
 }
 
-export const preferencesStore = store(new PreferencesStore());
+export const preferencesStore = createClassyStore(new PreferencesStore());
 
 export const preferencesHandle = persist(preferencesStore, {
   name: 'preferences',
@@ -145,7 +149,7 @@ export class KitchenSinkStore {
   }
 }
 
-export const kitchenSinkStore = store(new KitchenSinkStore());
+export const kitchenSinkStore = createClassyStore(new KitchenSinkStore());
 
 export const kitchenSinkHandle = persist(kitchenSinkStore, {
   name: 'kitchen-sink',

@@ -1,7 +1,7 @@
 import {describe, expect, it, mock} from 'bun:test';
 import type {ReactiveMap} from '../../collections/collections';
 import {reactiveMap} from '../../collections/collections';
-import {store} from '../../core/core';
+import {createClassyStore} from '../../core/core';
 import type {StorageAdapter} from './persist';
 import {persist} from './persist';
 
@@ -71,7 +71,7 @@ describe('persist()', () => {
   describe('basic round-trip', () => {
     it('saves store state to storage on mutation', async () => {
       const storage = createMockStorage();
-      const s = store({count: 0, name: 'hello'});
+      const s = createClassyStore({count: 0, name: 'hello'});
       persist(s, {name: 'test', storage});
 
       s.count = 42;
@@ -90,7 +90,7 @@ describe('persist()', () => {
         JSON.stringify({version: 0, state: {count: 99, name: 'restored'}}),
       );
 
-      const s = store({count: 0, name: 'initial'});
+      const s = createClassyStore({count: 0, name: 'initial'});
       const handle = persist(s, {name: 'test', storage});
       await handle.hydrated;
 
@@ -100,7 +100,7 @@ describe('persist()', () => {
 
     it('wraps state in a versioned envelope', async () => {
       const storage = createMockStorage();
-      const s = store({value: 1});
+      const s = createClassyStore({value: 1});
       persist(s, {name: 'test', storage, version: 3});
 
       s.value = 2;
@@ -120,7 +120,7 @@ describe('persist()', () => {
       }
 
       const storage = createMockStorage();
-      const s = store(new MyStore());
+      const s = createClassyStore(new MyStore());
       persist(s, {name: 'test', storage});
 
       s.count = 10;
@@ -140,7 +140,7 @@ describe('persist()', () => {
       }
 
       const storage = createMockStorage();
-      const s = store(new MyStore());
+      const s = createClassyStore(new MyStore());
       persist(s, {name: 'test', storage});
 
       s.increment();
@@ -157,7 +157,7 @@ describe('persist()', () => {
   describe('properties option', () => {
     it('persists only the specified properties', async () => {
       const storage = createMockStorage();
-      const s = store({count: 0, name: 'hello', secret: 'hidden'});
+      const s = createClassyStore({count: 0, name: 'hello', secret: 'hidden'});
       persist(s, {name: 'test', storage, properties: ['count', 'name']});
 
       s.count = 10;
@@ -180,7 +180,11 @@ describe('persist()', () => {
         }),
       );
 
-      const s = store({count: 0, name: 'initial', secret: 'original'});
+      const s = createClassyStore({
+        count: 0,
+        name: 'initial',
+        secret: 'original',
+      });
       const handle = persist(s, {
         name: 'test',
         storage,
@@ -204,7 +208,7 @@ describe('persist()', () => {
       }
 
       const storage = createMockStorage();
-      const s = store(new SessionStore());
+      const s = createClassyStore(new SessionStore());
 
       // Save
       persist(s, {
@@ -229,7 +233,7 @@ describe('persist()', () => {
       expect(stored?.state.expiresAt).toBe('2026-06-15T12:00:00.000Z');
 
       // Restore
-      const s2 = store(new SessionStore());
+      const s2 = createClassyStore(new SessionStore());
       const handle = persist(s2, {
         name: 'session',
         storage,
@@ -255,7 +259,7 @@ describe('persist()', () => {
       }
 
       const storage = createMockStorage();
-      const s = store(new UserStore());
+      const s = createClassyStore(new UserStore());
 
       persist(s, {
         name: 'users',
@@ -283,7 +287,7 @@ describe('persist()', () => {
       ]);
 
       // Restore
-      const s2 = store(new UserStore());
+      const s2 = createClassyStore(new UserStore());
       const handle = persist(s2, {
         name: 'users',
         storage,
@@ -314,7 +318,7 @@ describe('persist()', () => {
       const setItemSpy = mock(storage.setItem.bind(storage));
       storage.setItem = setItemSpy;
 
-      const s = store({count: 0});
+      const s = createClassyStore({count: 0});
       persist(s, {name: 'test', storage, debounce: 50});
 
       s.count = 1;
@@ -337,7 +341,7 @@ describe('persist()', () => {
 
     it('save() bypasses debounce and writes immediately', async () => {
       const storage = createMockStorage();
-      const s = store({count: 0});
+      const s = createClassyStore({count: 0});
       const handle = persist(s, {name: 'test', storage, debounce: 5000});
 
       s.count = 42;
@@ -363,7 +367,9 @@ describe('persist()', () => {
         JSON.stringify({version: 0, state: {items: ['buy milk']}}),
       );
 
-      const s = store({todos: [] as {text: string; done: boolean}[]});
+      const s = createClassyStore({
+        todos: [] as {text: string; done: boolean}[],
+      });
       const handle = persist(s, {
         name: 'test',
         storage,
@@ -390,7 +396,7 @@ describe('persist()', () => {
       const storage = createMockStorage();
       storage.data.set('test', JSON.stringify({version: 1, state: {count: 5}}));
 
-      const s = store({count: 0});
+      const s = createClassyStore({count: 0});
       const handle = persist(s, {
         name: 'test',
         storage,
@@ -414,7 +420,11 @@ describe('persist()', () => {
         JSON.stringify({version: 0, state: {theme: 'dark'}}),
       );
 
-      const s = store({theme: 'light', fontSize: 14, sidebar: true});
+      const s = createClassyStore({
+        theme: 'light',
+        fontSize: 14,
+        sidebar: true,
+      });
       const handle = persist(s, {name: 'test', storage});
       await handle.hydrated;
 
@@ -430,7 +440,7 @@ describe('persist()', () => {
         JSON.stringify({version: 0, state: {theme: 'dark'}}),
       );
 
-      const s = store({theme: 'light', fontSize: 14});
+      const s = createClassyStore({theme: 'light', fontSize: 14});
       const handle = persist(s, {name: 'test', storage, merge: 'replace'});
       await handle.hydrated;
 
@@ -445,7 +455,7 @@ describe('persist()', () => {
         JSON.stringify({version: 0, state: {count: 10, extra: 'from-storage'}}),
       );
 
-      const s = store({count: 0, name: 'default'});
+      const s = createClassyStore({count: 0, name: 'default'});
       const handle = persist(s, {
         name: 'test',
         storage,
@@ -471,7 +481,7 @@ describe('persist()', () => {
         JSON.stringify({version: 0, state: {count: 99}}),
       );
 
-      const s = store({count: 0});
+      const s = createClassyStore({count: 0});
       const handle = persist(s, {
         name: 'test',
         storage,
@@ -491,7 +501,7 @@ describe('persist()', () => {
         JSON.stringify({version: 0, state: {count: 99}}),
       );
 
-      const s = store({count: 0});
+      const s = createClassyStore({count: 0});
       const handle = persist(s, {
         name: 'test',
         storage,
@@ -510,7 +520,7 @@ describe('persist()', () => {
         JSON.stringify({version: 0, state: {count: 42}}),
       );
 
-      const s = store({count: 0});
+      const s = createClassyStore({count: 0});
       const handle = persist(s, {
         name: 'test',
         storage,
@@ -529,7 +539,7 @@ describe('persist()', () => {
   describe('unsubscribe', () => {
     it('stops writing to storage after unsubscribe()', async () => {
       const storage = createMockStorage();
-      const s = store({count: 0});
+      const s = createClassyStore({count: 0});
       const handle = persist(s, {name: 'test', storage});
 
       s.count = 1;
@@ -547,7 +557,7 @@ describe('persist()', () => {
 
     it('cancels pending debounce on unsubscribe()', async () => {
       const storage = createMockStorage();
-      const s = store({count: 0});
+      const s = createClassyStore({count: 0});
       const handle = persist(s, {name: 'test', storage, debounce: 100});
 
       s.count = 42;
@@ -566,7 +576,7 @@ describe('persist()', () => {
   describe('save / clear / rehydrate', () => {
     it('save() writes immediately', async () => {
       const storage = createMockStorage();
-      const s = store({count: 0});
+      const s = createClassyStore({count: 0});
       const handle = persist(s, {name: 'test', storage});
 
       s.count = 42;
@@ -578,7 +588,7 @@ describe('persist()', () => {
 
     it('clear() removes the stored data', async () => {
       const storage = createMockStorage();
-      const s = store({count: 0});
+      const s = createClassyStore({count: 0});
       const handle = persist(s, {name: 'test', storage});
 
       s.count = 5;
@@ -591,7 +601,7 @@ describe('persist()', () => {
 
     it('clear() does not affect in-memory state', async () => {
       const storage = createMockStorage();
-      const s = store({count: 42});
+      const s = createClassyStore({count: 42});
       const handle = persist(s, {name: 'test', storage});
 
       s.count = 42;
@@ -603,7 +613,7 @@ describe('persist()', () => {
 
     it('rehydrate() re-reads from storage', async () => {
       const storage = createMockStorage();
-      const s = store({count: 0});
+      const s = createClassyStore({count: 0});
       const handle = persist(s, {name: 'test', storage});
       await handle.hydrated;
 
@@ -623,7 +633,7 @@ describe('persist()', () => {
   describe('hydration state', () => {
     it('isHydrated is false before hydration completes', () => {
       const storage = createMockStorage();
-      const s = store({count: 0});
+      const s = createClassyStore({count: 0});
       const handle = persist(s, {name: 'test', storage});
 
       // Sync storage hydrates quickly, but the promise is async.
@@ -636,7 +646,7 @@ describe('persist()', () => {
       const storage = createMockStorage();
       storage.data.set('test', JSON.stringify({version: 0, state: {count: 5}}));
 
-      const s = store({count: 0});
+      const s = createClassyStore({count: 0});
       const handle = persist(s, {name: 'test', storage});
       await handle.hydrated;
 
@@ -650,7 +660,7 @@ describe('persist()', () => {
   describe('async storage', () => {
     it('works with an async storage adapter', async () => {
       const storage = createAsyncMockStorage();
-      const s = store({count: 0});
+      const s = createClassyStore({count: 0});
       persist(s, {name: 'test', storage, syncTabs: false});
 
       s.count = 42;
@@ -669,7 +679,7 @@ describe('persist()', () => {
         JSON.stringify({version: 0, state: {count: 99}}),
       );
 
-      const s = store({count: 0});
+      const s = createClassyStore({count: 0});
       const handle = persist(s, {name: 'test', storage, syncTabs: false});
       await handle.hydrated;
 
@@ -682,7 +692,7 @@ describe('persist()', () => {
   describe('cross-tab sync', () => {
     it('applies state when a storage event fires for the correct key', async () => {
       const storage = createMockStorage();
-      const s = store({count: 0});
+      const s = createClassyStore({count: 0});
       const handle = persist(s, {name: 'test', storage, syncTabs: true});
       await handle.hydrated;
 
@@ -700,7 +710,7 @@ describe('persist()', () => {
 
     it('ignores storage events for other keys', async () => {
       const storage = createMockStorage();
-      const s = store({count: 0});
+      const s = createClassyStore({count: 0});
       const handle = persist(s, {name: 'test', storage, syncTabs: true});
       await handle.hydrated;
 
@@ -717,7 +727,7 @@ describe('persist()', () => {
 
     it('stops listening after unsubscribe()', async () => {
       const storage = createMockStorage();
-      const s = store({count: 0});
+      const s = createClassyStore({count: 0});
       const handle = persist(s, {name: 'test', storage, syncTabs: true});
       await handle.hydrated;
 
@@ -734,7 +744,7 @@ describe('persist()', () => {
 
     it('does not listen when syncTabs is false', async () => {
       const storage = createMockStorage();
-      const s = store({count: 0});
+      const s = createClassyStore({count: 0});
       const handle = persist(s, {name: 'test', storage, syncTabs: false});
       await handle.hydrated;
 
@@ -764,7 +774,7 @@ describe('persist()', () => {
         }),
       );
 
-      const s = store({count: 0});
+      const s = createClassyStore({count: 0});
       const handle = persist(s, {name: 'test', storage, expireIn: 60_000});
       await handle.hydrated;
 
@@ -783,7 +793,7 @@ describe('persist()', () => {
         }),
       );
 
-      const s = store({count: 0});
+      const s = createClassyStore({count: 0});
       const handle = persist(s, {name: 'test', storage, expireIn: 60_000});
       await handle.hydrated;
 
@@ -802,7 +812,7 @@ describe('persist()', () => {
         }),
       );
 
-      const s = store({count: 0});
+      const s = createClassyStore({count: 0});
       const handle = persist(s, {
         name: 'test',
         storage,
@@ -826,7 +836,7 @@ describe('persist()', () => {
         }),
       );
 
-      const s = store({count: 0});
+      const s = createClassyStore({count: 0});
       const handle = persist(s, {name: 'test', storage, expireIn: 60_000});
       await handle.hydrated;
       await tick();
@@ -836,7 +846,7 @@ describe('persist()', () => {
 
     it('cross-tab sync rejects expired envelopes', async () => {
       const storage = createMockStorage();
-      const s = store({count: 0});
+      const s = createClassyStore({count: 0});
       const handle = persist(s, {
         name: 'test',
         storage,
@@ -868,7 +878,7 @@ describe('persist()', () => {
         JSON.stringify({version: 0, state: {count: 77}}),
       );
 
-      const s = store({count: 0});
+      const s = createClassyStore({count: 0});
       const handle = persist(s, {name: 'test', storage, expireIn: 60_000});
       await handle.hydrated;
 
@@ -878,7 +888,7 @@ describe('persist()', () => {
 
     it('TTL resets on every write (envelope timestamp refreshes)', async () => {
       const storage = createMockStorage();
-      const s = store({count: 0});
+      const s = createClassyStore({count: 0});
       persist(s, {name: 'test', storage, expireIn: 30_000});
 
       const before = Date.now();
@@ -914,7 +924,7 @@ describe('persist()', () => {
         }),
       );
 
-      const s = store({count: 0});
+      const s = createClassyStore({count: 0});
       const handle = persist(s, {name: 'test', storage, expireIn: 60_000});
       await handle.hydrated;
       expect(s.count).toBe(42);
@@ -941,7 +951,7 @@ describe('persist()', () => {
   describe('edge cases', () => {
     it('handles empty/missing storage gracefully', async () => {
       const storage = createMockStorage();
-      const s = store({count: 0});
+      const s = createClassyStore({count: 0});
       const handle = persist(s, {name: 'test', storage});
       await handle.hydrated;
 
@@ -952,7 +962,7 @@ describe('persist()', () => {
       const storage = createMockStorage();
       storage.data.set('test', 'not-valid-json!!!');
 
-      const s = store({count: 0});
+      const s = createClassyStore({count: 0});
       const handle = persist(s, {name: 'test', storage});
       await handle.hydrated;
 
@@ -963,7 +973,7 @@ describe('persist()', () => {
       const storage = createMockStorage();
       storage.data.set('test', JSON.stringify({bad: 'shape'}));
 
-      const s = store({count: 0});
+      const s = createClassyStore({count: 0});
       const handle = persist(s, {name: 'test', storage});
       await handle.hydrated;
 
@@ -981,7 +991,7 @@ describe('persist()', () => {
         configurable: true,
       });
       try {
-        const s = store({count: 0});
+        const s = createClassyStore({count: 0});
         expect(() => persist(s, {name: 'test'})).toThrow(/storage adapter/i);
       } finally {
         if (desc) {
@@ -993,7 +1003,7 @@ describe('persist()', () => {
     it('multiple persists on the same store with different keys', async () => {
       const storage1 = createMockStorage();
       const storage2 = createMockStorage();
-      const s = store({count: 0, name: 'hello'});
+      const s = createClassyStore({count: 0, name: 'hello'});
 
       persist(s, {
         name: 'store-count',

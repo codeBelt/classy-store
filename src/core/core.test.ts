@@ -1,21 +1,21 @@
 import {describe, expect, it, mock} from 'bun:test';
-import {getVersion, store, subscribe} from './core';
+import {createClassyStore, getVersion, subscribe} from './core';
 
 /** Helper: flush the queueMicrotask-based batching. */
 const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 
-describe('store() — core reactivity', () => {
+describe('createClassyStore() — core reactivity', () => {
   // ── Primitive mutations ───────────────────────────────────────────────────
 
   describe('primitive mutations', () => {
     it('reads initial values through the proxy', () => {
-      const s = store({count: 0, name: 'hello'});
+      const s = createClassyStore({count: 0, name: 'hello'});
       expect(s.count).toBe(0);
       expect(s.name).toBe('hello');
     });
 
     it('notifies listeners when a primitive property changes', async () => {
-      const s = store({count: 0});
+      const s = createClassyStore({count: 0});
       const listener = mock(() => {});
       subscribe(s, listener);
 
@@ -27,7 +27,7 @@ describe('store() — core reactivity', () => {
     });
 
     it('does NOT notify when same value is set (noop)', async () => {
-      const s = store({count: 0});
+      const s = createClassyStore({count: 0});
       const listener = mock(() => {});
       subscribe(s, listener);
 
@@ -38,7 +38,7 @@ describe('store() — core reactivity', () => {
     });
 
     it('bumps version on mutation', async () => {
-      const s = store({count: 0});
+      const s = createClassyStore({count: 0});
       const v1 = getVersion(s);
 
       s.count = 1;
@@ -53,7 +53,7 @@ describe('store() — core reactivity', () => {
 
   describe('batching', () => {
     it('batches multiple synchronous mutations into one notification', async () => {
-      const s = store({a: 0, b: 0, c: 0});
+      const s = createClassyStore({a: 0, b: 0, c: 0});
       const listener = mock(() => {});
       subscribe(s, listener);
 
@@ -69,7 +69,7 @@ describe('store() — core reactivity', () => {
     });
 
     it('batches array push (multiple set traps) into one notification', async () => {
-      const s = store({items: [] as string[]});
+      const s = createClassyStore({items: [] as string[]});
       const listener = mock(() => {});
       subscribe(s, listener);
 
@@ -97,7 +97,7 @@ describe('store() — core reactivity', () => {
     }
 
     it('methods mutate through the proxy', async () => {
-      const s = store(new Counter());
+      const s = createClassyStore(new Counter());
       const listener = mock(() => {});
       subscribe(s, listener);
 
@@ -109,7 +109,7 @@ describe('store() — core reactivity', () => {
     });
 
     it('methods with arguments work correctly', async () => {
-      const s = store(new Counter());
+      const s = createClassyStore(new Counter());
       s.add(10);
       await flush();
       expect(s.count).toBe(10);
@@ -136,13 +136,13 @@ describe('store() — core reactivity', () => {
     }
 
     it('getters return computed values', () => {
-      const s = store(new Store());
+      const s = createClassyStore(new Store());
       expect(s.doubled).toBe(10);
       expect(s.isPositive).toBe(true);
     });
 
     it('getters reflect mutations', async () => {
-      const s = store(new Store());
+      const s = createClassyStore(new Store());
       s.setCount(0);
       expect(s.doubled).toBe(0);
       expect(s.isPositive).toBe(false);
@@ -153,7 +153,9 @@ describe('store() — core reactivity', () => {
 
   describe('deep nested objects', () => {
     it('nested object property mutations trigger root listener', async () => {
-      const s = store({user: {name: 'Alice', address: {city: 'NYC'}}});
+      const s = createClassyStore({
+        user: {name: 'Alice', address: {city: 'NYC'}},
+      });
       const listener = mock(() => {});
       subscribe(s, listener);
 
@@ -165,7 +167,9 @@ describe('store() — core reactivity', () => {
     });
 
     it('deeply nested mutations trigger root listener', async () => {
-      const s = store({user: {name: 'Alice', address: {city: 'NYC'}}});
+      const s = createClassyStore({
+        user: {name: 'Alice', address: {city: 'NYC'}},
+      });
       const listener = mock(() => {});
       subscribe(s, listener);
 
@@ -177,7 +181,7 @@ describe('store() — core reactivity', () => {
     });
 
     it('replacing a nested object triggers listener', async () => {
-      const s = store({user: {name: 'Alice'}});
+      const s = createClassyStore({user: {name: 'Alice'}});
       const listener = mock(() => {});
       subscribe(s, listener);
 
@@ -193,7 +197,7 @@ describe('store() — core reactivity', () => {
 
   describe('array operations', () => {
     it('push triggers listener', async () => {
-      const s = store({items: ['a']});
+      const s = createClassyStore({items: ['a']});
       const listener = mock(() => {});
       subscribe(s, listener);
 
@@ -205,7 +209,7 @@ describe('store() — core reactivity', () => {
     });
 
     it('splice triggers listener', async () => {
-      const s = store({items: ['a', 'b', 'c']});
+      const s = createClassyStore({items: ['a', 'b', 'c']});
       const listener = mock(() => {});
       subscribe(s, listener);
 
@@ -217,7 +221,7 @@ describe('store() — core reactivity', () => {
     });
 
     it('index assignment triggers listener', async () => {
-      const s = store({items: ['a', 'b']});
+      const s = createClassyStore({items: ['a', 'b']});
       const listener = mock(() => {});
       subscribe(s, listener);
 
@@ -229,7 +233,7 @@ describe('store() — core reactivity', () => {
     });
 
     it('array of objects: nested mutation triggers listener', async () => {
-      const s = store({items: [{name: 'Alice'}, {name: 'Bob'}]});
+      const s = createClassyStore({items: [{name: 'Alice'}, {name: 'Bob'}]});
       const listener = mock(() => {});
       subscribe(s, listener);
 
@@ -245,7 +249,7 @@ describe('store() — core reactivity', () => {
 
   describe('subscribe / unsubscribe', () => {
     it('unsubscribe stops notifications', async () => {
-      const s = store({count: 0});
+      const s = createClassyStore({count: 0});
       const listener = mock(() => {});
       const unsub = subscribe(s, listener);
 
@@ -260,7 +264,7 @@ describe('store() — core reactivity', () => {
     });
 
     it('multiple listeners all fire', async () => {
-      const s = store({count: 0});
+      const s = createClassyStore({count: 0});
       const listener1 = mock(() => {});
       const listener2 = mock(() => {});
       subscribe(s, listener1);
@@ -274,7 +278,7 @@ describe('store() — core reactivity', () => {
     });
 
     it('subscribe on a child proxy fires when the child mutates', async () => {
-      const s = store({user: {name: 'Alice'}});
+      const s = createClassyStore({user: {name: 'Alice'}});
       const listener = mock(() => {});
       subscribe(s.user, listener);
 
@@ -285,7 +289,7 @@ describe('store() — core reactivity', () => {
     });
 
     it('subscribe on a child proxy fires when a sibling mutates', async () => {
-      const s = store({user: {name: 'Alice'}, count: 0});
+      const s = createClassyStore({user: {name: 'Alice'}, count: 0});
       const listener = mock(() => {});
       subscribe(s.user, listener);
 
@@ -297,7 +301,7 @@ describe('store() — core reactivity', () => {
     });
 
     it('unsubscribe from child proxy stops notifications', async () => {
-      const s = store({user: {name: 'Alice'}});
+      const s = createClassyStore({user: {name: 'Alice'}});
       const listener = mock(() => {});
       const unsub = subscribe(s.user, listener);
 
@@ -316,7 +320,7 @@ describe('store() — core reactivity', () => {
 
   describe('deleteProperty', () => {
     it('deleting a property triggers listener', async () => {
-      const s = store({a: 1, b: 2} as Record<string, number>);
+      const s = createClassyStore({a: 1, b: 2} as Record<string, number>);
       const listener = mock(() => {});
       subscribe(s, listener);
 
@@ -348,7 +352,7 @@ describe('store() — core reactivity', () => {
     }
 
     it('base method mutates state reactively on a derived instance', async () => {
-      const s = store(new Derived());
+      const s = createClassyStore(new Derived());
       const listener = mock(() => {});
       subscribe(s, listener);
 
@@ -360,7 +364,7 @@ describe('store() — core reactivity', () => {
     });
 
     it('derived method works alongside inherited method', async () => {
-      const s = store(new Derived());
+      const s = createClassyStore(new Derived());
       const listener = mock(() => {});
       subscribe(s, listener);
 
@@ -383,7 +387,7 @@ describe('store() — core reactivity', () => {
         }
       }
 
-      const s = store(new Extended());
+      const s = createClassyStore(new Extended());
       const listener = mock(() => {});
       subscribe(s, listener);
 
@@ -405,7 +409,7 @@ describe('store() — core reactivity', () => {
         }
       }
 
-      const s = store(new Overrider());
+      const s = createClassyStore(new Overrider());
       const listener = mock(() => {});
       subscribe(s, listener);
 
@@ -442,7 +446,7 @@ describe('store() — core reactivity', () => {
         }
       }
 
-      const s = store(new LevelC());
+      const s = createClassyStore(new LevelC());
       const listener = mock(() => {});
       subscribe(s, listener);
 

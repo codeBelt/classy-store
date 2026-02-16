@@ -1,7 +1,7 @@
 import {afterEach, describe, expect, it, mock} from 'bun:test';
 import {act, type ReactNode} from 'react';
 import {createRoot} from 'react-dom/client';
-import {store} from '../core/core';
+import {createClassyStore} from '../core/core';
 import {useStore} from './react';
 
 // ── Test harness ────────────────────────────────────────────────────────────
@@ -37,7 +37,7 @@ describe('useStore — selector mode', () => {
     class Counter {
       count = 42;
     }
-    const s = store(new Counter());
+    const s = createClassyStore(new Counter());
 
     function Display() {
       const count = useStore(s, (snap) => snap.count);
@@ -56,7 +56,7 @@ describe('useStore — selector mode', () => {
         this.count++;
       }
     }
-    const s = store(new Counter());
+    const s = createClassyStore(new Counter());
     const renderCount = mock(() => {});
 
     function Display() {
@@ -80,7 +80,7 @@ describe('useStore — selector mode', () => {
   });
 
   it('does NOT re-render when unrelated prop changes', async () => {
-    const s = store({count: 0, name: 'hello'});
+    const s = createClassyStore({count: 0, name: 'hello'});
     const renderCount = mock(() => {});
 
     function CountDisplay() {
@@ -111,7 +111,7 @@ describe('useStore — selector mode', () => {
         this.user.name = name;
       }
     }
-    const s = store(new Store());
+    const s = createClassyStore(new Store());
     const renderCount = mock(() => {});
 
     function UserDisplay() {
@@ -136,7 +136,7 @@ describe('useStore — selector mode', () => {
   });
 
   it('handles array selectors', async () => {
-    const s = store({items: ['a', 'b']});
+    const s = createClassyStore({items: ['a', 'b']});
     const renderCount = mock(() => {});
 
     function List() {
@@ -169,7 +169,7 @@ describe('useStore — selector mode', () => {
         this.count = value;
       }
     }
-    const s = store(new Store());
+    const s = createClassyStore(new Store());
 
     function Display() {
       const doubled = useStore(s, (snap) => snap.doubled);
@@ -189,7 +189,7 @@ describe('useStore — selector mode', () => {
   });
 
   it('supports custom isEqual for selector', async () => {
-    const s = store({items: [{id: 1, name: 'a'}]});
+    const s = createClassyStore({items: [{id: 1, name: 'a'}]});
     const renderCount = mock(() => {});
 
     // Selector always returns a new array reference, but custom isEqual does shallow comparison.
@@ -224,7 +224,7 @@ describe('useStore — auto-tracked mode', () => {
   afterEach(teardown);
 
   it('renders accessed properties', () => {
-    const s = store({count: 42, name: 'hello'});
+    const s = createClassyStore({count: 42, name: 'hello'});
 
     function Display() {
       const snap = useStore(s);
@@ -237,7 +237,7 @@ describe('useStore — auto-tracked mode', () => {
   });
 
   it('re-renders when accessed property changes', async () => {
-    const s = store({count: 0, name: 'hello'});
+    const s = createClassyStore({count: 0, name: 'hello'});
     const renderCount = mock(() => {});
 
     function Display() {
@@ -261,7 +261,7 @@ describe('useStore — auto-tracked mode', () => {
   });
 
   it('does NOT re-render when non-accessed property changes', async () => {
-    const s = store({count: 0, name: 'hello'});
+    const s = createClassyStore({count: 0, name: 'hello'});
     const renderCount = mock(() => {});
 
     function CountOnly() {
@@ -284,7 +284,10 @@ describe('useStore — auto-tracked mode', () => {
   });
 
   it('tracks nested object property access', async () => {
-    const s = store({user: {name: 'Alice', age: 30}, theme: 'dark'});
+    const s = createClassyStore({
+      user: {name: 'Alice', age: 30},
+      theme: 'dark',
+    });
     const renderCount = mock(() => {});
 
     function UserName() {
@@ -315,7 +318,7 @@ describe('useStore — auto-tracked mode', () => {
   });
 
   it('tracks array length and element access', async () => {
-    const s = store({items: ['a', 'b'], other: 'x'});
+    const s = createClassyStore({items: ['a', 'b'], other: 'x'});
     const renderCount = mock(() => {});
 
     function ItemCount() {
@@ -348,7 +351,7 @@ describe('useStore — auto-tracked mode', () => {
         this.count = value;
       }
     }
-    const s = store(new Store());
+    const s = createClassyStore(new Store());
 
     function Display() {
       const snap = useStore(s);

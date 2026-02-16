@@ -3,7 +3,7 @@ import {PROXYABLE} from '../utils/internal/internal';
 // ── ReactiveMap ───────────────────────────────────────────────────────────────
 
 /**
- * A Map-like class backed by a plain array so `store()` can proxy mutations.
+ * A Map-like class backed by a plain array so `createClassyStore()` can proxy mutations.
  *
  * Native `Map` uses internal slots that ES6 Proxy can't intercept, so mutations
  * like `.set()` would be invisible to the store. `ReactiveMap` solves this by
@@ -11,7 +11,7 @@ import {PROXYABLE} from '../utils/internal/internal';
  *
  * Usage:
  * ```ts
- * const myStore = store({ users: reactiveMap<string, User>() });
+ * const myStore = createClassyStore({ users: reactiveMap<string, User>() });
  * myStore.users.set('id1', { name: 'Alice' }); // reactive
  * ```
  */
@@ -106,7 +106,7 @@ export class ReactiveMap<K, V> {
 // ── ReactiveSet ───────────────────────────────────────────────────────────────
 
 /**
- * A Set-like class backed by a plain array so `store()` can proxy mutations.
+ * A Set-like class backed by a plain array so `createClassyStore()` can proxy mutations.
  *
  * Native `Set` uses internal slots that ES6 Proxy can't intercept, so mutations
  * like `.add()` would be invisible to the store. `ReactiveSet` solves this by
@@ -114,7 +114,7 @@ export class ReactiveMap<K, V> {
  *
  * Usage:
  * ```ts
- * const myStore = store({ tags: reactiveSet<string>(['urgent']) });
+ * const myStore = createClassyStore({ tags: reactiveSet<string>(['urgent']) });
  * myStore.tags.add('bug'); // reactive
  * ```
  */
@@ -198,7 +198,7 @@ export class ReactiveSet<T> {
 
 /**
  * Creates a reactive Map-like collection backed by a plain array.
- * Wrap the parent object with `store()` for full reactivity.
+ * Wrap the parent object with `createClassyStore()` for full reactivity.
  *
  * @param initial - Optional iterable of `[key, value]` pairs.
  */
@@ -210,7 +210,7 @@ export function reactiveMap<K, V>(
 
 /**
  * Creates a reactive Set-like collection backed by a plain array.
- * Wrap the parent object with `store()` for full reactivity.
+ * Wrap the parent object with `createClassyStore()` for full reactivity.
  *
  * @param initial - Optional iterable of values.
  */

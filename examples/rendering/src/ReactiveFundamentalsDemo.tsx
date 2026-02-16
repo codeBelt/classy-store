@@ -1,4 +1,4 @@
-import {store} from '@codebelt/classy-store';
+import {createClassyStore} from '@codebelt/classy-store';
 import {useStore} from '@codebelt/classy-store/react';
 import {useState} from 'react';
 import {Panel} from './Panel';
@@ -6,7 +6,7 @@ import {RenderBadge} from './RenderBadge';
 import {CounterStore, counterStore} from './stores';
 import {useRenderCount} from './useRenderCount';
 
-const batchStore = store(new CounterStore());
+const batchStore = createClassyStore(new CounterStore());
 
 const names = ['World', 'Bun', 'React', 'Store'];
 let nameIndex = 0;

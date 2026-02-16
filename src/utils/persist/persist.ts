@@ -263,7 +263,7 @@ function getDefaultStorage(): StorageAdapter | undefined {
  * On init (or manual rehydrate), reads from storage and applies the state back
  * to the store proxy.
  *
- * @param proxyStore - A reactive proxy created by `store()`.
+ * @param proxyStore - A reactive proxy created by `createClassyStore()`.
  * @param options - Persistence configuration.
  * @returns A handle with lifecycle controls (unsubscribe, save, clear, rehydrate, hydrated).
  */

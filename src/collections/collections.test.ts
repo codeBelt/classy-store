@@ -1,5 +1,5 @@
 import {describe, expect, test} from 'bun:test';
-import {store, subscribe} from '../core/core';
+import {createClassyStore, subscribe} from '../core/core';
 import {snapshot} from '../snapshot/snapshot';
 import {reactiveMap, reactiveSet} from './collections';
 
@@ -87,7 +87,7 @@ describe('reactiveMap()', () => {
   });
 
   test('triggers store subscription on set', async () => {
-    const s = store({users: reactiveMap<string, string>()});
+    const s = createClassyStore({users: reactiveMap<string, string>()});
     let count = 0;
     subscribe(s, () => count++);
 
@@ -98,7 +98,7 @@ describe('reactiveMap()', () => {
   });
 
   test('triggers store subscription on delete', async () => {
-    const s = store({
+    const s = createClassyStore({
       users: reactiveMap([['id1', 'Alice']] as [string, string][]),
     });
     let count = 0;
@@ -111,7 +111,7 @@ describe('reactiveMap()', () => {
   });
 
   test('triggers store subscription on clear', async () => {
-    const s = store({
+    const s = createClassyStore({
       users: reactiveMap([
         ['a', 1],
         ['b', 2],
@@ -127,7 +127,9 @@ describe('reactiveMap()', () => {
   });
 
   test('snapshot captures map data', async () => {
-    const s = store({m: reactiveMap([['k', 'v']] as [string, string][])});
+    const s = createClassyStore({
+      m: reactiveMap([['k', 'v']] as [string, string][]),
+    });
     const snap = snapshot(s);
     expect(snap.m._entries).toEqual([['k', 'v']]);
     // Snapshot is frozen
@@ -188,7 +190,7 @@ describe('reactiveSet()', () => {
   });
 
   test('triggers store subscription on add', async () => {
-    const s = store({tags: reactiveSet<string>()});
+    const s = createClassyStore({tags: reactiveSet<string>()});
     let count = 0;
     subscribe(s, () => count++);
 
@@ -199,7 +201,7 @@ describe('reactiveSet()', () => {
   });
 
   test('triggers store subscription on delete', async () => {
-    const s = store({tags: reactiveSet(['a', 'b'])});
+    const s = createClassyStore({tags: reactiveSet(['a', 'b'])});
     let count = 0;
     subscribe(s, () => count++);
 
@@ -210,7 +212,7 @@ describe('reactiveSet()', () => {
   });
 
   test('triggers store subscription on clear', async () => {
-    const s = store({tags: reactiveSet(['a', 'b'])});
+    const s = createClassyStore({tags: reactiveSet(['a', 'b'])});
     let count = 0;
     subscribe(s, () => count++);
 
@@ -221,7 +223,7 @@ describe('reactiveSet()', () => {
   });
 
   test('snapshot captures set data', async () => {
-    const s = store({t: reactiveSet([1, 2, 3])});
+    const s = createClassyStore({t: reactiveSet([1, 2, 3])});
     const snap = snapshot(s);
     expect(snap.t._items).toEqual([1, 2, 3]);
     expect(Object.isFrozen(snap.t)).toBe(true);
@@ -245,7 +247,7 @@ describe('collections inside class store', () => {
   }
 
   test('class methods mutate collections reactively', async () => {
-    const s = store(new ProjectStore());
+    const s = createClassyStore(new ProjectStore());
     let count = 0;
     subscribe(s, () => count++);
 

@@ -8,7 +8,7 @@ import {canProxy, findGetterDescriptor} from '../utils/internal/internal';
  * Version-stamped snapshot cache for tracked (proxied) sub-trees.
  * Key: raw target object → [version, frozen snapshot].
  */
-const snapCache = new WeakMap<object, [version: number, snap: object]>();
+const snapshotCache = new WeakMap<object, [version: number, snap: object]>();
 
 /**
  * Cache for untracked nested objects (never accessed through the proxy).
@@ -50,7 +50,7 @@ type GetterMemoEntry = {deps: GetterDep[]; result: unknown};
  * boundaries: if `this.items` hasn't changed between snapshots (same
  * reference via structural sharing), the getter returns the same result.
  */
-const crossSnapMemo = new WeakMap<
+const crossSnapshotMemo = new WeakMap<
   object,
   Map<string | symbol, GetterMemoEntry>
 >();
@@ -95,7 +95,7 @@ function computeWithTracking(
  * guarantees stable refs for unchanged sub-trees). For getter properties
  * this invokes the getter (which is itself memoized), then compares.
  */
-function areMemoedDepsValid(currentSnap: object, deps: GetterDep[]): boolean {
+function areMemoizedDepsValid(currentSnap: object, deps: GetterDep[]): boolean {
   for (const dep of deps) {
     const currentValue = Reflect.get(currentSnap, dep.prop, currentSnap);
     if (!Object.is(currentValue, dep.value)) return false;
@@ -123,12 +123,12 @@ function evaluateSnapshotGetter(
   if (perSnapCache?.has(key)) return perSnapCache.get(key);
 
   // ── Cross-snapshot memo ──
-  let memoMap = crossSnapMemo.get(target);
+  let memoMap = crossSnapshotMemo.get(target);
   const prev = memoMap?.get(key);
 
   let result: unknown;
 
-  if (prev && areMemoedDepsValid(currentSnap, prev.deps)) {
+  if (prev && areMemoizedDepsValid(currentSnap, prev.deps)) {
     // Dependencies unchanged → reuse previous result.
     result = prev.result;
   } else {
@@ -139,7 +139,7 @@ function evaluateSnapshotGetter(
     // Save cross-snapshot memo.
     if (!memoMap) {
       memoMap = new Map();
-      crossSnapMemo.set(target, memoMap);
+      crossSnapshotMemo.set(target, memoMap);
     }
     memoMap.set(key, {deps: computation.deps, result});
   }
@@ -286,7 +286,7 @@ function createSnapshotRecursive<T extends object>(
   internal: StoreInternal,
 ): T {
   // Cache hit: version unchanged → return the same frozen snapshot reference.
-  const cached = snapCache.get(target);
+  const cached = snapshotCache.get(target);
   if (cached && cached[0] === internal.version) {
     return cached[1] as T;
   }
@@ -321,7 +321,7 @@ function createSnapshotRecursive<T extends object>(
 
   Object.freeze(snap);
   // Cache AFTER populating + freezing. The reference is stable.
-  snapCache.set(target, [internal.version, snap]);
+  snapshotCache.set(target, [internal.version, snap]);
   return snap as T;
 }
 
@@ -340,7 +340,7 @@ function createSnapshotRecursive<T extends object>(
  * per snapshot and their results are stable across snapshots when dependencies
  * haven't changed (cross-snapshot memoization).
  *
- * @param proxyStore - A reactive proxy created by `store()`.
+ * @param proxyStore - A reactive proxy created by `createClassyStore()`.
  * @returns A deeply frozen plain-JS object (Snapshot<T>).
  */
 export function snapshot<T extends object>(proxyStore: T): Snapshot<T> {

@@ -1,6 +1,6 @@
 # Classy Store Tutorial
 
-`Classy Store` is a reactive state library for React built on ES proxies. You define state as plain classes, wrap them with `store()`, and read them with `useStore()`. There are no Providers, no observers, no reducers, and no extra TypeScript interfaces to define your state shape — just classes and a hook. The library is ~3.5 KB gzipped, batches synchronous mutations into a single re-render, and uses structural sharing for efficient change detection.
+`Classy Store` is a reactive state library for React built on ES proxies. You define state as plain classes, wrap them with `createClassyStore()`, and read them with `useStore()`. There are no Providers, no observers, no reducers, and no extra TypeScript interfaces to define your state shape — just classes and a hook. The library is ~3.5 KB gzipped, batches synchronous mutations into a single re-render, and uses structural sharing for efficient change detection.
 
 ## Quick Start
 
@@ -8,7 +8,7 @@
 
 ```ts
 // stores.ts
-import { store } from '@codebelt/classy-store';
+import { createClassyStore } from '@codebelt/classy-store';
 
 class Counter {
   count = 0;
@@ -18,14 +18,14 @@ class Counter {
   }
 }
 
-export const counterStore = store(new Counter());
+export const counterStore = createClassyStore(new Counter());
 ```
 
 **2. Use it in a component:**
 
 ```tsx
 // Counter.tsx
-import { useStore } from '@codebelt/classy-store';
+import { useStore } from '@codebelt/classy-store/react';
 import { counterStore } from './stores';
 
 export function Counter() {
@@ -38,10 +38,10 @@ That's it. No Provider wrapping your app. The store is a module-level singleton 
 
 ## Defining Stores
 
-A store is any class instance wrapped with `store()`. State lives as properties, mutations are plain assignments, and computed values are `get` accessors.
+A store is any class instance wrapped with `createClassyStore()`. State lives as properties, mutations are plain assignments, and computed values are `get` accessors.
 
 ```ts
-import { store } from '@codebelt/classy-store';
+import { createClassyStore } from '@codebelt/classy-store';
 
 class TodoStore {
   items: { id: number; text: string; done: boolean }[] = [];
@@ -71,7 +71,7 @@ class TodoStore {
   }
 }
 
-export const todoStore = store(new TodoStore());
+export const todoStore = createClassyStore(new TodoStore());
 ```
 
 Key points:
@@ -122,7 +122,7 @@ The problem shows up when your selector **derives a new value** — calling `.fi
 Without `shallowEqual` — `.filter()` creates a new array every time the snapshot updates, even if the todo items haven't changed:
 
 ```ts
-import { useStore } from '@codebelt/classy-store';
+import { useStore } from '@codebelt/classy-store/react';
 
 // ❌ New array reference every snapshot → unnecessary re-renders
 const active = useStore(todoStore, (s) => s.items.filter((i) => !i.done));
@@ -131,7 +131,8 @@ const active = useStore(todoStore, (s) => s.items.filter((i) => !i.done));
 With `shallowEqual` — compares the array contents, not the reference:
 
 ```ts
-import { useStore, shallowEqual } from '@codebelt/classy-store';
+import { shallowEqual } from '@codebelt/classy-store';
+import { useStore } from '@codebelt/classy-store/react';
 
 // ✅ Only re-renders when the filtered items actually change
 const active = useStore(
@@ -238,7 +239,7 @@ class DocStore {
   ];
 }
 
-const docStore = store(new DocStore());
+const docStore = createClassyStore(new DocStore());
 
 // Deep mutation — triggers a notification
 docStore.metadata.title = 'My Document';
@@ -256,7 +257,7 @@ Structural sharing means that when you mutate `metadata.title`, the snapshot for
 Native `Map` and `Set` aren't plain objects — the proxy can't intercept their internal methods. Use `reactiveMap()` and `reactiveSet()` instead.
 
 ```ts
-import { store, reactiveMap } from '@codebelt/classy-store';
+import { createClassyStore, reactiveMap } from '@codebelt/classy-store';
 
 class UserStore {
   users = reactiveMap<string, { name: string; role: string }>();
@@ -274,7 +275,7 @@ class UserStore {
   }
 }
 
-export const userStore = store(new UserStore());
+export const userStore = createClassyStore(new UserStore());
 ```
 
 `ReactiveMap` and `ReactiveSet` mirror the native API (`get`, `set`, `has`, `delete`, `clear`, `forEach`, iteration) but are backed by plain arrays so the proxy can track mutations.
@@ -286,7 +287,7 @@ export const userStore = store(new UserStore());
 Subclasses work out of the box — no special API or configuration needed. Methods, getters, and properties from all inheritance levels are fully reactive.
 
 ```ts
-import { store } from '@codebelt/classy-store';
+import { createClassyStore } from '@codebelt/classy-store';
 
 class BaseStore {
   loading = false;
@@ -326,7 +327,7 @@ class UserStore extends BaseStore {
   }
 }
 
-export const userStore = store(new UserStore());
+export const userStore = createClassyStore(new UserStore());
 ```
 
 How it works:

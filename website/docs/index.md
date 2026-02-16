@@ -61,15 +61,15 @@ class TodoStore {
 ### 2. Create a reactive store
 
 ```typescript
-import { store } from '@codebelt/classy-store';
+import { createClassyStore } from '@codebelt/classy-store';
 
-const todoStore = store(new TodoStore());
+const todoStore = createClassyStore(new TodoStore());
 ```
 
 ### 3. Use in React components
 
 ```tsx
-import { useStore } from '@codebelt/classy-store';
+import { useStore } from '@codebelt/classy-store/react';
 
 // Selector mode: explicit control over what triggers re-renders
 function TodoCount() {
@@ -97,12 +97,12 @@ function AddButton() {
 
 ## API Reference
 
-### `store(instance)`
+### `createClassyStore(instance)`
 
 Wraps a class instance in a reactive Proxy. Mutations are intercepted, batched via `queueMicrotask`, and subscribers are notified.
 
 ```typescript
-const myStore = store(new MyClass());
+const myStore = createClassyStore(new MyClass());
 ```
 
 - **Methods** are automatically bound so `this` mutations go through the proxy
@@ -136,7 +136,8 @@ Returns a tracking proxy. Properties your component reads are automatically trac
 **Custom equality:**
 
 ```typescript
-import { shallowEqual, useStore } from '@codebelt/classy-store';
+import { shallowEqual } from '@codebelt/classy-store';
+import { useStore } from '@codebelt/classy-store/react';
 
 const userData = useStore(myStore, s => ({
   name: s.user.name,
@@ -190,10 +191,11 @@ Shallow equality comparison for objects and arrays. Useful as a custom `isEqual`
 
 ### `reactiveMap<K, V>(initial?)`
 
-Creates a reactive Map-like collection backed by a plain array. Use inside a `store()` for full reactivity.
+Creates a reactive Map-like collection backed by a plain array. Use inside a `createClassyStore()` for full reactivity.
 
 ```typescript
-import { reactiveMap, store, useStore } from '@codebelt/classy-store';
+import { reactiveMap, createClassyStore } from '@codebelt/classy-store';
+import { useStore } from '@codebelt/classy-store/react';
 
 class UserStore {
   users = reactiveMap<string, { name: string; role: string }>();
@@ -207,7 +209,7 @@ class UserStore {
   }
 }
 
-const userStore = store(new UserStore());
+const userStore = createClassyStore(new UserStore());
 
 function UserList() {
   const snap = useStore(userStore, s => [...s.users.entries()]);
@@ -225,10 +227,11 @@ Supports: `.get()`, `.set()`, `.has()`, `.delete()`, `.clear()`, `.size`, `.keys
 
 ### `reactiveSet<T>(initial?)`
 
-Creates a reactive Set-like collection backed by a plain array. Use inside a `store()` for full reactivity.
+Creates a reactive Set-like collection backed by a plain array. Use inside a `createClassyStore()` for full reactivity.
 
 ```typescript
-import { reactiveSet, store, useStore } from '@codebelt/classy-store';
+import { reactiveSet, createClassyStore } from '@codebelt/classy-store';
+import { useStore } from '@codebelt/classy-store/react';
 
 class TagStore {
   tags = reactiveSet<string>();
@@ -238,7 +241,7 @@ class TagStore {
   }
 }
 
-const tagStore = store(new TagStore());
+const tagStore = createClassyStore(new TagStore());
 
 function TagList() {
   const tags = useStore(tagStore, s => [...s.tags]);
@@ -274,7 +277,7 @@ import { persist } from '@codebelt/classy-store/utils';
 Persist store state to `localStorage`, `sessionStorage`, `AsyncStorage`, or any custom storage adapter. Subscribes to store mutations, serializes selected properties into a versioned JSON envelope, and writes to storage. On init (or manual rehydrate), reads from storage and applies the state back.
 
 ```typescript
-import { store } from '@codebelt/classy-store';
+import { createClassyStore } from '@codebelt/classy-store';
 import { persist } from '@codebelt/classy-store/utils';
 
 class TodoStore {
@@ -290,7 +293,7 @@ class TodoStore {
   }
 }
 
-const todoStore = store(new TodoStore());
+const todoStore = createClassyStore(new TodoStore());
 
 // Persist all data properties to localStorage.
 // Getters (remaining) and methods (addTodo) are automatically excluded.
@@ -366,8 +369,8 @@ useEffect(() => { handle.rehydrate(); }, []);
 ### Multiple stores
 
 ```typescript
-const authStore = store(new AuthStore());
-const uiStore = store(new UiStore());
+const authStore = createClassyStore(new AuthStore());
+const uiStore = createClassyStore(new UiStore());
 
 function Header() {
   const user = useStore(authStore, s => s.currentUser);
@@ -400,7 +403,7 @@ class UserStore extends BaseStore {
   get count() { return this.users.length; }
 }
 
-const userStore = store(new UserStore());
+const userStore = createClassyStore(new UserStore());
 
 // Base methods, derived methods, base getters, derived getters — all reactive.
 // snapshot(userStore) instanceof UserStore === true
@@ -425,7 +428,7 @@ class SettingsStore {
   }
 }
 
-const settingsStore = store(new SettingsStore());
+const settingsStore = createClassyStore(new SettingsStore());
 
 // Only re-renders when push notification setting changes
 function PushToggle() {

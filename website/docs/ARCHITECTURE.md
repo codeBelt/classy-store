@@ -13,7 +13,7 @@ flowchart TB
   end
 
   subgraph layer1 ["Layer 1: Write Proxy (core.ts)"]
-    storeFn["store(instance)"]
+    storeFn["createClassyStore(instance)"]
     SetTrap["SET trap: forward write → bump version → schedule notify"]
     GetTrap["GET trap: return value, bind methods, lazy-wrap nested objects, memoize getters"]
     DeleteTrap["DELETE trap: same as SET"]
@@ -65,12 +65,12 @@ flowchart TB
 ```
 packages/store/
 ├── src/
-│   ├── index.ts                   # Barrel export: store, useStore, snapshot, subscribe, getVersion, shallowEqual, Snapshot, reactiveMap, reactiveSet, ReactiveMap, ReactiveSet
+│   ├── index.ts                   # Barrel export: createClassyStore, useStore, snapshot, subscribe, getVersion, shallowEqual, Snapshot, reactiveMap, reactiveSet, ReactiveMap, ReactiveSet
 │   ├── collections/
 │   │   ├── collections.ts         # ReactiveMap and ReactiveSet implementations
 │   │   └── collections.test.ts    # tests: ReactiveMap, ReactiveSet, class store integration
 │   ├── core/
-│   │   ├── core.ts                # Layer 1: Write Proxy — store(), subscribe(), getVersion()
+│   │   ├── core.ts                # Layer 1: Write Proxy — createClassyStore(), subscribe(), getVersion()
 │   │   ├── core.test.ts           # tests: mutations, batching, methods, getters, arrays
 │   │   └── computed.test.tsx      # tests: write proxy + snapshot memoization, useStore integration
 │   ├── react/
@@ -108,7 +108,7 @@ packages/store/
 
 ### Overview
 
-The `store()` function wraps a class instance in an ES6 Proxy. All mutations — property writes, array operations, nested object changes — are intercepted and batched into a single notification per microtask.
+The `createClassyStore()` function wraps a class instance in an ES6 Proxy. All mutations — property writes, array operations, nested object changes — are intercepted and batched into a single notification per microtask.
 
 ### Data Flow: Mutation → Notification
 
@@ -124,7 +124,7 @@ sequenceDiagram
   User->>Proxy: store.count = 5
   Proxy->>Target: Reflect.set(target, 'count', 5)
   Proxy->>Internal: bumpVersion(internal) up to root
-  Proxy->>Internal: snapCache = null (invalidate)
+  Proxy->>Internal: snapshotCache = null (invalidate)
   Proxy->>Micro: scheduleNotify() (if not already scheduled)
   Note over Micro: Coalesces all sync mutations
   User->>Proxy: store.name = 'new'
@@ -147,7 +147,7 @@ type StoreInternal = {
   childInternals: Map<string|symbol, StoreInternal>;
   parent: StoreInternal | null;             // For version propagation
   notifyScheduled: boolean;                 // Batch dedup flag
-  snapCache: [number, object] | null;       // Version-stamped snapshot cache
+  snapshotCache: [number, object] | null;       // Version-stamped snapshot cache
   computedCache: Map<string|symbol, ComputedEntry>; // Memoized getter cache
 };
 ```
@@ -204,7 +204,7 @@ This enables structural sharing: when the snapshot layer sees that `settings` ha
 
 ```mermaid
 flowchart TD
-  Start["snapshot(proxy)"] --> CheckCache{"Version match\nin snapCache?"}
+  Start["snapshot(proxy)"] --> CheckCache{"Version match\nin snapshotCache?"}
   CheckCache -->|Yes| ReturnCached["Return cached snapshot (O(1))"]
   CheckCache -->|No| CreateSnap["Create new snapshot object"]
   CreateSnap --> IterateKeys["For each own key"]
@@ -218,13 +218,13 @@ flowchart TD
   CopyValue --> AssignProp
   AssignProp --> IterateKeys
   IterateKeys -->|Done| Freeze["Object.freeze(snapshot)"]
-  Freeze --> Cache["Cache: snapCache.set(target, [version, snap])"]
+  Freeze --> Cache["Cache: snapshotCache.set(target, [version, snap])"]
   Cache --> Return["Return frozen snapshot"]
 ```
 
 ### Two Cache Strategies
 
-1. **Tracked sub-trees** (`snapCache` — `WeakMap<rawTarget, [version, frozenSnap]>`):
+1. **Tracked sub-trees** (`snapshotCache` — `WeakMap<rawTarget, [version, frozenSnap]>`):
    Objects that have been accessed through the proxy have a `StoreInternal` with version tracking. The snapshot recurses into them and uses version-stamped caching for structural sharing.
 
 2. **Untracked sub-trees** (`untrackedCache` — `WeakMap<rawObject, frozenClone>`):
@@ -256,7 +256,7 @@ class Store {
   get doubled() { return this.count * 2; }
 }
 
-const snap = snapshot(store(new Store()));
+const snap = snapshot(createClassyStore(new Store()));
 snap.doubled; // 10 — computed once, cached
 snap.doubled; // 10 — same reference (per-snapshot cache hit)
 ```
