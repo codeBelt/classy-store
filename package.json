@@ -11,7 +11,8 @@
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.mts",
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "provenance": true
   },
   "exports": {
     ".": {
