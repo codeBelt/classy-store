@@ -2,4 +2,5 @@
 "@codebelt/classy-store": patch
 ---
 
-restructure React integration and package exports
+restructure internal folder hierarchy and module imports
+
