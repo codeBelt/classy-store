@@ -1,5 +1,11 @@
 # @codebelt/classy-store
 
+## 0.1.0
+
+### Minor Changes
+
+- [#4](https://github.com/codeBelt/classy-store/pull/4) [`59e2046`](https://github.com/codeBelt/classy-store/commit/59e204682755794139886839ed9ff9ff9f0ae158) Thanks [@codeBelt](https://github.com/codeBelt)! - replace `store` with `createClassyStore` across the codebase
+
 ## 0.0.2
 
 ### Patch Changes
