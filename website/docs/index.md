@@ -36,24 +36,24 @@ class TodoStore {
   todos: Todo[] = [];
   filter: 'all' | 'done' | 'pending' = 'all';
 
-  addTodo(text: string) {
-    this.todos.push({ text, done: false });
-  }
-
-  toggle(index: number) {
-    this.todos[index]!.done = !this.todos[index]!.done;
-  }
-
   // Getter = computed value
   get filtered() {
     if (this.filter === 'all') return this.todos;
-    return this.todos.filter(t =>
-      this.filter === 'done' ? t.done : !t.done,
+    return this.todos.filter((todo) =>
+        this.filter === 'done' ? todo.done : !todo.done,
     );
   }
 
   get remaining() {
-    return this.todos.filter(t => !t.done).length;
+    return this.todos.filter((todo) => !todo.done).length;
+  }
+
+  addTodo(text: string) {
+    this.todos.push({text, done: false});
+  }
+
+  toggle(index: number) {
+    this.todos[index]!.done = !this.todos[index]!.done;
   }
 }
 ```
@@ -61,7 +61,7 @@ class TodoStore {
 ### 2. Create a reactive store
 
 ```typescript
-import { createClassyStore } from '@codebelt/classy-store';
+import {createClassyStore} from '@codebelt/classy-store';
 
 const todoStore = createClassyStore(new TodoStore());
 ```
@@ -69,7 +69,7 @@ const todoStore = createClassyStore(new TodoStore());
 ### 3. Use in React components
 
 ```tsx
-import { useStore } from '@codebelt/classy-store/react';
+import {useStore} from '@codebelt/classy-store/react';
 
 // Selector mode: explicit control over what triggers re-renders
 function TodoCount() {
@@ -82,8 +82,8 @@ function TodoList() {
   const snap = useStore(todoStore);
   return (
     <ul>
-      {snap.filtered.map((t, i) => (
-        <li key={i}>{t.text}</li>
+      {snap.filtered.map((todo, index) => (
+        <li key={index}>{todo.text}</li>
       ))}
     </ul>
   );
@@ -136,8 +136,8 @@ Returns a tracking proxy. Properties your component reads are automatically trac
 **Custom equality:**
 
 ```typescript
-import { shallowEqual } from '@codebelt/classy-store';
-import { useStore } from '@codebelt/classy-store/react';
+import {shallowEqual} from '@codebelt/classy-store';
+import {useStore} from '@codebelt/classy-store/react';
 
 const userData = useStore(myStore, (store) => ({
   name: store.user.name,
@@ -150,7 +150,7 @@ const userData = useStore(myStore, (store) => ({
 Creates a deeply frozen, immutable snapshot of the current state. Used internally by `useStore` but also available directly.
 
 ```typescript
-import { snapshot } from '@codebelt/classy-store';
+import {snapshot} from '@codebelt/classy-store';
 
 const snap = snapshot(myStore);
 // snap is deeply frozen — mutations throw
@@ -162,7 +162,7 @@ const snap = snapshot(myStore);
 Low-level subscription API. Returns an unsubscribe function. The callback fires once per batched mutation (after microtask).
 
 ```typescript
-import { subscribe } from '@codebelt/classy-store';
+import {subscribe} from '@codebelt/classy-store';
 
 const unsub = subscribe(myStore, () => {
   console.log('Store changed');
@@ -176,7 +176,7 @@ const unsub = subscribe(myStore, () => {
 Returns the current version number of a store proxy. Versions are monotonically increasing and bump on any mutation in the store's subtree (child mutations propagate up to the root). Useful for debugging, testing whether a store has changed, or custom cache invalidation.
 
 ```typescript
-import { getVersion } from '@codebelt/classy-store';
+import {getVersion} from '@codebelt/classy-store';
 
 const v1 = getVersion(myStore);
 myStore.count++;
@@ -194,14 +194,14 @@ Shallow equality comparison for objects and arrays. Useful as a custom `isEqual`
 Creates a reactive Map-like collection backed by a plain array. Use inside a `createClassyStore()` for full reactivity.
 
 ```typescript
-import { reactiveMap, createClassyStore } from '@codebelt/classy-store';
-import { useStore } from '@codebelt/classy-store/react';
+import {reactiveMap, createClassyStore} from '@codebelt/classy-store';
+import {useStore} from '@codebelt/classy-store/react';
 
 class UserStore {
   users = reactiveMap<string, { name: string; role: string }>();
 
   addUser(id: string, name: string, role: string) {
-    this.users.set(id, { name, role });
+    this.users.set(id, {name, role});
   }
 
   removeUser(id: string) {
@@ -230,8 +230,8 @@ Supports: `.get()`, `.set()`, `.has()`, `.delete()`, `.clear()`, `.size`, `.keys
 Creates a reactive Set-like collection backed by a plain array. Use inside a `createClassyStore()` for full reactivity.
 
 ```typescript
-import { reactiveSet, createClassyStore } from '@codebelt/classy-store';
-import { useStore } from '@codebelt/classy-store/react';
+import {reactiveSet, createClassyStore} from '@codebelt/classy-store';
+import {useStore} from '@codebelt/classy-store/react';
 
 class TagStore {
   tags = reactiveSet<string>();
@@ -258,7 +258,7 @@ Supports: `.add()`, `.has()`, `.delete()`, `.clear()`, `.size`, `.keys()`, `.val
 TypeScript utility type that converts a store type to its deeply readonly snapshot equivalent.
 
 ```typescript
-import type { Snapshot } from '@codebelt/classy-store';
+import type {Snapshot} from '@codebelt/classy-store';
 
 type MyStoreSnap = Snapshot<MyStore>;
 // All properties are readonly, arrays become ReadonlyArray, etc.
@@ -269,7 +269,7 @@ type MyStoreSnap = Snapshot<MyStore>;
 Tree-shakeable utilities are available via a separate entry point:
 
 ```bash
-import { persist } from '@codebelt/classy-store/utils';
+import {persist} from '@codebelt/classy-store/utils';
 ```
 
 ### `persist(store, options)`
@@ -277,19 +277,19 @@ import { persist } from '@codebelt/classy-store/utils';
 Persist store state to `localStorage`, `sessionStorage`, `AsyncStorage`, or any custom storage adapter. Subscribes to store mutations, serializes selected properties into a versioned JSON envelope, and writes to storage. On init (or manual rehydrate), reads from storage and applies the state back.
 
 ```typescript
-import { createClassyStore } from '@codebelt/classy-store';
-import { persist } from '@codebelt/classy-store/utils';
+import {createClassyStore} from '@codebelt/classy-store';
+import {persist} from '@codebelt/classy-store/utils';
 
 class TodoStore {
   todos: { text: string; done: boolean }[] = [];
   filter: 'all' | 'done' | 'pending' = 'all';
 
-  addTodo(text: string) {
-    this.todos.push({ text, done: false });
-  }
-
   get remaining() {
-    return this.todos.filter(t => !t.done).length;
+    return this.todos.filter((todo) => !todo.done).length;
+  }
+    
+  addTodo(text: string) {
+    this.todos.push({text, done: false});
   }
 }
 
@@ -359,7 +359,9 @@ const handle = persist(todoStore, {
 });
 
 // In a React component:
-useEffect(() => { handle.rehydrate(); }, []);
+useEffect(() => {
+  handle.rehydrate();
+}, []);
 ```
 
 > For a comprehensive walkthrough, see the [Persist Tutorial](./PERSIST_TUTORIAL.md). For internal design details, see [Persist Architecture](./PERSIST_ARCHITECTURE.md).
@@ -388,19 +390,19 @@ class BaseStore {
   loading = false;
   error: string | null = null;
 
+  get hasError() { return this.error !== null; }
   setLoading(value: boolean) { this.loading = value; }
   setError(msg: string | null) { this.error = msg; }
-  get hasError() { return this.error !== null; }
 }
 
 class UserStore extends BaseStore {
   users: string[] = [];
 
+  get count() { return this.users.length; }
+
   addUser(name: string) {
     this.users.push(name);
   }
-
-  get count() { return this.users.length; }
 }
 
 const userStore = createClassyStore(new UserStore());

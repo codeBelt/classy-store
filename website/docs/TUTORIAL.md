@@ -8,7 +8,7 @@
 
 ```ts
 // stores.ts
-import { createClassyStore } from '@codebelt/classy-store';
+import {createClassyStore} from '@codebelt/classy-store';
 
 class Counter {
   count = 0;
@@ -25,8 +25,8 @@ export const counterStore = createClassyStore(new Counter());
 
 ```tsx
 // Counter.tsx
-import { useStore } from '@codebelt/classy-store/react';
-import { counterStore } from './stores';
+import {useStore} from '@codebelt/classy-store/react';
+import {counterStore} from './stores';
 
 export function Counter() {
   const count = useStore(counterStore, (store) => store.count);
@@ -41,33 +41,33 @@ That's it. No Provider wrapping your app. The store is a module-level singleton 
 A store is any class instance wrapped with `createClassyStore()`. State lives as properties, mutations are plain assignments, and computed values are `get` accessors.
 
 ```ts
-import { createClassyStore } from '@codebelt/classy-store';
+import {createClassyStore} from '@codebelt/classy-store';
 
 class TodoStore {
   items: { id: number; text: string; done: boolean }[] = [];
   filter: 'all' | 'active' | 'done' = 'all';
 
   get remaining() {
-    return this.items.filter((i) => !i.done).length;
+    return this.items.filter((item) => !item.done).length;
   }
 
   get filtered() {
-    if (this.filter === 'active') return this.items.filter((i) => !i.done);
-    if (this.filter === 'done') return this.items.filter((i) => i.done);
+    if (this.filter === 'active') return this.items.filter((item) => !item.done);
+    if (this.filter === 'done') return this.items.filter((item) => item.done);
     return this.items;
   }
 
   add(text: string) {
-    this.items.push({ id: Date.now(), text, done: false });
+    this.items.push({id: Date.now(), text, done: false});
   }
 
   toggle(id: number) {
-    const item = this.items.find((i) => i.id === id);
+    const item = this.items.find((todo) => todo.id === id);
     if (item) item.done = !item.done;
   }
 
   remove(id: number) {
-    this.items = this.items.filter((i) => i.id !== id);
+    this.items = this.items.filter((todo) => todo.id !== id);
   }
 }
 
@@ -122,22 +122,22 @@ The problem shows up when your selector **derives a new value** — calling `.fi
 Without `shallowEqual` — `.filter()` creates a new array every time the snapshot updates, even if the todo items haven't changed:
 
 ```ts
-import { useStore } from '@codebelt/classy-store/react';
+import {useStore} from '@codebelt/classy-store/react';
 
 // ❌ New array reference every snapshot → unnecessary re-renders
-const active = useStore(todoStore, (store) => store.items.filter((i) => !i.done));
+const active = useStore(todoStore, (store) => store.items.filter((item) => !item.done));
 ```
 
 With `shallowEqual` — compares the array contents, not the reference:
 
 ```ts
-import { shallowEqual } from '@codebelt/classy-store';
-import { useStore } from '@codebelt/classy-store/react';
+import {shallowEqual} from '@codebelt/classy-store';
+import {useStore} from '@codebelt/classy-store/react';
 
 // ✅ Only re-renders when the filtered items actually change
 const active = useStore(
   todoStore,
-  (store) => store.items.filter((i) => !i.done),
+  (store) => store.items.filter((item) => !item.done),
   shallowEqual,
 );
 ```
@@ -196,8 +196,8 @@ Mutations separated by an `await` land in different microtasks and trigger separ
 `snapshot()` creates a deeply-frozen, immutable copy of the store's current state.
 
 ```ts
-import { snapshot } from '@codebelt/classy-store';
-import { counterStore } from './stores';
+import {snapshot} from '@codebelt/classy-store';
+import {counterStore} from './stores';
 
 const snap = snapshot(counterStore);
 console.log(snap.count); // read-only
@@ -213,8 +213,8 @@ Snapshots use structural sharing: unchanged sub-trees return the same frozen ref
 `subscribe()` registers a callback that fires once per batched mutation. It returns an unsubscribe function.
 
 ```ts
-import { subscribe, snapshot } from '@codebelt/classy-store';
-import { counterStore } from './stores';
+import {subscribe, snapshot} from '@codebelt/classy-store';
+import {counterStore} from './stores';
 
 const unsub = subscribe(counterStore, () => {
   const snap = snapshot(counterStore);
@@ -232,10 +232,10 @@ Deep objects and arrays are automatically reactive. You don't need to do anythin
 
 ```ts
 class DocStore {
-  metadata = { title: 'Untitled', author: 'Anonymous' };
+  metadata = {title: 'Untitled', author: 'Anonymous'};
   sections = [
-    { id: 1, heading: 'Intro', body: 'Hello' },
-    { id: 2, heading: 'Methods', body: 'We used proxies.' },
+    {id: 1, heading: 'Intro', body: 'Hello'},
+    {id: 2, heading: 'Methods', body: 'We used proxies.'},
   ];
 }
 
@@ -257,7 +257,7 @@ Structural sharing means that when you mutate `metadata.title`, the snapshot for
 Native `Map` and `Set` aren't plain objects — the proxy can't intercept their internal methods. Use `reactiveMap()` and `reactiveSet()` instead.
 
 ```ts
-import { createClassyStore, reactiveMap } from '@codebelt/classy-store';
+import {createClassyStore, reactiveMap} from '@codebelt/classy-store';
 
 class UserStore {
   users = reactiveMap<string, { name: string; role: string }>();
@@ -267,7 +267,7 @@ class UserStore {
   }
 
   addUser(id: string, name: string) {
-    this.users.set(id, { name, role: 'viewer' });
+    this.users.set(id, {name, role: 'viewer'});
   }
 
   removeUser(id: string) {
@@ -287,7 +287,7 @@ export const userStore = createClassyStore(new UserStore());
 Subclasses work out of the box — no special API or configuration needed. Methods, getters, and properties from all inheritance levels are fully reactive.
 
 ```ts
-import { createClassyStore } from '@codebelt/classy-store';
+import {createClassyStore} from '@codebelt/classy-store';
 
 class BaseStore {
   loading = false;
@@ -309,21 +309,21 @@ class BaseStore {
 class UserStore extends BaseStore {
   users: { id: string; name: string }[] = [];
 
+  get activeCount() {
+    return this.users.length;
+  }
+
   async fetchUsers() {
     this.setLoading(true);       // base method — reactive
     this.setError(null);
     try {
       const res = await fetch('/api/users');
       this.users = await res.json();
-    } catch (err) {
-      this.setError(err instanceof Error ? err.message : 'Failed');
+    } catch (error) {
+      this.setError(error instanceof Error ? error.message : 'Failed');
     } finally {
       this.setLoading(false);
     }
-  }
-
-  get activeCount() {
-    return this.users.length;
   }
 }
 
@@ -356,8 +356,8 @@ class PostStore {
       const res = await fetch('/api/posts');
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       this.posts = await res.json(); // no notification yet — batched with finally
-    } catch (e) {
-      this.error = e instanceof Error ? e.message : 'Unknown error';
+    } catch (error) {
+      this.error = error instanceof Error ? error.message : 'Unknown error';
     } finally {
       this.loading = false; // notification 2: hides spinner, shows data or error
     }
@@ -389,7 +389,7 @@ Destructuring copies the primitive value at that moment and breaks the proxy con
 
 ```ts
 // ❌ Breaks reactivity — `count` is just the number 0
-const { count } = counterStore;
+const {count} = counterStore;
 
 // ✅ Always access through the proxy
 counterStore.count;
@@ -443,7 +443,7 @@ class Counter {
 Calling `snapshot()` multiple times without intervening mutations returns the same frozen object — an O(1) cache hit. There's no cost to calling it liberally.
 
 ```ts
-import { snapshot } from '@codebelt/classy-store';
+import {snapshot} from '@codebelt/classy-store';
 
 const a = snapshot(counterStore);
 const b = snapshot(counterStore);
@@ -460,7 +460,7 @@ a === c; // false — new snapshot after mutation
 `persist()` saves your store's state to `localStorage` (or any storage adapter) and restores it on page load. It's a standalone utility function — import it from `@codebelt/classy-store/utils`.
 
 ```ts
-import { persist } from '@codebelt/classy-store/utils';
+import {persist} from '@codebelt/classy-store/utils';
 
 const handle = persist(todoStore, {
   name: 'todo-store',

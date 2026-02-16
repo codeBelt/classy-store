@@ -49,6 +49,10 @@ export class PostStore {
   loading = false;
   error: string | null = null;
 
+  get count() {
+    return this.posts.length;
+  }
+
   async fetchPosts() {
     this.loading = true;
     this.error = null;
@@ -66,10 +70,6 @@ export class PostStore {
   clear() {
     this.posts = [];
     this.error = null;
-  }
-
-  get count() {
-    return this.posts.length;
   }
 }
 

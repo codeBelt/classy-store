@@ -7,22 +7,22 @@
 ### 1. Create a store
 
 ```ts
-import { createClassyStore } from '@codebelt/classy-store';
+import {createClassyStore} from '@codebelt/classy-store';
 
 class TodoStore {
   todos: { text: string; done: boolean }[] = [];
   filter: 'all' | 'active' | 'done' = 'all';
 
+  get remaining() {
+    return this.todos.filter((todo) => !todo.done).length;
+  }
+
   addTodo(text: string) {
-    this.todos.push({ text, done: false });
+    this.todos.push({text, done: false});
   }
 
   toggle(index: number) {
     this.todos[index]!.done = !this.todos[index]!.done;
-  }
-
-  get remaining() {
-    return this.todos.filter(t => !t.done).length;
   }
 }
 
@@ -32,7 +32,7 @@ export const todoStore = createClassyStore(new TodoStore());
 ### 2. Persist it
 
 ```ts
-import { persist } from '@codebelt/classy-store/utils';
+import {persist} from '@codebelt/classy-store/utils';
 
 const handle = persist(todoStore, {
   name: 'todo-store',
@@ -125,14 +125,14 @@ On restore, `deserialize` converts the ISO string back into a `Date` object befo
 `reactiveMap()` instances are backed by internal arrays that aren't directly JSON-serializable:
 
 ```ts
-import { createClassyStore, reactiveMap } from '@codebelt/classy-store';
-import { persist } from '@codebelt/classy-store/utils';
+import {createClassyStore, reactiveMap} from '@codebelt/classy-store';
+import {persist} from '@codebelt/classy-store/utils';
 
 class UserStore {
   users = reactiveMap<string, { name: string; role: string }>();
 
   addUser(id: string, name: string, role: string) {
-    this.users.set(id, { name, role });
+    this.users.set(id, {name, role});
   }
 }
 
@@ -212,13 +212,13 @@ persist(todoStore, {
   migrate: (state, oldVersion) => {
     if (oldVersion === 0) {
       // v0 stored todos as `items`
-      return { ...state, todos: state.items, items: undefined };
+      return {...state, todos: state.items, items: undefined};
     }
     if (oldVersion === 1) {
       // v1 todos were plain strings, v2 todos are objects
       return {
         ...state,
-        todos: (state.todos as string[]).map(text => ({ text, done: false })),
+        todos: (state.todos as string[]).map((text) => ({text, done: false})),
       };
     }
     return state;
@@ -275,13 +275,13 @@ For full control, pass a function that receives `(persistedState, currentState)`
 persist(settingsStore, {
   name: 'settings',
   merge: (persisted, current) => {
-    const merged = { ...current };
+    const merged = {...current};
     for (const key of Object.keys(persisted)) {
       const persistedValue = persisted[key];
       const currentValue = current[key];
       // Deep merge one level for nested objects
       if (persistedValue && currentValue && typeof persistedValue === 'object' && typeof currentValue === 'object') {
-        merged[key] = { ...currentValue, ...persistedValue };
+        merged[key] = {...currentValue, ...persistedValue};
       } else {
         merged[key] = persistedValue;
       }
@@ -387,7 +387,7 @@ const handle = persist(todoStore, {
 Then hydrate manually in a `useEffect` (which only runs on the client):
 
 ```tsx
-import { useEffect } from 'react';
+import {useEffect} from 'react';
 
 function App() {
   useEffect(() => {
@@ -449,7 +449,7 @@ persist(uiStore, {
 ### Stop persisting
 
 ```ts
-const handle = persist(todoStore, { name: 'todo-store' });
+const handle = persist(todoStore, {name: 'todo-store'});
 
 // Later: stop all persistence (e.g., on logout)
 handle.unsubscribe();
@@ -482,7 +482,7 @@ async function resetToDefaults() {
   todoStore.filter = 'all';
 
   // Optionally re-enable persistence:
-  const newHandle = persist(todoStore, { name: 'todo-store' });
+  const newHandle = persist(todoStore, {name: 'todo-store'});
 }
 ```
 
@@ -512,8 +512,8 @@ persist(todoStore, {
 Here's a complete example combining several features:
 
 ```ts
-import { createClassyStore, reactiveMap } from '@codebelt/classy-store';
-import { persist } from '@codebelt/classy-store/utils';
+import {createClassyStore, reactiveMap} from '@codebelt/classy-store';
+import {persist} from '@codebelt/classy-store/utils';
 
 class AppStore {
   theme: 'light' | 'dark' = 'light';
@@ -530,7 +530,7 @@ class AppStore {
   }
 
   addBookmark(id: string, title: string, url: string) {
-    this.bookmarks.set(id, { title, url });
+    this.bookmarks.set(id, {title, url});
   }
 }
 
@@ -560,7 +560,7 @@ const handle = persist(appStore, {
   migrate: (state, oldVersion) => {
     if (oldVersion === 0) {
       // v0 didn't have language
-      return { ...state, language: 'en' };
+      return {...state, language: 'en'};
     }
     return state;
   },
@@ -575,10 +575,10 @@ console.log(`Welcome back! Theme: ${appStore.theme}, Bookmarks: ${appStore.bookm
 
 | What you want | How to do it |
 |---|---|
-| Persist everything | `persist(myStore, { name: 'key' })` |
+| Persist everything | `persist(myStore, {name: 'key'})` |
 | Persist specific properties | `properties: ['count', 'name']` |
-| Handle Dates | `{ key: 'date', serialize: d => d.toISOString(), deserialize: s => new Date(s) }` |
-| Handle ReactiveMap | `{ key: 'map', serialize: m => [...m.entries()], deserialize: s => reactiveMap(s) }` |
+| Handle Dates | `{key: 'date', serialize: (date) => date.toISOString(), deserialize: (stored) => new Date(stored)}` |
+| Handle ReactiveMap | `{key: 'map', serialize: (map) => [...map.entries()], deserialize: (stored) => reactiveMap(stored)}` |
 | Debounce writes | `debounce: 500` |
 | Migrate schema changes | `version: 2, migrate: (state, old) => { ... }` |
 | SSR support | `skipHydration: true` + `handle.rehydrate()` in `useEffect` |

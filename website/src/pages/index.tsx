@@ -6,7 +6,8 @@ import Layout from '@theme/Layout';
 import clsx from 'clsx';
 import styles from './index.module.css';
 
-const ExampleCode = `import { store, useStore } from '@codebelt/classy-store';
+const ExampleCode = `import {createClassyStore} from '@codebelt/classy-store';
+import {useStore} from '@codebelt/classy-store/react';
 
 // 1. Define your state and logic in a class
 class CounterStore {
@@ -17,7 +18,7 @@ class CounterStore {
 }
 
 // 2. Create a reactive store instance
-const counterStore = store(new CounterStore());
+const counterStore = createClassyStore(new CounterStore());
 
 // 3. Use it in React with automatic updates
 function Counter() {
@@ -43,7 +44,7 @@ class UserStore {
   }
 }
 
-const userStore = store(new UserStore());`;
+const userStore = createClassyStore(new UserStore());`;
 
 function HomepageHeader() {
   const {siteConfig} = useDocusaurusContext();
