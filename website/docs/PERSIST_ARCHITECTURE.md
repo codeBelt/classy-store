@@ -54,7 +54,7 @@ packages/store/
       index.ts                  # Barrel: export { persist } from './persist/persist'
       persist/
         persist.ts              # persist(), types, and all logic
-        persist.test.ts         # 38 tests with mock storage adapters
+        persist.test.ts         # tests with mock storage adapters
   package.json                  # "./utils" export entry
   tsdown.config.ts              # 'src/utils/index.ts' in entry array
 ```
@@ -68,6 +68,7 @@ Each `persist()` call creates a closure with the following internal state:
 | `disposed` | `boolean` | Guards against writes after `unsubscribe()` |
 | `debounceTimer` | `ReturnType<typeof setTimeout> \| null` | Active debounce timer (cancelled on save/unsubscribe) |
 | `hydratedFlag` | `boolean` | Synchronous hydration status |
+| `expiredFlag` | `boolean` | Set to `true` when hydration encounters expired data |
 | `resolveHydrated` | `() => void` | Resolves the `hydrated` promise |
 | `rejectHydrated` | `(error) => void` | Rejects the `hydrated` promise on error |
 | `resolvedProps` | `Array<{key, transform?}>` | Normalized property list with optional transforms |
@@ -94,8 +95,9 @@ Triggered by `subscribe(proxy, callback)` firing after each batched mutation:
      if transform exists → call transform.serialize(value)
      assign to state object
 6. wrap in envelope: { version, state }
-7. JSON.stringify(envelope)
-8. await storage.setItem(name, json)
+7. if expireIn is set → stamp expiresAt = Date.now() + expireIn
+8. JSON.stringify(envelope)
+9. await storage.setItem(name, json)
 ```
 
 ### Property Resolution
@@ -119,11 +121,12 @@ Data is stored as a JSON string with a version wrapper:
   "state": {
     "todos": [{"text": "Buy milk", "done": false}],
     "filter": "all"
-  }
+  },
+  "expiresAt": 1700000000000
 }
 ```
 
-The `version` field is always present (default `0`). The `state` field contains only the selected properties, post-serialization-transform.
+The `version` field is always present (default `0`). The `state` field contains only the selected properties, post-serialization-transform. The `expiresAt` field is a Unix epoch timestamp (milliseconds) and is only present when `expireIn` is set. It is refreshed on every write. Envelopes without `expiresAt` are treated as "never expires".
 
 ## Restore Flow (Hydration)
 
@@ -138,18 +141,21 @@ All three call the same `applyPersistedState(raw)` function:
 1. JSON.parse(raw) → envelope
 2. Validate envelope shape (object with .state)
    if invalid → return silently (corrupted data)
-3. if envelope.version !== options.version AND migrate exists:
+3. if envelope.expiresAt exists AND Date.now() >= expiresAt:
+     set expiredFlag = true
+     if clearOnExpire → storage.removeItem(name)
+     return (skip hydration)
+4. if envelope.version !== options.version AND migrate exists:
      state = migrate(state, envelope.version)
-4. for each key in state:
      if transform exists → state[key] = transform.deserialize(state[key])
-5. Build currentState from snapshot (only propKeys)
-6. Apply merge strategy:
+6. Build currentState from snapshot (only propKeys)
+7. Apply merge strategy:
      'shallow' / 'replace': { ...currentState, ...persistedState }
      custom function: merge(persistedState, currentState)
-7. for each key in propKeys:
+8. for each key in propKeys:
      if key in mergedState → proxy[key] = mergedState[key]
      (goes through SET trap → reactivity → batched notification)
-8. Set hydratedFlag = true, resolve hydrated promise
+9. Set hydratedFlag = true, resolve hydrated promise
 ```
 
 ### Merge Strategies
@@ -223,6 +229,7 @@ After `unsubscribe()`:
 | `unsubscribe()` | Full cleanup: unsubscribe + cancel debounce + remove storage listener. Idempotent. |
 | `hydrated` | Promise that resolves when initial hydration completes. Rejects on async storage errors. |
 | `isHydrated` | Getter returning `boolean`. Becomes `true` after hydration resolves or rejects. |
+| `isExpired` | Getter returning `boolean`. `true` when the last hydration found expired data (requires `expireIn`). Re-evaluated on every `rehydrate()` call. |
 | `save()` | Cancel pending debounce, write current state immediately. No-op if disposed. |
 | `clear()` | Call `storage.removeItem(name)`. Works even after unsubscribe. |
 | `rehydrate()` | Re-read from storage, apply to store. Also resolves `hydrated` if not yet resolved (for `skipHydration` flows). |
@@ -276,22 +283,19 @@ Zustand uses `onRehydrateStorage` (a callback), Pinia uses `beforeHydrate`/`afte
 
 Debounce waits for a quiet period after the last mutation. Throttle writes at regular intervals. For persistence, debounce is more appropriate: it coalesces bursts of mutations (like typing) into a single write, while throttle would write mid-burst with potentially incomplete state. `save()` provides the escape hatch for "write right now" scenarios.
 
-## Test Coverage
-
-38 tests across 9 test groups:
-
-| Group | Tests | What's covered |
-|---|---|---|
-| Basic round-trip | 5 | Save/restore, versioned envelope, getter exclusion, method exclusion |
-| Properties option | 2 | Persist specific properties, restore only specified properties |
-| Per-property transforms | 2 | Date round-trip, ReactiveMap round-trip |
-| Debounce | 2 | Coalescing, save bypass |
-| Version migration | 2 | Migration call, version match skip |
-| Merge strategies | 3 | Shallow, replace, custom function |
-| skipHydration | 3 | No auto-hydrate, manual rehydrate, promise resolution |
-| Unsubscribe | 2 | Stop writes, cancel debounce |
-| Flush/clear/rehydrate | 4 | Immediate write, remove data, in-memory preservation, re-read |
-| Hydration state | 2 | Promise instance, resolution timing |
-| Async storage | 2 | Async write, async hydrate |
-| Cross-tab sync | 4 | Correct key, wrong key, post-unsubscribe, disabled |
-| Edge cases | 4 | Empty storage, corrupted JSON, invalid envelope, no-storage error, multiple persists |
+| Group | What's covered |
+|---|---|
+| Basic round-trip | Save/restore, versioned envelope, getter exclusion, method exclusion |
+| Properties option | Persist specific properties, restore only specified properties |
+| Per-property transforms | Date round-trip, ReactiveMap round-trip |
+| Debounce | Coalescing, save bypass |
+| Version migration | Migration call, version match skip |
+| Merge strategies | Shallow, replace, custom function |
+| skipHydration | No auto-hydrate, manual rehydrate, promise resolution |
+| Unsubscribe | Stop writes, cancel debounce |
+| Flush/clear/rehydrate | Immediate write, remove data, in-memory preservation, re-read |
+| Hydration state | Promise instance, resolution timing |
+| Async storage | Async write, async hydrate |
+| Cross-tab sync | Correct key, wrong key, post-unsubscribe, disabled |
+| expireIn / TTL | Normal hydration, expired skip, clearOnExpire, default leave-in-storage, cross-tab reject, no-expiresAt envelope, TTL reset on write, rehydrate re-check |
+| Edge cases | Empty storage, corrupted JSON, invalid envelope, no-storage error, multiple persists |

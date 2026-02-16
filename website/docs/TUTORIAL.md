@@ -470,6 +470,6 @@ const handle = persist(todoStore, {
 // Cross-tab sync is enabled by default.
 ```
 
-The persist utility supports per-property transforms (for `Date`, `ReactiveMap`, etc.), debounced writes, schema versioning with migration, merge strategies, SSR-safe `skipHydration`, and cross-tab synchronization.
+The persist utility supports per-property transforms (for `Date`, `ReactiveMap`, etc.), debounced writes, schema versioning with migration, merge strategies, TTL expiration (`expireIn`), SSR-safe `skipHydration`, and cross-tab synchronization.
 
 For the full walkthrough, see the **[Persist Tutorial](./PERSIST_TUTORIAL.md)**.

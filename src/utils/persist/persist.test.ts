@@ -750,6 +750,192 @@ describe('persist()', () => {
     });
   });
 
+  // ── expireIn / TTL ─────────────────────────────────────────────────────
+
+  describe('expireIn / TTL', () => {
+    it('hydrates normally when TTL has not elapsed', async () => {
+      const storage = createMockStorage();
+      storage.data.set(
+        'test',
+        JSON.stringify({
+          version: 0,
+          state: {count: 42},
+          expiresAt: Date.now() + 60_000,
+        }),
+      );
+
+      const s = store({count: 0});
+      const handle = persist(s, {name: 'test', storage, expireIn: 60_000});
+      await handle.hydrated;
+
+      expect(s.count).toBe(42);
+      expect(handle.isExpired).toBe(false);
+    });
+
+    it('skips hydration when TTL has elapsed and sets isExpired', async () => {
+      const storage = createMockStorage();
+      storage.data.set(
+        'test',
+        JSON.stringify({
+          version: 0,
+          state: {count: 42},
+          expiresAt: Date.now() - 1000,
+        }),
+      );
+
+      const s = store({count: 0});
+      const handle = persist(s, {name: 'test', storage, expireIn: 60_000});
+      await handle.hydrated;
+
+      expect(s.count).toBe(0); // not hydrated
+      expect(handle.isExpired).toBe(true);
+    });
+
+    it('clearOnExpire: true removes the key from storage', async () => {
+      const storage = createMockStorage();
+      storage.data.set(
+        'test',
+        JSON.stringify({
+          version: 0,
+          state: {count: 42},
+          expiresAt: Date.now() - 1000,
+        }),
+      );
+
+      const s = store({count: 0});
+      const handle = persist(s, {
+        name: 'test',
+        storage,
+        expireIn: 60_000,
+        clearOnExpire: true,
+      });
+      await handle.hydrated;
+      await tick();
+
+      expect(storage.data.has('test')).toBe(false);
+    });
+
+    it('clearOnExpire: false (default) leaves the key in storage', async () => {
+      const storage = createMockStorage();
+      storage.data.set(
+        'test',
+        JSON.stringify({
+          version: 0,
+          state: {count: 42},
+          expiresAt: Date.now() - 1000,
+        }),
+      );
+
+      const s = store({count: 0});
+      const handle = persist(s, {name: 'test', storage, expireIn: 60_000});
+      await handle.hydrated;
+      await tick();
+
+      expect(storage.data.has('test')).toBe(true);
+    });
+
+    it('cross-tab sync rejects expired envelopes', async () => {
+      const storage = createMockStorage();
+      const s = store({count: 0});
+      const handle = persist(s, {
+        name: 'test',
+        storage,
+        expireIn: 60_000,
+        syncTabs: true,
+      });
+      await handle.hydrated;
+
+      const event = new StorageEvent('storage', {
+        key: 'test',
+        newValue: JSON.stringify({
+          version: 0,
+          state: {count: 999},
+          expiresAt: Date.now() - 1000,
+        }),
+      });
+      globalThis.dispatchEvent(event);
+
+      expect(s.count).toBe(0); // expired — rejected
+      expect(handle.isExpired).toBe(true);
+
+      handle.unsubscribe();
+    });
+
+    it('data without expiresAt hydrates normally when expireIn is set', async () => {
+      const storage = createMockStorage();
+      storage.data.set(
+        'test',
+        JSON.stringify({version: 0, state: {count: 77}}),
+      );
+
+      const s = store({count: 0});
+      const handle = persist(s, {name: 'test', storage, expireIn: 60_000});
+      await handle.hydrated;
+
+      expect(s.count).toBe(77);
+      expect(handle.isExpired).toBe(false);
+    });
+
+    it('TTL resets on every write (envelope timestamp refreshes)', async () => {
+      const storage = createMockStorage();
+      const s = store({count: 0});
+      persist(s, {name: 'test', storage, expireIn: 30_000});
+
+      const before = Date.now();
+      s.count = 1;
+      await tick();
+
+      const stored1 = parseStored(storage, 'test') as unknown as {
+        expiresAt: number;
+      };
+      expect(stored1.expiresAt).toBeGreaterThanOrEqual(before + 30_000);
+
+      // Second write should bump the timestamp.
+      const betweenWrites = Date.now();
+      s.count = 2;
+      await tick();
+
+      const stored2 = parseStored(storage, 'test') as unknown as {
+        expiresAt: number;
+      };
+      expect(stored2.expiresAt).toBeGreaterThanOrEqual(betweenWrites + 30_000);
+      expect(stored2.expiresAt).toBeGreaterThanOrEqual(stored1.expiresAt);
+    });
+
+    it('rehydrate() re-checks expiry', async () => {
+      const storage = createMockStorage();
+      // Start with valid data.
+      storage.data.set(
+        'test',
+        JSON.stringify({
+          version: 0,
+          state: {count: 42},
+          expiresAt: Date.now() + 60_000,
+        }),
+      );
+
+      const s = store({count: 0});
+      const handle = persist(s, {name: 'test', storage, expireIn: 60_000});
+      await handle.hydrated;
+      expect(s.count).toBe(42);
+      expect(handle.isExpired).toBe(false);
+
+      // Simulate data becoming expired.
+      storage.data.set(
+        'test',
+        JSON.stringify({
+          version: 0,
+          state: {count: 99},
+          expiresAt: Date.now() - 1000,
+        }),
+      );
+
+      await handle.rehydrate();
+      expect(s.count).toBe(42); // unchanged — expired data not applied
+      expect(handle.isExpired).toBe(true);
+    });
+  });
+
   // ── Edge cases ──────────────────────────────────────────────────────────
 
   describe('edge cases', () => {
