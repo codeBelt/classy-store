@@ -324,6 +324,55 @@ persist(uiStore, {
 
 Cross-tab sync only works with `localStorage`. It does not fire for `sessionStorage`, `AsyncStorage`, or custom adapters.
 
+## Expiration / TTL
+
+Use `expireIn` to set a time-to-live (in milliseconds) on persisted data. After the TTL elapses, stored data is skipped during hydration and the store keeps its class defaults.
+
+```ts
+persist(sessionStore, {
+  name: 'session',
+  expireIn: 900_000,  // 15 minutes
+});
+```
+
+**The TTL resets on every write.** As long as mutations keep happening (an active user session), the data stays fresh. The countdown only matters when the store is hydrated from storage after a period of inactivity (e.g., a page reload).
+
+### Checking expiration
+
+The handle exposes an `isExpired` flag that becomes `true` when hydration encounters expired data:
+
+```ts
+const handle = persist(sessionStore, {
+  name: 'session',
+  expireIn: 900_000,
+});
+
+await handle.hydrated;
+
+if (handle.isExpired) {
+  // Stored session expired — redirect to login
+  router.push('/login');
+}
+```
+
+`isExpired` is re-evaluated on every `rehydrate()` call, so you can poll or re-check after cross-tab sync events.
+
+### Auto-clearing expired data
+
+By default, expired data is skipped but left in storage. Set `clearOnExpire: true` to automatically remove the key:
+
+```ts
+persist(sessionStore, {
+  name: 'session',
+  expireIn: 900_000,
+  clearOnExpire: true,  // Remove key from storage when expired
+});
+```
+
+### Cross-tab sync and expiration
+
+Expired envelopes received from other tabs via `window.storage` events are also rejected. The same expiry check runs on every hydration path — init, `rehydrate()`, and cross-tab sync.
+
 ## SSR / Next.js Support
 
 Server-side rendering creates a hydration mismatch: the server renders with the store's default state, but the client would hydrate from `localStorage` before React reconciles. `skipHydration` defers persistence to the client:
@@ -537,6 +586,9 @@ console.log(`Welcome back! Theme: ${appStore.theme}, Bookmarks: ${appStore.bookm
 | Disable cross-tab sync | `syncTabs: false` |
 | Use sessionStorage | `storage: sessionStorage` |
 | Use AsyncStorage | `storage: AsyncStorage, syncTabs: false` |
+| Expire after 15 minutes | `expireIn: 900_000` |
+| Auto-clear expired data | `clearOnExpire: true` |
+| Check if data expired | `handle.isExpired` |
 | Force immediate save | `handle.save()` |
 | Clear stored data | `handle.clear()` |
 | Stop persisting | `handle.unsubscribe()` |

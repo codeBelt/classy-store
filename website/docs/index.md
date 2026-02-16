@@ -17,7 +17,7 @@ Class-based reactive state management for React. Write plain TypeScript classes 
 - **Type-safe** — full TypeScript inference from your class definitions
 - **Two hook modes** — explicit selector or automatic property tracking
 - **Reactive collections** — `reactiveMap()` and `reactiveSet()` for Map/Set-like state
-- **Persistence** — `persist()` utility with transforms, versioning, migration, debounce, cross-tab sync, and SSR support
+- **Persistence** — `persist()` utility with transforms, versioning, migration, debounce, cross-tab sync, TTL expiration, and SSR support
 
 ## Installation
 
@@ -314,6 +314,8 @@ const handle = persist(todoStore, {
 | `merge` | `'shallow' \| 'replace' \| fn` | `'shallow'` | How to merge persisted state with current store state |
 | `skipHydration` | `boolean` | `false` | Defer hydration for SSR (call `handle.rehydrate()` manually) |
 | `syncTabs` | `boolean` | auto | Sync state across browser tabs via `window.storage` event |
+| `expireIn` | `number` | — | TTL in milliseconds; stored data older than this is skipped during hydration. Resets on every write. |
+| `clearOnExpire` | `boolean` | `false` | Remove expired key from storage automatically during hydration |
 
 **Return value (`PersistHandle`):**
 
@@ -325,6 +327,7 @@ const handle = persist(todoStore, {
 | `save()` | `() => Promise<void>` | Immediate write to storage (bypasses debounce) |
 | `clear()` | `() => Promise<void>` | Remove this store's data from storage |
 | `rehydrate()` | `() => Promise<void>` | Manually re-read from storage and apply |
+| `isExpired` | `boolean` | Whether the last hydration found expired data (requires `expireIn`) |
 
 **Per-property transforms** handle non-JSON types like `Date` or `ReactiveMap`:
 

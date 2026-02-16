@@ -122,6 +122,20 @@ export type PersistOptions<T extends object> = {
    * Default: `true` when storage is `localStorage`, `false` otherwise.
    */
   syncTabs?: boolean;
+
+  /**
+   * Time-to-live in milliseconds. After this duration, stored data is
+   * considered expired and skipped during hydration. The TTL resets on
+   * every write (active sessions stay fresh as long as mutations happen).
+   */
+  expireIn?: number;
+
+  /**
+   * When `true`, automatically remove the storage key if data is found
+   * expired during hydration. Default: `false` (expired data is skipped
+   * but left in storage).
+   */
+  clearOnExpire?: boolean;
 };
 
 /**
@@ -145,6 +159,9 @@ export type PersistHandle = {
 
   /** Manually re-hydrate the store from storage. */
   rehydrate: () => Promise<void>;
+
+  /** True if the last hydration found expired data (requires `expireIn`). */
+  isExpired: boolean;
 };
 
 // ── Storage envelope ─────────────────────────────────────────────────────────
@@ -153,6 +170,7 @@ export type PersistHandle = {
 type PersistEnvelope = {
   version: number;
   state: Record<string, unknown>;
+  expiresAt?: number;
 };
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -262,6 +280,8 @@ export function persist<T extends object>(
     merge = 'shallow',
     skipHydration = false,
     syncTabs: syncTabsOption,
+    expireIn,
+    clearOnExpire = false,
   } = options;
 
   const maybeStorage = options.storage ?? getDefaultStorage();
@@ -290,6 +310,7 @@ export function persist<T extends object>(
   let disposed = false;
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
   let hydratedFlag = false;
+  let expiredFlag = false;
 
   // Hydration promise + resolver.
   let resolveHydrated: () => void;
@@ -316,6 +337,9 @@ export function persist<T extends object>(
     }
 
     const envelope: PersistEnvelope = {version, state};
+    if (expireIn != null) {
+      envelope.expiresAt = Date.now() + expireIn;
+    }
     return JSON.stringify(envelope);
   }
 
@@ -364,6 +388,16 @@ export function persist<T extends object>(
       typeof envelope !== 'object' ||
       typeof envelope.state !== 'object'
     ) {
+      return;
+    }
+
+    // Expiry check — skip hydration if data has expired.
+    if (
+      typeof envelope.expiresAt === 'number' &&
+      Date.now() >= envelope.expiresAt
+    ) {
+      expiredFlag = true;
+      if (clearOnExpire) void storage.removeItem(name);
       return;
     }
 
@@ -463,6 +497,10 @@ export function persist<T extends object>(
   const handle: PersistHandle = {
     get isHydrated() {
       return hydratedFlag;
+    },
+
+    get isExpired() {
+      return expiredFlag;
     },
 
     hydrated: hydratedPromise,
