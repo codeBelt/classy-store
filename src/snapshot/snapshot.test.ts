@@ -1,5 +1,5 @@
 import {describe, expect, it} from 'bun:test';
-import {store} from '../core/core';
+import {createClassyStore} from '../core/core';
 import {snapshot} from './snapshot';
 
 /** Helper: flush the queueMicrotask-based batching. */
@@ -10,7 +10,7 @@ describe('snapshot()', () => {
 
   describe('freezing', () => {
     it('returns a deeply frozen object', () => {
-      const s = store({user: {name: 'Alice'}, items: [1, 2, 3]});
+      const s = createClassyStore({user: {name: 'Alice'}, items: [1, 2, 3]});
       const snap = snapshot(s);
 
       expect(Object.isFrozen(snap)).toBe(true);
@@ -19,7 +19,7 @@ describe('snapshot()', () => {
     });
 
     it('throws when attempting to mutate a snapshot', () => {
-      const s = store({count: 0});
+      const s = createClassyStore({count: 0});
       const snap = snapshot(s);
 
       expect(() => {
@@ -32,7 +32,7 @@ describe('snapshot()', () => {
 
   describe('version cache', () => {
     it('returns the same snapshot object when version has not changed', () => {
-      const s = store({count: 0});
+      const s = createClassyStore({count: 0});
       const snap1 = snapshot(s);
       const snap2 = snapshot(s);
 
@@ -40,7 +40,7 @@ describe('snapshot()', () => {
     });
 
     it('returns a new snapshot after mutation + flush', async () => {
-      const s = store({count: 0});
+      const s = createClassyStore({count: 0});
       const snap1 = snapshot(s);
 
       s.count = 1;
@@ -57,7 +57,7 @@ describe('snapshot()', () => {
 
   describe('structural sharing', () => {
     it('unchanged nested objects retain the same reference across snapshots', async () => {
-      const s = store({
+      const s = createClassyStore({
         user: {name: 'Alice'},
         settings: {theme: 'dark'},
       });
@@ -74,7 +74,7 @@ describe('snapshot()', () => {
     });
 
     it('unchanged array elements retain the same reference', async () => {
-      const s = store({
+      const s = createClassyStore({
         items: [
           {id: 1, name: 'a'},
           {id: 2, name: 'b'},
@@ -112,7 +112,7 @@ describe('snapshot()', () => {
     }
 
     it('getters evaluate correctly on the snapshot', () => {
-      const s = store(new Store());
+      const s = createClassyStore(new Store());
       const snap = snapshot(s);
 
       expect(snap.doubled).toBe(10);
@@ -120,7 +120,7 @@ describe('snapshot()', () => {
     });
 
     it('getters reflect mutations in subsequent snapshots', async () => {
-      const s = store(new Store());
+      const s = createClassyStore(new Store());
 
       s.setCount(10);
       await flush();
@@ -135,7 +135,7 @@ describe('snapshot()', () => {
 
   describe('array snapshots', () => {
     it('array push is reflected in new snapshot', async () => {
-      const s = store({items: ['a', 'b']});
+      const s = createClassyStore({items: ['a', 'b']});
       const snap1 = snapshot(s);
 
       s.items.push('c');
@@ -147,7 +147,7 @@ describe('snapshot()', () => {
     });
 
     it('array splice is reflected in new snapshot', async () => {
-      const s = store({items: ['a', 'b', 'c']});
+      const s = createClassyStore({items: ['a', 'b', 'c']});
       const snap1 = snapshot(s);
 
       s.items.splice(1, 1);
@@ -159,7 +159,7 @@ describe('snapshot()', () => {
     });
 
     it('replacing array by reference triggers new snapshot', async () => {
-      const s = store({items: [1, 2, 3]});
+      const s = createClassyStore({items: [1, 2, 3]});
       const snap1 = snapshot(s);
 
       s.items = [4, 5];
@@ -175,14 +175,14 @@ describe('snapshot()', () => {
 
   describe('edge cases', () => {
     it('snapshot of an empty store', () => {
-      const s = store({});
+      const s = createClassyStore({});
       const snap = snapshot(s);
       expect(snap).toEqual({});
       expect(Object.isFrozen(snap)).toBe(true);
     });
 
     it('snapshot captures null and undefined values', () => {
-      const s = store({
+      const s = createClassyStore({
         a: null as string | null,
         b: undefined as string | undefined,
       });
@@ -221,7 +221,7 @@ describe('snapshot()', () => {
     }
 
     it('snapshot preserves instanceof for the derived class', () => {
-      const s = store(new Derived());
+      const s = createClassyStore(new Derived());
       const snap = snapshot(s);
 
       expect(snap instanceof Derived).toBe(true);
@@ -229,7 +229,7 @@ describe('snapshot()', () => {
     });
 
     it('snapshot includes own properties from all inheritance levels', () => {
-      const s = store(new Derived());
+      const s = createClassyStore(new Derived());
       const snap = snapshot(s);
 
       // Base-level properties
@@ -240,7 +240,7 @@ describe('snapshot()', () => {
     });
 
     it('structural sharing works across inheritance levels', async () => {
-      const s = store(new Derived());
+      const s = createClassyStore(new Derived());
       const snap1 = snapshot(s);
 
       // Mutate only derived-level property, leave base-level nested object untouched
@@ -254,7 +254,7 @@ describe('snapshot()', () => {
     });
 
     it('getters from multiple inheritance levels evaluate correctly in snapshot', () => {
-      const s = store(new Derived());
+      const s = createClassyStore(new Derived());
       s.count = 5;
       s.extra = 'tag';
 

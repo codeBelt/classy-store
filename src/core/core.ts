@@ -113,20 +113,13 @@ function evaluateComputed(
 
 /**
  * Retrieve the internal bookkeeping for a store proxy.
- * Throws if the object was not created with `store()`.
+ * Throws if the object was not created with `createClassyStore()`.
  */
 export function getInternal(proxy: object): StoreInternal {
   const internal = internalsMap.get(proxy);
   if (!internal)
     throw new Error('@codebelt/classy-store: object is not a store proxy');
   return internal;
-}
-
-/**
- * Returns `true` if the given object is a store proxy.
- */
-export function isStoreProxy(value: unknown): boolean {
-  return typeof value === 'object' && value !== null && internalsMap.has(value);
 }
 
 // ── Notification batching ─────────────────────────────────────────────────────
@@ -289,8 +282,13 @@ function createStoreProxy<T extends object>(
  *
  * @param instance - A class instance (or plain object) to make reactive.
  * @returns The same object wrapped in a reactive Proxy.
+ *
+ * @example
+ * ```ts
+ * const myStore = createClassyStore(new MyClass());
+ * ```
  */
-export function store<T extends object>(instance: T): T {
+export function createClassyStore<T extends object>(instance: T): T {
   return createStoreProxy(instance, null);
 }
 
@@ -298,7 +296,7 @@ export function store<T extends object>(instance: T): T {
  * Subscribe to store changes. The callback fires once per batched mutation
  * (coalesced via `queueMicrotask`), not once per individual property write.
  *
- * @param proxy - A reactive proxy created by `store()`.
+ * @param proxy - A reactive proxy created by `createClassyStore()`.
  * @param callback - Invoked after each batched mutation.
  * @returns An unsubscribe function. Call it to stop receiving notifications.
  */

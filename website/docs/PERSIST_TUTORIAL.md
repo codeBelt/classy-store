@@ -1,13 +1,13 @@
 # Persist Tutorial
 
-`persist()` saves your store's state to storage and restores it on page load. It's a standalone utility function that works with any `store()` instance -- no plugins, no middleware, no configuration files. Import it from `@codebelt/classy-store/utils`, call it once, and your store survives page refreshes.
+`persist()` saves your store's state to storage and restores it on page load. It's a standalone utility function that works with any `createClassyStore()` instance -- no plugins, no middleware, no configuration files. Import it from `@codebelt/classy-store/utils`, call it once, and your store survives page refreshes.
 
 ## Getting Started
 
 ### 1. Create a store
 
 ```ts
-import { store } from '@codebelt/classy-store';
+import { createClassyStore } from '@codebelt/classy-store';
 
 class TodoStore {
   todos: { text: string; done: boolean }[] = [];
@@ -26,7 +26,7 @@ class TodoStore {
   }
 }
 
-export const todoStore = store(new TodoStore());
+export const todoStore = createClassyStore(new TodoStore());
 ```
 
 ### 2. Persist it
@@ -91,7 +91,7 @@ class SessionStore {
   }
 }
 
-const sessionStore = store(new SessionStore());
+const sessionStore = createClassyStore(new SessionStore());
 
 persist(sessionStore, {
   name: 'session',
@@ -125,7 +125,7 @@ On restore, `deserialize` converts the ISO string back into a `Date` object befo
 `reactiveMap()` instances are backed by internal arrays that aren't directly JSON-serializable:
 
 ```ts
-import { store, reactiveMap } from '@codebelt/classy-store';
+import { createClassyStore, reactiveMap } from '@codebelt/classy-store';
 import { persist } from '@codebelt/classy-store/utils';
 
 class UserStore {
@@ -136,7 +136,7 @@ class UserStore {
   }
 }
 
-const userStore = store(new UserStore());
+const userStore = createClassyStore(new UserStore());
 
 persist(userStore, {
   name: 'user-store',
@@ -250,7 +250,7 @@ class SettingsStore {
   language = 'en';   // NEW -- not in old persisted data
 }
 
-persist(store(new SettingsStore()), {
+persist(createClassyStore(new SettingsStore()), {
   name: 'settings',
   // merge: 'shallow',  // default
 });
@@ -491,7 +491,7 @@ async function resetToDefaults() {
 Call `persist()` multiple times with different options to persist different parts of a store to different locations:
 
 ```ts
-const todoStore = store(new TodoStore());
+const todoStore = createClassyStore(new TodoStore());
 
 // Persist todos to localStorage (survives page close)
 persist(todoStore, {
@@ -512,7 +512,7 @@ persist(todoStore, {
 Here's a complete example combining several features:
 
 ```ts
-import { store, reactiveMap } from '@codebelt/classy-store';
+import { createClassyStore, reactiveMap } from '@codebelt/classy-store';
 import { persist } from '@codebelt/classy-store/utils';
 
 class AppStore {
@@ -534,7 +534,7 @@ class AppStore {
   }
 }
 
-const appStore = store(new AppStore());
+const appStore = createClassyStore(new AppStore());
 
 const handle = persist(appStore, {
   name: 'app-store',

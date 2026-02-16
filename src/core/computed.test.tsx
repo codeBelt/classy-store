@@ -3,7 +3,7 @@ import {act, type ReactNode} from 'react';
 import {createRoot} from 'react-dom/client';
 import {useStore} from '../react/react';
 import {snapshot} from '../snapshot/snapshot';
-import {store} from './core';
+import {createClassyStore} from './core';
 
 /** Helper: flush the queueMicrotask-based batching. */
 const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
@@ -26,7 +26,7 @@ describe('computed getters — write proxy memoization', () => {
       }
     }
 
-    const s = store(new Store());
+    const s = createClassyStore(new Store());
 
     const result1 = s.filtered;
     const result2 = s.filtered;
@@ -55,7 +55,7 @@ describe('computed getters — write proxy memoization', () => {
       }
     }
 
-    const s = store(new Store());
+    const s = createClassyStore(new Store());
 
     expect(s.doubled).toBe(10);
     expect(callCount).toBe(1);
@@ -83,7 +83,7 @@ describe('computed getters — write proxy memoization', () => {
       }
     }
 
-    const s = store(new Store());
+    const s = createClassyStore(new Store());
 
     expect(s.doubled).toBe(10);
     expect(callCount).toBe(1);
@@ -114,7 +114,7 @@ describe('computed getters — write proxy memoization', () => {
       }
     }
 
-    const s = store(new Store());
+    const s = createClassyStore(new Store());
 
     expect(s.filteredCount).toBe(3);
     expect(filteredCallCount).toBe(1);
@@ -143,7 +143,7 @@ describe('computed getters — write proxy memoization', () => {
       }
     }
 
-    const s = store(new Store());
+    const s = createClassyStore(new Store());
 
     expect(s.count).toBe(2);
     expect(callCount).toBe(1);
@@ -168,7 +168,7 @@ describe('computed getters — write proxy memoization', () => {
       }
     }
 
-    const s = store(new Store());
+    const s = createClassyStore(new Store());
 
     expect(s.currentTheme).toBe('dark');
     expect(callCount).toBe(1);
@@ -199,7 +199,7 @@ describe('computed getters — write proxy memoization', () => {
       }
     }
 
-    const s = store(new Store());
+    const s = createClassyStore(new Store());
 
     expect(s.sum).toBe(6);
     expect(s.average).toBe(2);
@@ -229,7 +229,7 @@ describe('computed getters — write proxy memoization', () => {
       }
     }
 
-    const s = store(new Derived());
+    const s = createClassyStore(new Derived());
     expect(s.label).toBe('derived:5');
 
     // Snapshot should also use the derived getter
@@ -255,7 +255,7 @@ describe('computed getters — write proxy memoization', () => {
       }
     }
 
-    const s = store(new Derived());
+    const s = createClassyStore(new Derived());
 
     // Write proxy: both getters work
     expect(s.doubled).toBe(10); // base getter
@@ -288,7 +288,7 @@ describe('computed getters — write proxy memoization', () => {
       // `doubled` is NOT overridden — inherits from Base
     }
 
-    const s = store(new Derived());
+    const s = createClassyStore(new Derived());
 
     // Override wins for `label`
     expect(s.label).toBe('derived:5');
@@ -323,7 +323,7 @@ describe('computed getters — write proxy memoization', () => {
       }
     }
 
-    const s = store(new LevelC());
+    const s = createClassyStore(new LevelC());
 
     // Write proxy
     expect(s.squared).toBe(4);
@@ -351,7 +351,7 @@ describe('computed getters — write proxy memoization', () => {
       }
     }
 
-    const s = store(new Store());
+    const s = createClassyStore(new Store());
 
     expect(s.isPositive).toBe(false);
 
@@ -380,7 +380,7 @@ describe('computed getters — write proxy memoization', () => {
       }
     }
 
-    const s = store(new Store());
+    const s = createClassyStore(new Store());
 
     expect(s.count).toBe(3);
     expect(callCount).toBe(1);
@@ -408,7 +408,7 @@ describe('computed getters — write proxy memoization', () => {
       }
     }
 
-    const s = store(new Store());
+    const s = createClassyStore(new Store());
 
     // First access: returns undefined, cached.
     expect(s.first).toBeUndefined();
@@ -441,7 +441,7 @@ describe('computed getters — write proxy memoization', () => {
       }
     }
 
-    const s = store(new Store());
+    const s = createClassyStore(new Store());
 
     expect(s.constant).toBe(42);
     expect(callCount).toBe(1);
@@ -466,7 +466,7 @@ describe('computed getters — write proxy memoization', () => {
       }
     }
 
-    const s = store(new Store());
+    const s = createClassyStore(new Store());
 
     // First access throws.
     expect(() => s.computed).toThrow('intentional error');
@@ -492,7 +492,7 @@ describe('computed getters — write proxy memoization', () => {
       }
     }
 
-    const s = store(new Store());
+    const s = createClassyStore(new Store());
     expect(s.sum).toBe(3);
 
     // Replace the data object entirely (delete is hard to test on child proxies
@@ -514,7 +514,7 @@ describe('computed getters — write proxy memoization', () => {
       }
     }
 
-    const s = store(new Store());
+    const s = createClassyStore(new Store());
 
     expect(s.hasA).toBe(true);
     expect(callCount).toBe(1);
@@ -548,7 +548,7 @@ describe('computed getters — snapshot memoization', () => {
       }
     }
 
-    const s = store(new Store());
+    const s = createClassyStore(new Store());
     const snap = snapshot(s);
 
     expect(snap.count).toBe(3);
@@ -568,7 +568,7 @@ describe('computed getters — snapshot memoization', () => {
       }
     }
 
-    const s = store(new Store());
+    const s = createClassyStore(new Store());
     const snap = snapshot(s);
 
     const result1 = snap.filtered;
@@ -593,7 +593,7 @@ describe('computed getters — snapshot memoization', () => {
       }
     }
 
-    const s = store(new TodoStore());
+    const s = createClassyStore(new TodoStore());
 
     const snap1 = snapshot(s);
     const result1 = snap1.activeTodos;
@@ -622,7 +622,7 @@ describe('computed getters — snapshot memoization', () => {
       }
     }
 
-    const s = store(new Store());
+    const s = createClassyStore(new Store());
 
     const snap1 = snapshot(s);
     expect(snap1.doubled).toBe(10);
@@ -651,7 +651,7 @@ describe('computed getters — snapshot memoization', () => {
       }
     }
 
-    const s = store(new Store());
+    const s = createClassyStore(new Store());
 
     const snap1 = snapshot(s);
     expect(snap1.count).toBe(3);
@@ -674,7 +674,7 @@ describe('computed getters — snapshot memoization', () => {
       }
     }
 
-    const s = store(new Store());
+    const s = createClassyStore(new Store());
     const snap = snapshot(s);
 
     expect(snap.fullName).toBe('John Doe');
@@ -720,7 +720,7 @@ describe('computed getters — useStore integration', () => {
       }
     }
 
-    const todoStore = store(new TodoStore());
+    const todoStore = createClassyStore(new TodoStore());
     const renderCount = mock(() => {});
 
     function ActiveList() {
@@ -759,7 +759,7 @@ describe('computed getters — useStore integration', () => {
       }
     }
 
-    const s = store(new Store());
+    const s = createClassyStore(new Store());
 
     function Display() {
       const snap = useStore(s);

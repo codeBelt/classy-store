@@ -1,7 +1,7 @@
 import {afterEach, describe, expect, it, mock} from 'bun:test';
 import {act, type ReactNode} from 'react';
 import {createRoot, type Root} from 'react-dom/client';
-import {store} from '../core/core';
+import {createClassyStore} from '../core/core';
 import {shallowEqual} from '../utils/equality/equality';
 import {useStore} from './react';
 
@@ -82,7 +82,7 @@ describe('Batching — multi-prop methods cause single re-render', () => {
   afterEach(teardown);
 
   it('method writing two props (selector mode)', async () => {
-    const s = store(new TestStore());
+    const s = createClassyStore(new TestStore());
     const renderCount = mock(() => {});
 
     function Display() {
@@ -110,7 +110,7 @@ describe('Batching — multi-prop methods cause single re-render', () => {
   });
 
   it('method writing two props (auto-tracked mode)', async () => {
-    const s = store(new TestStore());
+    const s = createClassyStore(new TestStore());
     const renderCount = mock(() => {});
 
     function Display() {
@@ -137,7 +137,7 @@ describe('Batching — multi-prop methods cause single re-render', () => {
   });
 
   it('method writing two props, only one selected', async () => {
-    const s = store(new TestStore());
+    const s = createClassyStore(new TestStore());
     const renderCount = mock(() => {});
 
     function CountOnly() {
@@ -166,7 +166,7 @@ describe('Batching — rapid mutations in a loop', () => {
   afterEach(teardown);
 
   it('100 increments in for-loop (selector mode)', async () => {
-    const s = store(new TestStore());
+    const s = createClassyStore(new TestStore());
     const renderCount = mock(() => {});
 
     function Display() {
@@ -189,7 +189,7 @@ describe('Batching — rapid mutations in a loop', () => {
   });
 
   it('100 increments in for-loop (auto-tracked mode)', async () => {
-    const s = store(new TestStore());
+    const s = createClassyStore(new TestStore());
     const renderCount = mock(() => {});
 
     function Display() {
@@ -212,7 +212,7 @@ describe('Batching — rapid mutations in a loop', () => {
   });
 
   it('50 array pushes in for-loop (selector on length)', async () => {
-    const s = store(new TestStore());
+    const s = createClassyStore(new TestStore());
     const renderCount = mock(() => {});
 
     function Display() {
@@ -242,7 +242,7 @@ describe('Set-then-revert — no re-render when value returns to original', () =
   afterEach(teardown);
 
   it('primitive revert (selector mode)', async () => {
-    const s = store(new TestStore());
+    const s = createClassyStore(new TestStore());
     const renderCount = mock(() => {});
 
     function Display() {
@@ -269,7 +269,7 @@ describe('Set-then-revert — no re-render when value returns to original', () =
     // Unlike selector mode (which compares the extracted value), auto-tracked mode
     // detects that the snapshot *object* is a new reference (version was bumped),
     // so `getAutoTrackSnapshot` builds a new tracking proxy → re-render.
-    const s = store(new TestStore());
+    const s = createClassyStore(new TestStore());
     const renderCount = mock(() => {});
 
     function Display() {
@@ -293,7 +293,7 @@ describe('Set-then-revert — no re-render when value returns to original', () =
   });
 
   it('nested object prop revert (selector on user.name)', async () => {
-    const s = store(new TestStore());
+    const s = createClassyStore(new TestStore());
     const renderCount = mock(() => {});
 
     function Display() {
@@ -318,7 +318,7 @@ describe('Set-then-revert — no re-render when value returns to original', () =
   });
 
   it('unrelated prop revert — structural sharing preserves reference', async () => {
-    const s = store(new TestStore());
+    const s = createClassyStore(new TestStore());
     const renderCount = mock(() => {});
 
     function Display() {
@@ -351,7 +351,7 @@ describe('Async methods — re-renders split across await boundaries', () => {
   it('1 await, mutations before + after (selector)', async () => {
     // React batches both microtask notifications within act() into a single
     // commit, so we see 1 re-render (not 2) for mutations on both sides of an await.
-    const s = store(new TestStore());
+    const s = createClassyStore(new TestStore());
     const renderCount = mock(() => {});
 
     function Display() {
@@ -376,7 +376,7 @@ describe('Async methods — re-renders split across await boundaries', () => {
   it('2 awaits, mutations between each (selector)', async () => {
     // 3 mutations across 3 turns — React batches some of the microtask
     // notifications, resulting in 2 re-renders rather than 3.
-    const s = store(new TestStore());
+    const s = createClassyStore(new TestStore());
     const renderCount = mock(() => {});
 
     function Display() {
@@ -399,7 +399,7 @@ describe('Async methods — re-renders split across await boundaries', () => {
   });
 
   it('mutations only before await (selector)', async () => {
-    const s = store(new TestStore());
+    const s = createClassyStore(new TestStore());
     const renderCount = mock(() => {});
 
     function Display() {
@@ -422,7 +422,7 @@ describe('Async methods — re-renders split across await boundaries', () => {
   });
 
   it('mutations only after await (selector)', async () => {
-    const s = store(new TestStore());
+    const s = createClassyStore(new TestStore());
     const renderCount = mock(() => {});
 
     function Display() {
@@ -445,7 +445,7 @@ describe('Async methods — re-renders split across await boundaries', () => {
   });
 
   it('1 await, mutations before + after (auto-tracked)', async () => {
-    const s = store(new TestStore());
+    const s = createClassyStore(new TestStore());
     const renderCount = mock(() => {});
 
     function Display() {
@@ -474,7 +474,7 @@ describe('Multiple components sharing the same store', () => {
   afterEach(teardown);
 
   it('different selectors, independent re-render', async () => {
-    const s = store(new TestStore());
+    const s = createClassyStore(new TestStore());
     const renderCountA = mock(() => {});
     const renderCountB = mock(() => {});
 
@@ -510,7 +510,7 @@ describe('Multiple components sharing the same store', () => {
   });
 
   it('same selector, both re-render', async () => {
-    const s = store(new TestStore());
+    const s = createClassyStore(new TestStore());
     const renderCountA = mock(() => {});
     const renderCountB = mock(() => {});
 
@@ -549,7 +549,7 @@ describe('Multiple components sharing the same store', () => {
     // In auto-tracked mode, when the store notifies all subscribers, each
     // component's getSnapshot produces a new snapshot ref — both components
     // re-render, unlike selector mode which compares extracted values.
-    const s = store(new TestStore());
+    const s = createClassyStore(new TestStore());
     const renderCountA = mock(() => {});
     const renderCountB = mock(() => {});
 
@@ -585,7 +585,7 @@ describe('Multiple components sharing the same store', () => {
   });
 
   it('batched multi-prop, both affected', async () => {
-    const s = store(new TestStore());
+    const s = createClassyStore(new TestStore());
     const renderCountA = mock(() => {});
     const renderCountB = mock(() => {});
 
@@ -627,7 +627,7 @@ describe('Unmount safety', () => {
   afterEach(teardown);
 
   it('unmount during pending microtask does not crash', async () => {
-    const s = store(new TestStore());
+    const s = createClassyStore(new TestStore());
 
     function Display() {
       const count = useStore(s, (snap) => snap.count);
@@ -649,7 +649,7 @@ describe('Unmount safety', () => {
   });
 
   it('unmount and remount with same store shows latest state', async () => {
-    const s = store(new TestStore());
+    const s = createClassyStore(new TestStore());
 
     function Display() {
       const count = useStore(s, (snap) => snap.count);
@@ -683,7 +683,7 @@ describe('shallowEqual as useStore isEqual — integration', () => {
   afterEach(teardown);
 
   it('prevents re-render when shallow values are unchanged', async () => {
-    const s = store(new TestStore());
+    const s = createClassyStore(new TestStore());
     const renderCount = mock(() => {});
 
     function Display() {
@@ -714,7 +714,7 @@ describe('shallowEqual as useStore isEqual — integration', () => {
   });
 
   it('re-renders when shallow values differ', async () => {
-    const s = store(new TestStore());
+    const s = createClassyStore(new TestStore());
     const renderCount = mock(() => {});
 
     function Display() {

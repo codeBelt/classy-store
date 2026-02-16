@@ -265,7 +265,7 @@ graph LR
 
 ### Why a function, not a decorator or middleware?
 
-Decorators require class modifications and don't compose well with the existing `store()` wrapping. Middleware requires an interception layer that doesn't exist in the architecture (the proxy IS the middleware). A standalone function that takes a proxy and returns a handle is the simplest, most composable API.
+Decorators require class modifications and don't compose well with the existing `createClassyStore()` wrapping. Middleware requires an interception layer that doesn't exist in the architecture (the proxy IS the middleware). A standalone function that takes a proxy and returns a handle is the simplest, most composable API.
 
 ### Why per-property transforms instead of global serialize/deserialize?
 

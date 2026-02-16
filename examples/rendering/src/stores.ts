@@ -1,4 +1,8 @@
-import {reactiveMap, reactiveSet, store} from '@codebelt/classy-store';
+import {
+  createClassyStore,
+  reactiveMap,
+  reactiveSet,
+} from '@codebelt/classy-store';
 
 export class CounterStore {
   count = 0;
@@ -84,7 +88,7 @@ export class DocumentStore {
   }
 
   updateSectionBody(id: number, body: string) {
-    const section = this.content.sections.find((s) => s.id === id);
+    const section = this.content.sections.find((store) => store.id === id);
     if (section) section.body = body;
   }
 
@@ -145,7 +149,7 @@ export class CollectionStore {
   }
 }
 
-export const counterStore = store(new CounterStore());
-export const postStore = store(new PostStore());
-export const documentStore = store(new DocumentStore());
-export const collectionStore = store(new CollectionStore());
+export const counterStore = createClassyStore(new CounterStore());
+export const postStore = createClassyStore(new PostStore());
+export const documentStore = createClassyStore(new DocumentStore());
+export const collectionStore = createClassyStore(new CollectionStore());
