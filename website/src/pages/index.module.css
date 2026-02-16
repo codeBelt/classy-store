@@ -5,8 +5,27 @@
 
 .heroBanner {
   padding: 4rem 0;
-  text-align: center;
+  text-align: left;
   position: relative;
+  overflow: hidden;
+  background: linear-gradient(
+    135deg,
+    var(--ifm-color-primary) 0%,
+    var(--ifm-color-primary-dark) 100%
+  );
+  color: #fff;
+}
+
+.heroContent {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.heroCode {
+  text-align: left;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  border-radius: var(--ifm-pre-border-radius);
   overflow: hidden;
 }
 
@@ -20,4 +39,21 @@
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.showcase {
+  background-color: var(--ifm-color-emphasis-100);
+  padding: 4rem 0;
+  border-top: 1px solid var(--ifm-color-emphasis-200);
+}
+
+.checkList {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0;
+}
+
+.checkList li {
+  margin-bottom: 0.5rem;
+  font-weight: 500;
 }
