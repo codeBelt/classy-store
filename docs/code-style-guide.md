@@ -97,15 +97,15 @@ userCard/
 
 ```typescript
 // UserCard.tsx
-import { formatUserName } from './UserCard.utils';
-import type { User } from './UserCard.types';
+import {formatUserName} from './UserCard.utils';
+import type {User} from './UserCard.types';
 
 type Props = {  // Never export Props
   user: User;
   onSelect: (id: string) => void;
 };
 
-export function UserCard({ user, onSelect }: Props) {
+export function UserCard({user, onSelect}: Props) {
   return <div onClick={() => onSelect(user.id)}>{formatUserName(user.name)}</div>;
 }
 ```
@@ -124,7 +124,7 @@ export type User = {
 export const maxNameLength = 30;
 
 // UserCard.utils.ts
-import { maxNameLength } from './UserCard.constants';
+import {maxNameLength} from './UserCard.constants';
 
 export function formatUserName(name: string): string {
   return name.length > maxNameLength ? `${name.slice(0, maxNameLength)}...` : name;
@@ -141,11 +141,11 @@ Services have three files: main functions, schemas, and constants.
 
 ```typescript
 // services/hyperion/users/users.ts
-import { useMutation, useQuery } from '@tanstack/react-query';
-import { http } from '@/utils/httpClient/httpClient';
-import { api } from '@/utils/httpClient/httpClient.constants';
-import { getUsersKey } from './users.constants';
-import { GetUsersResponseSchema } from './users.schemas';
+import {useQuery} from '@tanstack/react-query';
+import {http} from '@/utils/httpClient/httpClient';
+import {api} from '@/utils/httpClient/httpClient.constants';
+import {getUsersKey} from './users.constants';
+import {GetUsersResponseSchema} from './users.schemas';
 
 /* POST /api/v1/users */
 export async function getUsers() {
@@ -166,7 +166,7 @@ export function useGetUsers() {
 
 ```typescript
 // services/hyperion/users/users.schemas.ts
-import { z } from 'zod';
+import {z} from 'zod';
 
 export const GetUsersResponseSchema = z.object({
   users: z.array(
@@ -194,22 +194,22 @@ export const getUsersKey = 'getUsers';
 Use `test.each` with array of objects:
 
 ```typescript
-import { describe, expect, test } from 'bun:test';
-import { formatUserName } from './user';
+import {describe, expect, test} from 'bun:test';
+import {formatUserName} from './user';
 
 describe('formatUserName', () => {
   test.each([
     {
       description: 'full name with all parts',
       input: 'Smith, John David',
-      expected: { lastName: 'Smith', firstName: 'John', middleName: 'David' },
+      expected: {lastName: 'Smith', firstName: 'John', middleName: 'David'},
     },
     {
       description: 'name without middle',
       input: 'Smith, John',
-      expected: { lastName: 'Smith', firstName: 'John', middleName: undefined },
+      expected: {lastName: 'Smith', firstName: 'John', middleName: undefined},
     },
-  ])('should handle $description', ({ input, expected }) => {
+  ])('should handle $description', ({input, expected}) => {
     expect(formatUserName(input)).toEqual(expected);
   });
 });
@@ -271,20 +271,20 @@ Barrel files are files that only re-export from other modules. They cause proble
 
 ```typescript
 // components/ui/index.ts
-export { Button } from './button/Button';
-export { Input } from './input/Input';
-export { Card } from './card/Card';
+export {Button} from './button/Button';
+export {Input} from './input/Input';
+export {Card} from './card/Card';
 
 // Usage creates circular import risk
-import { Button } from '@/components/ui';
+import {Button} from '@/components/ui';
 ```
 
 ### Right
 
 ```typescript
 // Import directly from the module
-import { Button } from '@/components/ui/button/Button';
-import { Input } from '@/components/ui/input/Input';
+import {Button} from '@/components/ui/button/Button';
+import {Input} from '@/components/ui/input/Input';
 ```
 
 ### Exception: NPM Libraries
@@ -293,8 +293,8 @@ Barrel files are **only** acceptable as the single entry point for npm packages:
 
 ```typescript
 // packages/my-library/index.ts (package.json "main" field)
-export { Button } from './components/Button';
-export { useTheme } from './hooks/useTheme';
+export {Button} from './components/Button';
+export {useTheme} from './hooks/useTheme';
 ```
 
 **Reference**: [Please Stop Using Barrel Files](https://tkdodo.eu/blog/please-stop-using-barrel-files#what-barrels-are-good-for)
