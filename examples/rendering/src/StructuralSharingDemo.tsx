@@ -85,21 +85,33 @@ function SnapshotTree() {
       <div className="text-xs text-zinc-400 uppercase tracking-wide mb-3">
         Snapshot Reference Tree
       </div>
-      <TreeNode label="root" getValue={(s) => s}>
-        <TreeNode label=".metadata" getValue={(s) => s.metadata} depth={1} />
-        <TreeNode label=".content" getValue={(s) => s.content} depth={1}>
+      <TreeNode label="root" getValue={(store) => store}>
+        <TreeNode
+          label=".metadata"
+          getValue={(store) => store.metadata}
+          depth={1}
+        />
+        <TreeNode
+          label=".content"
+          getValue={(store) => store.content}
+          depth={1}
+        >
           <TreeNode
             label=".sections[0]"
-            getValue={(s) => s.content.sections[0]}
+            getValue={(store) => store.content.sections[0]}
             depth={2}
           />
           <TreeNode
             label=".sections[1]"
-            getValue={(s) => s.content.sections[1]}
+            getValue={(store) => store.content.sections[1]}
             depth={2}
           />
         </TreeNode>
-        <TreeNode label=".settings" getValue={(s) => s.settings} depth={1} />
+        <TreeNode
+          label=".settings"
+          getValue={(store) => store.settings}
+          depth={1}
+        />
       </TreeNode>
     </div>
   );

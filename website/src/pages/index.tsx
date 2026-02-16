@@ -21,7 +21,7 @@ const counterStore = store(new CounterStore());
 
 // 3. Use it in React with automatic updates
 function Counter() {
-  const count = useStore(counterStore, (s) => s.count);
+  const count = useStore(counterStore, (store) => store.count);
   return (
     <button onClick={() => counterStore.increment()}>
       Count is {count}

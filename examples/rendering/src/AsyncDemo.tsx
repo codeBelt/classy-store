@@ -5,7 +5,7 @@ import {postStore} from './stores';
 import {useRenderCount} from './useRenderCount';
 
 function LoadingIndicator() {
-  const loading = useStore(postStore, (s) => s.loading);
+  const loading = useStore(postStore, (store) => store.loading);
   const renders = useRenderCount();
   return (
     <div className="flex items-center justify-between bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2.5">
@@ -51,7 +51,7 @@ function LoadingIndicator() {
 }
 
 function ErrorDisplay() {
-  const error = useStore(postStore, (s) => s.error);
+  const error = useStore(postStore, (store) => store.error);
   const renders = useRenderCount();
   return (
     <div className="flex items-center justify-between bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2.5">
@@ -71,7 +71,7 @@ function ErrorDisplay() {
 }
 
 function PostList() {
-  const posts = useStore(postStore, (s) => s.posts);
+  const posts = useStore(postStore, (store) => store.posts);
   const renders = useRenderCount();
   return (
     <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-3 py-2.5">
@@ -102,7 +102,7 @@ function PostList() {
 }
 
 function PostCount() {
-  const count = useStore(postStore, (s) => s.count);
+  const count = useStore(postStore, (store) => store.count);
   const renders = useRenderCount();
   return (
     <div className="flex items-center gap-2">

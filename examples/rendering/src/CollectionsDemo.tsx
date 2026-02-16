@@ -107,8 +107,8 @@ function TagList() {
 }
 
 function CountDisplay() {
-  const userCount = useStore(collectionStore, (s) => s.userCount);
-  const tagCount = useStore(collectionStore, (s) => s.tagCount);
+  const userCount = useStore(collectionStore, (store) => store.userCount);
+  const tagCount = useStore(collectionStore, (store) => store.tagCount);
   const renders = useRenderCount();
 
   return (

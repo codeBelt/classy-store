@@ -12,7 +12,7 @@ const names = ['World', 'Bun', 'React', 'Store'];
 let nameIndex = 0;
 
 function CountCard() {
-  const count = useStore(counterStore, (s) => s.count);
+  const count = useStore(counterStore, (store) => store.count);
   const renders = useRenderCount();
   return (
     <div className="flex-1 flex items-center justify-between bg-indigo-500/10 border border-indigo-500/20 rounded-lg px-3 py-2.5">
@@ -30,7 +30,7 @@ function CountCard() {
 }
 
 function NameCard() {
-  const name = useStore(counterStore, (s) => s.name);
+  const name = useStore(counterStore, (store) => store.name);
   const renders = useRenderCount();
   return (
     <div className="flex-1 flex items-center justify-between bg-violet-500/10 border border-violet-500/20 rounded-lg px-3 py-2.5">
@@ -48,7 +48,7 @@ function NameCard() {
 }
 
 function BatchCard() {
-  const count = useStore(batchStore, (s) => s.count);
+  const count = useStore(batchStore, (store) => store.count);
   const renders = useRenderCount();
   return (
     <div className="flex-1 flex items-center justify-between bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2.5">
