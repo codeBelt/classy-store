@@ -18,7 +18,9 @@ const dedupeReact: BunPlugin = {
       if (!subpath || subpath === '/') {
         return {path: path.join(pkgSrc, 'index.ts')};
       }
-      const name = subpath.slice(1);
+      const name = subpath.slice(1); // 'react', 'vue', 'utils', etc.
+      const inFrameworks = path.join(pkgSrc, 'frameworks', name, `${name}.ts`);
+      if (existsSync(inFrameworks)) return {path: inFrameworks};
       const direct = path.join(pkgSrc, name, `${name}.ts`);
       if (existsSync(direct)) return {path: direct};
       return {path: path.join(pkgSrc, name, 'index.ts')};

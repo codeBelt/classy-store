@@ -12,5 +12,11 @@
   "access": "public",
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
-  "ignore": ["classy-store-demo"]
+  "ignore": [
+    "classy-store-react-example",
+    "classy-store-vue-example",
+    "classy-store-svelte-example",
+    "classy-store-solid-example",
+    "classy-store-angular-example"
+  ]
 }

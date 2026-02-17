@@ -14,7 +14,8 @@
       "!dist",
       "!build",
       "!**/_generated",
-      "!coverage"
+      "!coverage",
+      "!**/.angular"
     ]
   },
   "formatter": {
@@ -70,6 +71,18 @@
     }
   },
   "overrides": [
+    {
+      "includes": ["**/*.vue", "**/*.svelte"],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "useHookAtTopLevel": "off",
+            "noUnusedVariables": "off",
+            "noUnusedImports": "off"
+          }
+        }
+      }
+    },
     {
       "includes": ["**/styles.css"],
       "linter": {

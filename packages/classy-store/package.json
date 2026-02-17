@@ -36,6 +36,46 @@
         "default": "./dist/frameworks/react/react.cjs"
       }
     },
+    "./vue": {
+      "import": {
+        "types": "./dist/frameworks/vue/vue.d.mts",
+        "default": "./dist/frameworks/vue/vue.mjs"
+      },
+      "require": {
+        "types": "./dist/frameworks/vue/vue.d.cts",
+        "default": "./dist/frameworks/vue/vue.cjs"
+      }
+    },
+    "./svelte": {
+      "import": {
+        "types": "./dist/frameworks/svelte/svelte.d.mts",
+        "default": "./dist/frameworks/svelte/svelte.mjs"
+      },
+      "require": {
+        "types": "./dist/frameworks/svelte/svelte.d.cts",
+        "default": "./dist/frameworks/svelte/svelte.cjs"
+      }
+    },
+    "./angular": {
+      "import": {
+        "types": "./dist/frameworks/angular/angular.d.mts",
+        "default": "./dist/frameworks/angular/angular.mjs"
+      },
+      "require": {
+        "types": "./dist/frameworks/angular/angular.d.cts",
+        "default": "./dist/frameworks/angular/angular.cjs"
+      }
+    },
+    "./solid": {
+      "import": {
+        "types": "./dist/frameworks/solid/solid.d.mts",
+        "default": "./dist/frameworks/solid/solid.mjs"
+      },
+      "require": {
+        "types": "./dist/frameworks/solid/solid.d.cts",
+        "default": "./dist/frameworks/solid/solid.cjs"
+      }
+    },
     "./utils": {
       "import": {
         "types": "./dist/utils/index.d.mts",
@@ -67,10 +107,26 @@
     "proxy-compare": "3.0.1"
   },
   "peerDependencies": {
-    "react": ">=18.0.0"
+    "react": ">=18.0.0",
+    "vue": ">=3.0.0",
+    "svelte": ">=4.0.0",
+    "@angular/core": ">=17.0.0",
+    "solid-js": ">=1.0.0"
   },
   "peerDependenciesMeta": {
     "react": {
+      "optional": true
+    },
+    "vue": {
+      "optional": true
+    },
+    "svelte": {
+      "optional": true
+    },
+    "@angular/core": {
+      "optional": true
+    },
+    "solid-js": {
       "optional": true
     }
   },
