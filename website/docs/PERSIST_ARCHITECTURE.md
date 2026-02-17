@@ -47,16 +47,15 @@ The key insight: writing `proxy[key] = value` during hydration flows through the
 ## File Structure
 
 ```
-packages/store/
-  src/
-    index.ts                    # Existing barrel (unchanged)
-    utils/
-      index.ts                  # Barrel: export { persist } from './persist/persist'
-      persist/
-        persist.ts              # persist(), types, and all logic
-        persist.test.ts         # tests with mock storage adapters
-  package.json                  # "./utils" export entry
-  tsdown.config.ts              # 'src/utils/index.ts' in entry array
+src/
+  index.ts                      # Existing barrel (unchanged)
+  utils/
+    index.ts                    # Barrel: persist, devtools, subscribeKey, withHistory
+    persist/
+      persist.ts                # persist(), types, and all logic
+      persist.test.ts           # tests with mock storage adapters
+package.json                    # "./utils" export entry
+tsdown.config.ts                # 'src/utils/index.ts' in entry array
 ```
 
 ## Internal State

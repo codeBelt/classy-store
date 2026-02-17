@@ -148,6 +148,30 @@ const userData = useStore(myStore, (store) => ({
 }), shallowEqual);
 ```
 
+### `useLocalStore(factory)`
+
+Creates a component-scoped reactive store. Each component instance gets its own isolated store, garbage collected on unmount.
+
+```tsx
+import {useLocalStore, useStore} from '@codebelt/classy-store/react';
+
+class CounterStore {
+  count = 0;
+  increment() { this.count++; }
+}
+
+function Counter() {
+  const store = useLocalStore(() => new CounterStore());
+  const count = useStore(store, (s) => s.count);
+
+  return <button onClick={() => store.increment()}>Count: {count}</button>;
+}
+```
+
+The factory runs once per mount. Subsequent re-renders reuse the same store instance.
+
+> See the [Local Stores](./TUTORIAL.md#local-stores) section in the Tutorial for persistence patterns and more examples.
+
 ### `snapshot(store)`
 
 Creates a deeply frozen, immutable snapshot of the current state. Used internally by `useStore` but also available directly.
