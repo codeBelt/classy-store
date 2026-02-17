@@ -4,6 +4,8 @@ import {themes as prismThemes} from 'prism-react-renderer';
 
 // This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
 
+const baseUrl = '/classy-store/';
+
 const config: Config = {
   title: 'Classy Store',
   tagline: 'Class-based reactive state management for React',
@@ -14,7 +16,7 @@ const config: Config = {
   },
 
   url: 'https://codebelt.github.io',
-  baseUrl: '/classy-store/',
+  baseUrl,
 
   organizationName: 'codebelt',
   projectName: 'classy-store',
@@ -72,9 +74,11 @@ const config: Config = {
           label: 'Docs',
         },
         {
-          to: '/examples',
+          href: `pathname://${baseUrl}demos/index.html`,
           label: 'Examples',
           position: 'left',
+          target: '_self',
+          className: 'navbar-examples-link',
         },
         {
           href: 'https://github.com/codebelt/classy-store',

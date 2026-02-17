@@ -80,7 +80,17 @@ export function NavSidebar({
           </div>
         </div>
 
-        <nav className="p-3 overflow-y-auto h-[calc(100%-60px)]">
+        <div className="px-3 pt-3">
+          <a
+            href="../"
+            className="flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-medium text-indigo-400 hover:bg-indigo-500/10 transition-colors"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+            Back to Docs
+          </a>
+        </div>
+
+        <nav className="p-3 overflow-y-auto h-[calc(100%-108px)]">
           {navGroups.map((group) => (
             <div key={group.label} className="mb-4">
               <div className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider px-2 mb-1.5">
