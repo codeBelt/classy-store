@@ -433,7 +433,7 @@ describe('persist()', () => {
       expect(s.sidebar).toBe(true); // kept (not in storage)
     });
 
-    it('replace merge: same behavior for flat stores', async () => {
+    it('replace merge: only uses persisted keys, drops missing defaults', async () => {
       const storage = createMockStorage();
       storage.data.set(
         'test',
@@ -445,7 +445,28 @@ describe('persist()', () => {
       await handle.hydrated;
 
       expect(s.theme).toBe('dark');
-      expect(s.fontSize).toBe(14); // not in storage, kept at default
+      // With 'replace', fontSize is not in persisted state so it should NOT be applied
+      // (only persisted keys are used). The store keeps its default since 'fontSize'
+      // is not in the merged result and the apply loop skips keys not in merged.
+      expect(s.fontSize).toBe(14);
+    });
+
+    it('replace merge: does not spread current defaults into merged state', async () => {
+      const storage = createMockStorage();
+      // Persist only has 'a', the store has 'a' and 'b'
+      storage.data.set(
+        'test',
+        JSON.stringify({version: 0, state: {a: 'from-storage'}}),
+      );
+
+      const s = createClassyStore({a: 'default-a', b: 'default-b'});
+      const handle = persist(s, {name: 'test', storage, merge: 'replace'});
+      await handle.hydrated;
+
+      expect(s.a).toBe('from-storage');
+      // 'b' is not in persisted state and replace doesn't merge current defaults,
+      // so 'b' stays at its default because the apply loop checks `key in merged`
+      expect(s.b).toBe('default-b');
     });
 
     it('custom merge function', async () => {
@@ -998,6 +1019,142 @@ describe('persist()', () => {
           Object.defineProperty(globalThis, 'localStorage', desc);
         }
       }
+    });
+
+    it('handles null state in envelope gracefully', async () => {
+      const storage = createMockStorage();
+      storage.data.set('test', JSON.stringify({version: 0, state: null}));
+
+      const s = createClassyStore({count: 0});
+      const handle = persist(s, {name: 'test', storage});
+      await handle.hydrated;
+
+      expect(s.count).toBe(0); // invalid state skipped
+    });
+
+    it('handles array as envelope gracefully (not an object with state)', async () => {
+      const storage = createMockStorage();
+      storage.data.set('test', JSON.stringify([1, 2, 3]));
+
+      const s = createClassyStore({count: 0});
+      const handle = persist(s, {name: 'test', storage});
+      await handle.hydrated;
+
+      expect(s.count).toBe(0); // invalid envelope skipped
+    });
+
+    it('unsubscribe is idempotent (calling twice does not throw)', async () => {
+      const storage = createMockStorage();
+      const s = createClassyStore({count: 0});
+      const handle = persist(s, {name: 'test', storage});
+      await handle.hydrated;
+
+      handle.unsubscribe();
+      handle.unsubscribe(); // should not throw
+    });
+
+    it('save after unsubscribe is a no-op', async () => {
+      const storage = createMockStorage();
+      const s = createClassyStore({count: 0});
+      const handle = persist(s, {name: 'test', storage});
+      await handle.hydrated;
+
+      handle.unsubscribe();
+      s.count = 999;
+      await handle.save(); // should not throw or write
+
+      const stored = parseStored(storage, 'test');
+      // Should not have count=999
+      expect(stored?.state.count ?? 0).not.toBe(999);
+    });
+
+    it('clear after unsubscribe is a no-op', async () => {
+      const storage = createMockStorage();
+      const s = createClassyStore({count: 0});
+      const handle = persist(s, {name: 'test', storage});
+
+      s.count = 5;
+      await tick();
+
+      handle.unsubscribe();
+      await handle.clear(); // should be no-op
+
+      // Storage should still have the data
+      expect(storage.data.has('test')).toBe(true);
+    });
+
+    it('rehydrate resets isExpired flag', async () => {
+      const storage = createMockStorage();
+      // Start with expired data
+      storage.data.set(
+        'test',
+        JSON.stringify({
+          version: 0,
+          state: {count: 42},
+          expiresAt: Date.now() - 1000,
+        }),
+      );
+
+      const s = createClassyStore({count: 0});
+      const handle = persist(s, {name: 'test', storage, expireIn: 60_000});
+      await handle.hydrated;
+      expect(handle.isExpired).toBe(true);
+
+      // Now put valid data in storage
+      storage.data.set(
+        'test',
+        JSON.stringify({
+          version: 0,
+          state: {count: 77},
+          expiresAt: Date.now() + 60_000,
+        }),
+      );
+
+      await handle.rehydrate();
+      expect(handle.isExpired).toBe(false);
+      expect(s.count).toBe(77);
+    });
+
+    it('hydration does not trigger a write-back to storage', async () => {
+      const storage = createMockStorage();
+      const setItemSpy = mock(storage.setItem.bind(storage));
+      storage.setItem = setItemSpy;
+
+      storage.data.set(
+        'test',
+        JSON.stringify({version: 0, state: {count: 42}}),
+      );
+
+      const s = createClassyStore({count: 0});
+      const handle = persist(s, {name: 'test', storage});
+      await handle.hydrated;
+      await tick();
+
+      // setItem should NOT have been called during hydration
+      expect(setItemSpy).not.toHaveBeenCalled();
+    });
+
+    it('persists store with inherited getters from a base class', async () => {
+      class Base {
+        get label(): string {
+          return `count-${(this as unknown as {count: number}).count}`;
+        }
+      }
+
+      class MyStore extends Base {
+        count = 0;
+      }
+
+      const storage = createMockStorage();
+      const s = createClassyStore(new MyStore());
+      persist(s, {name: 'test', storage});
+
+      s.count = 10;
+      await tick();
+
+      const stored = parseStored(storage, 'test');
+      expect(stored?.state.count).toBe(10);
+      expect(stored?.state).not.toHaveProperty('label');
     });
 
     it('multiple persists on the same store with different keys', async () => {

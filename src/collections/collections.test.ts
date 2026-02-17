@@ -260,3 +260,158 @@ describe('collections inside class store', () => {
     expect(s.labels.has('bug')).toBe(true);
   });
 });
+
+// ── ReactiveMap — additional edge cases ────────────────────────────────────
+
+describe('reactiveMap() — edge cases', () => {
+  test('supports numeric keys', () => {
+    const m = reactiveMap<number, string>();
+    m.set(1, 'one');
+    m.set(2, 'two');
+    expect(m.get(1)).toBe('one');
+    expect(m.size).toBe(2);
+    expect(m.delete(1)).toBe(true);
+    expect(m.size).toBe(1);
+  });
+
+  test('supports object keys with Object.is comparison', () => {
+    const key1 = {id: 1};
+    const key2 = {id: 2};
+    const m = reactiveMap<object, string>();
+    m.set(key1, 'first');
+    m.set(key2, 'second');
+
+    expect(m.get(key1)).toBe('first');
+    expect(m.get(key2)).toBe('second');
+
+    // Different object with same shape is NOT the same key
+    expect(m.get({id: 1})).toBeUndefined();
+  });
+
+  test('set() returns this for chaining', () => {
+    const m = reactiveMap<string, number>();
+    const result = m.set('a', 1);
+    expect(result).toBe(m);
+
+    // Chaining
+    m.set('b', 2).set('c', 3);
+    expect(m.size).toBe(3);
+  });
+
+  test('handles NaN as key (Object.is(NaN, NaN) is true)', () => {
+    const m = reactiveMap<number, string>();
+    m.set(Number.NaN, 'nan-value');
+
+    expect(m.has(Number.NaN)).toBe(true);
+    expect(m.get(Number.NaN)).toBe('nan-value');
+    expect(m.size).toBe(1);
+
+    // Overwriting NaN key
+    m.set(Number.NaN, 'updated');
+    expect(m.size).toBe(1);
+    expect(m.get(Number.NaN)).toBe('updated');
+  });
+
+  test('delete returns false for non-existent key', () => {
+    const m = reactiveMap<string, number>();
+    expect(m.delete('missing')).toBe(false);
+  });
+
+  test('forEach receives the map as third argument', () => {
+    const m = reactiveMap([['a', 1]] as [string, number][]);
+    m.forEach((_v, _k, map) => {
+      expect(map).toBe(m);
+    });
+  });
+
+  test('snapshot of mutated ReactiveMap reflects latest state', async () => {
+    const s = createClassyStore({m: reactiveMap<string, number>()});
+    s.m.set('x', 10);
+    s.m.set('y', 20);
+    await flush();
+
+    const snap = snapshot(s);
+    expect(snap.m._entries).toEqual([
+      ['x', 10],
+      ['y', 20],
+    ]);
+  });
+});
+
+// ── ReactiveSet — additional edge cases ────────────────────────────────────
+
+describe('reactiveSet() — edge cases', () => {
+  test('add() returns this for chaining', () => {
+    const s = reactiveSet<number>();
+    const result = s.add(1);
+    expect(result).toBe(s);
+
+    s.add(2).add(3);
+    expect(s.size).toBe(3);
+  });
+
+  test('handles NaN values (Object.is(NaN, NaN) is true)', () => {
+    const s = reactiveSet<number>();
+    s.add(Number.NaN);
+
+    expect(s.has(Number.NaN)).toBe(true);
+    expect(s.size).toBe(1);
+
+    // Adding NaN again should be no-op
+    s.add(Number.NaN);
+    expect(s.size).toBe(1);
+
+    expect(s.delete(Number.NaN)).toBe(true);
+    expect(s.size).toBe(0);
+  });
+
+  test('delete returns false for non-existent value', () => {
+    const s = reactiveSet<string>();
+    expect(s.delete('missing')).toBe(false);
+  });
+
+  test('forEach receives the set as third argument', () => {
+    const s = reactiveSet([1]);
+    s.forEach((_v, _k, set) => {
+      expect(set).toBe(s);
+    });
+  });
+
+  test('entries returns [value, value] pairs matching Set spec', () => {
+    const s = reactiveSet([10, 20]);
+    expect([...s.entries()]).toEqual([
+      [10, 10],
+      [20, 20],
+    ]);
+  });
+
+  test('keys and values return the same sequence', () => {
+    const s = reactiveSet(['a', 'b', 'c']);
+    expect([...s.keys()]).toEqual([...s.values()]);
+  });
+
+  test('clear on empty set does not throw', () => {
+    const s = reactiveSet<number>();
+    expect(() => s.clear()).not.toThrow();
+  });
+
+  test('snapshot of mutated ReactiveSet reflects latest state', async () => {
+    const s = createClassyStore({tags: reactiveSet<string>()});
+    s.tags.add('a');
+    s.tags.add('b');
+    s.tags.delete('a');
+    await flush();
+
+    const snap = snapshot(s);
+    expect(snap.tags._items).toEqual(['b']);
+  });
+
+  test('add duplicate after delete re-adds the value', () => {
+    const s = reactiveSet([1, 2, 3]);
+    s.delete(2);
+    expect(s.has(2)).toBe(false);
+    s.add(2);
+    expect(s.has(2)).toBe(true);
+    expect(s.size).toBe(3);
+  });
+});

@@ -79,4 +79,52 @@ describe('shallowEqual', () => {
   it('treats +0 and -0 as not equal (Object.is semantics)', () => {
     expect(shallowEqual(+0, -0)).toBe(false);
   });
+
+  // ── Additional edge cases ───────────────────────────────────────────
+
+  it('returns false for array vs non-array-like object', () => {
+    expect(shallowEqual([1, 2] as unknown, {a: 1, b: 2} as unknown)).toBe(
+      false,
+    );
+  });
+
+  it('returns true for empty objects', () => {
+    expect(shallowEqual({}, {})).toBe(true);
+  });
+
+  it('returns true for empty arrays', () => {
+    expect(shallowEqual([], [])).toBe(true);
+  });
+
+  it('returns false for undefined vs null', () => {
+    expect(shallowEqual(undefined, null as unknown as undefined)).toBe(false);
+  });
+
+  it('handles objects with undefined values', () => {
+    expect(shallowEqual({a: undefined}, {a: undefined})).toBe(true);
+    expect(
+      shallowEqual({a: undefined}, {a: null} as unknown as {a: undefined}),
+    ).toBe(false);
+  });
+
+  it('compares nested arrays by reference only', () => {
+    const arr1 = [1, 2];
+    const arr2 = [1, 2];
+    expect(shallowEqual({a: arr1}, {a: arr1})).toBe(true);
+    expect(shallowEqual({a: arr1}, {a: arr2})).toBe(false);
+  });
+
+  it('handles arrays with NaN elements', () => {
+    expect(shallowEqual([Number.NaN], [Number.NaN])).toBe(true);
+    expect(shallowEqual([Number.NaN, 1], [Number.NaN, 2])).toBe(false);
+  });
+
+  it('returns false when one is array and the other is not', () => {
+    expect(shallowEqual([1] as unknown, 'not-array' as unknown)).toBe(false);
+    expect(shallowEqual('not-array' as unknown, [1] as unknown)).toBe(false);
+  });
+
+  it('handles objects with symbol-like string keys', () => {
+    expect(shallowEqual({'Symbol(foo)': 1}, {'Symbol(foo)': 1})).toBe(true);
+  });
 });

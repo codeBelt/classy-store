@@ -150,4 +150,93 @@ describe('findGetterDescriptor', () => {
     const obj = {x: 10, y: 20};
     expect(findGetterDescriptor(obj, 'x')).toBeUndefined();
   });
+
+  it('finds getter defined via Object.defineProperty', () => {
+    const obj = {};
+    Object.defineProperty(obj, 'computed', {
+      get() {
+        return 42;
+      },
+      configurable: true,
+    });
+    const desc = findGetterDescriptor(obj, 'computed');
+    expect(desc).toBeDefined();
+    expect(desc?.get?.call(obj)).toBe(42);
+  });
+
+  it('finds getter through multiple levels of inheritance', () => {
+    class A {
+      get val() {
+        return 'A';
+      }
+    }
+    class B extends A {}
+    class C extends B {}
+
+    const instance = new C();
+    const desc = findGetterDescriptor(instance, 'val');
+    expect(desc).toBeDefined();
+    expect(desc?.get?.call(instance)).toBe('A');
+  });
+
+  it('returns undefined for symbol properties without getters', () => {
+    const sym = Symbol('test');
+    const obj = {[sym]: 42};
+    expect(findGetterDescriptor(obj, sym)).toBeUndefined();
+  });
+});
+
+// ── isPlainObject — additional ────────────────────────────────────────────────
+
+describe('isPlainObject — additional', () => {
+  it('returns false for functions', () => {
+    expect(isPlainObject(() => {})).toBe(false);
+    expect(isPlainObject(() => {})).toBe(false);
+  });
+
+  it('returns true for Object.create(Object.prototype)', () => {
+    expect(isPlainObject(Object.create(Object.prototype))).toBe(true);
+  });
+
+  it('returns false for Object.create with custom proto', () => {
+    const proto = {custom: true};
+    expect(isPlainObject(Object.create(proto))).toBe(false);
+  });
+});
+
+// ── canProxy — additional ────────────────────────────────────────────────────
+
+describe('canProxy — additional', () => {
+  it('returns false for Promise', () => {
+    expect(canProxy(Promise.resolve())).toBe(false);
+  });
+
+  it('returns false for WeakMap and WeakSet', () => {
+    expect(canProxy(new WeakMap())).toBe(false);
+    expect(canProxy(new WeakSet())).toBe(false);
+  });
+
+  it('returns true for nested arrays', () => {
+    expect(
+      canProxy([
+        [1, 2],
+        [3, 4],
+      ]),
+    ).toBe(true);
+  });
+
+  it('returns false for functions', () => {
+    expect(canProxy(() => {})).toBe(false);
+  });
+
+  it('PROXYABLE on parent class allows child instances', () => {
+    // biome-ignore lint/complexity/noStaticOnlyClass: test needs a minimal parent with only the static PROXYABLE symbol
+    class Parent {
+      static [PROXYABLE] = true;
+    }
+    class Child extends Parent {
+      value = 0;
+    }
+    expect(canProxy(new Child())).toBe(true);
+  });
 });
