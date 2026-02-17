@@ -8,7 +8,8 @@ const baseUrl = '/classy-store/';
 
 const config: Config = {
   title: 'Classy Store',
-  tagline: 'Class-based reactive state management for React, Vue, Svelte, Solid, and Angular',
+  tagline:
+    'Class-based reactive state management for React, Vue, Svelte, Solid, and Angular',
   favicon: 'img/favicon.ico',
 
   future: {
