@@ -16,7 +16,7 @@ import type {Snapshot} from '../types';
  * Re-renders only when the selected value changes (compared via `Object.is`
  * by default, or a custom `isEqual`).
  *
- * @param proxyStore - A reactive proxy created by `store()`.
+ * @param proxyStore - A reactive proxy created by `createClassyStore()`.
  * @param selector  - Picks data from the immutable snapshot.
  * @param isEqual   - Optional custom equality function (default: `Object.is`).
  */
@@ -32,7 +32,7 @@ export function useStore<T extends object, S>(
  * Returns a `proxy-compare` tracking proxy over the immutable snapshot.
  * The component only re-renders when a property it actually read changes.
  *
- * @param proxyStore - A reactive proxy created by `store()`.
+ * @param proxyStore - A reactive proxy created by `createClassyStore()`.
  */
 export function useStore<T extends object>(proxyStore: T): Snapshot<T>;
 

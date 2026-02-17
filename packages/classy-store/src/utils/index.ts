@@ -6,6 +6,7 @@
  * - `devtools(store, options?)` -- connect a store to Redux DevTools for inspection and time-travel
  * - `subscribeKey(store, key, callback)` -- subscribe to changes on a single property
  * - `withHistory(store, options?)` -- add undo/redo capability via a snapshot stack
+ * - `shallowEqual(a, b)` -- shallow equality helper for use with `useStore` selectors
  *
  * @module @codebelt/classy-store/utils
  */

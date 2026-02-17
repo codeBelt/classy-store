@@ -22,6 +22,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
       - name: Create Release PR or Detect Publishable Versions
         id: changesets
         uses: changesets/action@v1
@@ -46,7 +47,7 @@ jobs:
       - name: Create git tags
         if: steps.changesets.outputs.hasChangesets == 'false'
         run: |
-          npx changeset tag
+          bunx changeset tag
           git push --follow-tags
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
