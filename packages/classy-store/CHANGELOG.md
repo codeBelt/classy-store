@@ -1,5 +1,11 @@
 # @codebelt/classy-store
 
+## 0.1.2
+
+### Patch Changes
+
+- [`b5a84ac`](https://github.com/codeBelt/classy-store/commit/b5a84ac80747dea5c74f14001187b4cbc12b9d6c) Thanks [@codeBelt](https://github.com/codeBelt)! - Restructure to Bun workspace monorepo
+
 ## 0.1.1
 
 ### Patch Changes
