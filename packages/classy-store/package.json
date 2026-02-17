@@ -4,7 +4,8 @@
   "description": "Class-based reactive state management — ES6 Proxy + immutable snapshots",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/codeBelt/classy-store.git"
+    "url": "git+https://github.com/codeBelt/classy-store.git",
+    "directory": "packages/classy-store"
   },
   "type": "module",
   "main": "./dist/index.cjs",
@@ -47,7 +48,8 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md"
   ],
   "scripts": {
     "---------- Dev --------------------------------------------------------": "",
@@ -58,6 +60,7 @@
     "test": "bun test",
     "---------- Lint --------------------------------------------------------": "",
     "typecheck": "tsc --noEmit",
+    "prepublishOnly": "cp ../../README.md .",
     "-----------------------------------------------------------------------": ""
   },
   "dependencies": {

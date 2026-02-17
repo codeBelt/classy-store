@@ -32,7 +32,7 @@
     "---------- CI / Helper ------------------------------------------------": "",
     "checkall": "bun run lint:fix && bun run test && bun run typecheck",
     "clean": "find . -name node_modules -o -name .next -o -name dist -o -name build | xargs rm -rf",
-    "deps": "bun update --latest",
+    "deps": "bun update --interactive --recursive --latest",
     "-----------------------------------------------------------------------": ""
   },
   "devDependencies": {
