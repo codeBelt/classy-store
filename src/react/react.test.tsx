@@ -2,7 +2,7 @@ import {afterEach, describe, expect, it, mock} from 'bun:test';
 import {act, type ReactNode} from 'react';
 import {createRoot} from 'react-dom/client';
 import {createClassyStore} from '../core/core';
-import {useStore} from './react';
+import {useLocalStore, useStore} from './react';
 
 // ── Test harness ────────────────────────────────────────────────────────────
 
@@ -368,5 +368,157 @@ describe('useStore — auto-tracked mode', () => {
     });
 
     expect(container.textContent).toBe('40');
+  });
+});
+
+// ── useLocalStore tests ─────────────────────────────────────────────────────
+
+describe('useLocalStore', () => {
+  afterEach(teardown);
+
+  it('creates a component-scoped store and renders state', () => {
+    class Counter {
+      count = 42;
+    }
+
+    function Display() {
+      const store = useLocalStore(() => new Counter());
+      const count = useStore(store, (snap) => snap.count);
+      return <div>{count}</div>;
+    }
+
+    setup();
+    render(<Display />);
+    expect(container.textContent).toBe('42');
+  });
+
+  it('responds to mutations on the local store', async () => {
+    class Counter {
+      count = 0;
+      increment() {
+        this.count++;
+      }
+    }
+
+    let storeRef: Counter;
+
+    function Display() {
+      const store = useLocalStore(() => new Counter());
+      storeRef = store;
+      const count = useStore(store, (snap) => snap.count);
+      return <div>{count}</div>;
+    }
+
+    setup();
+    render(<Display />);
+    expect(container.textContent).toBe('0');
+
+    await act(async () => {
+      storeRef.increment();
+      await flush();
+    });
+
+    expect(container.textContent).toBe('1');
+  });
+
+  it('each component instance gets its own isolated store', () => {
+    class Counter {
+      count: number;
+      constructor(initial: number) {
+        this.count = initial;
+      }
+    }
+
+    function Display({initial}: {initial: number}) {
+      const store = useLocalStore(() => new Counter(initial));
+      const count = useStore(store, (snap) => snap.count);
+      return <div data-initial={initial}>{count}</div>;
+    }
+
+    setup();
+    render(
+      <>
+        <Display initial={10} />
+        <Display initial={20} />
+      </>,
+    );
+
+    const divs = container.querySelectorAll('div');
+    expect(divs[0].textContent).toBe('10');
+    expect(divs[1].textContent).toBe('20');
+  });
+
+  it('works with computed getters', async () => {
+    class Store {
+      count = 5;
+      get doubled() {
+        return this.count * 2;
+      }
+      setCount(value: number) {
+        this.count = value;
+      }
+    }
+
+    let storeRef: Store;
+
+    function Display() {
+      const store = useLocalStore(() => new Store());
+      storeRef = store;
+      const doubled = useStore(store, (snap) => snap.doubled);
+      return <div>{doubled}</div>;
+    }
+
+    setup();
+    render(<Display />);
+    expect(container.textContent).toBe('10');
+
+    await act(async () => {
+      storeRef.setCount(20);
+      await flush();
+    });
+
+    expect(container.textContent).toBe('40');
+  });
+
+  it('works with auto-tracked mode', async () => {
+    class Store {
+      name = 'hello';
+      count = 0;
+    }
+
+    let storeRef: Store;
+    const renderCount = mock(() => {});
+
+    function Display() {
+      const store = useLocalStore(() => new Store());
+      storeRef = store;
+      const snap = useStore(store);
+      renderCount();
+      return <div>{snap.name}</div>;
+    }
+
+    setup();
+    render(<Display />);
+    expect(container.textContent).toBe('hello');
+    expect(renderCount).toHaveBeenCalledTimes(1);
+
+    // Change name — accessed by component → should re-render.
+    await act(async () => {
+      storeRef.name = 'world';
+      await flush();
+    });
+
+    expect(container.textContent).toBe('world');
+    expect(renderCount).toHaveBeenCalledTimes(2);
+
+    // Change count — NOT accessed by component, but auto-tracked mode
+    // re-renders because the snapshot reference changes on any mutation.
+    // (Documented behavior — see "Set-then-revert" in TUTORIAL.md.)
+    await act(async () => {
+      storeRef.count = 99;
+      await flush();
+    });
+
+    expect(renderCount).toHaveBeenCalledTimes(3);
   });
 });
