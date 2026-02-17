@@ -32,6 +32,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Publish to npm
         if: steps.changesets.outputs.hasChangesets == 'false'
+        working-directory: packages/classy-store
         run: |
           npm install -g npm@latest
           npm publish --provenance --access public
