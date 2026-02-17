@@ -112,6 +112,136 @@ describe('subscribeKey', () => {
     expect(cb).toHaveBeenCalledTimes(1);
   });
 
+  it('works with boolean values', async () => {
+    class Store {
+      active = false;
+    }
+
+    const store = createClassyStore(new Store());
+    const cb = mock((_value: boolean, _prev: boolean) => {});
+
+    subscribeKey(store, 'active', cb);
+
+    store.active = true;
+    await tick();
+
+    expect(cb).toHaveBeenCalledTimes(1);
+    expect(cb).toHaveBeenCalledWith(true, false);
+
+    store.active = false;
+    await tick();
+
+    expect(cb).toHaveBeenCalledTimes(2);
+    expect(cb).toHaveBeenCalledWith(false, true);
+  });
+
+  it('works with string values', async () => {
+    class Store {
+      status = 'idle';
+    }
+
+    const store = createClassyStore(new Store());
+    const values: string[] = [];
+
+    subscribeKey(store, 'status', (v) => values.push(v));
+
+    store.status = 'loading';
+    await tick();
+    store.status = 'done';
+    await tick();
+
+    expect(values).toEqual(['loading', 'done']);
+  });
+
+  it('works with null and undefined transitions', async () => {
+    class Store {
+      data: string | null = null;
+    }
+
+    const store = createClassyStore(new Store());
+    const cb = mock((_value: string | null, _prev: string | null) => {});
+
+    subscribeKey(store, 'data', cb);
+
+    store.data = 'hello';
+    await tick();
+    expect(cb).toHaveBeenCalledWith('hello', null);
+
+    store.data = null;
+    await tick();
+    expect(cb).toHaveBeenCalledWith(null, 'hello');
+  });
+
+  it('can subscribe to multiple keys independently', async () => {
+    class Store {
+      count = 0;
+      name = 'hello';
+    }
+
+    const store = createClassyStore(new Store());
+    const countCb = mock(() => {});
+    const nameCb = mock(() => {});
+
+    subscribeKey(store, 'count', countCb);
+    subscribeKey(store, 'name', nameCb);
+
+    store.count = 1;
+    await tick();
+
+    expect(countCb).toHaveBeenCalledTimes(1);
+    expect(nameCb).toHaveBeenCalledTimes(0);
+
+    store.name = 'world';
+    await tick();
+
+    expect(countCb).toHaveBeenCalledTimes(1);
+    expect(nameCb).toHaveBeenCalledTimes(1);
+  });
+
+  it('multiple subscribers on the same key all fire', async () => {
+    class Store {
+      count = 0;
+    }
+
+    const store = createClassyStore(new Store());
+    const cb1 = mock(() => {});
+    const cb2 = mock(() => {});
+
+    subscribeKey(store, 'count', cb1);
+    subscribeKey(store, 'count', cb2);
+
+    store.count = 5;
+    await tick();
+
+    expect(cb1).toHaveBeenCalledTimes(1);
+    expect(cb2).toHaveBeenCalledTimes(1);
+  });
+
+  it('unsubscribing one subscriber does not affect others', async () => {
+    class Store {
+      count = 0;
+    }
+
+    const store = createClassyStore(new Store());
+    const cb1 = mock(() => {});
+    const cb2 = mock(() => {});
+
+    const unsub1 = subscribeKey(store, 'count', cb1);
+    subscribeKey(store, 'count', cb2);
+
+    store.count = 1;
+    await tick();
+    expect(cb1).toHaveBeenCalledTimes(1);
+    expect(cb2).toHaveBeenCalledTimes(1);
+
+    unsub1();
+
+    store.count = 2;
+    await tick();
+    expect(cb1).toHaveBeenCalledTimes(1); // no more calls
+    expect(cb2).toHaveBeenCalledTimes(2); // still fires
+  });
+
   it('does not fire when the same value is assigned', async () => {
     class Store {
       count = 42;

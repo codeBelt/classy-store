@@ -247,6 +247,171 @@ describe('withHistory', () => {
     h.dispose();
   });
 
+  it('undo at the beginning is a no-op', () => {
+    class Store {
+      count = 0;
+    }
+
+    const store = createClassyStore(new Store());
+    const h = withHistory(store);
+
+    h.undo(); // should not throw or change anything
+    expect(store.count).toBe(0);
+    expect(h.canUndo).toBe(false);
+
+    h.dispose();
+  });
+
+  it('redo at the end is a no-op', async () => {
+    class Store {
+      count = 0;
+    }
+
+    const store = createClassyStore(new Store());
+    const h = withHistory(store);
+
+    store.count = 1;
+    await tick();
+
+    h.redo(); // already at the end — no-op
+    expect(store.count).toBe(1);
+    expect(h.canRedo).toBe(false);
+
+    h.dispose();
+  });
+
+  it('skips methods during state restoration', async () => {
+    class Store {
+      count = 0;
+      increment() {
+        this.count++;
+      }
+    }
+
+    const store = createClassyStore(new Store());
+    const h = withHistory(store);
+
+    store.increment();
+    await tick();
+
+    expect(store.count).toBe(1);
+
+    h.undo();
+    expect(store.count).toBe(0);
+    expect(typeof store.increment).toBe('function');
+
+    h.dispose();
+  });
+
+  it('resume after pause captures a fresh snapshot on next mutation', async () => {
+    class Store {
+      count = 0;
+    }
+
+    const store = createClassyStore(new Store());
+    const h = withHistory(store);
+
+    store.count = 1;
+    await tick();
+
+    h.pause();
+    store.count = 50;
+    await tick();
+    store.count = 100;
+    await tick();
+    h.resume();
+
+    store.count = 200;
+    await tick();
+
+    // History: [0, 1, 200] — 50 and 100 skipped
+    h.undo();
+    expect(store.count).toBe(1);
+    h.undo();
+    expect(store.count).toBe(0);
+    expect(h.canUndo).toBe(false);
+
+    h.dispose();
+  });
+
+  it('multiple undo-redo cycles work correctly', async () => {
+    class Store {
+      count = 0;
+    }
+
+    const store = createClassyStore(new Store());
+    const h = withHistory(store);
+
+    store.count = 1;
+    await tick();
+    store.count = 2;
+    await tick();
+
+    // Cycle 1
+    h.undo();
+    expect(store.count).toBe(1);
+    h.redo();
+    expect(store.count).toBe(2);
+
+    // Cycle 2
+    h.undo();
+    h.undo();
+    expect(store.count).toBe(0);
+    h.redo();
+    h.redo();
+    expect(store.count).toBe(2);
+
+    h.dispose();
+  });
+
+  it('handles limit of 2 (minimum useful history)', async () => {
+    class Store {
+      count = 0;
+    }
+
+    const store = createClassyStore(new Store());
+    const h = withHistory(store, {limit: 2});
+
+    store.count = 1;
+    await tick();
+    // history: [0, 1] — at limit
+
+    store.count = 2;
+    await tick();
+    // history: [1, 2] — shifted
+
+    h.undo();
+    expect(store.count).toBe(1);
+    expect(h.canUndo).toBe(false);
+
+    h.redo();
+    expect(store.count).toBe(2);
+
+    h.dispose();
+  });
+
+  it('batched mutations (within one tick) produce one history entry', async () => {
+    class Store {
+      x = 0;
+      y = 0;
+    }
+
+    const store = createClassyStore(new Store());
+    const h = withHistory(store);
+
+    store.x = 10;
+    store.y = 20;
+    await tick();
+
+    // Should be one history entry for both changes
+    h.undo();
+    expect(store.x).toBe(0);
+    expect(store.y).toBe(0);
+    expect(h.canUndo).toBe(false);
+
+    h.dispose();
+  });
+
   it('dispose stops recording and cleans up', async () => {
     class Store {
       count = 0;

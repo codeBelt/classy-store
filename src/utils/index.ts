@@ -12,6 +12,7 @@
 
 export type {DevtoolsOptions} from './devtools/devtools';
 export {devtools} from './devtools/devtools';
+export {shallowEqual} from './equality/equality';
 export type {HistoryHandle, HistoryOptions} from './history/history';
 export {withHistory} from './history/history';
 export type {
@@ -22,4 +23,3 @@ export type {
 } from './persist/persist';
 export {persist} from './persist/persist';
 export {subscribeKey} from './subscribe-key/subscribe-key';
-export {shallowEqual} from './equality/equality';

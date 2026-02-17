@@ -386,6 +386,7 @@ export function persist<T extends object>(
     if (
       !envelope ||
       typeof envelope !== 'object' ||
+      envelope.state === null ||
       typeof envelope.state !== 'object'
     ) {
       return;
@@ -449,11 +450,11 @@ export function persist<T extends object>(
     const raw = await storage.getItem(name);
     if (raw !== null) {
       hydrating = true;
-      try {
-        applyPersistedState(raw);
-      } finally {
-        hydrating = false;
-      }
+      applyPersistedState(raw);
+      // Reset after microtask so the batched subscription callback
+      // (which fires via queueMicrotask) still sees the flag as true.
+      await new Promise<void>((r) => queueMicrotask(r));
+      hydrating = false;
     }
   }
 

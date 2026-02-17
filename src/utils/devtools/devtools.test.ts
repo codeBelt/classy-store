@@ -189,6 +189,234 @@ describe('devtools', () => {
     expect(store.doubled).toBe(6);
   });
 
+  it('handles JUMP_TO_ACTION time-travel', async () => {
+    const conn = createMockConnection();
+    const ext = createMockExtension(conn);
+    setExtension(ext);
+
+    class Store {
+      count = 0;
+    }
+
+    const store = createClassyStore(new Store());
+    devtools(store);
+
+    store.count = 10;
+    await tick();
+
+    conn._listener?.({
+      type: 'DISPATCH',
+      payload: {type: 'JUMP_TO_ACTION'},
+      state: JSON.stringify({count: 3}),
+    });
+    await tick();
+
+    expect(store.count).toBe(3);
+  });
+
+  it('skips methods during time-travel restore', async () => {
+    const conn = createMockConnection();
+    const ext = createMockExtension(conn);
+    setExtension(ext);
+
+    class Store {
+      count = 0;
+      increment() {
+        this.count++;
+      }
+    }
+
+    const store = createClassyStore(new Store());
+    devtools(store);
+
+    conn._listener?.({
+      type: 'DISPATCH',
+      payload: {type: 'JUMP_TO_STATE'},
+      state: JSON.stringify({count: 5, increment: 'should be skipped'}),
+    });
+    await tick();
+
+    expect(store.count).toBe(5);
+    expect(typeof store.increment).toBe('function');
+  });
+
+  it('does not send state updates during time-travel', async () => {
+    const conn = createMockConnection();
+    const ext = createMockExtension(conn);
+    setExtension(ext);
+
+    class Store {
+      count = 0;
+    }
+
+    const store = createClassyStore(new Store());
+    devtools(store);
+
+    store.count = 5;
+    await tick();
+    const sendCountBefore = conn.send.mock.calls.length;
+
+    // Simulate time-travel — should NOT trigger a send
+    conn._listener?.({
+      type: 'DISPATCH',
+      payload: {type: 'JUMP_TO_STATE'},
+      state: JSON.stringify({count: 0}),
+    });
+    await tick();
+
+    expect(conn.send.mock.calls.length).toBe(sendCountBefore);
+  });
+
+  it('ignores non-DISPATCH messages', async () => {
+    const conn = createMockConnection();
+    const ext = createMockExtension(conn);
+    setExtension(ext);
+
+    class Store {
+      count = 0;
+    }
+
+    const store = createClassyStore(new Store());
+    devtools(store);
+
+    conn._listener?.({
+      type: 'ACTION',
+      state: JSON.stringify({count: 999}),
+    });
+    await tick();
+
+    expect(store.count).toBe(0);
+  });
+
+  it('ignores DISPATCH messages without state', async () => {
+    const conn = createMockConnection();
+    const ext = createMockExtension(conn);
+    setExtension(ext);
+
+    class Store {
+      count = 0;
+    }
+
+    const store = createClassyStore(new Store());
+    devtools(store);
+
+    conn._listener?.({
+      type: 'DISPATCH',
+      payload: {type: 'JUMP_TO_STATE'},
+      // no state field
+    });
+    await tick();
+
+    expect(store.count).toBe(0);
+  });
+
+  it('ignores DISPATCH messages with non-jump payload types', async () => {
+    const conn = createMockConnection();
+    const ext = createMockExtension(conn);
+    setExtension(ext);
+
+    class Store {
+      count = 0;
+    }
+
+    const store = createClassyStore(new Store());
+    devtools(store);
+
+    conn._listener?.({
+      type: 'DISPATCH',
+      payload: {type: 'COMMIT'},
+      state: JSON.stringify({count: 999}),
+    });
+    await tick();
+
+    expect(store.count).toBe(0);
+  });
+
+  it('handles corrupted JSON in time-travel state gracefully', async () => {
+    const conn = createMockConnection();
+    const ext = createMockExtension(conn);
+    setExtension(ext);
+
+    class Store {
+      count = 5;
+    }
+
+    const store = createClassyStore(new Store());
+    devtools(store);
+
+    // Should not throw
+    conn._listener?.({
+      type: 'DISPATCH',
+      payload: {type: 'JUMP_TO_STATE'},
+      state: 'not-valid-json!!!',
+    });
+    await tick();
+
+    expect(store.count).toBe(5); // unchanged
+  });
+
+  it('uses default name ClassyStore when no name provided', () => {
+    const conn = createMockConnection();
+    const ext = createMockExtension(conn);
+    setExtension(ext);
+
+    class Store {
+      count = 0;
+    }
+
+    const store = createClassyStore(new Store());
+    devtools(store);
+
+    expect(ext.connect).toHaveBeenCalledWith({name: 'ClassyStore'});
+  });
+
+  it('handles connection.subscribe returning {unsubscribe} object', async () => {
+    const unsubMock = mock(() => {});
+    const conn = createMockConnection();
+    // Override subscribe to return an object with unsubscribe method
+    conn.subscribe = mock((listener: (message: unknown) => void) => {
+      conn._listener = listener;
+      return {unsubscribe: unsubMock};
+    });
+    const ext = createMockExtension(conn);
+    setExtension(ext);
+
+    class Store {
+      count = 0;
+    }
+
+    const store = createClassyStore(new Store());
+    const dispose = devtools(store);
+
+    dispose();
+
+    expect(unsubMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('sends multiple state updates for sequential mutations', async () => {
+    const conn = createMockConnection();
+    const ext = createMockExtension(conn);
+    setExtension(ext);
+
+    class Store {
+      count = 0;
+    }
+
+    const store = createClassyStore(new Store());
+    devtools(store);
+
+    store.count = 1;
+    await tick();
+    store.count = 2;
+    await tick();
+    store.count = 3;
+    await tick();
+
+    expect(conn.send).toHaveBeenCalledTimes(3);
+    const lastState = conn.send.mock.calls[2][1] as Record<string, unknown>;
+    expect(lastState.count).toBe(3);
+  });
+
   it('disposes correctly (unsubscribes from store and devtools)', async () => {
     const conn = createMockConnection();
     const ext = createMockExtension(conn);

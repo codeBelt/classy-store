@@ -90,25 +90,27 @@ export function devtools<T extends object>(
           const newState = JSON.parse(message.state) as Record<string, unknown>;
           isTimeTraveling = true;
 
-          try {
-            // Apply state back to the proxy, skipping getters and methods
-            for (const key of Object.keys(newState)) {
-              // Skip getters
-              if (findGetterDescriptor(proxyStore, key)?.get) continue;
-              // Skip methods
-              if (
-                typeof (proxyStore as Record<string, unknown>)[key] ===
-                'function'
-              ) {
-                continue;
-              }
-              (proxyStore as Record<string, unknown>)[key] = newState[key];
+          // Apply state back to the proxy, skipping getters and methods
+          for (const key of Object.keys(newState)) {
+            // Skip getters
+            if (findGetterDescriptor(proxyStore, key)?.get) continue;
+            // Skip methods
+            if (
+              typeof (proxyStore as Record<string, unknown>)[key] === 'function'
+            ) {
+              continue;
             }
-          } finally {
-            isTimeTraveling = false;
+            (proxyStore as Record<string, unknown>)[key] = newState[key];
           }
+
+          // Reset after microtask so the batched subscription callback
+          // (which fires via queueMicrotask) still sees the flag as true.
+          queueMicrotask(() => {
+            isTimeTraveling = false;
+          });
         } catch {
-          // JSON.parse failed — ignore corrupted DevTools state.
+          // JSON.parse or property assignment failed — ignore and reset flag.
+          isTimeTraveling = false;
         }
       }
     }
