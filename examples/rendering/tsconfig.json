@@ -21,8 +21,8 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
-      "@codebelt/classy-store": ["../../../src/index.ts"],
-      "@codebelt/classy-store/*": ["../../../src/*"]
+      "@codebelt/classy-store": ["../../packages/classy-store/src/index.ts"],
+      "@codebelt/classy-store/*": ["../../packages/classy-store/src/*"]
     },
     // Some stricter flags (disabled by default)
     "noUnusedLocals": false,

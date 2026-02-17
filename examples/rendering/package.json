@@ -9,7 +9,7 @@
     "build": "bun run build.ts"
   },
   "dependencies": {
-    "@codebelt/classy-store": "file:../..",
+    "@codebelt/classy-store": "workspace:*",
     "bun-plugin-tailwind": "0.1.2",
     "prism-react-renderer": "^2.4.1",
     "proxy-compare": "3.0.1",
