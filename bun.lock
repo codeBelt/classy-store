@@ -34,8 +34,8 @@
         "typescript": "~5.6.0",
       },
     },
-    "examples/demo": {
-      "name": "classy-store-demo",
+    "examples/react": {
+      "name": "classy-store-react-example",
       "version": "0.1.1",
       "dependencies": {
         "@codebelt/classy-store": "workspace:*",
@@ -1092,7 +1092,7 @@
 
     "classy-store-angular-example": ["classy-store-angular-example@workspace:examples/angular"],
 
-    "classy-store-demo": ["classy-store-demo@workspace:examples/demo"],
+    "classy-store-react-example": ["classy-store-react-example@workspace:examples/react"],
 
     "classy-store-solid-example": ["classy-store-solid-example@workspace:examples/solid"],
 
