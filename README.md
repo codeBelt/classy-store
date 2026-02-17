@@ -24,7 +24,7 @@ Visit the **[Documentation Website](https://codebelt.github.io/classy-store/)** 
 - **Subscribe Key**: Watch a single property for changes with previous and current values.
 - **DevTools**: Connect to Redux DevTools for state inspection and time-travel debugging.
 
-## Quick Example
+## ⚡ Quick Example
 
 ```ts
 // 1. Plain class — fields are state, getters are computed values, the class is the type
@@ -63,14 +63,24 @@ npm install @codebelt/classy-store
 bun add @codebelt/classy-store
 ```
 
-## Why Another State Library
+## 🤖 AI / LLM Usage
+
+This library provides machine-readable documentation for LLM-powered tools:
+
+- [`llms.txt`](https://codebelt.github.io/classy-store/llms.txt) — Navigation index for AI assistants
+- [`llms-full.txt`](https://codebelt.github.io/classy-store/llms-full.txt) — Complete documentation in one file
+
+These files follow the [llms.txt standard](https://llmstxt.org/).
+
+
+## 💡 Why Another State Library
 
 - A class-based store where the class is the object and the type — no separate interface or type definition needed.
 - Getters as computed values, cached automatically and only recalculated when something changes.
 - No component wrapping — no observers, no HOCs, just a hook.
 
 
-## Acknowledgements
+## 🙏 Acknowledgements
 
 This library wouldn't exist without the ideas pioneered by these projects. Each one taught us something different, and we took the best of each:
 

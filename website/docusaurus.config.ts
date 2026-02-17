@@ -113,6 +113,19 @@ const config: Config = {
             },
           ],
         },
+        {
+          title: 'AI & LLM',
+          items: [
+            {
+              label: 'llms.txt',
+              href: 'https://codebelt.github.io/classy-store/llms.txt',
+            },
+            {
+              label: 'llms-full.txt',
+              href: 'https://codebelt.github.io/classy-store/llms-full.txt',
+            },
+          ],
+        },
       ],
       copyright: `Copyright © ${new Date().getFullYear()} CodeBelt. Built with Docusaurus.`,
     },
