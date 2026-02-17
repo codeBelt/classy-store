@@ -76,6 +76,16 @@
         "default": "./dist/frameworks/solid/solid.cjs"
       }
     },
+    "./collections": {
+      "import": {
+        "types": "./dist/collections/index.d.mts",
+        "default": "./dist/collections/index.mjs"
+      },
+      "require": {
+        "types": "./dist/collections/index.d.cts",
+        "default": "./dist/collections/index.cjs"
+      }
+    },
     "./utils": {
       "import": {
         "types": "./dist/utils/index.d.mts",

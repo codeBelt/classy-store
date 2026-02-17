@@ -3,7 +3,7 @@
 Class-based reactive state management for React, Vue, Svelte, Solid, and Angular. Write plain TypeScript classes — get fine-grained reactivity, immutable snapshots, and zero-boilerplate hooks.
 
 ```
-~3.5 KB gzipped · ES6 Proxy · useSyncExternalStore · proxy-compare
+~2.3 KB gzipped · ES6 Proxy · useSyncExternalStore · proxy-compare
 ```
 
 ## Features
@@ -530,7 +530,7 @@ For `Map` and `Set` semantics, use [`reactiveMap()`](#reactivemapk-vinitial) and
 | Built-in persistence | Yes (per-property transforms, versioning, cross-tab sync) | Yes (middleware) | No (separate pkg) | No (manual) |
 | DevTools integration | Yes (`devtools()`) | Yes (middleware) | Yes (separate pkg) | Yes (`devtools()`) |
 | Undo/Redo | Yes (`withHistory()`) | No (manual) | No (manual) | No (manual) |
-| Bundle size | ~3.5KB | ~1.2KB | ~16KB | ~3KB |
+| Bundle size | ~2.3 KB gzip | ~1.2KB | ~16KB | ~3KB |
 
 ## Vision
 
