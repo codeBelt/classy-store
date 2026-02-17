@@ -35,6 +35,46 @@
         "default": "./dist/react/react.cjs"
       }
     },
+    "./vue": {
+      "import": {
+        "types": "./dist/vue/vue.d.mts",
+        "default": "./dist/vue/vue.mjs"
+      },
+      "require": {
+        "types": "./dist/vue/vue.d.cts",
+        "default": "./dist/vue/vue.cjs"
+      }
+    },
+    "./svelte": {
+      "import": {
+        "types": "./dist/svelte/svelte.d.mts",
+        "default": "./dist/svelte/svelte.mjs"
+      },
+      "require": {
+        "types": "./dist/svelte/svelte.d.cts",
+        "default": "./dist/svelte/svelte.cjs"
+      }
+    },
+    "./angular": {
+      "import": {
+        "types": "./dist/angular/angular.d.mts",
+        "default": "./dist/angular/angular.mjs"
+      },
+      "require": {
+        "types": "./dist/angular/angular.d.cts",
+        "default": "./dist/angular/angular.cjs"
+      }
+    },
+    "./solid": {
+      "import": {
+        "types": "./dist/solid/solid.d.mts",
+        "default": "./dist/solid/solid.mjs"
+      },
+      "require": {
+        "types": "./dist/solid/solid.d.cts",
+        "default": "./dist/solid/solid.cjs"
+      }
+    },
     "./utils": {
       "import": {
         "types": "./dist/utils/index.d.mts",
@@ -82,14 +122,31 @@
     "proxy-compare": "3.0.1"
   },
   "peerDependencies": {
-    "react": ">=18.0.0"
+    "react": ">=18.0.0",
+    "vue": ">=3.3.0",
+    "svelte": ">=4.0.0",
+    "@angular/core": ">=17.0.0",
+    "solid-js": ">=1.7.0"
   },
   "peerDependenciesMeta": {
     "react": {
       "optional": true
+    },
+    "vue": {
+      "optional": true
+    },
+    "svelte": {
+      "optional": true
+    },
+    "@angular/core": {
+      "optional": true
+    },
+    "solid-js": {
+      "optional": true
     }
   },
   "devDependencies": {
+    "@angular/core": "21.1.4",
     "@biomejs/biome": "2.4.0",
     "@changesets/changelog-github": "0.5.2",
     "@changesets/cli": "2.29.8",
@@ -99,8 +156,11 @@
     "@types/react-dom": "19.2.3",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "solid-js": "1.9.11",
+    "svelte": "5.51.2",
     "tsdown": "0.20.3",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "vue": "3.5.28"
   },
   "keywords": [
     "classy-store",
