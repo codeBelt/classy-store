@@ -18,6 +18,9 @@ Class-based reactive state management for React. Write plain TypeScript classes 
 - **Two hook modes** — explicit selector or automatic property tracking
 - **Reactive collections** — `reactiveMap()` and `reactiveSet()` for Map/Set-like state
 - **Persistence** — `persist()` utility with transforms, versioning, migration, debounce, cross-tab sync, TTL expiration, and SSR support
+- **DevTools** — `devtools()` connects to Redux DevTools for state inspection and time-travel debugging
+- **Property subscriptions** — `subscribeKey()` watches a single property for changes with previous/current values
+- **Undo/Redo** — `withHistory()` adds undo/redo via a snapshot stack with pause/resume and configurable limits
 
 ## Installation
 
@@ -268,103 +271,61 @@ type MyStoreSnap = Snapshot<MyStore>;
 
 Tree-shakeable utilities are available via a separate entry point:
 
-```bash
-import {persist} from '@codebelt/classy-store/utils';
+```typescript
+import {persist, devtools, subscribeKey, withHistory} from '@codebelt/classy-store/utils';
 ```
 
 ### `persist(store, options)`
 
-Persist store state to `localStorage`, `sessionStorage`, `AsyncStorage`, or any custom storage adapter. Subscribes to store mutations, serializes selected properties into a versioned JSON envelope, and writes to storage. On init (or manual rehydrate), reads from storage and applies the state back.
+Persist store state to storage with transforms, versioning, migration, cross-tab sync, and SSR support. Getters and methods are automatically excluded.
 
 ```typescript
-import {createClassyStore} from '@codebelt/classy-store';
 import {persist} from '@codebelt/classy-store/utils';
 
-class TodoStore {
-  todos: { text: string; done: boolean }[] = [];
-  filter: 'all' | 'done' | 'pending' = 'all';
-
-  get remaining() {
-    return this.todos.filter((todo) => !todo.done).length;
-  }
-    
-  addTodo(text: string) {
-    this.todos.push({text, done: false});
-  }
-}
-
-const todoStore = createClassyStore(new TodoStore());
-
-// Persist all data properties to localStorage.
-// Getters (remaining) and methods (addTodo) are automatically excluded.
-const handle = persist(todoStore, {
-  name: 'todo-store',
-});
-
-// On next page load, todos and filter are restored automatically.
+const handle = persist(todoStore, {name: 'todo-store'});
 ```
 
-**Options:**
+> See the [Persist Tutorial](./PERSIST_TUTORIAL.md) and [Persist Architecture](./PERSIST_ARCHITECTURE.md).
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `name` | `string` | *required* | Unique storage key |
-| `storage` | `StorageAdapter` | `localStorage` | Any sync or async adapter with `getItem`/`setItem`/`removeItem` |
-| `properties` | `Array<keyof T \| PropertyTransform<T>>` | all data props | Which properties to persist (getters and methods always excluded) |
-| `debounce` | `number` | `0` | Debounce writes to storage (ms) |
-| `version` | `number` | `0` | Schema version number for migration |
-| `migrate` | `(state, oldVersion) => state` | — | Transform old persisted data to current shape |
-| `merge` | `'shallow' \| 'replace' \| fn` | `'shallow'` | How to merge persisted state with current store state |
-| `skipHydration` | `boolean` | `false` | Defer hydration for SSR (call `handle.rehydrate()` manually) |
-| `syncTabs` | `boolean` | auto | Sync state across browser tabs via `window.storage` event |
-| `expireIn` | `number` | — | TTL in milliseconds; stored data older than this is skipped during hydration. Resets on every write. |
-| `clearOnExpire` | `boolean` | `false` | Remove expired key from storage automatically during hydration |
+### `devtools(store, options?)`
 
-**Return value (`PersistHandle`):**
-
-| Property | Type | Description |
-|----------|------|-------------|
-| `unsubscribe()` | `() => void` | Stop persisting and clean up all listeners |
-| `hydrated` | `Promise<void>` | Resolves when initial hydration completes |
-| `isHydrated` | `boolean` | Whether hydration has completed |
-| `save()` | `() => Promise<void>` | Immediate write to storage (bypasses debounce) |
-| `clear()` | `() => Promise<void>` | Remove this store's data from storage |
-| `rehydrate()` | `() => Promise<void>` | Manually re-read from storage and apply |
-| `isExpired` | `boolean` | Whether the last hydration found expired data (requires `expireIn`) |
-
-**Per-property transforms** handle non-JSON types like `Date` or `ReactiveMap`:
+Connect a store to Redux DevTools for state inspection and time-travel debugging.
 
 ```typescript
-persist(sessionStore, {
-  name: 'session',
-  properties: [
-    'token',  // plain key — no transform needed
-    {
-      key: 'expiresAt',
-      serialize: (date) => date.toISOString(),
-      deserialize: (stored) => new Date(stored as string),
-    },
-  ],
-});
+import {devtools} from '@codebelt/classy-store/utils';
+
+const disconnect = devtools(myStore, {name: 'MyStore'});
 ```
 
-**Cross-tab sync** is enabled by default with `localStorage`. When another tab writes to the same key, this tab auto-rehydrates.
+> See the [DevTools Tutorial](./DEVTOOLS_TUTORIAL.md).
 
-**SSR support** via `skipHydration`:
+### `subscribeKey(store, key, callback)`
+
+Subscribe to changes on a single property. Fires only when the watched key changes.
 
 ```typescript
-const handle = persist(todoStore, {
-  name: 'todos',
-  skipHydration: true,
-});
+import {subscribeKey} from '@codebelt/classy-store/utils';
 
-// In a React component:
-useEffect(() => {
-  handle.rehydrate();
-}, []);
+const unsub = subscribeKey(store, 'theme', (value, prev) => {
+  console.log(`Theme: ${prev} → ${value}`);
+});
 ```
 
-> For a comprehensive walkthrough, see the [Persist Tutorial](./PERSIST_TUTORIAL.md). For internal design details, see [Persist Architecture](./PERSIST_ARCHITECTURE.md).
+> See the [subscribeKey Tutorial](./SUBSCRIBE_KEY_TUTORIAL.md).
+
+### `withHistory(store, options?)`
+
+Add undo/redo capability via a snapshot stack with pause/resume and configurable limits.
+
+```typescript
+import {withHistory} from '@codebelt/classy-store/utils';
+
+const history = withHistory(store, {limit: 100});
+history.undo();
+history.redo();
+```
+
+> See the [withHistory Tutorial](./HISTORY_TUTORIAL.md).
 
 ## Patterns
 
@@ -534,6 +495,8 @@ For `Map` and `Set` semantics, use [`reactiveMap()`](#reactivemapk-vinitial) and
 | Immutable snapshots | Yes | No | No | Yes |
 | Structural sharing | Yes | N/A | N/A | Yes |
 | Built-in persistence | Yes (per-property transforms, versioning, cross-tab sync) | Yes (middleware) | No (separate pkg) | No (manual) |
+| DevTools integration | Yes (`devtools()`) | Yes (middleware) | Yes (separate pkg) | Yes (`devtools()`) |
+| Undo/Redo | Yes (`withHistory()`) | No (manual) | No (manual) | No (manual) |
 | Bundle size | ~3.5KB | ~1.2KB | ~16KB | ~3KB |
 
 ## Vision

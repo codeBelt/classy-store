@@ -7,7 +7,13 @@ const sidebars: SidebarsConfig = {
       type: 'category',
       label: 'Tutorials',
       collapsed: false,
-      items: ['TUTORIAL', 'PERSIST_TUTORIAL'],
+      items: [
+        'TUTORIAL',
+        'PERSIST_TUTORIAL',
+        'DEVTOOLS_TUTORIAL',
+        'SUBSCRIBE_KEY_TUTORIAL',
+        'HISTORY_TUTORIAL',
+      ],
     },
     {
       type: 'category',
