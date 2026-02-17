@@ -264,4 +264,193 @@ describe('snapshot()', () => {
       expect(snap.label).toBe('tag:5'); // derived getter
     });
   });
+
+  // ── Cross-snapshot getter memoization ──────────────────────────────────
+
+  describe('cross-snapshot getter memoization', () => {
+    it('getter result is stable across snapshots when deps unchanged', async () => {
+      class Store {
+        items = [1, 2, 3];
+        label = 'hello';
+        get total() {
+          return this.items.reduce((a: number, b: number) => a + b, 0);
+        }
+      }
+
+      const s = createClassyStore(new Store());
+      const snap1 = snapshot(s);
+      const total1 = snap1.total;
+
+      // Mutate a property the getter does NOT depend on
+      s.label = 'world';
+      await flush();
+
+      const snap2 = snapshot(s);
+      const total2 = snap2.total;
+
+      // items didn't change → structural sharing → same total reference
+      expect(total1).toBe(total2);
+      // But snap1.items should be the same ref as snap2.items
+      expect(snap1.items).toBe(snap2.items);
+    });
+
+    it('getter result changes when deps change', async () => {
+      class Store {
+        count = 5;
+        get doubled() {
+          return this.count * 2;
+        }
+      }
+
+      const s = createClassyStore(new Store());
+      const snap1 = snapshot(s);
+
+      s.count = 10;
+      await flush();
+
+      const snap2 = snapshot(s);
+      expect(snap1.doubled).toBe(10);
+      expect(snap2.doubled).toBe(20);
+    });
+
+    it('same getter accessed multiple times on same snapshot returns same value', () => {
+      class Store {
+        count = 5;
+        get computed() {
+          return {value: this.count}; // new object each call
+        }
+      }
+
+      const s = createClassyStore(new Store());
+      const snap = snapshot(s);
+
+      const result1 = snap.computed;
+      const result2 = snap.computed;
+
+      // Per-snapshot cache should return the same reference
+      expect(result1).toBe(result2);
+    });
+  });
+
+  // ── Leaf types (non-proxyable) ────────────────────────────────────────
+
+  describe('leaf types', () => {
+    it('Date values pass through unchanged', () => {
+      const date = new Date('2026-01-01');
+      const s = createClassyStore({created: date});
+      const snap = snapshot(s);
+
+      expect(snap.created).toBe(date); // same reference
+      expect(snap.created instanceof Date).toBe(true);
+    });
+
+    it('RegExp values pass through unchanged', () => {
+      const regex = /test/gi;
+      const s = createClassyStore({pattern: regex});
+      const snap = snapshot(s);
+
+      expect(snap.pattern).toBe(regex);
+    });
+
+    it('null and undefined pass through', () => {
+      const s = createClassyStore({
+        a: null as string | null,
+        b: undefined as number | undefined,
+      });
+      const snap = snapshot(s);
+
+      expect(snap.a).toBeNull();
+      expect(snap.b).toBeUndefined();
+    });
+
+    it('functions are excluded from snapshot keys (methods)', () => {
+      class Store {
+        count = 0;
+        increment() {
+          this.count++;
+        }
+      }
+
+      const s = createClassyStore(new Store());
+      const snap = snapshot(s);
+
+      // The snapshot should not have the method as an own enumerable property
+      // (it lives on the prototype). It shouldn't be in Object.keys.
+      const keys = Object.keys(snap);
+      expect(keys).not.toContain('increment');
+    });
+  });
+
+  // ── Untracked nested objects ──────────────────────────────────────────
+
+  describe('untracked nested objects', () => {
+    it('deep-clones untracked nested objects', () => {
+      const s = createClassyStore({data: {nested: {value: 1}}});
+
+      // Access data but not data.nested through the proxy
+      const snap = snapshot(s);
+
+      expect(snap.data.nested.value).toBe(1);
+      expect(Object.isFrozen(snap.data)).toBe(true);
+      expect(Object.isFrozen(snap.data.nested)).toBe(true);
+    });
+
+    it('snapshot of deeply nested arrays freezes all levels', () => {
+      const s = createClassyStore({
+        matrix: [
+          [1, 2],
+          [3, 4],
+        ],
+      });
+      const snap = snapshot(s);
+
+      expect(Object.isFrozen(snap.matrix)).toBe(true);
+      expect(Object.isFrozen(snap.matrix[0])).toBe(true);
+      expect(Object.isFrozen(snap.matrix[1])).toBe(true);
+      expect(snap.matrix[0]).toEqual([1, 2]);
+    });
+  });
+
+  // ── Snapshot after delete ─────────────────────────────────────────────
+
+  describe('snapshot after delete', () => {
+    it('deleted property is absent from snapshot', async () => {
+      const s = createClassyStore({a: 1, b: 2} as Record<string, number>);
+      const snap1 = snapshot(s);
+
+      delete s.b;
+      await flush();
+
+      const snap2 = snapshot(s);
+      expect(snap1.b).toBe(2);
+      expect('b' in snap2).toBe(false);
+    });
+  });
+
+  // ── Snapshot with empty/special structures ─────────────────────────────
+
+  describe('special structures', () => {
+    it('snapshot of store with empty array', () => {
+      const s = createClassyStore({items: [] as number[]});
+      const snap = snapshot(s);
+      expect(snap.items).toEqual([]);
+      expect(Object.isFrozen(snap.items)).toBe(true);
+    });
+
+    it('snapshot of store with nested empty objects', () => {
+      const s = createClassyStore({config: {a: {}, b: {}}});
+      const snap = snapshot(s);
+      expect(snap.config.a).toEqual({});
+      expect(snap.config.b).toEqual({});
+      expect(Object.isFrozen(snap.config.a)).toBe(true);
+    });
+
+    it('snapshot is taken synchronously (before flush)', () => {
+      const s = createClassyStore({count: 0});
+      s.count = 42;
+      // No flush — snapshot should already reflect the mutation
+      const snap = snapshot(s);
+      expect(snap.count).toBe(42);
+    });
+  });
 });

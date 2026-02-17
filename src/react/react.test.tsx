@@ -522,3 +522,165 @@ describe('useLocalStore', () => {
     expect(renderCount).toHaveBeenCalledTimes(3);
   });
 });
+
+// ── Error handling ───────────────────────────────────────────────────────────
+
+describe('useStore — error handling', () => {
+  afterEach(teardown);
+
+  it('throws when given a non-store proxy', () => {
+    const plainObj = {count: 0};
+
+    function BadComponent() {
+      const count = useStore(
+        plainObj as never,
+        (s: {count: number}) => s.count,
+      );
+      return <div>{count}</div>;
+    }
+
+    setup();
+    expect(() => render(<BadComponent />)).toThrow(/not a store proxy/);
+  });
+});
+
+// ── Multiple stores in one component ─────────────────────────────────────────
+
+describe('useStore — multiple stores', () => {
+  afterEach(teardown);
+
+  it('renders from two independent stores', () => {
+    const storeA = createClassyStore({count: 10});
+    const storeB = createClassyStore({name: 'hello'});
+
+    function Display() {
+      const count = useStore(storeA, (s) => s.count);
+      const name = useStore(storeB, (s) => s.name);
+      return (
+        <div>
+          {count}-{name}
+        </div>
+      );
+    }
+
+    setup();
+    render(<Display />);
+    expect(container.textContent).toBe('10-hello');
+  });
+
+  it('re-renders independently when different stores mutate', async () => {
+    const storeA = createClassyStore({count: 0});
+    const storeB = createClassyStore({name: 'hello'});
+    const renderCount = mock(() => {});
+
+    function Display() {
+      const count = useStore(storeA, (s) => s.count);
+      const name = useStore(storeB, (s) => s.name);
+      renderCount();
+      return (
+        <div>
+          {count}-{name}
+        </div>
+      );
+    }
+
+    setup();
+    render(<Display />);
+    expect(renderCount).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      storeA.count = 5;
+      await flush();
+    });
+
+    expect(container.textContent).toBe('5-hello');
+    expect(renderCount).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      storeB.name = 'world';
+      await flush();
+    });
+
+    expect(container.textContent).toBe('5-world');
+    expect(renderCount).toHaveBeenCalledTimes(3);
+  });
+});
+
+// ── Selector edge cases ──────────────────────────────────────────────────────
+
+describe('useStore — selector edge cases', () => {
+  afterEach(teardown);
+
+  it('handles selector returning undefined', () => {
+    const s = createClassyStore({data: null as string | null});
+
+    function Display() {
+      const data = useStore(s, (snap) => snap.data);
+      return <div>{data ?? 'none'}</div>;
+    }
+
+    setup();
+    render(<Display />);
+    expect(container.textContent).toBe('none');
+  });
+
+  it('handles selector returning a boolean', async () => {
+    class Store {
+      count = 0;
+      get isPositive() {
+        return this.count > 0;
+      }
+    }
+    const s = createClassyStore(new Store());
+    const renderCount = mock(() => {});
+
+    function Display() {
+      const isPositive = useStore(s, (snap) => snap.isPositive);
+      renderCount();
+      return <div>{isPositive ? 'yes' : 'no'}</div>;
+    }
+
+    setup();
+    render(<Display />);
+    expect(container.textContent).toBe('no');
+    expect(renderCount).toHaveBeenCalledTimes(1);
+
+    // Set to 1 → isPositive becomes true
+    await act(async () => {
+      s.count = 1;
+      await flush();
+    });
+    expect(container.textContent).toBe('yes');
+    expect(renderCount).toHaveBeenCalledTimes(2);
+
+    // Set to 2 → isPositive still true → no re-render
+    await act(async () => {
+      s.count = 2;
+      await flush();
+    });
+    expect(renderCount).toHaveBeenCalledTimes(2);
+  });
+
+  it('derived selector (computed from multiple fields)', async () => {
+    const s = createClassyStore({firstName: 'John', lastName: 'Doe'});
+
+    function Display() {
+      const fullName = useStore(
+        s,
+        (snap) => `${snap.firstName} ${snap.lastName}`,
+      );
+      return <div>{fullName}</div>;
+    }
+
+    setup();
+    render(<Display />);
+    expect(container.textContent).toBe('John Doe');
+
+    await act(async () => {
+      s.firstName = 'Jane';
+      await flush();
+    });
+
+    expect(container.textContent).toBe('Jane Doe');
+  });
+});

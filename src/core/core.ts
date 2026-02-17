@@ -55,6 +55,23 @@ function recordDep(
 }
 
 /**
+ * Record a computed getter dependency on the active tracker (if any).
+ * Unlike `recordDep`, this creates a `'computed'` dep entry that validates
+ * through the computed cache rather than re-executing the raw getter.
+ */
+function recordComputedDep(
+  internal: StoreInternal,
+  prop: string | symbol,
+  value: unknown,
+): void {
+  const tracker = activeTracker();
+  if (!tracker) return;
+  if (tracker.internal !== internal) return;
+
+  tracker.deps.push({kind: 'computed', internal, prop, value});
+}
+
+/**
  * Check whether all dependencies from a previous computation are still valid.
  */
 function areDepsValid(deps: DepEntry[]): boolean {
@@ -69,6 +86,12 @@ function areDepsValid(deps: DepEntry[]): boolean {
       )
         return false;
       if (dep.internal.version !== dep.version) return false;
+    } else if (dep.kind === 'computed') {
+      // Validate through the computed cache — never re-execute the raw getter.
+      const cached = dep.internal.computedCache.get(dep.prop);
+      if (!cached) return false; // no cache → must recompute
+      if (!areDepsValid(cached.deps)) return false; // nested deps changed
+      if (!Object.is(cached.value, dep.value)) return false; // value changed
     } else {
       // Check that the property still exists — if it was deleted and
       // dep.value was `undefined`, Object.is(undefined, undefined) would
@@ -215,7 +238,16 @@ function createStoreProxy<T extends object>(
       const getterDesc = findGetterDescriptor(_target, prop);
       if (getterDesc?.get) {
         // Memoized: evaluate with dependency tracking, return cached if deps unchanged.
-        return evaluateComputed(internal, prop, getterDesc.get, receiver);
+        const value = evaluateComputed(
+          internal,
+          prop,
+          getterDesc.get,
+          receiver,
+        );
+        // Record as a computed dependency for any parent getter currently tracking.
+        // Uses 'computed' dep kind so validation goes through the cache, not raw getter.
+        recordComputedDep(internal, prop, value);
+        return value;
       }
 
       const value = Reflect.get(_target, prop);
