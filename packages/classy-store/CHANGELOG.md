@@ -1,5 +1,11 @@
 # @codebelt/classy-store
 
+## 0.1.3
+
+### Patch Changes
+
+- [`4084f39`](https://github.com/codeBelt/classy-store/commit/4084f397ee975988f742e5f49105b5115a9deb2d) Thanks [@codeBelt](https://github.com/codeBelt)! - Fix README not displaying on npm after monorepo migration
+
 ## 0.1.2
 
 ### Patch Changes
