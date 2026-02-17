@@ -37,3 +37,4 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 website/build
 website/.docusaurus
 website/.cache-loader
+website/static/demos
