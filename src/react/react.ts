@@ -1,6 +1,10 @@
 import {createProxy, isChanged} from 'proxy-compare';
-import {useCallback, useRef, useSyncExternalStore} from 'react';
-import {subscribe as coreSubscribe, getInternal} from '../core/core';
+import {useCallback, useRef, useState, useSyncExternalStore} from 'react';
+import {
+  subscribe as coreSubscribe,
+  createClassyStore,
+  getInternal,
+} from '../core/core';
 import {snapshot} from '../snapshot/snapshot';
 import type {Snapshot} from '../types';
 
@@ -160,4 +164,35 @@ function getAutoTrackSnapshot<T extends object>(
   const wrapped = createProxy(nextSnap, affected, proxyCache) as Snapshot<T>;
   wrappedRef.current = wrapped;
   return wrapped;
+}
+
+// ── Component-scoped store ────────────────────────────────────────────────────
+
+/**
+ * Create a component-scoped reactive store that lives for the lifetime of the
+ * component. When the component unmounts, the store becomes unreferenced and is
+ * garbage collected (all internal bookkeeping uses `WeakMap`).
+ *
+ * The factory function runs **once** per mount (via `useState` initializer).
+ * Each component instance gets its own isolated store.
+ *
+ * Use the returned proxy with `useStore()` to read state in the same component
+ * or pass it down via props/context to share within a subtree.
+ *
+ * @param factory - A function that returns a class instance (or plain object).
+ *                  Called once per component mount.
+ * @returns A reactive store proxy scoped to the component's lifetime.
+ *
+ * @example
+ * ```tsx
+ * function Counter() {
+ *   const store = useLocalStore(() => new CounterStore());
+ *   const count = useStore(store, s => s.count);
+ *   return <button onClick={() => store.increment()}>{count}</button>;
+ * }
+ * ```
+ */
+export function useLocalStore<T extends object>(factory: () => T): T {
+  const [store] = useState(() => createClassyStore(factory()));
+  return store;
 }

@@ -367,6 +367,70 @@ class PostStore {
 
 This means a component using `useStore(postStore, (store) => store.loading)` will re-render twice: once when loading starts, once when it ends. That's the correct behavior.
 
+## Local Stores
+
+By default, stores are module-level singletons — shared across your entire app. For component-scoped state that is garbage collected on unmount, use `useLocalStore`.
+
+### Basic usage
+
+`useLocalStore` creates a reactive store scoped to the component's lifetime. Each component instance gets its own isolated store. When the component unmounts, the store is garbage collected.
+
+```tsx
+import {useLocalStore, useStore} from '@codebelt/classy-store/react';
+
+class CounterStore {
+  count = 0;
+  get doubled() { return this.count * 2; }
+  increment() { this.count++; }
+}
+
+function Counter() {
+  const store = useLocalStore(() => new CounterStore());
+  const count = useStore(store, (s) => s.count);
+
+  return <button onClick={() => store.increment()}>Count: {count}</button>;
+}
+```
+
+The factory function (`() => new CounterStore()`) runs once per mount. Subsequent re-renders reuse the same store instance.
+
+### Persisting a local store
+
+`persist()` subscribes to the store, which keeps a reference alive. You must call `handle.unsubscribe()` on unmount to allow garbage collection.
+
+```tsx
+import {useEffect} from 'react';
+import {useLocalStore, useStore} from '@codebelt/classy-store/react';
+import {persist} from '@codebelt/classy-store/utils';
+
+class FormStore {
+  name = '';
+  email = '';
+  setName(v: string) { this.name = v; }
+  setEmail(v: string) { this.email = v; }
+}
+
+function EditProfile() {
+  const store = useLocalStore(() => new FormStore());
+  // Auto-tracked mode — this component reads both name and email (see Decision guide).
+  const snap = useStore(store);
+
+  useEffect(() => {
+    const handle = persist(store, { name: 'edit-profile-draft' });
+    return () => handle.unsubscribe();
+  }, [store]);
+
+  return (
+    <form>
+      <input value={snap.name} onChange={(e) => store.setName(e.target.value)} />
+      <input value={snap.email} onChange={(e) => store.setEmail(e.target.value)} />
+    </form>
+  );
+}
+```
+
+The `useEffect` cleanup ensures the persist subscription is removed and the store can be garbage collected when the component unmounts.
+
 ## Tips & Gotchas
 
 ### Mutate through methods, not from components
