@@ -1,8 +1,36 @@
 import {useStore} from '@codebelt/classy-store/react';
-import {Panel} from './Panel';
-import {RenderBadge} from './RenderBadge';
-import {postStore} from './stores';
-import {useRenderCount} from './useRenderCount';
+import {Button} from '../../components/Button';
+import {DemoContainer} from '../../components/DemoContainer';
+import {RenderBadge} from '../../components/RenderBadge';
+import {useRenderCount} from '../../hooks/useRenderCount';
+import {postStore} from '../../stores/postStore';
+
+const STORE_CODE = `class PostStore {
+  posts: Post[] = [];
+  loading = false;
+  error: string | null = null;
+
+  get count() { return this.posts.length; }
+
+  async fetchPosts() {
+    this.loading = true;      // notification 1
+    this.error = null;
+    try {
+      const res = await fetch('/api/posts');
+      this.posts = await res.json();
+    } catch (e) {
+      this.error = e.message;
+    } finally {
+      this.loading = false;   // notification 2
+    }
+  }
+}`;
+
+const COMPONENT_CODE = `// Each selector isolates re-renders
+const loading = useStore(postStore, (s) => s.loading);
+const error = useStore(postStore, (s) => s.error);
+const posts = useStore(postStore, (s) => s.posts);
+const count = useStore(postStore, (s) => s.count);`;
 
 function LoadingIndicator() {
   const loading = useStore(postStore, (store) => store.loading);
@@ -116,9 +144,13 @@ function PostCount() {
 
 export function AsyncDemo() {
   return (
-    <Panel
+    <DemoContainer
       title="Async Data Fetching"
-      description="Mutations on each side of an await trigger separate notifications. Watch which slices re-render during each phase of the fetch lifecycle."
+      description="Mutations on each side of an await trigger separate notifications."
+      codeTabs={[
+        {label: 'Store', code: STORE_CODE, language: 'typescript'},
+        {label: 'Component', code: COMPONENT_CODE},
+      ]}
     >
       <div className="space-y-3 mb-4">
         <LoadingIndicator />
@@ -127,23 +159,13 @@ export function AsyncDemo() {
       </div>
       <div className="flex items-center justify-between pt-3 border-t border-zinc-800">
         <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => postStore.fetchPosts()}
-            className="px-3 py-1.5 rounded-lg bg-indigo-500 text-white text-sm font-medium hover:bg-indigo-400 transition-colors cursor-pointer"
-          >
-            Fetch Posts
-          </button>
-          <button
-            type="button"
-            onClick={() => postStore.clear()}
-            className="px-3 py-1.5 rounded-lg bg-zinc-700 text-zinc-300 text-sm font-medium hover:bg-zinc-600 transition-colors cursor-pointer"
-          >
+          <Button onClick={() => postStore.fetchPosts()}>Fetch Posts</Button>
+          <Button variant="secondary" onClick={() => postStore.clear()}>
             Clear
-          </button>
+          </Button>
         </div>
         <PostCount />
       </div>
-    </Panel>
+    </DemoContainer>
   );
 }

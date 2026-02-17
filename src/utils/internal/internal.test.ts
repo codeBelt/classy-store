@@ -230,6 +230,7 @@ describe('canProxy — additional', () => {
   });
 
   it('PROXYABLE on parent class allows child instances', () => {
+    // biome-ignore lint/complexity/noStaticOnlyClass: allow for tests
     class Parent {
       static [PROXYABLE] = true;
     }

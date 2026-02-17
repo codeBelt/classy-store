@@ -23,6 +23,9 @@
       "peerDependencies": {
         "react": ">=18.0.0",
       },
+      "optionalPeers": [
+        "react",
+      ],
     },
   },
   "packages": {

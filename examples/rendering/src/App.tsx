@@ -1,101 +1,41 @@
 // This component must be the top-most import in this file!
-import {ReactScan} from './ReactScan';
+import {ReactScan} from './components/ReactScan';
 import './index.css';
-import {useEffect, useState} from 'react';
-import {AsyncDemo} from './AsyncDemo';
-import {CollectionsDemo} from './CollectionsDemo';
-import {PersistPage} from './PersistPage';
-import {ReactiveFundamentalsDemo} from './ReactiveFundamentalsDemo';
-import {StructuralSharingDemo} from './StructuralSharingDemo';
+import {Layout} from './components/Layout';
+import {useHashRoute} from './hooks/useHashRoute';
+import {CollectionsPage} from './pages/CollectionsPage';
+import {DevtoolsPage} from './pages/DevtoolsPage';
+import {HistoryPage} from './pages/HistoryPage';
+import {OverviewPage} from './pages/OverviewPage';
+import {PersistPage} from './pages/PersistPage';
+import {ReactivityPage} from './pages/ReactivityPage';
+import {ShallowEqualPage} from './pages/ShallowEqualPage';
+import {SnapshotsPage} from './pages/SnapshotsPage';
+import {SubscribeKeyPage} from './pages/SubscribeKeyPage';
+import {UseLocalStorePage} from './pages/UseLocalStorePage';
 
-// ── Hash Router ─────────────────────────────────────────────────────────────
-
-function getRoute(): string {
-  const hash = globalThis.location?.hash ?? '';
-  return hash.replace(/^#/, '') || '/';
-}
-
-function useHashRoute() {
-  const [route, setRoute] = useState(getRoute);
-
-  useEffect(() => {
-    const handler = () => setRoute(getRoute());
-    globalThis.addEventListener('hashchange', handler);
-    return () => globalThis.removeEventListener('hashchange', handler);
-  }, []);
-
-  return route;
-}
-
-// ── Navigation ──────────────────────────────────────────────────────────────
-
-function NavBar({route}: {route: string}) {
-  const links = [
-    {href: '#/', label: 'Reactivity', active: route === '/'},
-    {href: '#/persist', label: 'Persist', active: route === '/persist'},
-  ];
-
-  return (
-    <nav className="flex items-center justify-center gap-1 mb-8">
-      {links.map((link) => (
-        <a
-          key={link.href}
-          href={link.href}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-            link.active
-              ? 'bg-zinc-800 text-zinc-100'
-              : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50'
-          }`}
-        >
-          {link.label}
-        </a>
-      ))}
-    </nav>
-  );
-}
-
-// ── Reactivity Demos Page ───────────────────────────────────────────────────
-
-function ReactivityPage() {
-  return (
-    <>
-      <header className="text-center mb-12">
-        <h1 className="text-4xl sm:text-5xl font-bold mb-3 bg-linear-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">
-          @codebelt/classy-store
-        </h1>
-        <p className="text-zinc-400 max-w-xl mx-auto">
-          Class-based reactive state for React. Watch the render badges to see
-          exactly when each component re-renders.
-        </p>
-      </header>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        <ReactiveFundamentalsDemo />
-        <AsyncDemo />
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        <CollectionsDemo />
-      </div>
-
-      <div className="grid grid-cols-1 gap-6">
-        <StructuralSharingDemo />
-      </div>
-    </>
-  );
-}
-
-// ── App ─────────────────────────────────────────────────────────────────────
+const routes: Record<string, React.ComponentType> = {
+  '/': OverviewPage,
+  '/reactivity': ReactivityPage,
+  '/collections': CollectionsPage,
+  '/snapshots': SnapshotsPage,
+  '/use-local-store': UseLocalStorePage,
+  '/persist': PersistPage,
+  '/history': HistoryPage,
+  '/devtools': DevtoolsPage,
+  '/subscribe-key': SubscribeKeyPage,
+  '/shallow-equal': ShallowEqualPage,
+};
 
 export function App() {
   const route = useHashRoute();
+  const Page = routes[route] ?? OverviewPage;
 
   return (
-    <div className="max-w-6xl mx-auto px-6 py-12">
+    <Layout route={route}>
       <ReactScan />
-      <NavBar route={route} />
-      {route === '/persist' ? <PersistPage /> : <ReactivityPage />}
-    </div>
+      <Page />
+    </Layout>
   );
 }
 

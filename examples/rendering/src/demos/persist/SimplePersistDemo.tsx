@@ -1,9 +1,10 @@
 import {useStore} from '@codebelt/classy-store/react';
 import {useState} from 'react';
-import {Panel} from './Panel';
-import {preferencesHandle, preferencesStore} from './persistStores';
-import {RenderBadge} from './RenderBadge';
-import {useRenderCount} from './useRenderCount';
+import {Button} from '../../components/Button';
+import {DemoContainer} from '../../components/DemoContainer';
+import {RenderBadge} from '../../components/RenderBadge';
+import {useRenderCount} from '../../hooks/useRenderCount';
+import {preferencesHandle, preferencesStore} from '../../stores/persistStores';
 
 const accentColors = [
   {id: 'indigo' as const, label: 'Indigo', tw: 'bg-indigo-500'},
@@ -12,6 +13,26 @@ const accentColors = [
   {id: 'amber' as const, label: 'Amber', tw: 'bg-amber-500'},
   {id: 'cyan' as const, label: 'Cyan', tw: 'bg-cyan-500'},
 ];
+
+const STORE_CODE = `class PreferencesStore {
+  theme: 'light' | 'dark' = 'dark';
+  fontSize = 16;
+  accentColor: AccentColor = 'indigo';
+
+  get cssVars() {
+    return {
+      '--accent': colorMap[this.accentColor],
+      '--font-size': \`\${this.fontSize}px\`,
+    };
+  }
+
+  setTheme(theme) { this.theme = theme; }
+  setFontSize(size) { this.fontSize = size; }
+  setAccentColor(color) { this.accentColor = color; }
+}
+
+const store = createClassyStore(new PreferencesStore());
+persist(store, { name: 'preferences' });`;
 
 function ThemeToggle() {
   const theme = useStore(preferencesStore, (state) => state.theme);
@@ -136,14 +157,11 @@ function StorageViewer() {
   const [raw, setRaw] = useState(() => localStorage.getItem('preferences'));
   const snap = useStore(preferencesStore);
 
-  // Re-read storage on every render triggered by store changes
   const current = localStorage.getItem('preferences');
   if (current !== raw) {
     setRaw(current);
   }
 
-  // Prevent unused variable lint warning -- we read the full snapshot
-  // to re-render when any property changes, which triggers the storage read above.
   void snap;
 
   return (
@@ -160,9 +178,10 @@ function StorageViewer() {
 
 export function SimplePersistDemo() {
   return (
-    <Panel
+    <DemoContainer
       title="Simple Persist"
       description="persist(store, { name: 'preferences' }) — that's it. All properties are saved to localStorage automatically."
+      codeTabs={[{label: 'Store', code: STORE_CODE, language: 'typescript'}]}
     >
       <div className="flex flex-col gap-4">
         <ThemeToggle />
@@ -174,22 +193,20 @@ export function SimplePersistDemo() {
       <StorageViewer />
 
       <div className="mt-4 flex items-center gap-3">
-        <button
-          type="button"
+        <Button
+          variant="secondary"
           onClick={async () => {
             preferencesStore.reset();
             await preferencesHandle.clear();
-            // Re-persist from the reset state
             await preferencesHandle.save();
           }}
-          className="px-3 py-1.5 rounded-lg bg-zinc-700 text-zinc-300 text-sm font-medium hover:bg-zinc-600 transition-colors cursor-pointer"
         >
           Reset &amp; Clear Storage
-        </button>
+        </Button>
         <span className="text-xs text-zinc-500">
           Refresh the page &mdash; your preferences survive.
         </span>
       </div>
-    </Panel>
+    </DemoContainer>
   );
 }
