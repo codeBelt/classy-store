@@ -1,11 +1,45 @@
 import {useStore} from '@codebelt/classy-store/react';
 import {useEffect, useState} from 'react';
-import {Panel} from './Panel';
-import {kitchenSinkHandle, kitchenSinkStore} from './persistStores';
-import {RenderBadge} from './RenderBadge';
-import {useRenderCount} from './useRenderCount';
+import {Button} from '../../components/Button';
+import {DemoContainer} from '../../components/DemoContainer';
+import {RenderBadge} from '../../components/RenderBadge';
+import {useRenderCount} from '../../hooks/useRenderCount';
+import {kitchenSinkHandle, kitchenSinkStore} from '../../stores/persistStores';
 
-// ── Hydration Status ────────────────────────────────────────────────────────
+const STORE_CODE = `class KitchenSinkStore {
+  notes = reactiveMap<string, Note>();
+  tags = reactiveSet<string>(['tutorial', 'persist']);
+  lastEditedAt = new Date();
+  viewMode: 'grid' | 'list' = 'list';
+  sortBy: 'date' | 'title' = 'date';
+  searchQuery = '';
+
+  get filteredNotes() { /* filter + sort */ }
+  addNote(title, body) { this.notes.set(...); }
+}
+
+persist(store, {
+  name: 'kitchen-sink',
+  debounce: 300,
+  version: 1,
+  merge: 'shallow',
+  properties: [
+    'viewMode', 'sortBy', 'searchQuery',
+    { key: 'lastEditedAt',
+      serialize: (d) => d.toISOString(),
+      deserialize: (s) => new Date(s) },
+    { key: 'notes',
+      serialize: (n) => [...n.entries()],
+      deserialize: (s) => reactiveMap(s) },
+    { key: 'tags',
+      serialize: (t) => [...t],
+      deserialize: (s) => reactiveSet(s) },
+  ],
+  migrate: (state, oldVersion) => {
+    if (oldVersion === 0) return { ...state, sortBy: 'date' };
+    return state;
+  },
+});`;
 
 function HydrationBadge() {
   const [hydrated, setHydrated] = useState(kitchenSinkHandle.isHydrated);
@@ -27,8 +61,6 @@ function HydrationBadge() {
     </span>
   );
 }
-
-// ── Notes Section (ReactiveMap) ─────────────────────────────────────────────
 
 function AddNoteForm() {
   const [title, setTitle] = useState('');
@@ -93,41 +125,47 @@ function NotesList() {
               : 'flex flex-col gap-2'
           }
         >
-          {notes.map(([id, note]) => (
-            <div
-              key={id}
-              className="bg-zinc-800/50 border border-zinc-700/50 rounded-lg px-3 py-2 flex items-start justify-between gap-2"
-            >
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-teal-400 truncate">
-                  {note.title}
-                </p>
-                {note.body && (
-                  <p className="text-xs text-zinc-400 mt-0.5 truncate">
-                    {note.body}
-                  </p>
-                )}
-                <p className="text-[10px] text-zinc-600 mt-1">
-                  {new Date(note.createdAt).toLocaleTimeString()}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => kitchenSinkStore.removeNote(id)}
-                className="text-zinc-600 hover:text-rose-400 text-sm transition-colors cursor-pointer shrink-0"
-                title="Delete note"
+          {notes.map((entry) => {
+            const id = entry[0] as string;
+            const note = entry[1] as {
+              title: string;
+              body: string;
+              createdAt: string;
+            };
+            return (
+              <div
+                key={id}
+                className="bg-zinc-800/50 border border-zinc-700/50 rounded-lg px-3 py-2 flex items-start justify-between gap-2"
               >
-                x
-              </button>
-            </div>
-          ))}
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-teal-400 truncate">
+                    {note.title}
+                  </p>
+                  {note.body && (
+                    <p className="text-xs text-zinc-400 mt-0.5 truncate">
+                      {note.body}
+                    </p>
+                  )}
+                  <p className="text-[10px] text-zinc-600 mt-1">
+                    {new Date(note.createdAt).toLocaleTimeString()}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => kitchenSinkStore.removeNote(id)}
+                  className="text-zinc-600 hover:text-rose-400 text-sm transition-colors cursor-pointer shrink-0"
+                  title="Delete note"
+                >
+                  x
+                </button>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
   );
 }
-
-// ── Tags Section (ReactiveSet) ──────────────────────────────────────────────
 
 function TagsSection() {
   const snap = useStore(kitchenSinkStore);
@@ -190,8 +228,6 @@ function TagsSection() {
   );
 }
 
-// ── View Controls ───────────────────────────────────────────────────────────
-
 function ViewControls() {
   const viewMode = useStore(kitchenSinkStore, (state) => state.viewMode);
   const sortBy = useStore(kitchenSinkStore, (state) => state.sortBy);
@@ -240,8 +276,6 @@ function ViewControls() {
   );
 }
 
-// ── Search ──────────────────────────────────────────────────────────────────
-
 function SearchInput() {
   const searchQuery = useStore(kitchenSinkStore, (state) => state.searchQuery);
   const renders = useRenderCount();
@@ -259,8 +293,6 @@ function SearchInput() {
     </div>
   );
 }
-
-// ── Last Edited (Date transform) ────────────────────────────────────────────
 
 function LastEdited() {
   const lastEditedAt = useStore(
@@ -284,8 +316,6 @@ function LastEdited() {
   );
 }
 
-// ── Storage Inspector ───────────────────────────────────────────────────────
-
 function StorageInspector() {
   const [raw, setRaw] = useState(() => localStorage.getItem('kitchen-sink'));
   const snap = useStore(kitchenSinkStore);
@@ -295,7 +325,6 @@ function StorageInspector() {
     setRaw(current);
   }
 
-  // Read snap to trigger re-render on store changes
   void snap;
 
   return (
@@ -309,8 +338,6 @@ function StorageInspector() {
     </div>
   );
 }
-
-// ── Control Panel ───────────────────────────────────────────────────────────
 
 function ControlPanel() {
   const [status, setStatus] = useState('');
@@ -326,58 +353,57 @@ function ControlPanel() {
         Persist Controls
       </span>
       <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
+        <Button
+          size="sm"
           onClick={async () => {
             await kitchenSinkHandle.save();
             showStatus('Saved!');
           }}
-          className="px-3 py-1.5 rounded-lg bg-teal-600 text-white text-xs font-medium hover:bg-teal-500 transition-colors cursor-pointer"
+          className="!bg-teal-600 hover:!bg-teal-500"
         >
           Force Save
-        </button>
-        <button
-          type="button"
+        </Button>
+        <Button
+          size="sm"
           onClick={async () => {
             await kitchenSinkHandle.clear();
             showStatus('Storage cleared');
           }}
-          className="px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-medium hover:bg-amber-500 transition-colors cursor-pointer"
+          className="!bg-amber-600 hover:!bg-amber-500"
         >
           Clear Storage
-        </button>
-        <button
-          type="button"
+        </Button>
+        <Button
+          size="sm"
+          variant="danger"
           onClick={() => {
             kitchenSinkHandle.unsubscribe();
             showStatus('Unsubscribed - mutations no longer persisted');
           }}
-          className="px-3 py-1.5 rounded-lg bg-rose-600 text-white text-xs font-medium hover:bg-rose-500 transition-colors cursor-pointer"
         >
           Unsubscribe
-        </button>
-        <button
-          type="button"
+        </Button>
+        <Button
+          size="sm"
           onClick={async () => {
             await kitchenSinkHandle.rehydrate();
             showStatus('Rehydrated from storage');
           }}
-          className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-medium hover:bg-indigo-500 transition-colors cursor-pointer"
         >
           Rehydrate
-        </button>
-        <button
-          type="button"
+        </Button>
+        <Button
+          size="sm"
+          variant="secondary"
           onClick={async () => {
             kitchenSinkStore.reset();
             await kitchenSinkHandle.clear();
             await kitchenSinkHandle.save();
             showStatus('Reset to defaults');
           }}
-          className="px-3 py-1.5 rounded-lg bg-zinc-700 text-zinc-300 text-xs font-medium hover:bg-zinc-600 transition-colors cursor-pointer"
         >
           Full Reset
-        </button>
+        </Button>
       </div>
       {status && (
         <p className="text-xs text-emerald-400 mt-2 font-mono">{status}</p>
@@ -386,13 +412,12 @@ function ControlPanel() {
   );
 }
 
-// ── Main Component ──────────────────────────────────────────────────────────
-
 export function KitchenSinkPersistDemo() {
   return (
-    <Panel
+    <DemoContainer
       title="Kitchen Sink Persist"
       description="ReactiveMap + ReactiveSet + Date transforms + debounce + version migration + cross-tab sync."
+      codeTabs={[{label: 'Store', code: STORE_CODE, language: 'typescript'}]}
     >
       <div className="flex items-center justify-between mb-4">
         <HydrationBadge />
@@ -411,6 +436,6 @@ export function KitchenSinkPersistDemo() {
         <StorageInspector />
         <ControlPanel />
       </div>
-    </Panel>
+    </DemoContainer>
   );
 }

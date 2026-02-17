@@ -1,8 +1,9 @@
 import {snapshot, subscribe} from '@codebelt/classy-store';
 import {useStore} from '@codebelt/classy-store/react';
 import {useEffect, useRef, useState} from 'react';
-import {Panel} from './Panel';
-import {documentStore} from './stores';
+import {Button} from '../../components/Button';
+import {DemoContainer} from '../../components/DemoContainer';
+import {documentStore} from '../../stores/documentStore';
 
 type Snap = ReturnType<typeof snapshot<typeof documentStore>>;
 
@@ -16,6 +17,38 @@ const bodies = [
   'Revised for clarity.',
 ];
 let bodyIndex = 0;
+
+const STORE_CODE = `class DocumentStore {
+  metadata = { title: 'Untitled', author: 'Anonymous' };
+  content = {
+    sections: [
+      { id: 1, heading: 'Introduction', body: '...' },
+      { id: 2, heading: 'Methods', body: '...' },
+    ],
+  };
+  settings = { theme: 'dark', fontSize: 14 };
+
+  updateTitle(title: string) {
+    this.metadata.title = title;
+  }
+  updateSectionBody(id: number, body: string) {
+    const section = this.content.sections.find(s => s.id === id);
+    if (section) section.body = body;
+  }
+  toggleTheme() {
+    this.settings.theme =
+      this.settings.theme === 'dark' ? 'light' : 'dark';
+  }
+}`;
+
+const COMPONENT_CODE = `// Compare snapshot references across renders
+const snap = snapshot(documentStore);
+const prev = prevSnapRef.current;
+
+// Structural sharing: unchanged branches keep identity
+snap.metadata === prev.metadata   // false (title changed)
+snap.content === prev.content     // true  (untouched)
+snap.settings === prev.settings   // true  (untouched)`;
 
 function useRefComparison() {
   const prevSnap = useRef<Snap | null>(null);
@@ -175,9 +208,13 @@ function EventLog() {
 
 export function StructuralSharingDemo() {
   return (
-    <Panel
+    <DemoContainer
       title="Structural Sharing Explorer"
-      description="Visualize snapshot reference identity. Green means the reference is the same (===) as the previous snapshot — only mutated branches get new references."
+      description="Visualize snapshot reference identity. Green = same ref (===), red = new ref."
+      codeTabs={[
+        {label: 'Store', code: STORE_CODE, language: 'typescript'},
+        {label: 'Component', code: COMPONENT_CODE},
+      ]}
     >
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <SnapshotTree />
@@ -185,43 +222,39 @@ export function StructuralSharingDemo() {
       </div>
 
       <div className="flex flex-wrap gap-2 mb-4">
-        <button
-          type="button"
+        <Button
           onClick={() => {
             titleIndex = (titleIndex + 1) % titles.length;
             documentStore.updateTitle(titles[titleIndex] as string);
           }}
-          className="px-3 py-1.5 rounded-lg bg-violet-500 text-white text-sm font-medium hover:bg-violet-400 transition-colors cursor-pointer"
+          className="!bg-violet-500 hover:!bg-violet-400"
         >
           Edit Title
-        </button>
-        <button
-          type="button"
+        </Button>
+        <Button
           onClick={() => {
             bodyIndex = (bodyIndex + 1) % bodies.length;
             documentStore.updateSectionBody(1, bodies[bodyIndex] as string);
           }}
-          className="px-3 py-1.5 rounded-lg bg-cyan-500 text-white text-sm font-medium hover:bg-cyan-400 transition-colors cursor-pointer"
+          className="!bg-cyan-500 hover:!bg-cyan-400"
         >
           Edit Section 1 Body
-        </button>
-        <button
-          type="button"
+        </Button>
+        <Button
           onClick={() => {
             bodyIndex = (bodyIndex + 1) % bodies.length;
             documentStore.updateSectionBody(2, bodies[bodyIndex] as string);
           }}
-          className="px-3 py-1.5 rounded-lg bg-cyan-500/20 text-cyan-300 text-sm font-medium hover:bg-cyan-500/30 transition-colors cursor-pointer"
+          className="!bg-cyan-500/20 !text-cyan-300 hover:!bg-cyan-500/30"
         >
           Edit Section 2 Body
-        </button>
-        <button
-          type="button"
+        </Button>
+        <Button
           onClick={() => documentStore.toggleTheme()}
-          className="px-3 py-1.5 rounded-lg bg-amber-500 text-white text-sm font-medium hover:bg-amber-400 transition-colors cursor-pointer"
+          className="!bg-amber-500 hover:!bg-amber-400"
         >
           Toggle Theme
-        </button>
+        </Button>
       </div>
 
       <div className="bg-zinc-800/60 border border-zinc-700/50 rounded-lg p-4">
@@ -243,6 +276,6 @@ export function StructuralSharingDemo() {
           shared.
         </p>
       </div>
-    </Panel>
+    </DemoContainer>
   );
 }

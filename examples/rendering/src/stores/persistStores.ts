@@ -163,17 +163,21 @@ export const kitchenSinkHandle = persist(kitchenSinkStore, {
     'searchQuery',
     {
       key: 'lastEditedAt',
-      serialize: (date) => date.toISOString(),
+      serialize: (date) => (date as Date).toISOString(),
       deserialize: (stored) => new Date(stored as string),
     },
     {
       key: 'notes',
-      serialize: (notes) => [...notes.entries()],
+      serialize: (notes) => [
+        ...(notes as ReturnType<typeof reactiveMap<string, Note>>).entries(),
+      ],
       deserialize: (stored) => reactiveMap(stored as [string, Note][]),
     },
     {
       key: 'tags',
-      serialize: (tags) => [...tags],
+      serialize: (tags) => [
+        ...(tags as ReturnType<typeof reactiveSet<string>>),
+      ],
       deserialize: (stored) => reactiveSet(stored as string[]),
     },
   ],

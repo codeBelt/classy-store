@@ -1,10 +1,39 @@
 import {useStore} from '@codebelt/classy-store/react';
-import {Panel} from './Panel';
-import {RenderBadge} from './RenderBadge';
-import {collectionStore} from './stores';
-import {useRenderCount} from './useRenderCount';
+import {Button} from '../../components/Button';
+import {DemoContainer} from '../../components/DemoContainer';
+import {RenderBadge} from '../../components/RenderBadge';
+import {useRenderCount} from '../../hooks/useRenderCount';
+import {collectionStore} from '../../stores/collectionStore';
 
 const roles = ['viewer', 'editor', 'admin'] as const;
+
+const STORE_CODE = `class CollectionStore {
+  users = reactiveMap<string, User>([
+    ['u1', { name: 'Alice', role: 'admin' }],
+    ['u2', { name: 'Bob', role: 'viewer' }],
+  ]);
+  tags = reactiveSet<string>(['urgent', 'bug']);
+
+  get userCount() { return this.users.size; }
+  get tagCount() { return this.tags.size; }
+
+  addUser(id: string, name: string, role: Role) {
+    this.users.set(id, { name, role });
+  }
+  removeUser(id: string) { this.users.delete(id); }
+  addTag(tag: string) { this.tags.add(tag); }
+  removeTag(tag: string) { this.tags.delete(tag); }
+}`;
+
+const COMPONENT_CODE = `// Auto-tracked mode — no selector needed
+const snap = useStore(collectionStore);
+
+// Iterate reactive collections
+const users = [...snap.users.entries()];
+const tags = [...snap.tags];
+
+// Computed getters
+const userCount = useStore(collectionStore, (s) => s.userCount);`;
 
 function UserList() {
   const snap = useStore(collectionStore);
@@ -135,9 +164,13 @@ let tagIdx = 0;
 
 export function CollectionsDemo() {
   return (
-    <Panel
+    <DemoContainer
       title="Reactive Collections"
-      description="reactiveMap() and reactiveSet() provide Map/Set semantics that the proxy can track. Native Map/Set internal methods aren't interceptable."
+      description="reactiveMap() and reactiveSet() provide Map/Set semantics that the proxy can track."
+      codeTabs={[
+        {label: 'Store', code: STORE_CODE, language: 'typescript'},
+        {label: 'Component', code: COMPONENT_CODE},
+      ]}
     >
       <div className="space-y-3 mb-4">
         <UserList />
@@ -146,8 +179,7 @@ export function CollectionsDemo() {
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
+        <Button
           onClick={() => {
             const name = sampleNames[nameIdx % sampleNames.length] as string;
             const role = roles[
@@ -156,29 +188,23 @@ export function CollectionsDemo() {
             nameIdx++;
             collectionStore.addUser(`u${userId++}`, name, role);
           }}
-          className="px-3 py-1.5 rounded-lg bg-indigo-500 text-white text-sm font-medium hover:bg-indigo-400 transition-colors cursor-pointer"
         >
           + User
-        </button>
-        <button
-          type="button"
+        </Button>
+        <Button
           onClick={() => {
             const tag = sampleTags[tagIdx % sampleTags.length] as string;
             tagIdx++;
             collectionStore.addTag(tag);
           }}
-          className="px-3 py-1.5 rounded-lg bg-emerald-500 text-white text-sm font-medium hover:bg-emerald-400 transition-colors cursor-pointer"
+          className="!bg-emerald-500 hover:!bg-emerald-400"
         >
           + Tag
-        </button>
-        <button
-          type="button"
-          onClick={() => collectionStore.clearTags()}
-          className="px-3 py-1.5 rounded-lg bg-zinc-700 text-zinc-300 text-sm font-medium hover:bg-zinc-600 transition-colors cursor-pointer"
-        >
+        </Button>
+        <Button variant="secondary" onClick={() => collectionStore.clearTags()}>
           Clear Tags
-        </button>
+        </Button>
       </div>
-    </Panel>
+    </DemoContainer>
   );
 }

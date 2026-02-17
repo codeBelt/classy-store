@@ -72,6 +72,11 @@ const config: Config = {
           label: 'Docs',
         },
         {
+          to: '/examples',
+          label: 'Examples',
+          position: 'left',
+        },
+        {
           href: 'https://github.com/codebelt/classy-store',
           label: 'GitHub',
           position: 'right',

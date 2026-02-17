@@ -11,6 +11,7 @@
   "dependencies": {
     "@codebelt/classy-store": "file:../..",
     "bun-plugin-tailwind": "0.1.2",
+    "prism-react-renderer": "^2.4.1",
     "proxy-compare": "3.0.1",
     "react": "19.2.4",
     "react-dom": "19.2.4",
