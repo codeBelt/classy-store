@@ -1,9 +1,12 @@
 name: Deploy Docs
 on:
+  workflow_dispatch:
   push:
     branches: [main]
     paths:
       - 'website/**'
+      - 'packages/**'
+      - 'examples/**'
       - 'README.md'
 
 permissions:
@@ -16,6 +19,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bun run build
+      - run: bun run demos:build
       - run: cd website && bun install --frozen-lockfile
       - run: cd website && bun run build
       - uses: actions/upload-pages-artifact@v3

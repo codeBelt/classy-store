@@ -2,6 +2,7 @@ name: Release
 on:
   push:
     branches: [main]
+  workflow_dispatch:
 
 concurrency: ${{ github.workflow }}-${{ github.ref }}
 
@@ -21,6 +22,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
       - name: Create Release PR or Detect Publishable Versions
         id: changesets
         uses: changesets/action@v1
@@ -32,13 +34,20 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Publish to npm
         if: steps.changesets.outputs.hasChangesets == 'false'
+        working-directory: packages/classy-store
         run: |
           npm install -g npm@latest
-          npm publish --provenance --access public
+          PKG_NAME=$(node -p "require('./package.json').name")
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          if npm view "${PKG_NAME}@${PKG_VERSION}" version 2>/dev/null; then
+            echo "Version ${PKG_VERSION} already published — skipping."
+          else
+            npm publish --provenance --access public
+          fi
       - name: Create git tags
         if: steps.changesets.outputs.hasChangesets == 'false'
         run: |
-          npx changeset tag
+          bunx changeset tag
           git push --follow-tags
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

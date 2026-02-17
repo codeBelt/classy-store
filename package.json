@@ -1,105 +1,21 @@
 {
-  "name": "@codebelt/classy-store",
-  "version": "0.1.0",
-  "description": "Class-based reactive state management — ES6 Proxy + immutable snapshots",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/codeBelt/classy-store.git"
-  },
-  "type": "module",
-  "main": "./dist/index.cjs",
-  "module": "./dist/index.mjs",
-  "types": "./dist/index.d.mts",
-  "publishConfig": {
-    "access": "public",
-    "provenance": true
-  },
-  "exports": {
-    ".": {
-      "import": {
-        "types": "./dist/index.d.mts",
-        "default": "./dist/index.mjs"
-      },
-      "require": {
-        "types": "./dist/index.d.cts",
-        "default": "./dist/index.cjs"
-      }
-    },
-    "./react": {
-      "import": {
-        "types": "./dist/react/react.d.mts",
-        "default": "./dist/react/react.mjs"
-      },
-      "require": {
-        "types": "./dist/react/react.d.cts",
-        "default": "./dist/react/react.cjs"
-      }
-    },
-    "./vue": {
-      "import": {
-        "types": "./dist/vue/vue.d.mts",
-        "default": "./dist/vue/vue.mjs"
-      },
-      "require": {
-        "types": "./dist/vue/vue.d.cts",
-        "default": "./dist/vue/vue.cjs"
-      }
-    },
-    "./svelte": {
-      "import": {
-        "types": "./dist/svelte/svelte.d.mts",
-        "default": "./dist/svelte/svelte.mjs"
-      },
-      "require": {
-        "types": "./dist/svelte/svelte.d.cts",
-        "default": "./dist/svelte/svelte.cjs"
-      }
-    },
-    "./angular": {
-      "import": {
-        "types": "./dist/angular/angular.d.mts",
-        "default": "./dist/angular/angular.mjs"
-      },
-      "require": {
-        "types": "./dist/angular/angular.d.cts",
-        "default": "./dist/angular/angular.cjs"
-      }
-    },
-    "./solid": {
-      "import": {
-        "types": "./dist/solid/solid.d.mts",
-        "default": "./dist/solid/solid.mjs"
-      },
-      "require": {
-        "types": "./dist/solid/solid.d.cts",
-        "default": "./dist/solid/solid.cjs"
-      }
-    },
-    "./utils": {
-      "import": {
-        "types": "./dist/utils/index.d.mts",
-        "default": "./dist/utils/index.mjs"
-      },
-      "require": {
-        "types": "./dist/utils/index.d.cts",
-        "default": "./dist/utils/index.cjs"
-      }
-    }
-  },
-  "files": [
-    "dist"
+  "name": "classy-store-monorepo",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "examples/*"
   ],
   "scripts": {
     "---------- Dev --------------------------------------------------------": "",
-    "dev": "tsdown --watch",
+    "dev": "bun run --filter @codebelt/classy-store dev",
     "---------- Build ------------------------------------------------------": "",
-    "build": "tsdown",
+    "build": "bun run --filter @codebelt/classy-store build",
     "---------- Test --------------------------------------------------------": "",
-    "test": "bun test",
+    "test": "bun run --filter @codebelt/classy-store test",
     "---------- Lint --------------------------------------------------------": "",
     "lint": "biome check",
     "lint:fix": "biome check --write",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "bun run --filter @codebelt/classy-store typecheck",
     "---------- Release (Changesets) ----------------------------------------": "",
     "changeset": "changeset",
     "changeset:add": "changeset add",
@@ -109,70 +25,19 @@
     "prerelease:enter": "changeset pre enter",
     "prerelease:exit": "changeset pre exit",
     "---------- Docs (Docusaurus) ------------------------------------------": "",
-    "docs:dev": "cd website && bun run start",
-    "docs:build": "cd website && bun run build",
+    "demos:build": "cd examples/demo && bun run build.ts --outdir=../../website/static/demos",
+    "docs:dev": "bun run demos:build && cd website && bun run start",
+    "docs:build": "bun run demos:build && cd website && bun run build",
     "docs:deploy": "cd website && bun run deploy",
     "---------- CI / Helper ------------------------------------------------": "",
     "checkall": "bun run lint:fix && bun run test && bun run typecheck",
     "clean": "find . -name node_modules -o -name .next -o -name dist -o -name build | xargs rm -rf",
-    "deps": "bun update --latest",
+    "deps": "bun update --interactive --recursive --latest",
     "-----------------------------------------------------------------------": ""
   },
-  "dependencies": {
-    "proxy-compare": "3.0.1"
-  },
-  "peerDependencies": {
-    "react": ">=18.0.0",
-    "vue": ">=3.3.0",
-    "svelte": ">=4.0.0",
-    "@angular/core": ">=17.0.0",
-    "solid-js": ">=1.7.0"
-  },
-  "peerDependenciesMeta": {
-    "react": {
-      "optional": true
-    },
-    "vue": {
-      "optional": true
-    },
-    "svelte": {
-      "optional": true
-    },
-    "@angular/core": {
-      "optional": true
-    },
-    "solid-js": {
-      "optional": true
-    }
-  },
   "devDependencies": {
-    "@angular/core": "21.1.4",
     "@biomejs/biome": "2.4.0",
     "@changesets/changelog-github": "0.5.2",
-    "@changesets/cli": "2.29.8",
-    "@happy-dom/global-registrator": "20.6.1",
-    "@types/bun": "1.3.9",
-    "@types/react": "19.2.14",
-    "@types/react-dom": "19.2.3",
-    "react": "19.2.4",
-    "react-dom": "19.2.4",
-    "solid-js": "1.9.11",
-    "svelte": "5.51.2",
-    "tsdown": "0.20.3",
-    "typescript": "5.9.3",
-    "vue": "3.5.28"
-  },
-  "keywords": [
-    "classy-store",
-    "@codebelt/classy-store",
-    "classystore",
-    "state-management",
-    "reactive",
-    "proxy",
-    "class-based",
-    "react",
-    "hooks"
-  ],
-  "license": "MIT",
-  "sideEffects": false
+    "@changesets/cli": "2.29.8"
+  }
 }
