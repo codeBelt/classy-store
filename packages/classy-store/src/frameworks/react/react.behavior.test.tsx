@@ -1,8 +1,8 @@
 import {afterEach, describe, expect, it, mock} from 'bun:test';
 import {act, type ReactNode} from 'react';
 import {createRoot, type Root} from 'react-dom/client';
-import {createClassyStore} from '../core/core';
-import {shallowEqual} from '../utils/equality/equality';
+import {createClassyStore} from '../../core/core';
+import {shallowEqual} from '../../utils/equality/equality';
 import {useStore} from './react';
 
 // ── Test harness ────────────────────────────────────────────────────────────

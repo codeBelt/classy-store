@@ -1,7 +1,7 @@
 import {afterEach, describe, expect, it, mock} from 'bun:test';
 import {act, type ReactNode} from 'react';
 import {createRoot} from 'react-dom/client';
-import {createClassyStore} from '../core/core';
+import {createClassyStore} from '../../core/core';
 import {useLocalStore, useStore} from './react';
 
 // ── Test harness ────────────────────────────────────────────────────────────

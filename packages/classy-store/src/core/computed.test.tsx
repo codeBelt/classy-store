@@ -1,8 +1,9 @@
 import {afterEach, describe, expect, it, mock} from 'bun:test';
 import {act, type ReactNode} from 'react';
 import {createRoot} from 'react-dom/client';
-import {useStore} from '../react/react';
+import {useStore} from '../frameworks/react/react';
 import {snapshot} from '../snapshot/snapshot';
+import type {Snapshot} from '../types';
 import {createClassyStore} from './core';
 
 /** Helper: flush the queueMicrotask-based batching. */
@@ -724,7 +725,10 @@ describe('computed getters — useStore integration', () => {
     const renderCount = mock(() => {});
 
     function ActiveList() {
-      const active = useStore(todoStore, (snap) => snap.activeTodos);
+      const active = useStore(
+        todoStore,
+        (snap: Snapshot<TodoStore>) => snap.activeTodos,
+      );
       renderCount();
       return <div>{active.length}</div>;
     }

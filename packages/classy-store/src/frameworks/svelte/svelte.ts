@@ -1,6 +1,6 @@
-import {subscribe as coreSubscribe} from '../core/core';
-import {snapshot} from '../snapshot/snapshot';
-import type {Snapshot} from '../types';
+import {subscribe as coreSubscribe} from '../../core/core';
+import {snapshot} from '../../snapshot/snapshot';
+import type {Snapshot} from '../../types';
 
 export interface ClassyReadable<T> {
   subscribe(run: (value: T) => void): () => void;

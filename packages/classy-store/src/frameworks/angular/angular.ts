@@ -5,9 +5,9 @@ import {
   signal,
   type WritableSignal,
 } from '@angular/core';
-import {subscribe} from '../core/core';
-import {snapshot} from '../snapshot/snapshot';
-import type {Snapshot} from '../types';
+import {subscribe} from '../../core/core';
+import {snapshot} from '../../snapshot/snapshot';
+import type {Snapshot} from '../../types';
 
 export function injectStore<T extends object>(
   proxyStore: T,

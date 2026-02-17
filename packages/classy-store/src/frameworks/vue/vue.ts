@@ -1,7 +1,7 @@
 import {onUnmounted, type ShallowRef, shallowRef} from 'vue';
-import {subscribe} from '../core/core';
-import {snapshot} from '../snapshot/snapshot';
-import type {Snapshot} from '../types';
+import {subscribe} from '../../core/core';
+import {snapshot} from '../../snapshot/snapshot';
+import type {Snapshot} from '../../types';
 
 export function useStore<T extends object>(
   proxyStore: T,
