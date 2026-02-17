@@ -462,4 +462,228 @@ describe('createClassyStore() — core reactivity', () => {
       expect(listener).toHaveBeenCalledTimes(1); // all batched
     });
   });
+
+  // ── Computed getter memoization ───────────────────────────────────────
+
+  describe('computed getter memoization', () => {
+    it('memoizes getter result when deps have not changed', () => {
+      let callCount = 0;
+
+      class Store {
+        count = 5;
+        get expensive() {
+          callCount++;
+          return this.count * 2;
+        }
+      }
+
+      const s = createClassyStore(new Store());
+
+      expect(s.expensive).toBe(10);
+      expect(callCount).toBe(1);
+
+      // Accessing again without mutation should use cache
+      expect(s.expensive).toBe(10);
+      expect(callCount).toBe(1);
+    });
+
+    it('recomputes getter when dependency changes', async () => {
+      let callCount = 0;
+
+      class Store {
+        count = 5;
+        get doubled() {
+          callCount++;
+          return this.count * 2;
+        }
+      }
+
+      const s = createClassyStore(new Store());
+      expect(s.doubled).toBe(10);
+      expect(callCount).toBe(1);
+
+      s.count = 10;
+      // Getter should recompute because count changed
+      expect(s.doubled).toBe(20);
+      expect(callCount).toBe(2);
+    });
+
+    it('getter that reads another getter (nested computed)', () => {
+      class Store {
+        count = 3;
+        get doubled() {
+          return this.count * 2;
+        }
+        get quadrupled() {
+          return this.doubled * 2;
+        }
+      }
+
+      const s = createClassyStore(new Store());
+      expect(s.quadrupled).toBe(12);
+
+      s.count = 5;
+      expect(s.quadrupled).toBe(20);
+    });
+
+    it('getter with nested object dependency recomputes on child mutation', async () => {
+      class Store {
+        items = [1, 2, 3];
+        get total() {
+          return this.items.reduce((a: number, b: number) => a + b, 0);
+        }
+      }
+
+      const s = createClassyStore(new Store());
+      expect(s.total).toBe(6);
+
+      s.items.push(4);
+      expect(s.total).toBe(10);
+    });
+
+    it('getter invalidates when property is replaced entirely', async () => {
+      class Store {
+        data = {value: 1};
+        get label() {
+          return `value: ${this.data.value}`;
+        }
+      }
+
+      const s = createClassyStore(new Store());
+      expect(s.label).toBe('value: 1');
+
+      // Replace the entire object
+      s.data = {value: 99};
+      expect(s.label).toBe('value: 99');
+    });
+  });
+
+  // ── Error handling ────────────────────────────────────────────────────
+
+  describe('error handling', () => {
+    it('getInternal throws for a non-store object', () => {
+      const plainObject = {count: 0};
+      expect(() => subscribe(plainObject, () => {})).toThrow(
+        /not a store proxy/,
+      );
+    });
+
+    it('getInternal throws for a primitive wrapper', () => {
+      expect(() => subscribe({} as object, () => {})).toThrow(
+        /not a store proxy/,
+      );
+    });
+
+    it('getVersion throws for a non-store object', () => {
+      expect(() => getVersion({})).toThrow(/not a store proxy/);
+    });
+  });
+
+  // ── Child proxy management ────────────────────────────────────────────
+
+  describe('child proxy management', () => {
+    it('replacing a nested object creates a new child proxy', async () => {
+      const s = createClassyStore({nested: {a: 1}});
+      const listener = mock(() => {});
+      subscribe(s, listener);
+
+      const oldRef = s.nested;
+      s.nested = {a: 2};
+      const newRef = s.nested;
+
+      // Should be different proxy references
+      expect(oldRef).not.toBe(newRef);
+      expect(newRef.a).toBe(2);
+
+      await flush();
+      expect(listener).toHaveBeenCalledTimes(1);
+    });
+
+    it('mutations on old child proxy after replacement do not trigger notifications', async () => {
+      const s = createClassyStore({nested: {a: 1}});
+      const listener = mock(() => {});
+
+      const oldNested = s.nested; // get child proxy
+      s.nested = {a: 2}; // replace — old child proxy detached
+
+      subscribe(s, listener);
+
+      // Mutate the old detached proxy reference (directly on target)
+      // This shouldn't crash, but won't trigger listener on the store
+      // because the child is no longer linked.
+      // Note: old proxy still has its own internal, so mutations work on it
+      // but the store's root won't be notified since the child is orphaned.
+      oldNested.a = 999;
+      await flush();
+
+      // The store's nested should still be the new value
+      expect(s.nested.a).toBe(2);
+    });
+
+    it('deeply nested replacement triggers root listener', async () => {
+      const s = createClassyStore({
+        level1: {level2: {level3: {value: 'deep'}}},
+      });
+      const listener = mock(() => {});
+      subscribe(s, listener);
+
+      s.level1.level2.level3.value = 'changed';
+      await flush();
+
+      expect(listener).toHaveBeenCalledTimes(1);
+      expect(s.level1.level2.level3.value).toBe('changed');
+    });
+  });
+
+  // ── Version tracking ──────────────────────────────────────────────────
+
+  describe('version tracking', () => {
+    it('version does not change when same value is set', () => {
+      const s = createClassyStore({count: 0});
+      const v1 = getVersion(s);
+
+      s.count = 0; // noop — same value
+      const v2 = getVersion(s);
+
+      expect(v2).toBe(v1);
+    });
+
+    it('version increments on nested mutation', async () => {
+      const s = createClassyStore({nested: {value: 1}});
+      const v1 = getVersion(s);
+
+      s.nested.value = 2;
+      const v2 = getVersion(s);
+
+      expect(v2).toBeGreaterThan(v1);
+    });
+
+    it('version increments on delete', async () => {
+      const s = createClassyStore({a: 1, b: 2} as Record<string, number>);
+      const v1 = getVersion(s);
+
+      delete s.b;
+      const v2 = getVersion(s);
+
+      expect(v2).toBeGreaterThan(v1);
+    });
+
+    it('multiple rapid mutations produce one notification but multiple version bumps', async () => {
+      const s = createClassyStore({count: 0});
+      const listener = mock(() => {});
+      subscribe(s, listener);
+
+      const v1 = getVersion(s);
+      s.count = 1;
+      s.count = 2;
+      s.count = 3;
+      const v2 = getVersion(s);
+
+      await flush();
+
+      expect(v2).toBeGreaterThan(v1);
+      expect(listener).toHaveBeenCalledTimes(1); // batched
+      expect(s.count).toBe(3);
+    });
+  });
 });

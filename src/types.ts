@@ -58,7 +58,14 @@ export type DepEntry =
       /** Property name on the parent. */
       prop: string | symbol;
     }
-  | {kind: 'value'; target: object; prop: string | symbol; value: unknown};
+  | {kind: 'value'; target: object; prop: string | symbol; value: unknown}
+  | {
+      /** Dependency on a computed getter — validated via the computed cache, not raw getter re-execution. */
+      kind: 'computed';
+      internal: StoreInternal;
+      prop: string | symbol;
+      value: unknown;
+    };
 
 /** Cached result of a memoized computed getter, together with its dependencies. */
 export type ComputedEntry = {
