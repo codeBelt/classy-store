@@ -4,9 +4,12 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "---------- Dev --------------------------------------------------------": "",
     "dev": "bun --hot --port 3001 src/index.ts",
+    "---------- Build ------------------------------------------------------": "",
+    "build": "bun run build.ts",
     "start": "NODE_ENV=production bun src/index.ts",
-    "build": "bun run build.ts"
+    "-----------------------------------------------------------------------": ""
   },
   "dependencies": {
     "@codebelt/classy-store": "workspace:*",

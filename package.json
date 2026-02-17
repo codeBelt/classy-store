@@ -6,12 +6,17 @@
     "examples/*"
   ],
   "scripts": {
+    "---------- Dev --------------------------------------------------------": "",
     "dev": "bun run --filter @codebelt/classy-store dev",
+    "---------- Build ------------------------------------------------------": "",
     "build": "bun run --filter @codebelt/classy-store build",
+    "---------- Test --------------------------------------------------------": "",
     "test": "bun run --filter @codebelt/classy-store test",
+    "---------- Lint --------------------------------------------------------": "",
     "lint": "biome check",
     "lint:fix": "biome check --write",
     "typecheck": "bun run --filter @codebelt/classy-store typecheck",
+    "---------- Release (Changesets) ----------------------------------------": "",
     "changeset": "changeset",
     "changeset:add": "changeset add",
     "changeset:version": "changeset version",
@@ -19,13 +24,16 @@
     "changeset:status": "changeset status",
     "prerelease:enter": "changeset pre enter",
     "prerelease:exit": "changeset pre exit",
-    "demos:build": "cd examples/rendering && bun run build.ts --outdir=../../website/static/demos",
+    "---------- Docs (Docusaurus) ------------------------------------------": "",
+    "demos:build": "cd examples/demo && bun run build.ts --outdir=../../website/static/demos",
     "docs:dev": "bun run demos:build && cd website && bun run start",
     "docs:build": "bun run demos:build && cd website && bun run build",
     "docs:deploy": "cd website && bun run deploy",
+    "---------- CI / Helper ------------------------------------------------": "",
     "checkall": "bun run lint:fix && bun run test && bun run typecheck",
     "clean": "find . -name node_modules -o -name .next -o -name dist -o -name build | xargs rm -rf",
-    "deps": "bun update --latest"
+    "deps": "bun update --latest",
+    "-----------------------------------------------------------------------": ""
   },
   "devDependencies": {
     "@biomejs/biome": "2.4.0",
