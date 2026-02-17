@@ -4,6 +4,12 @@
 
 ### Patch Changes
 
+- [#11](https://github.com/codeBelt/classy-store/pull/11) [`47e4600`](https://github.com/codeBelt/classy-store/commit/47e46004aaeb42ac130c96c7170ac13640d19fe5) Thanks [@codeBelt](https://github.com/codeBelt)! - convert codebase to bun workspace
+
+## 0.1.1
+
+### Patch Changes
+
 - [#7](https://github.com/codeBelt/classy-store/pull/7) [`64489ea`](https://github.com/codeBelt/classy-store/commit/64489eabb16e7d917ec211b97d65cf47148c6cb9) Thanks [@codeBelt](https://github.com/codeBelt)! - add `withHistory`, `devtools`, and `subscribeKey` utilities for enhanced state management
 
 - [#6](https://github.com/codeBelt/classy-store/pull/6) [`14ffd85`](https://github.com/codeBelt/classy-store/commit/14ffd85f1b6107f4ec44cfcbd7abec0c234437c2) Thanks [@codeBelt](https://github.com/codeBelt)! - add `useLocalStore` hook for component-scoped reactive stores with tests and documentation
