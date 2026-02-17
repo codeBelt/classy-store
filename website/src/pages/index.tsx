@@ -129,7 +129,7 @@ export default function Home() {
   return (
     <Layout
       title={`Hello from ${siteConfig.title}`}
-      description="Class-based reactive state management for React"
+      description="Class-based reactive state management for React, Vue, Svelte, Solid, and Angular"
     >
       <HomepageHeader />
       <main>
