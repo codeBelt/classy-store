@@ -90,22 +90,25 @@ export function devtools<T extends object>(
           const newState = JSON.parse(message.state) as Record<string, unknown>;
           isTimeTraveling = true;
 
-          // Apply state back to the proxy, skipping getters and methods
-          for (const key of Object.keys(newState)) {
-            // Skip getters
-            if (findGetterDescriptor(proxyStore, key)?.get) continue;
-            // Skip methods
-            if (
-              typeof (proxyStore as Record<string, unknown>)[key] === 'function'
-            ) {
-              continue;
+          try {
+            // Apply state back to the proxy, skipping getters and methods
+            for (const key of Object.keys(newState)) {
+              // Skip getters
+              if (findGetterDescriptor(proxyStore, key)?.get) continue;
+              // Skip methods
+              if (
+                typeof (proxyStore as Record<string, unknown>)[key] ===
+                'function'
+              ) {
+                continue;
+              }
+              (proxyStore as Record<string, unknown>)[key] = newState[key];
             }
-            (proxyStore as Record<string, unknown>)[key] = newState[key];
+          } finally {
+            isTimeTraveling = false;
           }
-
-          isTimeTraveling = false;
         } catch {
-          isTimeTraveling = false;
+          // JSON.parse failed — ignore corrupted DevTools state.
         }
       }
     }

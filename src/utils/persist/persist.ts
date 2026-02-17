@@ -211,8 +211,7 @@ function resolveProperties<T extends object>(
   for (const key of Object.keys(snap)) {
     // Skip getters (they live on the prototype, but snapshot installs them).
     // We check the original store's target for getter descriptors.
-    if (findGetterDescriptor(Object.getPrototypeOf(proxyStore), key)?.get)
-      continue;
+    if (findGetterDescriptor(proxyStore, key)?.get) continue;
     // Skip functions (methods).
     const value = (proxyStore as Record<string, unknown>)[key];
     if (typeof value === 'function') continue;
@@ -308,6 +307,7 @@ export function persist<T extends object>(
   // ── State ────────────────────────────────────────────────────────────────
 
   let disposed = false;
+  let hydrating = false;
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
   let hydratedFlag = false;
   let expiredFlag = false;
@@ -352,7 +352,7 @@ export function persist<T extends object>(
 
   /** Schedule a debounced write (or write immediately if debounce is 0). */
   function scheduleWrite(): void {
-    if (disposed) return;
+    if (disposed || hydrating) return;
 
     if (debounceMs <= 0) {
       void writeToStorage();
@@ -427,10 +427,12 @@ export function persist<T extends object>(
     let merged: Record<string, unknown>;
     if (typeof merge === 'function') {
       merged = merge(state, currentState);
+    } else if (merge === 'replace') {
+      // Only use persisted keys — new defaults not in storage are dropped.
+      merged = state;
     } else {
-      // Both 'shallow' and 'replace' assign persisted keys onto the store.
-      // The difference is conceptual for nested objects, but at this level
-      // both just assign the persisted value per key.
+      // 'shallow': persisted values overwrite current, but properties not
+      // in storage keep their current (default) value.
       merged = {...currentState, ...state};
     }
 
@@ -446,7 +448,12 @@ export function persist<T extends object>(
   async function hydrateFromStorage(): Promise<void> {
     const raw = await storage.getItem(name);
     if (raw !== null) {
-      applyPersistedState(raw);
+      hydrating = true;
+      try {
+        applyPersistedState(raw);
+      } finally {
+        hydrating = false;
+      }
     }
   }
 
@@ -539,10 +546,12 @@ export function persist<T extends object>(
     },
 
     async clear() {
+      if (disposed) return;
       await storage.removeItem(name);
     },
 
     async rehydrate() {
+      expiredFlag = false;
       await hydrateFromStorage();
       if (!hydratedFlag) {
         hydratedFlag = true;

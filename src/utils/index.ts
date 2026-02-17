@@ -22,3 +22,4 @@ export type {
 } from './persist/persist';
 export {persist} from './persist/persist';
 export {subscribeKey} from './subscribe-key/subscribe-key';
+export {shallowEqual} from './equality/equality';

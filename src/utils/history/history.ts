@@ -96,16 +96,22 @@ export function withHistory<T extends object>(
       if (pointer <= 0) return;
       pointer--;
       paused = true;
-      applySnapshot(history[pointer]);
-      paused = false;
+      try {
+        applySnapshot(history[pointer]);
+      } finally {
+        paused = false;
+      }
     },
 
     redo() {
       if (pointer >= history.length - 1) return;
       pointer++;
       paused = true;
-      applySnapshot(history[pointer]);
-      paused = false;
+      try {
+        applySnapshot(history[pointer]);
+      } finally {
+        paused = false;
+      }
     },
 
     get canUndo() {
