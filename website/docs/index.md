@@ -1,21 +1,22 @@
 # Classy Store
 
-Class-based reactive state management for React. Write plain TypeScript classes — get fine-grained reactivity, immutable snapshots, and zero-boilerplate hooks.
+Class-based reactive state management for React, Vue, Svelte, Solid, and Angular. Write plain TypeScript classes — get fine-grained reactivity, immutable snapshots, and zero-boilerplate hooks.
 
 ```
-~3.5 KB gzipped · ES6 Proxy · useSyncExternalStore · proxy-compare
+~2.3 KB gzipped · ES6 Proxy · useSyncExternalStore · proxy-compare
 ```
 
 ## Features
 
 - **Class-based stores** — plain classes with fields, methods, and getters
-- **No wrappers** — no `observer()`, no `Provider`, no HOCs
+- **No wrappers** — no `observer()`, no `Provider`, no HOCs, no decorators
 - **Fine-grained reactivity** — components only re-render when properties they read change
 - **Immutable snapshots** — structural sharing keeps unchanged sub-trees reference-equal
 - **Memoized computed values** — class getters are automatically cached, recompute only when deps change
 - **Batched updates** — multiple synchronous mutations coalesce into one re-render
 - **Type-safe** — full TypeScript inference from your class definitions
-- **Two hook modes** — explicit selector or automatic property tracking
+- **Framework bindings** — first-class integrations for React, Vue, Svelte, Solid, and Angular
+- **Two hook modes** — explicit selector or automatic property tracking (React)
 - **Reactive collections** — `reactiveMap()` and `reactiveSet()` for Map/Set-like state
 - **Persistence** — `persist()` utility with transforms, versioning, migration, debounce, cross-tab sync, TTL expiration, and SSR support
 - **DevTools** — `devtools()` connects to Redux DevTools for state inspection and time-travel debugging
@@ -28,7 +29,15 @@ Class-based reactive state management for React. Write plain TypeScript classes 
 bun add @codebelt/classy-store
 ```
 
-Peer dependency: `react >= 18.0.0`
+All framework peer dependencies are optional — install only what your project uses:
+
+| Framework | Peer Dependency | Import |
+|-----------|----------------|--------|
+| React | `react >= 18.0.0` | `@codebelt/classy-store/react` |
+| Vue | `vue >= 3.0.0` | `@codebelt/classy-store/vue` |
+| Svelte | `svelte >= 4.0.0` | `@codebelt/classy-store/svelte` |
+| Solid | `solid-js >= 1.0.0` | `@codebelt/classy-store/solid` |
+| Angular | `@angular/core >= 17.0.0` | `@codebelt/classy-store/angular` |
 
 ## Quick Start
 
@@ -521,7 +530,7 @@ For `Map` and `Set` semantics, use [`reactiveMap()`](#reactivemapk-vinitial) and
 | Built-in persistence | Yes (per-property transforms, versioning, cross-tab sync) | Yes (middleware) | No (separate pkg) | No (manual) |
 | DevTools integration | Yes (`devtools()`) | Yes (middleware) | Yes (separate pkg) | Yes (`devtools()`) |
 | Undo/Redo | Yes (`withHistory()`) | No (manual) | No (manual) | No (manual) |
-| Bundle size | ~3.5KB | ~1.2KB | ~16KB | ~3KB |
+| Bundle size | ~2.3 KB gzip | ~1.2KB | ~16KB | ~3KB |
 
 ## Vision
 
@@ -529,7 +538,7 @@ I wanted state management that feels like writing plain TypeScript.
 
 - **A class is the store.** Define fields, methods, and getters — that's your state, your actions, and your derived values. The class *is* the type. TypeScript infers everything automatically.
 - **Getters are computed values.** Write `get filtered()` and it's memoized with dependency tracking out of the box. It caches until a dependency changes.
-- **A single hook connects React.** One `useStore` call subscribes a component. Choose a selector for precision or let the library figure out what you read.
+- **Framework bindings that feel native.** React's `useStore`, Vue's `useStore` (ShallowRef), Svelte's `toSvelteStore`, Solid's `useStore` (signal getter), Angular's `injectStore` — each integration matches the framework's reactive idioms.
 - **Call methods directly.** `todoStore.addTodo('Buy milk')` — a real object with real methods, callable from anywhere.
 - **Observe only what matters.** Components re-render when the specific properties they read change.
 

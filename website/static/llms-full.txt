@@ -1,0 +1,2062 @@
+# @codebelt/classy-store — Complete Documentation
+
+This file contains the full documentation for `@codebelt/classy-store` concatenated into a
+single file for LLM context windows. Generated from the source docs at:
+https://codebelt.github.io/classy-store/docs/
+
+---
+SOURCE: https://codebelt.github.io/classy-store/docs/
+---
+
+# Classy Store
+
+Class-based reactive state management for React, Vue, Svelte, Solid, and Angular. Write plain TypeScript classes — get fine-grained reactivity, immutable snapshots, and zero-boilerplate hooks.
+
+```
+~2.3 KB gzipped · ES6 Proxy · useSyncExternalStore · proxy-compare
+```
+
+## Features
+
+- **Class-based stores** — plain classes with fields, methods, and getters
+- **No wrappers** — no `observer()`, no `Provider`, no HOCs, no decorators
+- **Fine-grained reactivity** — components only re-render when properties they read change
+- **Immutable snapshots** — structural sharing keeps unchanged sub-trees reference-equal
+- **Memoized computed values** — class getters are automatically cached, recompute only when deps change
+- **Batched updates** — multiple synchronous mutations coalesce into one re-render
+- **Type-safe** — full TypeScript inference from your class definitions
+- **Framework bindings** — first-class integrations for React, Vue, Svelte, Solid, and Angular
+- **Two hook modes** — explicit selector or automatic property tracking (React)
+- **Reactive collections** — `reactiveMap()` and `reactiveSet()` for Map/Set-like state
+- **Persistence** — `persist()` utility with transforms, versioning, migration, debounce, cross-tab sync, TTL expiration, and SSR support
+- **DevTools** — `devtools()` connects to Redux DevTools for state inspection and time-travel debugging
+- **Property subscriptions** — `subscribeKey()` watches a single property for changes with previous/current values
+- **Undo/Redo** — `withHistory()` adds undo/redo via a snapshot stack with pause/resume and configurable limits
+
+## Installation
+
+```bash
+bun add @codebelt/classy-store
+```
+
+All framework peer dependencies are optional — install only what your project uses:
+
+| Framework | Peer Dependency | Import |
+|-----------|----------------|--------|
+| React | `react >= 18.0.0` | `@codebelt/classy-store/react` |
+| Vue | `vue >= 3.0.0` | `@codebelt/classy-store/vue` |
+| Svelte | `svelte >= 4.0.0` | `@codebelt/classy-store/svelte` |
+| Solid | `solid-js >= 1.0.0` | `@codebelt/classy-store/solid` |
+| Angular | `@angular/core >= 17.0.0` | `@codebelt/classy-store/angular` |
+
+## Quick Start
+
+### 1. Define a store class
+
+```typescript
+class TodoStore {
+  todos: Todo[] = [];
+  filter: 'all' | 'done' | 'pending' = 'all';
+
+  // Getter = computed value
+  get filtered() {
+    if (this.filter === 'all') return this.todos;
+    return this.todos.filter((todo) =>
+        this.filter === 'done' ? todo.done : !todo.done,
+    );
+  }
+
+  get remaining() {
+    return this.todos.filter((todo) => !todo.done).length;
+  }
+
+  addTodo(text: string) {
+    this.todos.push({text, done: false});
+  }
+
+  toggle(index: number) {
+    this.todos[index]!.done = !this.todos[index]!.done;
+  }
+}
+```
+
+### 2. Create a reactive store
+
+```typescript
+import {createClassyStore} from '@codebelt/classy-store';
+
+const todoStore = createClassyStore(new TodoStore());
+```
+
+### 3. Use in React components
+
+```tsx
+import {useStore} from '@codebelt/classy-store/react';
+
+// Selector mode: explicit control over what triggers re-renders
+function TodoCount() {
+  const remaining = useStore(todoStore, (store) => store.remaining);
+  return <span>{remaining} left</span>;
+}
+
+// Auto-tracked mode: reads are tracked automatically
+function TodoList() {
+  const snap = useStore(todoStore);
+  return (
+    <ul>
+      {snap.filtered.map((todo, index) => (
+        <li key={index}>{todo.text}</li>
+      ))}
+    </ul>
+  );
+}
+
+// Actions: call methods directly on the store
+function AddButton() {
+  return <button onClick={() => todoStore.addTodo('New')}>Add</button>;
+}
+```
+
+## API Reference
+
+### `createClassyStore(instance)`
+
+Wraps a class instance in a reactive Proxy. Mutations are intercepted, batched via `queueMicrotask`, and subscribers are notified.
+
+```typescript
+const myStore = createClassyStore(new MyClass());
+```
+
+- **Methods** are automatically bound so `this` mutations go through the proxy
+- **Getters** are automatically memoized — they only recompute when a dependency changes (like MobX `@computed`)
+- **Nested objects/arrays** are lazily deep-proxied on first access
+
+### `useStore(store, selector?, isEqual?)`
+
+React hook that subscribes to store changes via `useSyncExternalStore`.
+
+**Selector mode:**
+
+```typescript
+const count = useStore(myStore, (store) => store.count);
+const user = useStore(myStore, (store) => store.user);
+const items = useStore(myStore, (store) => store.items);
+```
+
+The selector receives an immutable snapshot. Re-renders only when the selected value changes (via `Object.is` by default, or a custom `isEqual`).
+
+**Auto-tracked mode:**
+
+```typescript
+const snap = useStore(myStore);
+// Access snap.count, snap.user.name, etc.
+// Only re-renders when accessed properties change
+```
+
+Returns a tracking proxy. Properties your component reads are automatically tracked — changes to unread properties won't cause re-renders.
+
+**Custom equality:**
+
+```typescript
+import {shallowEqual} from '@codebelt/classy-store';
+import {useStore} from '@codebelt/classy-store/react';
+
+const userData = useStore(myStore, (store) => ({
+  name: store.user.name,
+  role: store.user.role,
+}), shallowEqual);
+```
+
+### `useLocalStore(factory)`
+
+Creates a component-scoped reactive store. Each component instance gets its own isolated store, garbage collected on unmount.
+
+```tsx
+import {useLocalStore, useStore} from '@codebelt/classy-store/react';
+
+class CounterStore {
+  count = 0;
+  increment() { this.count++; }
+}
+
+function Counter() {
+  const store = useLocalStore(() => new CounterStore());
+  const count = useStore(store, (s) => s.count);
+
+  return <button onClick={() => store.increment()}>Count: {count}</button>;
+}
+```
+
+The factory runs once per mount. Subsequent re-renders reuse the same store instance.
+
+### `snapshot(store)`
+
+Creates a deeply frozen, immutable snapshot of the current state. Used internally by `useStore` but also available directly.
+
+```typescript
+import {snapshot} from '@codebelt/classy-store';
+
+const snap = snapshot(myStore);
+// snap is deeply frozen — mutations throw
+// Structural sharing: unchanged sub-trees === previous snapshot
+```
+
+### `subscribe(store, callback)`
+
+Low-level subscription API. Returns an unsubscribe function. The callback fires once per batched mutation (after microtask).
+
+```typescript
+import {subscribe} from '@codebelt/classy-store';
+
+const unsub = subscribe(myStore, () => {
+  console.log('Store changed');
+});
+
+// Later: unsub();
+```
+
+### `getVersion(store)`
+
+Returns the current version number of a store proxy. Versions are monotonically increasing and bump on any mutation in the store's subtree (child mutations propagate up to the root). Useful for debugging, testing whether a store has changed, or custom cache invalidation.
+
+```typescript
+import {getVersion} from '@codebelt/classy-store';
+
+const v1 = getVersion(myStore);
+myStore.count++;
+// After microtask:
+const v2 = getVersion(myStore);
+// v2 > v1
+```
+
+### `shallowEqual(a, b)`
+
+Shallow equality comparison for objects and arrays. Useful as a custom `isEqual` for selectors that return derived objects.
+
+### `reactiveMap<K, V>(initial?)`
+
+Creates a reactive Map-like collection backed by a plain array. Use inside a `createClassyStore()` for full reactivity.
+
+```typescript
+import {reactiveMap, createClassyStore} from '@codebelt/classy-store';
+import {useStore} from '@codebelt/classy-store/react';
+
+class UserStore {
+  users = reactiveMap<string, { name: string; role: string }>();
+
+  addUser(id: string, name: string, role: string) {
+    this.users.set(id, {name, role});
+  }
+
+  removeUser(id: string) {
+    this.users.delete(id);
+  }
+}
+
+const userStore = createClassyStore(new UserStore());
+
+function UserList() {
+  const snap = useStore(userStore, (store) => [...store.users.entries()]);
+  return (
+    <ul>
+      {snap.map(([id, user]) => (
+        <li key={id}>{user.name} ({user.role})</li>
+      ))}
+    </ul>
+  );
+}
+```
+
+Supports: `.get()`, `.set()`, `.has()`, `.delete()`, `.clear()`, `.size`, `.keys()`, `.values()`, `.entries()`, `.forEach()`, `for...of`.
+
+### `reactiveSet<T>(initial?)`
+
+Creates a reactive Set-like collection backed by a plain array. Use inside a `createClassyStore()` for full reactivity.
+
+```typescript
+import {reactiveSet, createClassyStore} from '@codebelt/classy-store';
+import {useStore} from '@codebelt/classy-store/react';
+
+class TagStore {
+  tags = reactiveSet<string>();
+
+  addTag(tag: string) {
+    this.tags.add(tag);
+  }
+}
+
+const tagStore = createClassyStore(new TagStore());
+
+function TagList() {
+  const tags = useStore(tagStore, (store) => [...store.tags]);
+  return tags.map(tag => <span key={tag}>{tag}</span>);
+}
+```
+
+Supports: `.add()`, `.has()`, `.delete()`, `.clear()`, `.size`, `.keys()`, `.values()`, `.entries()`, `.forEach()`, `for...of`.
+
+> **Note:** `reactiveMap()` and `reactiveSet()` are not real `Map`/`Set` instances — they emulate the API on top of plain arrays so the store proxy can track mutations. `instanceof Map` / `instanceof Set` will return `false`.
+
+### `Snapshot<T>`
+
+TypeScript utility type that converts a store type to its deeply readonly snapshot equivalent.
+
+```typescript
+import type {Snapshot} from '@codebelt/classy-store';
+
+type MyStoreSnap = Snapshot<MyStore>;
+// All properties are readonly, arrays become ReadonlyArray, etc.
+```
+
+## Utilities (`@codebelt/classy-store/utils`)
+
+Tree-shakeable utilities are available via a separate entry point:
+
+```typescript
+import {persist, devtools, subscribeKey, withHistory} from '@codebelt/classy-store/utils';
+```
+
+### `persist(store, options)`
+
+Persist store state to storage with transforms, versioning, migration, cross-tab sync, and SSR support. Getters and methods are automatically excluded.
+
+```typescript
+import {persist} from '@codebelt/classy-store/utils';
+
+const handle = persist(todoStore, {name: 'todo-store'});
+```
+
+### `devtools(store, options?)`
+
+Connect a store to Redux DevTools for state inspection and time-travel debugging.
+
+```typescript
+import {devtools} from '@codebelt/classy-store/utils';
+
+const disconnect = devtools(myStore, {name: 'MyStore'});
+```
+
+### `subscribeKey(store, key, callback)`
+
+Subscribe to changes on a single property. Fires only when the watched key changes.
+
+```typescript
+import {subscribeKey} from '@codebelt/classy-store/utils';
+
+const unsub = subscribeKey(store, 'theme', (value, prev) => {
+  console.log(`Theme: ${prev} → ${value}`);
+});
+```
+
+### `withHistory(store, options?)`
+
+Add undo/redo capability via a snapshot stack with pause/resume and configurable limits.
+
+```typescript
+import {withHistory} from '@codebelt/classy-store/utils';
+
+const history = withHistory(store, {limit: 100});
+history.undo();
+history.redo();
+```
+
+## Patterns
+
+### Multiple stores
+
+```typescript
+const authStore = createClassyStore(new AuthStore());
+const uiStore = createClassyStore(new UiStore());
+
+function Header() {
+  const user = useStore(authStore, (store) => store.currentUser);
+  const theme = useStore(uiStore, (store) => store.theme);
+  return <header className={theme}>{user?.name}</header>;
+}
+```
+
+### Class inheritance
+
+Subclasses work out of the box. Methods, getters, and `super` calls from any ancestor are fully reactive:
+
+```typescript
+class BaseStore {
+  loading = false;
+  error: string | null = null;
+
+  get hasError() { return this.error !== null; }
+  setLoading(value: boolean) { this.loading = value; }
+  setError(msg: string | null) { this.error = msg; }
+}
+
+class UserStore extends BaseStore {
+  users: string[] = [];
+
+  get count() { return this.users.length; }
+
+  addUser(name: string) {
+    this.users.push(name);
+  }
+}
+
+const userStore = createClassyStore(new UserStore());
+
+// Base methods, derived methods, base getters, derived getters — all reactive.
+// snapshot(userStore) instanceof UserStore === true
+```
+
+### Nested object mutations
+
+Nested objects are deeply reactive. Mutations at any depth trigger the correct re-renders:
+
+```typescript
+class SettingsStore {
+  settings = {
+    theme: 'dark',
+    notifications: {
+      email: true,
+      push: false,
+    },
+  };
+
+  togglePush() {
+    this.settings.notifications.push = !this.settings.notifications.push;
+  }
+}
+
+const settingsStore = createClassyStore(new SettingsStore());
+
+// Only re-renders when push notification setting changes
+function PushToggle() {
+  const push = useStore(settingsStore, (store) => store.settings.notifications.push);
+  return <Switch checked={push} onChange={() => settingsStore.togglePush()} />;
+}
+```
+
+### Array operations
+
+Arrays support all standard operations — `push`, `splice`, `pop`, `shift`, index assignment, etc. They're batched into a single notification:
+
+```typescript
+class ListStore {
+  items: string[] = [];
+
+  addMany(newItems: string[]) {
+    // Multiple pushes = one notification = one re-render
+    for (const item of newItems) {
+      this.items.push(item);
+    }
+  }
+
+  removeAt(index: number) {
+    this.items.splice(index, 1);
+  }
+}
+```
+
+### Computed getters (automatic memoization)
+
+Class getters are automatically memoized at two levels — no `computed()` wrapper needed:
+
+```typescript
+class Store {
+  items = ['a', 'b', 'c'];
+  filter = 'all';
+
+  get filtered() {
+    // Only runs when `items` or `filter` changes.
+    // Accessing store.filtered multiple times returns the same reference.
+    if (this.filter === 'all') return this.items;
+    return this.items.filter(item => item === this.filter);
+  }
+
+  get filteredCount() {
+    // Nested getters work: reads this.filtered (itself memoized)
+    return this.filtered.length;
+  }
+}
+```
+
+**Snapshots:** getter results are stable across snapshots when dependencies haven't changed. This means selectors that return computed values work with `Object.is` by default — no `shallowEqual` needed:
+
+```typescript
+// Stable reference across re-renders when items/filter haven't changed.
+// No shallowEqual required!
+const filtered = useStore(myStore, (store) => store.filtered);
+```
+
+### Working with Date and RegExp
+
+`Date` and `RegExp` are **not proxied** — they are treated as opaque values. Replace them entirely to trigger an update:
+
+```typescript
+class Store {
+  date = new Date();
+
+  updateDate() {
+    // ❌ Mutation: won't trigger update
+    // this.date.setFullYear(2025);
+
+    // ✅ Replacement: triggers update
+    this.date = new Date();
+  }
+}
+```
+
+For `Map` and `Set` semantics, use `reactiveMap()` and `reactiveSet()` instead of native `Map`/`Set`.
+
+## When to use each mode
+
+| Mode | Best for | How it works |
+|------|----------|--------------|
+| `useStore(store, selector)` | Derived values, primitives, specific slices | Selector runs on snapshot, compared with `Object.is` |
+| `useStore(store)` | Components reading many props, rapid prototyping | `proxy-compare` tracks reads automatically |
+| `useStore(store, selector, shallowEqual)` | Selectors returning new objects/arrays | Shallow comparison prevents unnecessary re-renders |
+
+## Comparison with other libraries
+
+| Feature | Classy Store | Zustand | MobX | Valtio |
+|---------|-----------------|---------|------|--------|
+| Class-based stores | Yes | No | Yes | No |
+| No observer/Provider | Yes | Yes | No | Yes |
+| Auto-tracking | Yes | No | Yes (observer) | Yes |
+| Selector mode | Yes | Yes | No | Manual |
+| Memoized computed | Yes (auto-memoized) | Manual | Yes (computed) | No |
+| Immutable snapshots | Yes | No | No | Yes |
+| Structural sharing | Yes | N/A | N/A | Yes |
+| Built-in persistence | Yes (per-property transforms, versioning, cross-tab sync) | Yes (middleware) | No (separate pkg) | No (manual) |
+| DevTools integration | Yes (`devtools()`) | Yes (middleware) | Yes (separate pkg) | Yes (`devtools()`) |
+| Undo/Redo | Yes (`withHistory()`) | No (manual) | No (manual) | No (manual) |
+| Bundle size | ~2.3 KB gzip | ~1.2KB | ~16KB | ~3KB |
+
+---
+SOURCE: https://codebelt.github.io/classy-store/docs/TUTORIAL
+---
+
+# Classy Store Tutorial
+
+`Classy Store` is a reactive state library for React, Vue, Svelte, Solid, and Angular built on ES proxies. You define state as plain classes, wrap them with `createClassyStore()`, and read them with the binding for your framework. There are no Providers, no observers, no reducers, and no extra TypeScript interfaces to define your state shape — just classes and a hook. The library is ~3.5 KB gzipped, batches synchronous mutations into a single re-render, and uses structural sharing for efficient change detection.
+
+## Quick Start
+
+**1. Define a class:**
+
+```ts
+// stores.ts
+import {createClassyStore} from '@codebelt/classy-store';
+
+class Counter {
+  count = 0;
+
+  increment() {
+    this.count++;
+  }
+}
+
+export const counterStore = createClassyStore(new Counter());
+```
+
+**2. Use it in a component:**
+
+```tsx
+// Counter.tsx
+import {useStore} from '@codebelt/classy-store/react';
+import {counterStore} from './stores';
+
+export function Counter() {
+  const count = useStore(counterStore, (store) => store.count);
+  return <button onClick={counterStore.increment}>Count: {count}</button>;
+}
+```
+
+That's it. No Provider wrapping your app. The store is a module-level singleton — import it wherever you need it.
+
+## Defining Stores
+
+A store is any class instance wrapped with `createClassyStore()`. State lives as properties, mutations are plain assignments, and computed values are `get` accessors.
+
+```ts
+import {createClassyStore} from '@codebelt/classy-store';
+
+class TodoStore {
+  items: { id: number; text: string; done: boolean }[] = [];
+  filter: 'all' | 'active' | 'done' = 'all';
+
+  get remaining() {
+    return this.items.filter((item) => !item.done).length;
+  }
+
+  get filtered() {
+    if (this.filter === 'active') return this.items.filter((item) => !item.done);
+    if (this.filter === 'done') return this.items.filter((item) => item.done);
+    return this.items;
+  }
+
+  add(text: string) {
+    this.items.push({id: Date.now(), text, done: false});
+  }
+
+  toggle(id: number) {
+    const item = this.items.find((todo) => todo.id === id);
+    if (item) item.done = !item.done;
+  }
+
+  remove(id: number) {
+    this.items = this.items.filter((todo) => todo.id !== id);
+  }
+}
+
+export const todoStore = createClassyStore(new TodoStore());
+```
+
+Key points:
+
+- Methods mutate state by assigning to `this`. The proxy intercepts every write.
+- `get` accessors work as computed values — they run against the proxied state, so they're always up to date.
+- Nested objects and arrays (like `items` and each item inside it) are automatically wrapped in child proxies. `item.done = true` triggers a notification just like a top-level write.
+
+## Reading State in React
+
+`useStore` has two modes. Pick the right one and your components only re-render when they need to.
+
+### Selector mode
+
+```ts
+const count = useStore(counterStore, (store) => store.count);
+```
+
+The selector receives an immutable snapshot and returns the slice you need. The component re-renders only when the selected value changes (compared with `Object.is`).
+
+> **When to use:** Default choice. Best for render performance because it's explicit about what the component depends on.
+
+### Auto-tracked mode
+
+```ts
+const snap = useStore(counterStore);
+// just use snap.count, snap.name, etc. in your JSX
+```
+
+No selector — you get back a tracking proxy over the snapshot. The library records which properties your component reads during render and only re-renders when one of those properties changes.
+
+> **When to use:** When you'd need 3+ selectors in one component, when prototyping, or when the shape of data you access is dynamic.
+
+### Custom equality with `shallowEqual`
+
+By default, `useStore` compares the selector's return value with `Object.is`, which is a reference check. This works perfectly for primitives and for selecting existing properties directly — structural sharing means that if `todos` didn't change, the snapshot returns the **same frozen array reference**, so `Object.is` returns `true` and the component skips the re-render.
+
+```ts
+// ✅ No shallowEqual needed — structural sharing keeps the reference stable
+const count = useStore(todoStore, (store) => store.items.length);
+const todos = useStore(todoStore, (store) => store.items);
+```
+
+The problem shows up when your selector **derives a new value** — calling `.filter()`, `.map()`, or using object spread always allocates a new array or object, even when the underlying data hasn't changed. `Object.is` sees a different reference and triggers a re-render.
+
+With `shallowEqual` — compares the array contents, not the reference:
+
+```ts
+import {shallowEqual} from '@codebelt/classy-store';
+import {useStore} from '@codebelt/classy-store/react';
+
+// ✅ Only re-renders when the filtered items actually change
+const active = useStore(
+  todoStore,
+  (store) => store.items.filter((item) => !item.done),
+  shallowEqual,
+);
+```
+
+**Getters do NOT need `shallowEqual`.** Class getters benefit from cross-snapshot memoization: the cached result is stable across snapshots when dependencies haven't changed — `Object.is` works out of the box:
+
+```ts
+// ✅ No shallowEqual needed — cross-snapshot memoization keeps getter results stable
+const filtered = useStore(todoStore, (store) => store.filtered);
+const remaining = useStore(todoStore, (store) => store.remaining);
+```
+
+### Decision guide
+
+- **Use selectors by default.** They're explicit and produce the fewest re-renders.
+- **Use auto-tracked mode** when you'd need 3+ selectors in one component or when you're exploring the API.
+- **Add `shallowEqual`** when your selector returns objects/arrays and you're seeing unnecessary re-renders.
+
+## Batching
+
+All synchronous mutations are batched into a single notification — and therefore a single React re-render. The library queues a microtask on the first mutation; every subsequent mutation before that microtask fires is included in the same batch.
+
+```ts
+class FormStore {
+  name = '';
+  email = '';
+  submitted = false;
+
+  submit(name: string, email: string) {
+    this.name = name;       // batched
+    this.email = email;     // batched
+    this.submitted = true;  // batched → one re-render total
+  }
+}
+```
+
+This includes loops — `incrementMany(100)` produces one notification, not 100.
+
+## Snapshots
+
+`snapshot()` creates a deeply-frozen, immutable copy of the store's current state.
+
+```ts
+import {snapshot} from '@codebelt/classy-store';
+import {counterStore} from './stores';
+
+const snap = snapshot(counterStore);
+console.log(snap.count); // read-only
+snap.count = 5;          // throws in strict mode
+```
+
+Snapshots use structural sharing: unchanged sub-trees return the same frozen reference.
+
+## Subscribing Outside React
+
+`subscribe()` registers a callback that fires once per batched mutation. It returns an unsubscribe function.
+
+```ts
+import {subscribe, snapshot} from '@codebelt/classy-store';
+import {counterStore} from './stores';
+
+const unsub = subscribe(counterStore, () => {
+  const snap = snapshot(counterStore);
+  localStorage.setItem('counter', JSON.stringify(snap.count));
+});
+
+// later: unsub();
+```
+
+## Collections
+
+Native `Map` and `Set` aren't plain objects — the proxy can't intercept their internal methods. Use `reactiveMap()` and `reactiveSet()` instead.
+
+```ts
+import {createClassyStore, reactiveMap} from '@codebelt/classy-store';
+
+class UserStore {
+  users = reactiveMap<string, { name: string; role: string }>();
+
+  get count() {
+    return this.users.size;
+  }
+
+  addUser(id: string, name: string) {
+    this.users.set(id, {name, role: 'viewer'});
+  }
+
+  removeUser(id: string) {
+    this.users.delete(id);
+  }
+}
+
+export const userStore = createClassyStore(new UserStore());
+```
+
+## Class Inheritance
+
+Subclasses work out of the box — no special API or configuration needed.
+
+```ts
+import {createClassyStore} from '@codebelt/classy-store';
+
+class BaseStore {
+  loading = false;
+  error: string | null = null;
+
+  get hasError() {
+    return this.error !== null;
+  }
+
+  setLoading(value: boolean) {
+    this.loading = value;
+  }
+
+  setError(message: string | null) {
+    this.error = message;
+  }
+}
+
+class UserStore extends BaseStore {
+  users: { id: string; name: string }[] = [];
+
+  get activeCount() {
+    return this.users.length;
+  }
+
+  async fetchUsers() {
+    this.setLoading(true);
+    this.setError(null);
+    try {
+      const res = await fetch('/api/users');
+      this.users = await res.json();
+    } catch (error) {
+      this.setError(error instanceof Error ? error.message : 'Failed');
+    } finally {
+      this.setLoading(false);
+    }
+  }
+}
+
+export const userStore = createClassyStore(new UserStore());
+```
+
+- **`snapshot()`** preserves the full prototype chain, so `snapshot(userStore) instanceof UserStore` and `instanceof BaseStore` are both `true`.
+
+## Async Patterns
+
+Async methods work naturally. Mutations before `await` and after `await` land in separate microtasks, producing separate notifications.
+
+```ts
+class PostStore {
+  posts: { id: number; title: string }[] = [];
+  loading = false;
+  error: string | null = null;
+
+  async fetchPosts() {
+    this.loading = true;   // notification 1: shows spinner
+    this.error = null;
+    try {
+      const res = await fetch('/api/posts');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      this.posts = await res.json();
+    } catch (error) {
+      this.error = error instanceof Error ? error.message : 'Unknown error';
+    } finally {
+      this.loading = false; // notification 2: hides spinner, shows data or error
+    }
+  }
+}
+```
+
+## Local Stores
+
+By default, stores are module-level singletons. For component-scoped state that is garbage collected on unmount, use `useLocalStore`.
+
+```tsx
+import {useLocalStore, useStore} from '@codebelt/classy-store/react';
+
+class CounterStore {
+  count = 0;
+  get doubled() { return this.count * 2; }
+  increment() { this.count++; }
+}
+
+function Counter() {
+  const store = useLocalStore(() => new CounterStore());
+  const count = useStore(store, (s) => s.count);
+
+  return <button onClick={() => store.increment()}>Count: {count}</button>;
+}
+```
+
+The factory function (`() => new CounterStore()`) runs once per mount. Subsequent re-renders reuse the same store instance.
+
+### Persisting a local store
+
+`persist()` subscribes to the store, which keeps a reference alive. You must call `handle.unsubscribe()` on unmount to allow garbage collection.
+
+```tsx
+import {useEffect} from 'react';
+import {useLocalStore, useStore} from '@codebelt/classy-store/react';
+import {persist} from '@codebelt/classy-store/utils';
+
+function EditProfile() {
+  const store = useLocalStore(() => new FormStore());
+  const snap = useStore(store);
+
+  useEffect(() => {
+    const handle = persist(store, { name: 'edit-profile-draft' });
+    return () => handle.unsubscribe();
+  }, [store]);
+
+  return (
+    <form>
+      <input value={snap.name} onChange={(e) => store.setName(e.target.value)} />
+      <input value={snap.email} onChange={(e) => store.setEmail(e.target.value)} />
+    </form>
+  );
+}
+```
+
+## Tips & Gotchas
+
+### Non-proxyable types
+
+Native `Date`, `RegExp`, `Map`, and `Set` use internal slots that proxies can't intercept. For `Map` and `Set`, use `reactiveMap()` and `reactiveSet()`. For `Date`, store timestamps as numbers and construct `Date` objects in getters or at render time.
+
+### Don't destructure the store outside `useStore`
+
+```ts
+// ❌ Breaks reactivity — `count` is just the number 0
+const {count} = counterStore;
+
+// ✅ Always access through the proxy
+counterStore.count;
+```
+
+### Batching via `queueMicrotask`
+
+All synchronous mutations are coalesced — calling `this.count++` a thousand times in a loop produces one notification.
+
+---
+SOURCE: https://codebelt.github.io/classy-store/docs/PERSIST_TUTORIAL
+---
+
+# Persist Tutorial
+
+`persist()` saves your store's state to storage and restores it on page load. It's a standalone utility function that works with any `createClassyStore()` instance -- no plugins, no middleware, no configuration files. Import it from `@codebelt/classy-store/utils`, call it once, and your store survives page refreshes.
+
+## Getting Started
+
+### 1. Create a store
+
+```ts
+import {createClassyStore} from '@codebelt/classy-store';
+
+class TodoStore {
+  todos: { text: string; done: boolean }[] = [];
+  filter: 'all' | 'active' | 'done' = 'all';
+
+  get remaining() {
+    return this.todos.filter((todo) => !todo.done).length;
+  }
+
+  addTodo(text: string) {
+    this.todos.push({text, done: false});
+  }
+
+  toggle(index: number) {
+    this.todos[index]!.done = !this.todos[index]!.done;
+  }
+}
+
+export const todoStore = createClassyStore(new TodoStore());
+```
+
+### 2. Persist it
+
+```ts
+import {persist} from '@codebelt/classy-store/utils';
+
+const handle = persist(todoStore, {
+  name: 'todo-store',
+});
+```
+
+That's it. On every mutation, `todos` and `filter` are saved to `localStorage`. On next page load, they're restored automatically. The getter `remaining` and the methods are **not** persisted.
+
+### 3. Wait for hydration
+
+```ts
+// Async -- await the promise
+await handle.hydrated;
+console.log('Restored:', todoStore.todos);
+
+// Sync check
+if (handle.isHydrated) {
+  // safe to read persisted state
+}
+```
+
+## Choosing What to Persist
+
+```ts
+persist(todoStore, {
+  name: 'todo-store',
+  properties: ['todos'],  // Only persist todos, not filter
+});
+```
+
+## Per-Property Transforms
+
+### Dates
+
+```ts
+persist(sessionStore, {
+  name: 'session',
+  properties: [
+    'token',
+    {
+      key: 'expiresAt',
+      serialize: (date) => date.toISOString(),
+      deserialize: (stored) => new Date(stored as string),
+    },
+  ],
+});
+```
+
+### ReactiveMap
+
+```ts
+persist(userStore, {
+  name: 'user-store',
+  properties: [
+    {
+      key: 'users',
+      serialize: (users) => [...users.entries()],
+      deserialize: (stored) => reactiveMap(stored as [string, { name: string; role: string }][]),
+    },
+  ],
+});
+```
+
+## Debouncing Writes
+
+```ts
+persist(formStore, {
+  name: 'form-draft',
+  debounce: 500,  // Write at most once every 500ms
+});
+```
+
+## Version Migration
+
+```ts
+persist(todoStore, {
+  name: 'todo-store',
+  version: 2,
+  migrate: (state, oldVersion) => {
+    if (oldVersion === 0) {
+      return {...state, todos: state.items, items: undefined};
+    }
+    if (oldVersion === 1) {
+      return {
+        ...state,
+        todos: (state.todos as string[]).map((text) => ({text, done: false})),
+      };
+    }
+    return state;
+  },
+});
+```
+
+## Merge Strategies
+
+- **`'shallow'` (default):** Persisted values overwrite store values one key at a time. Properties not in storage keep their class defaults.
+- **`'replace'`:** Same as shallow for flat stores.
+- **Custom merge function:** `merge: (persisted, current) => { ... }`
+
+## Cross-Tab Synchronization
+
+```ts
+persist(authStore, {
+  name: 'auth',
+  // syncTabs: true -- default for localStorage
+});
+```
+
+State syncs automatically across browser tabs when using `localStorage`. Disable with `syncTabs: false`.
+
+## Expiration / TTL
+
+```ts
+persist(sessionStore, {
+  name: 'session',
+  expireIn: 900_000,  // 15 minutes
+  clearOnExpire: true,
+});
+
+await handle.hydrated;
+if (handle.isExpired) {
+  router.push('/login');
+}
+```
+
+## SSR / Next.js Support
+
+```ts
+const handle = persist(todoStore, {
+  name: 'todo-store',
+  skipHydration: true,
+});
+```
+
+Then hydrate manually in a `useEffect`:
+
+```tsx
+function App() {
+  useEffect(() => {
+    handle.rehydrate();
+  }, []);
+
+  return <TodoList />;
+}
+```
+
+## Async Storage (React Native)
+
+```ts
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+persist(todoStore, {
+  name: 'todo-store',
+  storage: AsyncStorage,
+  syncTabs: false,
+});
+
+await handle.hydrated;
+```
+
+## Cleanup
+
+```ts
+// Stop persisting
+handle.unsubscribe();
+
+// Clear stored data
+await handle.clear();
+
+// Manual save (bypass debounce)
+handle.save();
+
+// Re-read from storage
+await handle.rehydrate();
+```
+
+## Quick Reference
+
+| What you want | How to do it |
+|---|---|
+| Persist everything | `persist(myStore, {name: 'key'})` |
+| Persist specific properties | `properties: ['count', 'name']` |
+| Handle Dates | `{key: 'date', serialize: (date) => date.toISOString(), deserialize: (stored) => new Date(stored)}` |
+| Handle ReactiveMap | `{key: 'map', serialize: (map) => [...map.entries()], deserialize: (stored) => reactiveMap(stored)}` |
+| Debounce writes | `debounce: 500` |
+| Migrate schema changes | `version: 2, migrate: (state, old) => { ... }` |
+| SSR support | `skipHydration: true` + `handle.rehydrate()` in `useEffect` |
+| Cross-tab sync | Enabled by default with `localStorage` |
+| Disable cross-tab sync | `syncTabs: false` |
+| Use sessionStorage | `storage: sessionStorage` |
+| Use AsyncStorage | `storage: AsyncStorage, syncTabs: false` |
+| Expire after 15 minutes | `expireIn: 900_000` |
+| Auto-clear expired data | `clearOnExpire: true` |
+| Check if data expired | `handle.isExpired` |
+| Force immediate save | `handle.save()` |
+| Clear stored data | `handle.clear()` |
+| Stop persisting | `handle.unsubscribe()` |
+| Wait for hydration | `await handle.hydrated` |
+| Check hydration | `handle.isHydrated` |
+
+---
+SOURCE: https://codebelt.github.io/classy-store/docs/DEVTOOLS_TUTORIAL
+---
+
+# DevTools Tutorial
+
+`devtools()` connects a store proxy to the [Redux DevTools](https://github.com/reduxjs/redux-devtools) browser extension for state inspection and time-travel debugging. Every mutation sends a snapshot to the DevTools panel. You can inspect state, jump to any point in history, and the store updates in real-time.
+
+## Getting Started
+
+### 1. Create a store
+
+```ts
+import {createClassyStore} from '@codebelt/classy-store';
+
+class CounterStore {
+  count = 0;
+  step = 1;
+
+  get doubled() {
+    return this.count * 2;
+  }
+
+  increment() {
+    this.count += this.step;
+  }
+
+  decrement() {
+    this.count -= this.step;
+  }
+
+  setStep(step: number) {
+    this.step = step;
+  }
+}
+
+export const counterStore = createClassyStore(new CounterStore());
+```
+
+### 2. Connect to DevTools
+
+```ts
+import {devtools} from '@codebelt/classy-store/utils';
+
+const disconnect = devtools(counterStore, {name: 'CounterStore'});
+```
+
+### 3. Disconnect when done
+
+```ts
+disconnect();
+```
+
+## Signature
+
+```ts
+function devtools<T extends object>(
+  proxyStore: T,
+  options?: DevtoolsOptions,
+): () => void;
+```
+
+### Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `name` | `string` | `'ClassyStore'` | Display name in the DevTools panel |
+| `enabled` | `boolean` | `true` | Set to `false` to disable (returns a noop) |
+
+## Use Cases
+
+### Development-only
+
+```ts
+devtools(counterStore, {
+  name: 'CounterStore',
+  enabled: import.meta.env.DEV,
+});
+```
+
+### Multiple stores
+
+```ts
+devtools(authStore, {name: 'AuthStore'});
+devtools(todoStore, {name: 'TodoStore'});
+devtools(uiStore, {name: 'UiStore'});
+```
+
+### React cleanup
+
+```tsx
+function App() {
+  useEffect(() => {
+    const disconnect = devtools(counterStore, {name: 'CounterStore'});
+    return () => disconnect();
+  }, []);
+
+  return <Counter />;
+}
+```
+
+## Quick Reference
+
+| What you want | How to do it |
+|---|---|
+| Connect a store | `devtools(store, {name: 'MyStore'})` |
+| Disconnect | `const dispose = devtools(...); dispose()` |
+| Disable in production | `enabled: import.meta.env.DEV` |
+| Multiple stores | Call `devtools()` once per store with unique names |
+| Use without extension | Works safely — returns a noop if extension is missing |
+
+---
+SOURCE: https://codebelt.github.io/classy-store/docs/SUBSCRIBE_KEY_TUTORIAL
+---
+
+# subscribeKey Tutorial
+
+`subscribeKey()` subscribes to changes on a single property of a store proxy. It's the property-level equivalent of `subscribe()` — instead of firing on every store mutation, it only fires when the specific key you're watching actually changes.
+
+## Getting Started
+
+### 1. Create a store
+
+```ts
+import {createClassyStore} from '@codebelt/classy-store';
+
+class SettingsStore {
+  theme: 'light' | 'dark' = 'light';
+  fontSize = 14;
+  language = 'en';
+
+  setTheme(theme: 'light' | 'dark') {
+    this.theme = theme;
+  }
+}
+
+export const settingsStore = createClassyStore(new SettingsStore());
+```
+
+### 2. Watch a single key
+
+```ts
+import {subscribeKey} from '@codebelt/classy-store/utils';
+
+const unsub = subscribeKey(settingsStore, 'theme', (value, previousValue) => {
+  console.log(`Theme changed from "${previousValue}" to "${value}"`);
+  document.documentElement.setAttribute('data-theme', value);
+});
+```
+
+### 3. Unsubscribe when done
+
+```ts
+unsub();
+```
+
+## Signature
+
+```ts
+function subscribeKey<T extends object, K extends keyof T>(
+  proxyStore: T,
+  key: K,
+  callback: (value: Snapshot<T>[K], previousValue: Snapshot<T>[K]) => void,
+): () => void;
+```
+
+## Use Cases
+
+### Reacting to auth state changes
+
+```ts
+subscribeKey(authStore, 'token', (token, previousToken) => {
+  if (token && !previousToken) {
+    router.push('/dashboard');
+  } else if (!token && previousToken) {
+    router.push('/login');
+  }
+});
+```
+
+### Syncing with external systems
+
+```ts
+subscribeKey(playerStore, 'volume', (volume) => {
+  audioContext.gainNode.gain.value = volume;
+});
+
+subscribeKey(playerStore, 'track', (track) => {
+  document.title = track ? `Playing: ${track}` : 'Music Player';
+});
+```
+
+## subscribeKey vs subscribe
+
+| | `subscribe()` | `subscribeKey()` |
+|---|---|---|
+| Fires on | Any mutation in the store | Only when the watched key changes |
+| Callback args | `()` (no arguments) | `(value, previousValue)` |
+| Use case | General side effects | Property-specific reactions |
+
+## Quick Reference
+
+| What you want | How to do it |
+|---|---|
+| Watch a single property | `subscribeKey(store, 'key', (val, prev) => { ... })` |
+| Stop watching | `const unsub = subscribeKey(...); unsub()` |
+| Watch multiple properties | Call `subscribeKey()` once per key |
+| Get both old and new value | Callback receives `(value, previousValue)` |
+
+---
+SOURCE: https://codebelt.github.io/classy-store/docs/HISTORY_TUTORIAL
+---
+
+# withHistory Tutorial
+
+`withHistory()` adds undo/redo capability to any store proxy. It maintains a stack of snapshots captured on each mutation. Call `undo()` to go back, `redo()` to go forward, and `pause()`/`resume()` to batch operations that shouldn't create individual history entries.
+
+## Getting Started
+
+### 1. Create a store
+
+```ts
+import {createClassyStore} from '@codebelt/classy-store';
+
+class DrawingStore {
+  color = '#000000';
+  strokeWidth = 2;
+  points: { x: number; y: number }[] = [];
+
+  addPoint(x: number, y: number) {
+    this.points = [...this.points, { x, y }];
+  }
+
+  setColor(color: string) {
+    this.color = color;
+  }
+
+  setStrokeWidth(width: number) {
+    this.strokeWidth = width;
+  }
+
+  clear() {
+    this.points = [];
+  }
+}
+
+export const drawingStore = createClassyStore(new DrawingStore());
+```
+
+### 2. Attach history
+
+```ts
+import {withHistory} from '@codebelt/classy-store/utils';
+
+const history = withHistory(drawingStore);
+```
+
+### 3. Undo and redo
+
+```ts
+drawingStore.setColor('#ff0000');
+drawingStore.setStrokeWidth(5);
+
+history.undo(); // strokeWidth back to 2
+history.undo(); // color back to '#000000'
+history.redo(); // color is '#ff0000' again
+```
+
+### 4. Check availability
+
+```ts
+history.canUndo; // true if there's a previous state
+history.canRedo; // true if there's a next state
+```
+
+```tsx
+function UndoRedoButtons() {
+  const snap = useStore(drawingStore);
+
+  return (
+    <div>
+      <button onClick={history.undo} disabled={!history.canUndo}>Undo</button>
+      <button onClick={history.redo} disabled={!history.canRedo}>Redo</button>
+    </div>
+  );
+}
+```
+
+## Signature
+
+```ts
+function withHistory<T extends object>(
+  proxyStore: T,
+  options?: { limit?: number },
+): HistoryHandle;
+```
+
+### HistoryHandle
+
+| Property/Method | Type | Description |
+|-----------------|------|-------------|
+| `undo()` | `() => void` | Restore the previous state |
+| `redo()` | `() => void` | Restore the next state (after an undo) |
+| `canUndo` | `readonly boolean` | Whether there is a previous state |
+| `canRedo` | `readonly boolean` | Whether there is a next state |
+| `pause()` | `() => void` | Stop recording history entries |
+| `resume()` | `() => void` | Resume recording history entries |
+| `dispose()` | `() => void` | Unsubscribe and clean up |
+
+## Use Cases
+
+### Text editor with undo
+
+```ts
+const editorStore = createClassyStore(new EditorStore());
+const history = withHistory(editorStore, { limit: 200 });
+
+document.addEventListener('keydown', (e) => {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
+    e.preventDefault();
+    if (e.shiftKey) {
+      history.redo();
+    } else {
+      history.undo();
+    }
+  }
+});
+```
+
+### Batch operations with pause/resume
+
+```ts
+function pasteBlock(data: Record<string, string>) {
+  history.pause();
+
+  for (const [id, value] of Object.entries(data)) {
+    spreadsheetStore.setCell(id, value);
+  }
+
+  history.resume();
+}
+```
+
+## Combining with Other Utilities
+
+### withHistory + persist
+
+```ts
+persist(todoStore, { name: 'todos' });
+const history = withHistory(todoStore);
+// History is in-memory only — doesn't persist across page loads.
+```
+
+### withHistory + devtools
+
+```ts
+devtools(store, { name: 'MyStore' });
+const history = withHistory(store);
+// DevTools shows every mutation including undo/redo restores.
+```
+
+## Quick Reference
+
+| What you want | How to do it |
+|---|---|
+| Add undo/redo | `const h = withHistory(store)` |
+| Undo | `h.undo()` |
+| Redo | `h.redo()` |
+| Check if undoable | `h.canUndo` |
+| Check if redoable | `h.canRedo` |
+| Limit history size | `withHistory(store, { limit: 50 })` |
+| Batch as single step | `h.pause(); /* mutations */; h.resume()` |
+| Stop tracking | `h.dispose()` |
+| Undo all | `while (h.canUndo) h.undo()` |
+
+---
+SOURCE: https://codebelt.github.io/classy-store/docs/ARCHITECTURE
+---
+
+# Classy Store — Architecture
+
+Internal design documentation for contributors and maintainers.
+
+## Three-Layer Architecture
+
+The library is organized into three distinct layers, each with a single responsibility:
+
+1. **Layer 1 — Write Proxy (`core.ts`):** ES6 Proxy wrapping the class instance. Intercepts SET, GET, and DELETE traps. Batches mutations via `queueMicrotask`. Lazily wraps nested objects in child proxies.
+
+2. **Layer 2 — Immutable Snapshots (`snapshot.ts`):** `snapshot(proxy)` creates a deeply frozen plain-JS copy. Structural sharing reuses unchanged sub-tree references. Getter results are memoized per-snapshot and cross-snapshot.
+
+3. **Layer 3 — React Hook (`react.ts`):** `useStore` uses `useSyncExternalStore` for tear-free React 18+ integration. Supports selector mode (`Object.is` comparison) and auto-tracked mode (`proxy-compare`).
+
+## Internal State Storage
+
+All internal bookkeeping is stored in a `WeakMap<proxy, StoreInternal>`:
+
+```typescript
+type StoreInternal = {
+  target: object;                           // Raw class instance
+  version: number;                          // Monotonically increasing
+  listeners: Set<() => void>;               // Subscriber callbacks
+  childProxies: Map<string|symbol, object>; // Cached child proxies
+  childInternals: Map<string|symbol, StoreInternal>;
+  parent: StoreInternal | null;             // For version propagation
+  notifyScheduled: boolean;                 // Batch dedup flag
+  snapshotCache: [number, object] | null;   // Version-stamped snapshot cache
+  computedCache: Map<string|symbol, ComputedEntry>; // Memoized getter cache
+};
+```
+
+## Proxy Traps
+
+**SET trap:**
+1. Compare old and new values with `Object.is` — noop if equal
+2. Clean up child proxy if the property is being replaced
+3. Forward write to raw target via `Reflect.set`
+4. Bump version for this node and all ancestors
+5. Schedule notification via `queueMicrotask` (deduped)
+
+**GET trap (priority order):**
+1. **Memoized getter detection** — walk prototype chain with `Object.getOwnPropertyDescriptor`. If a getter is found, call `evaluateComputed()`.
+2. **Method binding** — if value is a function, bind to proxy so `this.count++` goes through the SET trap. Bound methods are cached.
+3. **Nested objects/arrays** — if value passes `canProxy()` (plain object or array), lazily wrap in a child proxy.
+4. **Primitives** — return as-is.
+
+## Batching via `queueMicrotask`
+
+Array operations like `push()` trigger multiple SET traps (element + length). Rather than notifying per-trap, a dirty flag + `queueMicrotask` coalesces all synchronous mutations into one notification.
+
+## Version Propagation
+
+When a nested property mutates, versions bump from the mutated node up to the root. This enables structural sharing — when the snapshot layer sees that `settings` has the same version, it returns the cached snapshot reference.
+
+## Structural Sharing
+
+```
+Snapshot v1:                    Snapshot v2 (after user.name = 'Bob'):
+root.user  → {name:'Alice'}     root.user  → {name:'Bob'} (new)
+root.settings → {theme:'dark'}  root.settings → {theme:'dark'} (SAME ref ===)
+```
+
+`snap2.settings === snap1.settings` because the `settings` sub-tree's version didn't change → cache hit → same reference.
+
+## Computed Getter Memoization
+
+Class getters are automatically memoized at two layers:
+
+**Write Proxy layer:** `evaluateComputed()` runs the getter with dependency tracking. A module-level tracker stack records which properties the getter reads. Results are cached and only recomputed when a dependency changes.
+
+**Snapshot layer:** Getter results are stable across snapshots when dependencies haven't changed. The per-snapshot cache returns the same reference for repeated access. The cross-snapshot cache checks if all recorded `this.X` properties are `Object.is`-equal between snapshots (guaranteed by structural sharing).
+
+## Key Design Decisions
+
+- **Why ES6 Proxy?** Supports intercepting property creation, deletion, and arbitrary key access — essential for arrays and dynamic objects.
+- **Why `queueMicrotask` for batching?** Runs after current sync code but before the next paint. Multiple mutations in the same event handler = 1 notification.
+- **Why structural sharing?** Without it, `Object.is(prevSelector, nextSelector)` would always return `false` for object/array selectors.
+- **Why `proxy-compare`?** Battle-tested (~1KB) property access tracking by the creator of Valtio/Zustand/Jotai.
+- **Why `useSyncExternalStore`?** React's official API for external stores — prevents tearing in concurrent mode, same API used by Zustand and Redux.
+- **Why `WeakMap` for internal state?** Doesn't pollute the user's object, allows garbage collection, prevents conflicts with user-defined properties.
+
+## Performance Characteristics
+
+| Operation | Complexity | Notes |
+|-----------|-----------|-------|
+| Property read | O(1) | Direct Proxy GET trap |
+| Property write | O(depth) | Versions bump from node to root |
+| Notification | O(listeners) | Once per microtask batch |
+| Getter (cache hit) | O(deps) | Check deps validity, return cached |
+| Snapshot (cache hit) | O(1) | Version check only |
+| Snapshot (cache miss) | O(changed branches) | Structural sharing skips unchanged |
+| Auto-track diff | O(accessed props) | `proxy-compare` checks only read props |
+
+---
+SOURCE: https://codebelt.github.io/classy-store/docs/PERSIST_ARCHITECTURE
+---
+
+# Persist Utility — Architecture
+
+Internal design documentation for the `persist()` utility in `@codebelt/classy-store/utils`.
+
+## Design Principles
+
+1. **Standalone utility, not middleware.** `persist` is a plain function that consumes two existing public APIs (`subscribe` and `snapshot`) and nothing else.
+2. **Tree-shakeable.** Lives in `@codebelt/classy-store/utils`. Applications that don't use persistence pay zero cost.
+3. **Storage-agnostic.** The `StorageAdapter` interface accepts sync (`localStorage`, `sessionStorage`) and async (`AsyncStorage`, `localForage`) implementations.
+4. **Class-aware.** Getters and methods are automatically excluded from persistence. Only source-of-truth data properties are saved.
+
+## How It Hooks Into the Existing Architecture
+
+`persist` sits beside the existing three-layer architecture as an independent consumer:
+
+- **Save flow:** `subscribe callback` → `debounce timer` → `snapshot(proxy)` → `pick properties` → `per-property serialize` → `JSON.stringify envelope` → `storage.setItem()`
+- **Restore flow:** `storage.getItem()` → `JSON.parse` → `version check + migrate` → `per-property deserialize` → `merge strategy` → `proxy[key] = value` → triggers SET trap → reactivity
+
+## Storage Envelope
+
+```json
+{
+  "version": 1,
+  "state": {
+    "todos": [{"text": "Buy milk", "done": false}],
+    "filter": "all"
+  },
+  "expiresAt": 1700000000000
+}
+```
+
+The `version` field is always present (default `0`). The `expiresAt` field is a Unix epoch timestamp (ms) and is only present when `expireIn` is set. It resets on every write.
+
+## Merge Strategies
+
+| Strategy | Behavior |
+|---|---|
+| `'shallow'` (default) | `{ ...current, ...persisted }` — persisted keys overwrite, new keys keep defaults |
+| `'replace'` | Same as shallow at top level |
+| Custom `fn` | `fn(persisted, current)` — full control |
+
+## Cross-Tab Sync
+
+When `syncTabs` is enabled (default for `localStorage`), the utility listens for the `window.storage` event. The event fires in **other** same-origin tabs only — not the tab that wrote — preventing infinite loops.
+
+Auto-detection: `syncTabs` defaults to `true` when the storage adapter is literally `globalThis.localStorage` (checked via identity comparison), `false` for everything else.
+
+## PersistHandle API
+
+| Method/Property | Behavior |
+|---|---|
+| `unsubscribe()` | Full cleanup: unsubscribe + cancel debounce + remove storage listener. Idempotent. |
+| `hydrated` | Promise that resolves when initial hydration completes. |
+| `isHydrated` | `boolean`. Becomes `true` after hydration. |
+| `isExpired` | `boolean`. `true` when the last hydration found expired data. |
+| `save()` | Cancel pending debounce, write current state immediately. |
+| `clear()` | Call `storage.removeItem(name)`. |
+| `rehydrate()` | Re-read from storage, apply to store. |
+
+## Property Resolution
+
+On initialization, `resolveProperties()` determines which keys to persist:
+- If `properties` is provided: each entry is either a string key or a `PropertyTransform` descriptor.
+- If `properties` is omitted: takes a snapshot of the store, iterates `Object.keys()`, and excludes getters (detected via prototype chain) and methods (`typeof value === 'function'`).
+
+---
+SOURCE: https://codebelt.github.io/classy-store/docs/FRAMEWORK_ADAPTERS
+---
+
+# Framework Adapters
+
+`@codebelt/classy-store` provides first-class integrations for Vue, Svelte, Solid, and Angular. Each adapter follows the idiomatic reactive pattern for its framework.
+
+## Installation
+
+Install only the peer dependencies you need:
+
+```bash
+# Vue
+npm install @codebelt/classy-store vue
+
+# Svelte
+npm install @codebelt/classy-store svelte
+
+# Solid
+npm install @codebelt/classy-store solid-js
+
+# Angular
+npm install @codebelt/classy-store @angular/core
+```
+
+## Vue 3
+
+**Import:** `@codebelt/classy-store/vue`
+
+**Function:** `useStore<T>(proxyStore: T): ShallowRef<Snapshot<T>>`
+
+Returns a Vue `ShallowRef` that holds the current immutable snapshot. The ref updates whenever the store mutates. Automatically unsubscribes via `onUnmounted`.
+
+```vue
+<script setup lang="ts">
+import { useStore } from '@codebelt/classy-store/vue';
+import { todoStore } from './stores';
+
+// state is a ShallowRef<Snapshot<TodoStore>>
+const state = useStore(todoStore);
+</script>
+
+<template>
+  <div>
+    <p>{{ state.remaining }} items remaining</p>
+    <ul>
+      <li v-for="(todo, index) in state.filtered" :key="index">
+        <input
+          type="checkbox"
+          :checked="todo.done"
+          @change="todoStore.toggle(index)"
+        />
+        {{ todo.text }}
+      </li>
+    </ul>
+    <button @click="todoStore.addTodo('New task')">Add</button>
+  </div>
+</template>
+```
+
+**How it works internally:**
+
+```ts
+import { onUnmounted, shallowRef } from 'vue';
+import { subscribe } from '@codebelt/classy-store';
+import { snapshot } from '@codebelt/classy-store';
+
+export function useStore<T extends object>(proxyStore: T): ShallowRef<Snapshot<T>> {
+  const state = shallowRef(snapshot(proxyStore));
+
+  const unsubscribe = subscribe(proxyStore, () => {
+    state.value = snapshot(proxyStore);
+  });
+
+  onUnmounted(unsubscribe);
+
+  return state;
+}
+```
+
+**Key notes:**
+- Uses `shallowRef` (not `ref`) because snapshots are already deeply frozen — no deep Vue reactivity is needed.
+- The unsubscribe callback is registered with `onUnmounted` — must be called inside a component's `setup()` or `<script setup>`.
+- Access snapshot properties directly: `state.value.count` in JS, or `state.count` in template (Vue auto-unwraps top-level refs in templates).
+- Actions are called directly on the store proxy: `todoStore.addTodo('text')`.
+
+**With a store class:**
+
+```ts
+// stores.ts
+import { createClassyStore } from '@codebelt/classy-store';
+
+class CounterStore {
+  count = 0;
+  get doubled() { return this.count * 2; }
+  increment() { this.count++; }
+}
+
+export const counterStore = createClassyStore(new CounterStore());
+```
+
+```vue
+<script setup lang="ts">
+import { useStore } from '@codebelt/classy-store/vue';
+import { counterStore } from './stores';
+
+const state = useStore(counterStore);
+// state.value.count, state.value.doubled — both reactive
+</script>
+
+<template>
+  <button @click="counterStore.increment()">
+    Count: {{ state.count }} (doubled: {{ state.doubled }})
+  </button>
+</template>
+```
+
+---
+
+## Svelte 4 / 5
+
+**Import:** `@codebelt/classy-store/svelte`
+
+**Function:** `toSvelteStore<T>(proxyStore: T): ClassyReadable<Snapshot<T>>`
+
+Returns a Svelte-compatible readable store (implements the `{ subscribe }` contract). Use with Svelte's `$store` auto-subscription syntax or call `.subscribe()` manually.
+
+```svelte
+<script lang="ts">
+  import { toSvelteStore } from '@codebelt/classy-store/svelte';
+  import { todoStore } from './stores';
+
+  // Convert to a Svelte-compatible readable store
+  const store = toSvelteStore(todoStore);
+  // Use $store for auto-subscription (Svelte compiler handles cleanup)
+</script>
+
+<p>{$store.remaining} items remaining</p>
+
+<ul>
+  {#each $store.filtered as todo, index}
+    <li>
+      <input
+        type="checkbox"
+        checked={todo.done}
+        on:change={() => todoStore.toggle(index)}
+      />
+      {todo.text}
+    </li>
+  {/each}
+</ul>
+
+<button on:click={() => todoStore.addTodo('New task')}>Add</button>
+```
+
+**How it works internally:**
+
+```ts
+export interface ClassyReadable<T> {
+  subscribe(run: (value: T) => void): () => void;
+}
+
+export function toSvelteStore<T extends object>(
+  proxyStore: T,
+): ClassyReadable<Snapshot<T>> {
+  return {
+    subscribe(run: (value: Snapshot<T>) => void): () => void {
+      // Svelte contract: call immediately with current value
+      run(snapshot(proxyStore));
+
+      return subscribe(proxyStore, () => {
+        run(snapshot(proxyStore));
+      });
+    },
+  };
+}
+```
+
+**Key notes:**
+- Follows the Svelte store contract: `subscribe` is called immediately with the current value, then on every change. Returns an unsubscribe function.
+- The `$store` syntax auto-subscribes and auto-unsubscribes — no manual cleanup needed in Svelte components.
+- `toSvelteStore` can be called at module level (outside a component), unlike the Vue/Solid/Angular adapters which must be called during component initialization.
+- The `ClassyReadable<T>` interface matches Svelte's built-in `Readable<T>` contract for full compatibility.
+- Actions are called directly on the original store proxy: `todoStore.addTodo('text')` — not on the converted store.
+
+**Typed usage:**
+
+```ts
+// Convert once at module level
+import { toSvelteStore } from '@codebelt/classy-store/svelte';
+import { todoStore } from './stores';
+
+export const $todos = toSvelteStore(todoStore);
+```
+
+```svelte
+<script lang="ts">
+  import { $todos } from './svelte-stores';
+  // $todos.remaining, $todos.filtered — all typed as Snapshot<TodoStore>
+</script>
+```
+
+---
+
+## Solid.js
+
+**Import:** `@codebelt/classy-store/solid`
+
+**Function:** `useStore<T>(proxyStore: T): () => Snapshot<T>`
+
+Returns a Solid signal getter `() => Snapshot<T>`. Call it in JSX to access the current snapshot. Automatically cleans up via `onCleanup`.
+
+```tsx
+import { useStore } from '@codebelt/classy-store/solid';
+import { todoStore } from './stores';
+
+function TodoList() {
+  // state is a signal getter: () => Snapshot<TodoStore>
+  const state = useStore(todoStore);
+
+  return (
+    <div>
+      <p>{state().remaining} items remaining</p>
+      <ul>
+        {state().filtered.map((todo, index) => (
+          <li>
+            <input
+              type="checkbox"
+              checked={todo.done}
+              onChange={() => todoStore.toggle(index)}
+            />
+            {todo.text}
+          </li>
+        ))}
+      </ul>
+      <button onClick={() => todoStore.addTodo('New task')}>Add</button>
+    </div>
+  );
+}
+```
+
+**How it works internally:**
+
+```ts
+import { createSignal, onCleanup } from 'solid-js';
+import { subscribe } from '@codebelt/classy-store';
+import { snapshot } from '@codebelt/classy-store';
+
+export function useStore<T extends object>(proxyStore: T): () => Snapshot<T> {
+  const [state, setState] = createSignal<Snapshot<T>>(snapshot(proxyStore));
+
+  const unsubscribe = subscribe(proxyStore, () => {
+    setState(() => snapshot(proxyStore));
+  });
+
+  onCleanup(unsubscribe);
+
+  return state;
+}
+```
+
+**Key notes:**
+- Returns a signal getter (a function). You must call it — `state()` — to access the snapshot value. This is idiomatic Solid.js.
+- The update uses the functional form `setState(() => snapshot(proxyStore))` to avoid Solid treating the snapshot as a setter function.
+- Must be called inside a Solid component or reactive root (like `createRoot`), since it uses `onCleanup`.
+- `onCleanup` is called when the reactive owner is disposed — typically when the component unmounts.
+- Fine-grained reactivity: Solid tracks which signal properties are accessed. Accessing `state().count` in JSX creates a dependency on that signal.
+- Actions are called directly on the store proxy: `todoStore.addTodo('text')`.
+
+---
+
+## Angular
+
+**Import:** `@codebelt/classy-store/angular`
+
+**Function:** `injectStore<T>(proxyStore: T): Signal<Snapshot<T>>`
+
+Returns a readonly Angular `Signal<Snapshot<T>>`. Uses Angular's `inject(DestroyRef)` for automatic cleanup when the component or service is destroyed.
+
+```typescript
+// counter.component.ts
+import { Component, computed } from '@angular/core';
+import { injectStore } from '@codebelt/classy-store/angular';
+import { counterStore } from './stores';
+
+@Component({
+  selector: 'app-counter',
+  standalone: true,
+  template: `
+    <div>
+      <p>Count: {{ state().count }}</p>
+      <p>Doubled: {{ doubled() }}</p>
+      <button (click)="increment()">Increment</button>
+    </div>
+  `,
+})
+export class CounterComponent {
+  // state is Signal<Snapshot<CounterStore>>
+  readonly state = injectStore(counterStore);
+
+  // Use computed() to derive values from the signal
+  readonly doubled = computed(() => this.state().count * 2);
+
+  increment() {
+    counterStore.increment();
+  }
+}
+```
+
+**How it works internally:**
+
+```ts
+import { DestroyRef, inject, signal, type Signal, type WritableSignal } from '@angular/core';
+import { subscribe } from '@codebelt/classy-store';
+import { snapshot } from '@codebelt/classy-store';
+
+export function injectStore<T extends object>(proxyStore: T): Signal<Snapshot<T>> {
+  const state: WritableSignal<Snapshot<T>> = signal(snapshot(proxyStore));
+  const destroyRef = inject(DestroyRef);
+
+  const unsubscribe = subscribe(proxyStore, () => {
+    state.set(snapshot(proxyStore));
+  });
+
+  destroyRef.onDestroy(unsubscribe);
+
+  return state.asReadonly();
+}
+```
+
+**Key notes:**
+- Must be called in an **injection context** — inside a component constructor, `inject()` call, or an `@Injectable` service constructor. Do not call it outside Angular's DI tree.
+- Returns a readonly signal (`Signal<T>`, not `WritableSignal<T>`). Consumers cannot mutate the signal directly.
+- Uses `DestroyRef` (available since Angular 16) for automatic cleanup — no need to manually unsubscribe in `ngOnDestroy`.
+- Requires Angular 17+ (signals were stable in Angular 17).
+- Use Angular's `computed()` to derive values: `readonly total = computed(() => this.state().items.length)`.
+- Combine with `effect()` for side effects: `effect(() => console.log(this.state().count))`.
+- Actions are called directly on the store proxy: `counterStore.increment()` — not through the signal.
+
+**Usage in a service:**
+
+```typescript
+import { Injectable } from '@angular/core';
+import { injectStore } from '@codebelt/classy-store/angular';
+import { todoStore } from './stores';
+
+@Injectable({ providedIn: 'root' })
+export class TodoService {
+  // Works in services too — inject context is available in constructors
+  readonly todos = injectStore(todoStore);
+
+  addTodo(text: string) {
+    todoStore.addTodo(text);
+  }
+}
+```
+
+---
+
+## Framework Adapter Summary
+
+| Framework | Import | Function | Return type | Cleanup mechanism |
+|-----------|--------|----------|-------------|-------------------|
+| Vue 3 | `@codebelt/classy-store/vue` | `useStore(store)` | `ShallowRef<Snapshot<T>>` | `onUnmounted` |
+| Svelte 4/5 | `@codebelt/classy-store/svelte` | `toSvelteStore(store)` | `ClassyReadable<Snapshot<T>>` | `$store` syntax / manual unsubscribe |
+| Solid.js | `@codebelt/classy-store/solid` | `useStore(store)` | `() => Snapshot<T>` | `onCleanup` |
+| Angular | `@codebelt/classy-store/angular` | `injectStore(store)` | `Signal<Snapshot<T>>` | `DestroyRef.onDestroy` |
+
+All adapters:
+- Accept any `createClassyStore()` proxy
+- Subscribe to batched mutations via `subscribe()`
+- Update when `snapshot()` changes
+- Clean up their subscription automatically when the component/owner is destroyed
+- Return immutable snapshots (deeply frozen objects)
+- Require calling actions directly on the store proxy — not on the returned reactive value

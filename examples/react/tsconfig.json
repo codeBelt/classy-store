@@ -22,7 +22,12 @@
     "paths": {
       "@/*": ["./src/*"],
       "@codebelt/classy-store": ["../../packages/classy-store/src/index.ts"],
-      "@codebelt/classy-store/*": ["../../packages/classy-store/src/*"]
+      "@codebelt/classy-store/react": [
+        "../../packages/classy-store/src/frameworks/react/react.ts"
+      ],
+      "@codebelt/classy-store/utils": [
+        "../../packages/classy-store/src/utils/index.ts"
+      ]
     },
     // Some stricter flags (disabled by default)
     "noUnusedLocals": false,

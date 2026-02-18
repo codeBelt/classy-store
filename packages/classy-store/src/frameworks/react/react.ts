@@ -4,9 +4,9 @@ import {
   subscribe as coreSubscribe,
   createClassyStore,
   getInternal,
-} from '../core/core';
-import {snapshot} from '../snapshot/snapshot';
-import type {Snapshot} from '../types';
+} from '../../core/core';
+import {snapshot} from '../../snapshot/snapshot';
+import type {Snapshot} from '../../types';
 
 // ── Overloads ─────────────────────────────────────────────────────────────────
 

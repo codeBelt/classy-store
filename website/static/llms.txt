@@ -1,0 +1,38 @@
+# @codebelt/classy-store
+
+> Class-based reactive state management for React, Vue, Svelte, Solid, and Angular. Write
+> plain TypeScript classes — get fine-grained reactivity, immutable snapshots, and
+> zero-boilerplate hooks. ~2.3 KB gzipped. No Providers, no decorators, no reducers.
+
+## Getting Started
+
+- [Introduction & API Reference](https://codebelt.github.io/classy-store/docs/): Full API
+  covering `createClassyStore`, `useStore`, `snapshot`, `subscribe`, `reactiveMap`,
+  `reactiveSet`, `shallowEqual`, and all patterns
+- [Tutorial](https://codebelt.github.io/classy-store/docs/TUTORIAL): Step-by-step guide —
+  store definition, React hook modes (selector/auto-tracked), collections, inheritance,
+  async patterns, local stores
+
+## Utilities
+
+- [Persistence (`persist`)](https://codebelt.github.io/classy-store/docs/PERSIST_TUTORIAL):
+  Save state to localStorage/sessionStorage/AsyncStorage with transforms, versioning,
+  migration, debounce, cross-tab sync, TTL, and SSR support
+- [DevTools (`devtools`)](https://codebelt.github.io/classy-store/docs/DEVTOOLS_TUTORIAL):
+  Connect to Redux DevTools for state inspection and time-travel debugging
+- [Property Subscriptions (`subscribeKey`)](https://codebelt.github.io/classy-store/docs/SUBSCRIBE_KEY_TUTORIAL):
+  Watch a single property with previous/current values
+- [Undo/Redo (`withHistory`)](https://codebelt.github.io/classy-store/docs/HISTORY_TUTORIAL):
+  Snapshot-based undo/redo with pause/resume and configurable limits
+
+## Architecture
+
+- [Core Architecture](https://codebelt.github.io/classy-store/docs/ARCHITECTURE): Three-layer
+  design (write proxy → snapshot → framework hook), computed memoization, structural sharing
+- [Persist Architecture](https://codebelt.github.io/classy-store/docs/PERSIST_ARCHITECTURE):
+  Save/restore flows, merge strategies, cross-tab sync, storage envelope format
+
+## Optional: Full Documentation
+
+- [llms-full.txt](https://codebelt.github.io/classy-store/llms-full.txt): All documentation
+  concatenated into one file for LLM context windows

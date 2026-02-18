@@ -8,7 +8,8 @@ const baseUrl = '/classy-store/';
 
 const config: Config = {
   title: 'Classy Store',
-  tagline: 'Class-based reactive state management for React',
+  tagline:
+    'Class-based reactive state management for React, Vue, Svelte, Solid, and Angular',
   favicon: 'img/favicon.ico',
 
   future: {
@@ -109,6 +110,19 @@ const config: Config = {
             {
               label: 'GitHub',
               href: 'https://github.com/codebelt/classy-store',
+            },
+          ],
+        },
+        {
+          title: 'AI & LLM',
+          items: [
+            {
+              label: 'llms.txt',
+              href: 'https://codebelt.github.io/classy-store/llms.txt',
+            },
+            {
+              label: 'llms-full.txt',
+              href: 'https://codebelt.github.io/classy-store/llms-full.txt',
             },
           ],
         },

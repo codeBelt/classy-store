@@ -1,4 +1,4 @@
-# classy-store-demo
+# classy-store-react-example
 
 ## 0.1.1
 

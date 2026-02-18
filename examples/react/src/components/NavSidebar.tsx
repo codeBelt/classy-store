@@ -85,7 +85,19 @@ export function NavSidebar({
             href="../"
             className="flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-medium text-indigo-400 hover:bg-indigo-500/10 transition-colors"
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-label="Back arrow"
+            >
+              <path d="M19 12H5M12 19l-7-7 7-7" />
+            </svg>
             Back to Docs
           </a>
         </div>
