@@ -1,5 +1,11 @@
 # @codebelt/classy-store
 
+## 0.2.0
+
+### Minor Changes
+
+- [#8](https://github.com/codeBelt/classy-store/pull/8) [`96259f9`](https://github.com/codeBelt/classy-store/commit/96259f9aa38b3122e7c85f65d49acb9d39f48d3b) Thanks [@codeBelt](https://github.com/codeBelt)! - add framework-specific store utilities (Vue, Svelte, Angular, Solid)
+
 ## 0.1.3
 
 ### Patch Changes
