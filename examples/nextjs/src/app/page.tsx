@@ -1,11 +1,21 @@
-import { Counter } from '@/components/Counter';
+import {DashboardOverview} from '@/components/dashboard/DashboardOverview';
+import {StoreInspector} from '@/components/dashboard/StoreInspector';
+import {StructuralSharingDemo} from '@/components/dashboard/StructuralSharingDemo';
 
-export default function Home() {
+export default function DashboardPage() {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-24">
-      <div className="z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex">
-        <Counter />
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold">Dashboard</h1>
+        <p className="text-muted text-sm mt-1">
+          Cross-store stats, snapshot inspection, and structural sharing demos.
+        </p>
       </div>
-    </main>
+      <DashboardOverview />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <StoreInspector />
+        <StructuralSharingDemo />
+      </div>
+    </div>
   );
 }
