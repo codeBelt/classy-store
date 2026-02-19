@@ -1,7 +1,8 @@
 'use client';
 
+import {subscribe} from '@codebelt/classy-store';
 import {useEffect, useState} from 'react';
-import {plannerPersist} from '@/stores/planner-store';
+import {plannerPersist, plannerStore} from '@/stores/planner-store';
 
 export function PersistStatusBadge() {
   const [status, setStatus] = useState({hydrated: false, expired: false});
@@ -14,12 +15,17 @@ export function PersistStatusBadge() {
       });
     };
     check();
-    const id = setInterval(check, 1000);
-    return () => clearInterval(id);
+    // Re-check after hydration completes
+    plannerPersist.hydrated.then(check);
+    // Re-check after any store mutation (persist writes happen after)
+    const unsub = subscribe(plannerStore, () => {
+      setTimeout(check, 100);
+    });
+    return unsub;
   }, []);
 
   return (
-    <div className="flex flex-col items-end gap-1">
+    <div className="flex flex-col items-end gap-1.5">
       <div className="flex gap-2 text-xs">
         <span
           className={`px-2 py-0.5 rounded-full ${
@@ -36,7 +42,7 @@ export function PersistStatusBadge() {
           </span>
         )}
       </div>
-      <div className="flex gap-2">
+      <div className="flex gap-3">
         <button
           type="button"
           onClick={() => plannerPersist.save()}

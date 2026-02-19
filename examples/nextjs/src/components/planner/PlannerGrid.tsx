@@ -1,6 +1,7 @@
 'use client';
 
 import {useStore} from '@codebelt/classy-store/react';
+import {Fragment} from 'react';
 import type {DayName, DayPlan} from '@/stores/planner-store';
 import {DAYS, plannerStore} from '@/stores/planner-store';
 import {MealSlotPicker} from './MealSlotPicker';
@@ -35,11 +36,8 @@ export function PlannerGrid() {
           ))}
 
           {SLOTS.map((slot) => (
-            <>
-              <div
-                key={`label-${slot}`}
-                className="bg-card p-2 text-xs font-medium text-muted capitalize"
-              >
+            <Fragment key={slot}>
+              <div className="bg-card p-2 text-xs font-medium text-muted capitalize">
                 {slot}
               </div>
               {DAYS.map((day) => {
@@ -57,7 +55,7 @@ export function PlannerGrid() {
                   </div>
                 );
               })}
-            </>
+            </Fragment>
           ))}
         </div>
       </div>

@@ -2,31 +2,31 @@
 
 import Link from 'next/link';
 import {usePathname} from 'next/navigation';
+import {ThemeToggle} from './ThemeToggle';
 
 const links = [
-  {href: '/', label: 'Dashboard'},
-  {href: '/recipes', label: 'Recipes'},
-  {href: '/recipes/editor', label: 'Editor'},
-  {href: '/planner', label: 'Planner'},
-  {href: '/shopping', label: 'Shopping'},
-  {href: '/settings', label: 'Settings'},
+  {href: '/', label: 'Dashboard', exact: true},
+  {href: '/recipes', label: 'Recipes', exact: true},
+  {href: '/recipes/editor', label: 'Editor', exact: false},
+  {href: '/planner', label: 'Planner', exact: false},
+  {href: '/shopping', label: 'Shopping', exact: false},
+  {href: '/settings', label: 'Settings', exact: false},
 ];
 
 export function NavBar() {
   const pathname = usePathname();
 
   return (
-    <nav className="border-b border-border bg-card">
-      <div className="mx-auto max-w-6xl px-4 py-3 flex items-center gap-6">
+    <nav className="border-b border-border bg-card sticky top-0 z-30">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6 h-14 flex items-center gap-6">
         <Link href="/" className="text-lg font-bold text-accent shrink-0">
           Classy Kitchen
         </Link>
-        <div className="flex gap-1 overflow-x-auto">
+        <div className="flex gap-1 overflow-x-auto flex-1">
           {links.map((link) => {
-            const isActive =
-              link.href === '/'
-                ? pathname === '/'
-                : pathname.startsWith(link.href);
+            const isActive = link.exact
+              ? pathname === link.href
+              : pathname.startsWith(link.href);
             return (
               <Link
                 key={link.href}
@@ -42,6 +42,7 @@ export function NavBar() {
             );
           })}
         </div>
+        <ThemeToggle />
       </div>
     </nav>
   );

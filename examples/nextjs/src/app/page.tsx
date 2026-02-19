@@ -4,10 +4,10 @@ import {StructuralSharingDemo} from '@/components/dashboard/StructuralSharingDem
 
 export default function DashboardPage() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold">Dashboard</h1>
-        <p className="text-muted text-sm mt-1">
+        <p className="text-muted mt-1">
           Cross-store stats, snapshot inspection, and structural sharing demos.
         </p>
       </div>

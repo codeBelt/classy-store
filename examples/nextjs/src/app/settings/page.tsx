@@ -4,10 +4,10 @@ import {StorageDebugPanel} from '@/components/settings/StorageDebugPanel';
 
 export default function SettingsPage() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold">Settings</h1>
-        <p className="text-muted text-sm mt-1">
+        <p className="text-muted mt-1">
           Plain object store with debounced persist and manual save/clear
           controls.
         </p>
