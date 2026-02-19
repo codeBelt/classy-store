@@ -99,7 +99,9 @@ export function withHistory<T extends object>(
       try {
         applySnapshot(history[pointer]);
       } finally {
-        paused = false;
+        queueMicrotask(() => {
+          paused = false;
+        });
       }
     },
 
@@ -110,7 +112,9 @@ export function withHistory<T extends object>(
       try {
         applySnapshot(history[pointer]);
       } finally {
-        paused = false;
+        queueMicrotask(() => {
+          paused = false;
+        });
       }
     },
 
