@@ -13,10 +13,11 @@
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
   "ignore": [
+    "classy-store-angular-example",
+    "classy-store-nextjs-example",
     "classy-store-react-example",
-    "classy-store-vue-example",
-    "classy-store-svelte-example",
     "classy-store-solid-example",
-    "classy-store-angular-example"
+    "classy-store-svelte-example",
+    "classy-store-vue-example"
   ]
 }

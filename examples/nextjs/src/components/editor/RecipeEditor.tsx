@@ -60,7 +60,7 @@ if (!historyRef.current) {
                 <span className="text-muted text-xs">Prep (min)</span>
                 <input
                   type="number"
-                  className="border border-border bg-background rounded px-3 py-1.5 text-sm"
+                  className="w-full border border-border bg-background rounded px-3 py-1.5 text-sm"
                   value={snap.prepMinutes}
                   onChange={(e) => store.setPrepMinutes(Number(e.target.value))}
                 />
@@ -69,7 +69,7 @@ if (!historyRef.current) {
                 <span className="text-muted text-xs">Cook (min)</span>
                 <input
                   type="number"
-                  className="border border-border bg-background rounded px-3 py-1.5 text-sm"
+                  className="w-full border border-border bg-background rounded px-3 py-1.5 text-sm"
                   value={snap.cookMinutes}
                   onChange={(e) => store.setCookMinutes(Number(e.target.value))}
                 />
@@ -78,7 +78,7 @@ if (!historyRef.current) {
                 <span className="text-muted text-xs">Servings</span>
                 <input
                   type="number"
-                  className="border border-border bg-background rounded px-3 py-1.5 text-sm"
+                  className="w-full border border-border bg-background rounded px-3 py-1.5 text-sm"
                   value={snap.servings}
                   onChange={(e) => store.setServings(Number(e.target.value))}
                 />
