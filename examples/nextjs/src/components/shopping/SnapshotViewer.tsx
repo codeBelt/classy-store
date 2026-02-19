@@ -2,6 +2,7 @@
 
 import {getVersion, snapshot} from '@codebelt/classy-store';
 import {useState} from 'react';
+import {ApiInfo} from '@/components/shared/ApiInfo';
 import {shoppingStore} from '@/stores/shopping-store';
 
 export function SnapshotViewer() {
@@ -21,6 +22,12 @@ export function SnapshotViewer() {
   return (
     <div className="bg-card border border-border rounded-lg p-4 space-y-3">
       <h2 className="font-semibold text-sm">Snapshot Viewer</h2>
+      <ApiInfo
+        apis={['snapshot', 'getVersion']}
+        description="Manually captures a frozen snapshot and displays it as JSON alongside the current version number."
+        code={`const snap = snapshot(shoppingStore);
+const ver = getVersion(shoppingStore);`}
+      />
       <p className="text-xs text-muted">
         Manual{' '}
         <code className="font-mono bg-border px-1 rounded">snapshot()</code> +{' '}

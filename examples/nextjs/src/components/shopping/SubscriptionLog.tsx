@@ -2,6 +2,7 @@
 
 import {subscribe} from '@codebelt/classy-store';
 import {useEffect, useState} from 'react';
+import {ApiInfo} from '@/components/shared/ApiInfo';
 import {shoppingStore, subscriptionLog} from '@/stores/shopping-store';
 
 export function SubscriptionLog() {
@@ -18,6 +19,12 @@ export function SubscriptionLog() {
   return (
     <div className="bg-card border border-border rounded-lg p-4 space-y-3">
       <h2 className="font-semibold text-sm">subscribeKey Log</h2>
+      <ApiInfo
+        apis={['subscribeKey']}
+        description="Displays log entries captured by subscribeKey callbacks on 'items' and 'lastAction' properties."
+        code={`subscribeKey(shoppingStore, 'items', () => { ... });
+subscribeKey(shoppingStore, 'lastAction', () => { ... });`}
+      />
       <p className="text-xs text-muted">
         Captured via{' '}
         <code className="font-mono bg-border px-1 rounded">subscribeKey()</code>{' '}

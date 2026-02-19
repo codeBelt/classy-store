@@ -2,6 +2,7 @@
 
 import {subscribe} from '@codebelt/classy-store';
 import {useCallback, useEffect, useState} from 'react';
+import {ApiInfo} from '@/components/shared/ApiInfo';
 import {settingsStore} from '@/stores/settings-store';
 
 const STORAGE_KEYS = [
@@ -38,6 +39,14 @@ export function StorageDebugPanel() {
     <div className="bg-card border border-border rounded-lg p-4 space-y-3">
       <div className="flex items-center justify-between">
         <h2 className="font-semibold text-sm">Storage Debug</h2>
+        <ApiInfo
+          apis={['subscribe', 'localStorage']}
+          description="Subscribes to settings store to count mutations. Reads raw localStorage to show persisted JSON and debounce effects."
+          code={`subscribe(settingsStore, () => {
+  setMutationCount((c) => c + 1);
+  setTimeout(refreshStorage, 400);
+});`}
+        />
         <button
           type="button"
           onClick={refreshStorage}

@@ -2,6 +2,7 @@
 
 import {useStore} from '@codebelt/classy-store/react';
 import {useState} from 'react';
+import {ApiInfo} from '@/components/shared/ApiInfo';
 import {recipeStore} from '@/stores/recipe-store';
 
 export function TagManager() {
@@ -21,6 +22,12 @@ export function TagManager() {
       <h2 className="font-semibold text-sm">
         Tag Manager ({snap.allTags._items.length} tags)
       </h2>
+      <ApiInfo
+        apis={['useStore (auto-tracked)', 'reactiveSet']}
+        description="Demonstrates ReactiveSet's add/delete/iteration through tag management."
+        code={`recipeStore.addTag(tag);    // ReactiveSet.add()
+recipeStore.removeTag(tag); // ReactiveSet.delete()`}
+      />
       <div className="flex flex-wrap gap-1">
         {(snap.allTags._items as readonly string[]).map((tag) => (
           <span

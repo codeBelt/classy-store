@@ -11,6 +11,7 @@ const links = [
   {href: '/planner', label: 'Planner', exact: false},
   {href: '/shopping', label: 'Shopping', exact: false},
   {href: '/settings', label: 'Settings', exact: false},
+  {href: '/features', label: 'Features', exact: false},
 ];
 
 export function NavBar() {

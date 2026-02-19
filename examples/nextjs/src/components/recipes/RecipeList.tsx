@@ -1,6 +1,7 @@
 'use client';
 
 import {useStore} from '@codebelt/classy-store/react';
+import {ApiInfo} from '@/components/shared/ApiInfo';
 import {recipeStore} from '@/stores/recipe-store';
 import {RecipeCard} from './RecipeCard';
 
@@ -13,6 +14,13 @@ export function RecipeList() {
         <h2 className="font-semibold">
           Recipes ({snap.filteredRecipes.length} of {snap.recipeCount})
         </h2>
+        <ApiInfo
+          apis={['useStore (auto-tracked)', 'computed getters']}
+          description="Auto-tracked useStore reads computed getters like filteredRecipes and recipeCount."
+          code={`const snap = useStore(recipeStore);
+snap.filteredRecipes // computed getter
+snap.recipeCount     // computed getter`}
+        />
         <p className="text-xs text-muted">
           Avg total time: {snap.averageTotalTime} min
         </p>

@@ -1,6 +1,7 @@
 'use client';
 
 import {useStore} from '@codebelt/classy-store/react';
+import {ApiInfo} from '@/components/shared/ApiInfo';
 import type {RecipeEditorStore} from '@/stores/recipe-editor-store';
 
 export function InstructionEditor({store}: {store: RecipeEditorStore}) {
@@ -12,6 +13,12 @@ export function InstructionEditor({store}: {store: RecipeEditorStore}) {
         <h2 className="font-semibold text-sm">
           Instructions ({snap.instructionCount} steps)
         </h2>
+        <ApiInfo
+          apis={['array push', 'array splice']}
+          description="Same array mutation pattern for instruction steps."
+          code={`this.instructions.push('');       // add
+this.instructions.splice(i, 1);   // remove`}
+        />
         <button
           type="button"
           onClick={() => store.addInstruction()}

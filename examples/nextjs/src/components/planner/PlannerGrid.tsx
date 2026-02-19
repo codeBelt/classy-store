@@ -2,6 +2,7 @@
 
 import {useStore} from '@codebelt/classy-store/react';
 import {Fragment} from 'react';
+import {ApiInfo} from '@/components/shared/ApiInfo';
 import type {DayName, DayPlan} from '@/stores/planner-store';
 import {DAYS, plannerStore} from '@/stores/planner-store';
 import {MealSlotPicker} from './MealSlotPicker';
@@ -15,6 +16,12 @@ export function PlannerGrid() {
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h2 className="font-semibold">Weekly Plan</h2>
+        <ApiInfo
+          apis={['useStore (auto-tracked)', 'deep nested objects']}
+          description="Reads and mutates deeply nested days[day][slot] objects. Cross-store data via MealSlotPicker."
+          code={`const meal = snap.days[day][slot];
+plannerStore.setMeal(day, slot, id, title);`}
+        />
         <button
           type="button"
           onClick={() => plannerStore.clearAll()}

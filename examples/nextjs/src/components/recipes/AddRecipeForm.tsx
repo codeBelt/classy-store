@@ -1,6 +1,7 @@
 'use client';
 
 import {useState} from 'react';
+import {ApiInfo} from '@/components/shared/ApiInfo';
 import {recipeStore} from '@/stores/recipe-store';
 
 export function AddRecipeForm() {
@@ -38,6 +39,12 @@ export function AddRecipeForm() {
       className="bg-card border border-border rounded-lg p-4 space-y-3"
     >
       <h2 className="font-semibold text-sm">Add Recipe (ReactiveMap.set)</h2>
+      <ApiInfo
+        apis={['reactiveMap']}
+        description="Adds entries to the ReactiveMap via store method, generating unique IDs."
+        code={`recipeStore.addRecipe({ id, title, ... });
+// internally: this.recipes.set(id, recipe)`}
+      />
       <div className="flex flex-wrap gap-3">
         <input
           type="text"

@@ -1,11 +1,19 @@
 'use client';
 
+import {ApiInfo} from '@/components/shared/ApiInfo';
 import {settingsPersist} from '@/stores/settings-store';
 
 export function PersistControls() {
   return (
     <div className="bg-card border border-border rounded-lg p-4 space-y-3">
       <h2 className="font-semibold text-sm">Persist Controls</h2>
+      <ApiInfo
+        apis={['PersistHandle', 'save', 'clear', 'rehydrate']}
+        description="Manual persist controls: force-save, clear storage, and rehydrate from storage."
+        code={`settingsPersist.save();
+settingsPersist.clear();
+settingsPersist.rehydrate();`}
+      />
       <p className="text-xs text-muted">
         PersistHandle: save(), clear(), rehydrate()
       </p>

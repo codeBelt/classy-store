@@ -1,6 +1,7 @@
 'use client';
 
 import {useStore} from '@codebelt/classy-store/react';
+import {ApiInfo} from '@/components/shared/ApiInfo';
 import {settingsStore} from '@/stores/settings-store';
 
 export function SettingsForm() {
@@ -9,6 +10,16 @@ export function SettingsForm() {
   return (
     <div className="bg-card border border-border rounded-lg p-4 space-y-4">
       <h2 className="font-semibold">Preferences</h2>
+      <ApiInfo
+        apis={['createClassyStore (plain object)', 'useStore (auto-tracked)']}
+        description="Plain object store (not a class). Direct property mutation — no setter methods needed."
+        code={`const settingsStore = createClassyStore({
+  theme: 'system',
+  fontSize: 16,
+  compactMode: false,
+});
+// mutation: settingsStore.theme = 'dark';`}
+      />
       <p className="text-xs text-muted">
         Plain object store — mutations go directly to proxy properties.
       </p>

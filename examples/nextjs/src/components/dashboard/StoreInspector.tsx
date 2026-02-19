@@ -2,6 +2,7 @@
 
 import {getVersion, snapshot, subscribe} from '@codebelt/classy-store';
 import {useCallback, useEffect, useState} from 'react';
+import {ApiInfo} from '@/components/shared/ApiInfo';
 import {plannerStore} from '@/stores/planner-store';
 import {recipeStore} from '@/stores/recipe-store';
 import {shoppingStore} from '@/stores/shopping-store';
@@ -49,6 +50,14 @@ export function StoreInspector() {
   return (
     <div className="bg-card border border-border rounded-lg p-4 space-y-3">
       <h2 className="font-semibold">Store Inspector</h2>
+      <ApiInfo
+        apis={['getVersion', 'snapshot', 'subscribe']}
+        description="Manually subscribes to all stores, tracks mutation count, and displays version numbers and snapshot keys."
+        code={`subscribe(recipeStore, () => {
+  setMutationCount((c) => c + 1);
+  updateVersions();
+});`}
+      />
       <p className="text-sm text-muted">
         Uses{' '}
         <code className="font-mono text-xs bg-border px-1 rounded">

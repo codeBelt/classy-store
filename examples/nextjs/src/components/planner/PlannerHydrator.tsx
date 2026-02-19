@@ -1,6 +1,7 @@
 'use client';
 
 import {useEffect, useState} from 'react';
+import {ApiInfo} from '@/components/shared/ApiInfo';
 import {plannerPersist} from '@/stores/planner-store';
 
 export function PlannerHydrator() {
@@ -18,5 +19,13 @@ export function PlannerHydrator() {
     );
   }
 
-  return null;
+  return (
+    <ApiInfo
+      apis={['persist skipHydration', 'rehydrate()']}
+      description="SSR-safe pattern: store skips auto-hydration, component calls rehydrate() in useEffect on client."
+      code={`persist(plannerStore, { skipHydration: true, ... });
+// in useEffect:
+plannerPersist.rehydrate();`}
+    />
+  );
 }

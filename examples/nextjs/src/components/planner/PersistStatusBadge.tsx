@@ -2,6 +2,7 @@
 
 import {subscribe} from '@codebelt/classy-store';
 import {useEffect, useState} from 'react';
+import {ApiInfo} from '@/components/shared/ApiInfo';
 import {plannerPersist, plannerStore} from '@/stores/planner-store';
 
 export function PersistStatusBadge() {
@@ -26,6 +27,10 @@ export function PersistStatusBadge() {
 
   return (
     <div className="flex flex-col items-end gap-1.5">
+      <ApiInfo
+        apis={['PersistHandle', 'isHydrated', 'isExpired', 'save', 'clear']}
+        description="Reads persist handle state and exposes manual save/clear controls. Uses subscribe for reactivity."
+      />
       <div className="flex gap-2 text-xs">
         <span
           className={`px-2 py-0.5 rounded-full ${

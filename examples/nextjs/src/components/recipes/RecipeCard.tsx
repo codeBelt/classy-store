@@ -2,6 +2,7 @@
 
 import {shallowEqual} from '@codebelt/classy-store';
 import {useStore} from '@codebelt/classy-store/react';
+import {ApiInfo} from '@/components/shared/ApiInfo';
 import type {Recipe} from '@/stores/recipe-store';
 import {recipeStore} from '@/stores/recipe-store';
 
@@ -33,6 +34,10 @@ export function RecipeCard({recipeId}: {recipeId: string}) {
 
   return (
     <div className="bg-card border border-border rounded-lg p-4 space-y-2">
+      <ApiInfo
+        apis={['useStore', 'selector', 'shallowEqual']}
+        description="Selector extracts a single recipe by ID; shallowEqual prevents re-renders when unrelated recipes change."
+      />
       <div className="flex items-start justify-between">
         <h3 className="font-semibold">{recipe.title}</h3>
         <button

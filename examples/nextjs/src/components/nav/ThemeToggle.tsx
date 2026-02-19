@@ -1,6 +1,7 @@
 'use client';
 
 import {useStore} from '@codebelt/classy-store/react';
+import {useEffect, useState} from 'react';
 import {settingsStore} from '@/stores/settings-store';
 
 const icons: Record<string, string> = {
@@ -17,6 +18,15 @@ const next: Record<string, 'light' | 'dark' | 'system'> = {
 
 export function ThemeToggle() {
   const snap = useStore(settingsStore, (s) => s.theme);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Use the store default on the server and first client render to avoid
+  // hydration mismatch. The persisted value may differ from the default.
+  const theme = mounted ? snap : 'system';
 
   return (
     <button
@@ -25,9 +35,9 @@ export function ThemeToggle() {
         settingsStore.theme = next[snap];
       }}
       className="w-8 h-8 flex items-center justify-center rounded-md border border-border text-sm hover:bg-border transition-colors"
-      title={`Theme: ${snap}`}
+      title={`Theme: ${theme}`}
     >
-      {icons[snap]}
+      {icons[theme]}
     </button>
   );
 }

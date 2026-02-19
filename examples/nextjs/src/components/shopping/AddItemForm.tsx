@@ -1,6 +1,7 @@
 'use client';
 
 import {useState} from 'react';
+import {ApiInfo} from '@/components/shared/ApiInfo';
 import {shoppingStore} from '@/stores/shopping-store';
 
 export function AddItemForm() {
@@ -21,6 +22,12 @@ export function AddItemForm() {
       onSubmit={handleSubmit}
       className="bg-card border border-border rounded-lg p-4"
     >
+      <ApiInfo
+        apis={['array push']}
+        description="Pushes new items to the items array via store method."
+        code={`shoppingStore.addItem(name, quantity, unit);
+// internally: this.items.push({ ... })`}
+      />
       <div className="flex flex-wrap gap-3">
         <input
           type="text"

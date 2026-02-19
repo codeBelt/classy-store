@@ -1,6 +1,7 @@
 'use client';
 
 import {useStore} from '@codebelt/classy-store/react';
+import {ApiInfo} from '@/components/shared/ApiInfo';
 import type {RecipeEditorStore} from '@/stores/recipe-editor-store';
 
 export function EditorPreview({store}: {store: RecipeEditorStore}) {
@@ -10,6 +11,12 @@ export function EditorPreview({store}: {store: RecipeEditorStore}) {
     <div className="bg-card border border-border rounded-lg p-4 space-y-4 h-fit sticky top-4">
       <div className="flex items-center justify-between">
         <h2 className="font-semibold text-sm">Preview</h2>
+        <ApiInfo
+          apis={['computed getters']}
+          description="Displays read-only computed values: totalTime, isValid, ingredientSummary, instructionCount."
+          code={`get totalTime() { return this.prepMinutes + this.cookMinutes; }
+get isValid() { return this.title.length > 0 && ...; }`}
+        />
         <span
           className={`text-xs px-2 py-0.5 rounded-full ${
             snap.isValid

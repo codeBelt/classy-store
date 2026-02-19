@@ -1,6 +1,7 @@
 'use client';
 
 import {useStore} from '@codebelt/classy-store/react';
+import {ApiInfo} from '@/components/shared/ApiInfo';
 import type {RecipeEditorStore} from '@/stores/recipe-editor-store';
 
 export function IngredientEditor({store}: {store: RecipeEditorStore}) {
@@ -12,6 +13,12 @@ export function IngredientEditor({store}: {store: RecipeEditorStore}) {
         <h2 className="font-semibold text-sm">
           Ingredients ({snap.ingredientSummary})
         </h2>
+        <ApiInfo
+          apis={['array push', 'array splice']}
+          description="Mutates arrays directly — push to add, splice to remove. Proxy intercepts and batches notifications."
+          code={`this.ingredients.push('');       // add
+this.ingredients.splice(i, 1);   // remove`}
+        />
         <button
           type="button"
           onClick={() => store.addIngredient()}

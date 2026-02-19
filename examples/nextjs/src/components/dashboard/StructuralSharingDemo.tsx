@@ -2,6 +2,7 @@
 
 import {snapshot, subscribe} from '@codebelt/classy-store';
 import {useEffect, useRef, useState} from 'react';
+import {ApiInfo} from '@/components/shared/ApiInfo';
 import {recipeStore} from '@/stores/recipe-store';
 
 export function StructuralSharingDemo() {
@@ -38,6 +39,12 @@ export function StructuralSharingDemo() {
   return (
     <div className="bg-card border border-border rounded-lg p-4 space-y-3">
       <h2 className="font-semibold">Structural Sharing</h2>
+      <ApiInfo
+        apis={['snapshot', 'Object.is']}
+        description="Takes two consecutive snapshots and compares sub-trees with Object.is to demonstrate structural sharing."
+        code={`const topLevel = Object.is(prev, nextSnap);
+const filterSame = Object.is(prev.filter, nextSnap.filter);`}
+      />
       <p className="text-sm text-muted">
         Compares snapshot sub-tree references with{' '}
         <code className="font-mono text-xs bg-border px-1 rounded">

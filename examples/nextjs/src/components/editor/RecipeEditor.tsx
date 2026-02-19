@@ -4,6 +4,7 @@ import {useLocalStore, useStore} from '@codebelt/classy-store/react';
 import type {HistoryHandle} from '@codebelt/classy-store/utils';
 import {withHistory} from '@codebelt/classy-store/utils';
 import {useRef} from 'react';
+import {ApiInfo} from '@/components/shared/ApiInfo';
 import {RecipeEditorStore} from '@/stores/recipe-editor-store';
 import {EditorPreview} from './EditorPreview';
 import {HistoryControls} from './HistoryControls';
@@ -20,6 +21,15 @@ export function RecipeEditor() {
 
   return (
     <div className="space-y-4">
+      <ApiInfo
+        apis={['useLocalStore', 'withHistory']}
+        description="Creates a component-scoped store instance. History tracking initialized via useRef to survive re-renders."
+        code={`const store = useLocalStore(() => new RecipeEditorStore());
+const historyRef = useRef(null);
+if (!historyRef.current) {
+  historyRef.current = withHistory(store, { limit: 30 });
+}`}
+      />
       <HistoryControls history={historyRef.current} store={store} />
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="space-y-4">
