@@ -125,7 +125,8 @@ On restore, `deserialize` converts the ISO string back into a `Date` object befo
 `reactiveMap()` instances are backed by internal arrays that aren't directly JSON-serializable:
 
 ```ts
-import {createClassyStore, reactiveMap} from '@codebelt/classy-store';
+import {createClassyStore} from '@codebelt/classy-store';
+import {reactiveMap} from '@codebelt/classy-store/collections';
 import {persist} from '@codebelt/classy-store/utils';
 
 class UserStore {
@@ -512,7 +513,8 @@ persist(todoStore, {
 Here's a complete example combining several features:
 
 ```ts
-import {createClassyStore, reactiveMap} from '@codebelt/classy-store';
+import {createClassyStore} from '@codebelt/classy-store';
+import {reactiveMap} from '@codebelt/classy-store/collections';
 import {persist} from '@codebelt/classy-store/utils';
 
 class AppStore {

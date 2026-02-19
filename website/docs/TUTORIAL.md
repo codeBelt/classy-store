@@ -257,7 +257,8 @@ Structural sharing means that when you mutate `metadata.title`, the snapshot for
 Native `Map` and `Set` aren't plain objects — the proxy can't intercept their internal methods. Use `reactiveMap()` and `reactiveSet()` instead.
 
 ```ts
-import {createClassyStore, reactiveMap} from '@codebelt/classy-store';
+import {createClassyStore} from '@codebelt/classy-store';
+import {reactiveMap} from '@codebelt/classy-store/collections';
 
 class UserStore {
   users = reactiveMap<string, { name: string; role: string }>();

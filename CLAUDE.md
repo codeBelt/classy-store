@@ -13,8 +13,9 @@ packages/classy-store/src/
 ├── core/core.ts                   # Layer 1: Write Proxy — createClassyStore(), subscribe(), getVersion()
 ├── snapshot/snapshot.ts           # Layer 2: Immutable snapshots — snapshot(), structural sharing
 ├── types.ts                       # Snapshot<T>, StoreInternal, DepEntry, ComputedEntry
-├── index.ts                       # Main barrel: createClassyStore, snapshot, subscribe, getVersion, shallowEqual, reactiveMap, reactiveSet
+├── index.ts                       # Main barrel: createClassyStore, snapshot, subscribe, getVersion, shallowEqual
 ├── collections/collections.ts     # ReactiveMap and ReactiveSet (array-backed Map/Set emulation)
+├── collections/index.ts           # Collections barrel: reactiveMap, reactiveSet, ReactiveMap, ReactiveSet
 ├── frameworks/
 │   ├── react/react.ts             # Layer 3 (React): useStore(), useLocalStore() via useSyncExternalStore
 │   ├── vue/vue.ts                 # Vue: useStore() → ShallowRef<Snapshot<T>> (onUnmounted cleanup)
@@ -105,7 +106,8 @@ Enforced by Biome 2.4.0 (`biome.json` at repo root):
 
 | Import path | Contents |
 |---|---|
-| `@codebelt/classy-store` | `createClassyStore`, `snapshot`, `subscribe`, `getVersion`, `shallowEqual`, `reactiveMap`, `reactiveSet`, `Snapshot` type |
+| `@codebelt/classy-store` | `createClassyStore`, `snapshot`, `subscribe`, `getVersion`, `shallowEqual`, `Snapshot` type |
+| `@codebelt/classy-store/collections` | `reactiveMap`, `reactiveSet`, `ReactiveMap` type, `ReactiveSet` type |
 | `@codebelt/classy-store/react` | `useStore`, `useLocalStore` |
 | `@codebelt/classy-store/vue` | `useStore` (ShallowRef) |
 | `@codebelt/classy-store/svelte` | `toSvelteStore` (ClassyReadable) |

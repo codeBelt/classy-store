@@ -1,5 +1,5 @@
+import {shallowEqual} from '@codebelt/classy-store';
 import {useStore} from '@codebelt/classy-store/react';
-import {shallowEqual} from '@codebelt/classy-store/utils';
 import {Button} from '../../components/Button';
 import {DemoContainer} from '../../components/DemoContainer';
 import {RenderBadge} from '../../components/RenderBadge';

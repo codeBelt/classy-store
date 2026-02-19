@@ -7,8 +7,8 @@
 ## Getting Started
 
 - [Introduction & API Reference](https://codebelt.github.io/classy-store/docs/): Full API
-  covering `createClassyStore`, `useStore`, `snapshot`, `subscribe`, `reactiveMap`,
-  `reactiveSet`, `shallowEqual`, and all patterns
+  covering `createClassyStore`, `useStore`, `snapshot`, `subscribe`, `shallowEqual`,
+  `reactiveMap`, `reactiveSet` (collections entry), and all patterns
 - [Tutorial](https://codebelt.github.io/classy-store/docs/TUTORIAL): Step-by-step guide —
   store definition, React hook modes (selector/auto-tracked), collections, inheritance,
   async patterns, local stores

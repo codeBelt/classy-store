@@ -1,8 +1,5 @@
-import {
-  createClassyStore,
-  reactiveMap,
-  reactiveSet,
-} from '@codebelt/classy-store';
+import {createClassyStore} from '@codebelt/classy-store';
+import {reactiveMap, reactiveSet} from '@codebelt/classy-store/collections';
 
 interface User {
   name: string;

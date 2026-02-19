@@ -65,9 +65,10 @@ flowchart TB
 
 ```
 src/
-├── index.ts                       # Barrel export: createClassyStore, useStore, snapshot, subscribe, getVersion, shallowEqual, Snapshot, reactiveMap, reactiveSet, ReactiveMap, ReactiveSet
+├── index.ts                       # Barrel export: createClassyStore, snapshot, subscribe, getVersion, shallowEqual, Snapshot
 ├── collections/
 │   ├── collections.ts             # ReactiveMap and ReactiveSet implementations
+│   ├── index.ts                   # Collections barrel: reactiveMap, reactiveSet, ReactiveMap, ReactiveSet
 │   └── collections.test.ts        # tests: ReactiveMap, ReactiveSet, class store integration
 ├── core/
 │   ├── core.ts                    # Layer 1: Write Proxy — createClassyStore(), subscribe(), getVersion()

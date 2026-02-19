@@ -227,10 +227,11 @@ Shallow equality comparison for objects and arrays. Useful as a custom `isEqual`
 
 ### `reactiveMap<K, V>(initial?)`
 
-Creates a reactive Map-like collection backed by a plain array. Use inside a `createClassyStore()` for full reactivity.
+Creates a reactive Map-like collection backed by a plain array. Use inside a `createClassyStore()` for full reactivity. Import from `@codebelt/classy-store/collections`.
 
 ```typescript
-import {reactiveMap, createClassyStore} from '@codebelt/classy-store';
+import {createClassyStore} from '@codebelt/classy-store';
+import {reactiveMap} from '@codebelt/classy-store/collections';
 import {useStore} from '@codebelt/classy-store/react';
 
 class UserStore {
@@ -263,10 +264,11 @@ Supports: `.get()`, `.set()`, `.has()`, `.delete()`, `.clear()`, `.size`, `.keys
 
 ### `reactiveSet<T>(initial?)`
 
-Creates a reactive Set-like collection backed by a plain array. Use inside a `createClassyStore()` for full reactivity.
+Creates a reactive Set-like collection backed by a plain array. Use inside a `createClassyStore()` for full reactivity. Import from `@codebelt/classy-store/collections`.
 
 ```typescript
-import {reactiveSet, createClassyStore} from '@codebelt/classy-store';
+import {createClassyStore} from '@codebelt/classy-store';
+import {reactiveSet} from '@codebelt/classy-store/collections';
 import {useStore} from '@codebelt/classy-store/react';
 
 class TagStore {
@@ -298,6 +300,14 @@ import type {Snapshot} from '@codebelt/classy-store';
 
 type MyStoreSnap = Snapshot<MyStore>;
 // All properties are readonly, arrays become ReadonlyArray, etc.
+```
+
+## Collections (`@codebelt/classy-store/collections`)
+
+Reactive Map and Set types are available via a separate entry point:
+
+```typescript
+import {reactiveMap, reactiveSet} from '@codebelt/classy-store/collections';
 ```
 
 ## Utilities (`@codebelt/classy-store/utils`)
