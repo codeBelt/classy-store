@@ -442,4 +442,39 @@ describe('devtools', () => {
     // DevTools listener should be removed
     expect(conn._listener).toBeNull();
   });
+
+  it('does not send partial time-travel state as STORE_UPDATE when assignment throws', async () => {
+    const conn = createMockConnection();
+    const ext = createMockExtension(conn);
+    setExtension(ext);
+
+    class Store {
+      count = 0;
+      name = 'hello';
+
+      // A setter that throws on a specific value
+      set bomb(_v: unknown) {
+        throw new Error('assignment failed');
+      }
+    }
+
+    const store = createClassyStore(new Store());
+    devtools(store);
+
+    store.count = 5;
+    await tick();
+    const sendCountBefore = conn.send.mock.calls.length;
+
+    // Simulate time-travel with a key that triggers a throwing setter.
+    // The `count` assignment succeeds but `bomb` throws mid-loop.
+    conn._listener?.({
+      type: 'DISPATCH',
+      payload: {type: 'JUMP_TO_STATE'},
+      state: JSON.stringify({count: 0, bomb: 'trigger', name: 'world'}),
+    });
+    await tick();
+
+    // The partial state change should NOT be sent as a STORE_UPDATE
+    expect(conn.send.mock.calls.length).toBe(sendCountBefore);
+  });
 });

@@ -262,6 +262,11 @@ function getDefaultStorage(): StorageAdapter | undefined {
  * On init (or manual rehydrate), reads from storage and applies the state back
  * to the store proxy.
  *
+ * When no storage adapter is available (e.g. during SSR), returns a dormant
+ * handle instead of throwing. Calling `rehydrate()` on the dormant handle will
+ * bootstrap the full persist lifecycle if storage has become available (e.g.
+ * after client-side mount).
+ *
  * @param proxyStore - A reactive proxy created by `createClassyStore()`.
  * @param options - Persistence configuration.
  * @returns A handle with lifecycle controls (unsubscribe, save, clear, rehydrate, hydrated).
@@ -283,44 +288,82 @@ export function persist<T extends object>(
     clearOnExpire = false,
   } = options;
 
-  const maybeStorage = options.storage ?? getDefaultStorage();
-  if (!maybeStorage) {
-    throw new Error(
-      '@codebelt/classy-store: persist() requires a storage adapter. ' +
-        'No localStorage found — provide a `storage` option.',
-    );
-  }
-  const storage: StorageAdapter = maybeStorage;
-
-  const resolvedProps = resolveProperties(proxyStore, propertiesOption);
-
-  // Build a map of key → transform for fast lookup during save/restore.
-  const transformMap = new Map<string, PropertyTransform<T>>();
-  for (const prop of resolvedProps) {
-    if (prop.transform) {
-      transformMap.set(prop.key, prop.transform);
-    }
-  }
-
-  const propKeys = resolvedProps.map((p) => p.key);
-
-  // ── State ────────────────────────────────────────────────────────────────
+  // ── Mutable state shared by handle closures ─────────────────────────────
 
   let disposed = false;
+  let active = false;
   let hydrating = false;
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
   let hydratedFlag = false;
   let expiredFlag = false;
+  let unsubscribeFromStore: (() => void) | null = null;
 
   // Hydration promise + resolver.
-  let resolveHydrated: () => void;
-  let rejectHydrated: (error: unknown) => void;
+  let resolveHydrated!: () => void;
+  let rejectHydrated!: (error: unknown) => void;
   const hydratedPromise = new Promise<void>((resolve, reject) => {
     resolveHydrated = resolve;
     rejectHydrated = reject;
   });
 
-  // ── Save logic ───────────────────────────────────────────────────────────
+  // These are initialized by setup() — declared here so closures can reference them.
+  let resolvedProps: Array<{key: string; transform?: PropertyTransform<T>}> =
+    [];
+  let transformMap = new Map<string, PropertyTransform<T>>();
+  let propKeys: string[] = [];
+  let storage!: StorageAdapter;
+
+  // ── Setup (core persist lifecycle) ──────────────────────────────────────
+
+  function setup(storageAdapter: StorageAdapter): void {
+    if (active) return;
+    active = true;
+    storage = storageAdapter;
+
+    resolvedProps = resolveProperties(proxyStore, propertiesOption);
+
+    // Build a map of key → transform for fast lookup during save/restore.
+    transformMap = new Map<string, PropertyTransform<T>>();
+    for (const prop of resolvedProps) {
+      if (prop.transform) {
+        transformMap.set(prop.key, prop.transform);
+      }
+    }
+
+    propKeys = resolvedProps.map((p) => p.key);
+
+    // Cross-tab sync.
+    const shouldSyncTabs =
+      syncTabsOption !== undefined
+        ? syncTabsOption
+        : isLocalStorage(storageAdapter);
+
+    if (
+      shouldSyncTabs &&
+      typeof globalThis !== 'undefined' &&
+      typeof globalThis.addEventListener === 'function'
+    ) {
+      globalThis.addEventListener('storage', onStorageEvent);
+    }
+
+    // Subscribe to store mutations.
+    unsubscribeFromStore = subscribe(proxyStore, scheduleWrite);
+
+    // Kick off initial hydration (unless skipped).
+    if (!skipHydration) {
+      void hydrateFromStorage()
+        .then(() => {
+          hydratedFlag = true;
+          resolveHydrated();
+        })
+        .catch((error) => {
+          hydratedFlag = true;
+          rejectHydrated(error);
+        });
+    }
+  }
+
+  // ── Save logic ─────────────────────────────────────────────────────────
 
   /** Serialize the current store state into a JSON string (versioned envelope). */
   function serializeState(): string {
@@ -368,7 +411,7 @@ export function persist<T extends object>(
     }, debounceMs);
   }
 
-  // ── Restore logic ────────────────────────────────────────────────────────
+  // ── Restore logic ──────────────────────────────────────────────────────
 
   /**
    * Parse a raw JSON string from storage, apply migration and transforms,
@@ -458,10 +501,7 @@ export function persist<T extends object>(
     }
   }
 
-  // ── Cross-tab sync ───────────────────────────────────────────────────────
-
-  const shouldSyncTabs =
-    syncTabsOption !== undefined ? syncTabsOption : isLocalStorage(storage);
+  // ── Cross-tab sync ─────────────────────────────────────────────────────
 
   /** Handler for `window.storage` events. */
   function onStorageEvent(event: StorageEvent): void {
@@ -471,36 +511,21 @@ export function persist<T extends object>(
     applyPersistedState(event.newValue);
   }
 
-  if (
-    shouldSyncTabs &&
-    typeof globalThis !== 'undefined' &&
-    typeof globalThis.addEventListener === 'function'
-  ) {
-    globalThis.addEventListener('storage', onStorageEvent);
-  }
+  // ── Initialize ─────────────────────────────────────────────────────────
 
-  // ── Subscribe to store mutations ─────────────────────────────────────────
+  const maybeStorage = options.storage ?? getDefaultStorage();
 
-  const unsubscribeFromStore = subscribe(proxyStore, scheduleWrite);
-
-  // ── Kick off initial hydration ───────────────────────────────────────────
-
-  if (!skipHydration) {
-    void hydrateFromStorage()
-      .then(() => {
-        hydratedFlag = true;
-        resolveHydrated();
-      })
-      .catch((error) => {
-        hydratedFlag = true;
-        rejectHydrated(error);
-      });
+  if (maybeStorage) {
+    // Storage available — set up immediately.
+    setup(maybeStorage);
   } else {
-    // When hydration is skipped, the promise is left pending until
-    // the user calls handle.rehydrate() manually.
+    // No storage (SSR / restricted environment).
+    // Resolve hydrated immediately — the store keeps its defaults.
+    hydratedFlag = true;
+    resolveHydrated();
   }
 
-  // ── Build handle ─────────────────────────────────────────────────────────
+  // ── Build handle ───────────────────────────────────────────────────────
 
   const handle: PersistHandle = {
     get isHydrated() {
@@ -524,11 +549,13 @@ export function persist<T extends object>(
       }
 
       // Unsubscribe from store mutations.
-      unsubscribeFromStore();
+      if (unsubscribeFromStore) {
+        unsubscribeFromStore();
+      }
 
       // Remove cross-tab sync listener.
       if (
-        shouldSyncTabs &&
+        active &&
         typeof globalThis !== 'undefined' &&
         typeof globalThis.removeEventListener === 'function'
       ) {
@@ -537,7 +564,7 @@ export function persist<T extends object>(
     },
 
     async save() {
-      if (disposed) return;
+      if (disposed || !active) return;
       // Cancel pending debounce and write immediately.
       if (debounceTimer !== null) {
         clearTimeout(debounceTimer);
@@ -547,11 +574,29 @@ export function persist<T extends object>(
     },
 
     async clear() {
-      if (disposed) return;
+      if (disposed || !active) return;
       await storage.removeItem(name);
     },
 
     async rehydrate() {
+      if (!active) {
+        // Try to activate with storage that may now be available (e.g. client mount).
+        const s = options.storage ?? getDefaultStorage();
+        if (s) {
+          // Reset hydration state so setup's hydration path works correctly.
+          hydratedFlag = false;
+          setup(s);
+          // If skipHydration was false, setup already kicked off hydration.
+          // If skipHydration was true, we need to hydrate manually below.
+          if (!skipHydration) {
+            // setup() already started hydration — just wait for it.
+            await hydratedPromise;
+            return;
+          }
+        } else {
+          return; // Still no storage — nothing to do.
+        }
+      }
       expiredFlag = false;
       await hydrateFromStorage();
       if (!hydratedFlag) {

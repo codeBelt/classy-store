@@ -1001,9 +1001,9 @@ describe('persist()', () => {
       expect(s.count).toBe(0); // invalid envelope skipped
     });
 
-    it('throws if no storage adapter is available', () => {
+    it('returns a dormant handle when no storage adapter is available (SSR)', () => {
       // Override the localStorage getter so getDefaultStorage() catches
-      // and returns undefined, triggering the error path.
+      // and returns undefined, triggering the dormant handle path.
       const desc = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
       Object.defineProperty(globalThis, 'localStorage', {
         get() {
@@ -1013,7 +1013,13 @@ describe('persist()', () => {
       });
       try {
         const s = createClassyStore({count: 0});
-        expect(() => persist(s, {name: 'test'})).toThrow(/storage adapter/i);
+        const handle = persist(s, {name: 'test'});
+
+        // Should not throw — returns a dormant handle.
+        expect(handle).toBeDefined();
+        expect(handle.isHydrated).toBe(true);
+        expect(handle.isExpired).toBe(false);
+        expect(handle.hydrated).toBeInstanceOf(Promise);
       } finally {
         if (desc) {
           Object.defineProperty(globalThis, 'localStorage', desc);
@@ -1155,6 +1161,128 @@ describe('persist()', () => {
       const stored = parseStored(storage, 'test');
       expect(stored?.state.count).toBe(10);
       expect(stored?.state).not.toHaveProperty('label');
+    });
+
+    it('dormant handle no-ops do not throw', async () => {
+      const desc = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+      Object.defineProperty(globalThis, 'localStorage', {
+        get() {
+          throw new Error('no localStorage');
+        },
+        configurable: true,
+      });
+      try {
+        const s = createClassyStore({count: 0});
+        const handle = persist(s, {name: 'test'});
+
+        // All methods should be safe to call.
+        await handle.save(); // no-op
+        await handle.clear(); // no-op
+        handle.unsubscribe(); // no-op
+      } finally {
+        if (desc) {
+          Object.defineProperty(globalThis, 'localStorage', desc);
+        }
+      }
+    });
+
+    it('dormant handle hydrated promise resolves immediately', async () => {
+      const desc = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+      Object.defineProperty(globalThis, 'localStorage', {
+        get() {
+          throw new Error('no localStorage');
+        },
+        configurable: true,
+      });
+      try {
+        const s = createClassyStore({count: 0});
+        const handle = persist(s, {name: 'test'});
+
+        // hydrated resolves immediately for dormant handles.
+        await handle.hydrated;
+        expect(handle.isHydrated).toBe(true);
+        expect(s.count).toBe(0); // keeps default
+      } finally {
+        if (desc) {
+          Object.defineProperty(globalThis, 'localStorage', desc);
+        }
+      }
+    });
+
+    it('dormant handle rehydrate() activates when storage becomes available', async () => {
+      const storage = createMockStorage();
+      storage.data.set(
+        'ssr-test',
+        JSON.stringify({version: 0, state: {count: 42}}),
+      );
+
+      // Use a mutable options object. Initially storage is undefined and
+      // localStorage is blocked, producing a dormant handle. Then we set
+      // options.storage before calling rehydrate(), simulating storage
+      // becoming available on the client.
+      const opts: Parameters<typeof persist>[1] = {
+        name: 'ssr-test',
+        storage: undefined,
+        syncTabs: false,
+      };
+
+      const desc = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+      Object.defineProperty(globalThis, 'localStorage', {
+        get() {
+          throw new Error('no localStorage');
+        },
+        configurable: true,
+      });
+
+      const s = createClassyStore({count: 0});
+      let handle: ReturnType<typeof persist> | undefined;
+
+      try {
+        handle = persist(s, opts);
+        expect(handle.isHydrated).toBe(true); // dormant
+        expect(s.count).toBe(0);
+      } finally {
+        if (desc) {
+          Object.defineProperty(globalThis, 'localStorage', desc);
+        }
+      }
+
+      // Simulate client mount: storage is now available via options.
+      opts.storage = storage;
+
+      // rehydrate() re-checks options.storage and bootstraps full lifecycle.
+      await handle?.rehydrate();
+      expect(s.count).toBe(42);
+
+      // After activation, mutations should persist.
+      s.count = 100;
+      await tick();
+      const stored = parseStored(storage, 'ssr-test');
+      expect(stored?.state.count).toBe(100);
+
+      handle?.unsubscribe();
+    });
+
+    it('dormant rehydrate() is a no-op when storage is still unavailable', async () => {
+      const desc = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+      Object.defineProperty(globalThis, 'localStorage', {
+        get() {
+          throw new Error('no localStorage');
+        },
+        configurable: true,
+      });
+      try {
+        const s = createClassyStore({count: 0});
+        const handle = persist(s, {name: 'test'});
+
+        // rehydrate() on dormant handle with no storage still available — no-op.
+        await handle.rehydrate();
+        expect(s.count).toBe(0);
+      } finally {
+        if (desc) {
+          Object.defineProperty(globalThis, 'localStorage', desc);
+        }
+      }
     });
 
     it('multiple persists on the same store with different keys', async () => {
