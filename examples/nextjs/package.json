@@ -1,5 +1,5 @@
 {
-  "name": "nextjs",
+  "name": "@codebelt/classy-store-nextjs-example",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -8,6 +8,7 @@
     "start": "bun --bun next start"
   },
   "dependencies": {
+    "@codebelt/classy-store": "workspace:*",
     "next": "16.1.6",
     "react": "19.2.3",
     "react-dom": "19.2.3"
