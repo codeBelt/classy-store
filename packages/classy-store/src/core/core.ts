@@ -167,7 +167,11 @@ function scheduleNotify(internal: StoreInternal): void {
     queueMicrotask(() => {
       root.notifyScheduled = false;
       for (const listener of root.listeners) {
-        listener();
+        try {
+          listener();
+        } catch (e) {
+          console.error(e);
+        }
       }
     });
   }
