@@ -91,6 +91,7 @@ describe('withHistory', () => {
 
     // Undo to count=1
     h.undo();
+    await tick();
     expect(store.count).toBe(1);
     expect(h.canRedo).toBe(true);
 
