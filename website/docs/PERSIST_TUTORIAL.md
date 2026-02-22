@@ -1,17 +1,18 @@
-# Persist Tutorial
+# Classy Store Persist Utility
 
-`persist()` saves your store's state to storage and restores it on page load. It's a standalone utility function that works with any `createClassyStore()` instance -- no plugins, no middleware, no configuration files. Import it from `@codebelt/classy-store/utils`, call it once, and your store survives page refreshes.
+`persist()` saves your store's state to storage and restores it on page load. It's a standalone utility function that works with any `createClassyStore()` instance.
 
 ## Getting Started
 
 ### 1. Create a store
 
 ```ts
+// todoStore.ts
 import {createClassyStore} from '@codebelt/classy-store';
 
 class TodoStore {
-  todos: { text: string; done: boolean }[] = [];
   filter: 'all' | 'active' | 'done' = 'all';
+  todos: {text: string; done: boolean}[] = [];
 
   get remaining() {
     return this.todos.filter((todo) => !todo.done).length;
@@ -22,7 +23,7 @@ class TodoStore {
   }
 
   toggle(index: number) {
-    this.todos[index]!.done = !this.todos[index]!.done;
+    this.todos[index].done = !this.todos[index]!.done;
   }
 }
 
@@ -32,14 +33,78 @@ export const todoStore = createClassyStore(new TodoStore());
 ### 2. Persist it
 
 ```ts
+// todoStore.ts
+import {createClassyStore} from '@codebelt/classy-store';
 import {persist} from '@codebelt/classy-store/utils';
 
+// ... (Include TodoStore setup from Step 1)
+
+// Saves all store properties to localStorage
 const handle = persist(todoStore, {
   name: 'todo-store',
 });
 ```
 
-That's it. On every mutation, `todos` and `filter` are saved to `localStorage`. On next page load, they're restored automatically. The getter `remaining` and the methods `addTodo`/`toggle` are **not** persisted -- getters are derived values that recompute from the persisted data, and methods are functions that don't belong in storage.
+**What gets stored in storage:**
+
+```json
+// In localStorage the key will be `todo-store` and the value will be:
+{
+  "version": 0,
+  "state": {
+    "todos": [],
+    "filter": "all"
+  },
+  "expireIn": 1000 // expireIn only will only be added if you have set expireIn as an option
+}
+```
+
+On every mutation, `todos` and `filter` are saved to `localStorage`. On next page load, they're restored automatically. The getter `remaining` and the methods `addTodo`/`toggle` are **not** persisted -- getters are derived values that recompute from the persisted data, and methods are functions that don't belong in storage.
+
+### Choosing What to Persist
+
+By default, `persist()` saves all own data properties of the store -- everything that isn't a getter or a method. You can narrow this with the `properties` option:
+
+```ts
+persist(todoStore, {
+  name: 'todo-store',
+  properties: ['todos'],  // Only persist todos, not filter
+});
+```
+
+Now `filter` resets to its class default (`'all'`) on every page load, while `todos` are restored from storage.
+
+### Why getters are excluded
+
+Class getters like `get remaining()` are derived values. They compute their results from the data property (`todos`) every time they're accessed. Persisting a getter result would be redundant and risks restoring a stale value that contradicts the underlying data.
+
+### All Properties and Handlers Overview
+
+Quickly highlight all the config items and function handlers on the persist util. Most of the time you will not use them but they are there if you need them.
+
+```ts
+import {persist} from '@codebelt/classy-store/utils';
+
+const handler = persist(todoStore, {
+  name: 'TodoStore',     // The key name for the storage 
+  properties: [],        // Persist specific properties
+    storage: localStorage, // window.localStorage is the default but you can change
+    syncTabs: true,        // Sync with other tabs (localStorage only)
+    expireIn: 1000,        // Time in milliseconds the data in localStorage will expire and the persist util will ignore
+    clearOnExpire: false,  // Remove from storage when expired. next time persist util tries to access and it is expired it will be delete from storage
+    isExpired: true,       // 
+  skipHydration: true,   // Don't hydrate immediately (useful for SSR)
+    debounce: 500,         // Persist write once every 500ms
+    version: 0,            // Schema version for migration
+});
+
+const isHydrated = handler.isHydrated; // Boolean check
+await handler.hydrated;     // Promise for hydration completion
+await handler.clear();      // Remove stored data
+handler.save();             // Force immediate save
+handler.unsubscribe();      // Stop persisting
+```
+
 
 ### 3. Wait for hydration
 
@@ -58,22 +123,9 @@ if (handle.isHydrated) {
 
 For `localStorage` (synchronous), hydration resolves almost immediately. For async storage adapters like `AsyncStorage`, the promise resolves after the async read completes.
 
-## Choosing What to Persist
 
-By default, `persist()` saves all own data properties of the store -- everything that isn't a getter or a method. You can narrow this with the `properties` option:
 
-```ts
-persist(todoStore, {
-  name: 'todo-store',
-  properties: ['todos'],  // Only persist todos, not filter
-});
-```
 
-Now `filter` resets to its class default (`'all'`) on every page load, while `todos` are restored from storage.
-
-### Why getters are excluded
-
-Class getters like `get remaining()` are derived values. They compute their result from the persisted data properties (`todos`) every time they're accessed. Persisting a getter result would be redundant and risks restoring a stale value that contradicts the underlying data. Persist only the inputs; the outputs take care of themselves.
 
 ## Per-Property Transforms
 
@@ -82,23 +134,23 @@ Some values aren't JSON-safe. `Date` objects become strings, `ReactiveMap` insta
 ### Dates
 
 ```ts
-class SessionStore {
-  token = '';
-  expiresAt = new Date();
+class UserStore {
+  name = '';
+  birthdate = new Date();
 
-  get isExpired() {
-    return this.expiresAt < new Date();
+  get isAdult() {
+    return this.birthdate < new Date();
   }
 }
 
-const sessionStore = createClassyStore(new SessionStore());
+const userStore = createClassyStore(new UserStore());
 
-persist(sessionStore, {
+persist(userStore, {
   name: 'session',
   properties: [
-    'token',  // plain key -- string, no transform needed
+    'name',  // plain key -- string, no transform needed
     {
-      key: 'expiresAt',
+      key: 'birthdate',
       serialize: (date) => date.toISOString(),            // Date → string
       deserialize: (stored) => new Date(stored as string), // string → Date
     },
@@ -112,13 +164,13 @@ persist(sessionStore, {
 {
   "version": 0,
   "state": {
-    "token": "eyJhbGciOiJIUz...",
-    "expiresAt": "2026-02-14T00:00:00.000Z"
+    "name": "Robert",
+    "birthdate": "2026-02-14T00:00:00.000Z"
   }
 }
 ```
 
-On restore, `deserialize` converts the ISO string back into a `Date` object before assigning it to `sessionStore.expiresAt`.
+On restore, `deserialize` converts the ISO string back into a `Date` object before assigning it to `userStore.birthdate`.
 
 ### ReactiveMap
 
@@ -330,7 +382,7 @@ Cross-tab sync only works with `localStorage`. It does not fire for `sessionStor
 Use `expireIn` to set a time-to-live (in milliseconds) on persisted data. After the TTL elapses, stored data is skipped during hydration and the store keeps its class defaults.
 
 ```ts
-persist(sessionStore, {
+persist(userStore, {
   name: 'session',
   expireIn: 900_000,  // 15 minutes
 });
@@ -343,7 +395,7 @@ persist(sessionStore, {
 The handle exposes an `isExpired` flag that becomes `true` when hydration encounters expired data:
 
 ```ts
-const handle = persist(sessionStore, {
+const handle = persist(userStore, {
   name: 'session',
   expireIn: 900_000,
 });
@@ -363,7 +415,7 @@ if (handle.isExpired) {
 By default, expired data is skipped but left in storage. Set `clearOnExpire: true` to automatically remove the key:
 
 ```ts
-persist(sessionStore, {
+persist(userStore, {
   name: 'session',
   expireIn: 900_000,
   clearOnExpire: true,  // Remove key from storage when expired
@@ -611,3 +663,4 @@ console.log(`Welcome back! Theme: ${appStore.theme}, Bookmarks: ${appStore.bookm
 | Stop persisting | `handle.unsubscribe()` |
 | Wait for hydration | `await handle.hydrated` |
 | Check hydration | `handle.isHydrated` |
+
