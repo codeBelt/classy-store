@@ -1,5 +1,12 @@
 # @codebelt/classy-store
 
+## 0.3.1
+
+### Patch Changes
+
+- [#17](https://github.com/codeBelt/classy-store/pull/17) [`3cb2880`](https://github.com/codeBelt/classy-store/commit/3cb2880a907c0fb1c9ea3dd77d52eb56b7665f48) Thanks [@codeBelt](https://github.com/codeBelt)! - - ensure paused state update is deferred using queueMicrotask in history utils
+  - prevent arrow functions bypassing proxy traps, add error isolation for listeners
+
 ## 0.3.0
 
 ### Minor Changes
