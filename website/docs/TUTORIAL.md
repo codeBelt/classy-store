@@ -448,6 +448,26 @@ counterStore.count++;
 
 When every state change goes through a method, you can search for callers of that method to understand how your state changes. When state is set directly from dozens of components, tracking down bugs becomes much harder.
 
+### Don't use arrow functions for methods
+
+Arrow function properties (`handler = () => {}`) are own properties whose `this` is lexically bound to the raw class instance at construction time. `.bind()` cannot override an arrow function's `this`, so when the proxy's GET trap binds it to the proxy receiver, the bind is silently ignored. Mutations inside the arrow function bypass the SET trap entirely — no notifications, no reactivity.
+
+```ts
+class Store {
+  count = 0;
+
+  // ❌ Arrow function — `this` is the raw object, mutations are invisible
+  increment = () => {
+    this.count++; // bypasses the proxy SET trap
+  };
+
+  // ✅ Prototype method — `this` is bound to the proxy by the GET trap
+  increment() {
+    this.count++; // goes through the proxy SET trap → reactive
+  }
+}
+```
+
 ### Don't destructure the store outside `useStore`
 
 Destructuring copies the primitive value at that moment and breaks the proxy connection.

@@ -686,4 +686,65 @@ describe('createClassyStore() — core reactivity', () => {
       expect(s.count).toBe(3);
     });
   });
+
+  // ── Arrow function methods bypass proxy ──────────────────────────────────
+
+  describe('arrow function methods bypass proxy', () => {
+    it('arrow function mutations do NOT trigger notifications (by design)', async () => {
+      class Store {
+        count = 0;
+        increment = () => {
+          this.count++;
+        };
+      }
+
+      const s = createClassyStore(new Store());
+      const listener = mock(() => {});
+      subscribe(s, listener);
+
+      s.increment();
+      await flush();
+
+      // Arrow function `this` is the raw instance, not the proxy.
+      // The mutation bypasses the SET trap — no notification fires.
+      expect(listener).toHaveBeenCalledTimes(0);
+    });
+
+    it('prototype method mutations DO trigger notifications', async () => {
+      class Store {
+        count = 0;
+        increment() {
+          this.count++;
+        }
+      }
+
+      const s = createClassyStore(new Store());
+      const listener = mock(() => {});
+      subscribe(s, listener);
+
+      s.increment();
+      await flush();
+
+      expect(listener).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  // ── Bug fix: throwing listener kills remaining subscribers ──────────────
+
+  describe('listener error isolation', () => {
+    it('calls remaining listeners even if an earlier one throws', async () => {
+      const s = createClassyStore({count: 0});
+      const secondListener = mock(() => {});
+
+      subscribe(s, () => {
+        throw new Error('boom');
+      });
+      subscribe(s, secondListener);
+
+      s.count = 1;
+      await flush();
+
+      expect(secondListener).toHaveBeenCalledTimes(1);
+    });
+  });
 });

@@ -102,15 +102,14 @@ export function devtools<T extends object>(
             }
             (proxyStore as Record<string, unknown>)[key] = newState[key];
           }
-
+        } catch {
+          // JSON.parse or property assignment failed — ignore.
+        } finally {
           // Reset after microtask so the batched subscription callback
           // (which fires via queueMicrotask) still sees the flag as true.
           queueMicrotask(() => {
             isTimeTraveling = false;
           });
-        } catch {
-          // JSON.parse or property assignment failed — ignore and reset flag.
-          isTimeTraveling = false;
         }
       }
     }

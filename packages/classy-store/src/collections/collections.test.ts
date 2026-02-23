@@ -414,4 +414,21 @@ describe('reactiveSet() — edge cases', () => {
     expect(s.has(2)).toBe(true);
     expect(s.size).toBe(3);
   });
+
+  test('keys() and values() return snapshot iterators, not live iterators', () => {
+    const s = reactiveSet(['a', 'b', 'c']);
+    const keysIter = s.keys();
+    const valuesIter = s.values();
+
+    // Mutate the set after obtaining iterators
+    s.add('d');
+    s.delete('a');
+
+    // Iterators should reflect the state at call time, not the current state
+    const keysResult = [...keysIter];
+    const valuesResult = [...valuesIter];
+
+    expect(keysResult).toEqual(['a', 'b', 'c']);
+    expect(valuesResult).toEqual(['a', 'b', 'c']);
+  });
 });

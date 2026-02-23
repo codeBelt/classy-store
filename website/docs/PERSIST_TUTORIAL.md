@@ -376,9 +376,12 @@ Expired envelopes received from other tabs via `window.storage` events are also 
 
 ## SSR / Next.js Support
 
-Server-side rendering creates a hydration mismatch: the server renders with the store's default state, but the client would hydrate from `localStorage` before React reconciles. `skipHydration` defers persistence to the client:
+`persist()` is SSR-safe out of the box. When `localStorage` is unavailable (server-side rendering, restricted environments), it returns a **dormant handle** instead of throwing. The store keeps its class defaults on the server, and you activate persistence on the client via `rehydrate()`.
+
+This means you can call `persist()` at module scope — no `typeof window` guards needed:
 
 ```ts
+// store.ts — runs on both server and client
 const handle = persist(todoStore, {
   name: 'todo-store',
   skipHydration: true,
@@ -399,6 +402,8 @@ function App() {
 }
 ```
 
+When `rehydrate()` is called on a dormant handle, it re-checks for storage availability. If `localStorage` is now accessible (client-side), it bootstraps the full persist lifecycle — hydration, mutation subscription, and cross-tab sync — as if `persist()` had been called with storage available from the start.
+
 You can also wait for hydration before rendering content:
 
 ```tsx
@@ -413,6 +418,16 @@ function App() {
   return <TodoList />;
 }
 ```
+
+### Dormant handle behavior
+
+When no storage is available, the dormant handle:
+
+- `isHydrated` — `true` (resolved immediately with defaults, no storage to read from)
+- `isExpired` — `false`
+- `hydrated` — resolves immediately
+- `save()`, `clear()`, `unsubscribe()` — safe to call (no-ops)
+- `rehydrate()` — re-checks for storage; activates full persistence if found
 
 ## Async Storage (React Native)
 
@@ -583,7 +598,7 @@ console.log(`Welcome back! Theme: ${appStore.theme}, Bookmarks: ${appStore.bookm
 | Handle ReactiveMap | `{key: 'map', serialize: (map) => [...map.entries()], deserialize: (stored) => reactiveMap(stored)}` |
 | Debounce writes | `debounce: 500` |
 | Migrate schema changes | `version: 2, migrate: (state, old) => { ... }` |
-| SSR support | `skipHydration: true` + `handle.rehydrate()` in `useEffect` |
+| SSR support | `skipHydration: true` + `handle.rehydrate()` in `useEffect` (safe to call at module scope) |
 | Cross-tab sync | Enabled by default with `localStorage` |
 | Disable cross-tab sync | `syncTabs: false` |
 | Use sessionStorage | `storage: sessionStorage` |

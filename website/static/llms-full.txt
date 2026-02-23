@@ -900,6 +900,18 @@ function EditProfile() {
 
 Native `Date`, `RegExp`, `Map`, and `Set` use internal slots that proxies can't intercept. For `Map` and `Set`, use `reactiveMap()` and `reactiveSet()`. For `Date`, store timestamps as numbers and construct `Date` objects in getters or at render time.
 
+### Don't use arrow functions for methods
+
+Arrow function properties (`handler = () => {}`) have `this` lexically bound to the raw instance. `.bind()` cannot override it, so mutations inside arrow functions bypass the proxy SET trap — no notifications, no reactivity. Always use prototype methods.
+
+```ts
+// ❌ Arrow function — this.count++ bypasses the proxy
+increment = () => { this.count++; };
+
+// ✅ Prototype method — this is bound to the proxy by the GET trap
+increment() { this.count++; }
+```
+
 ### Don't destructure the store outside `useStore`
 
 ```ts

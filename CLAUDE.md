@@ -92,6 +92,7 @@ Enforced by Biome 2.4.0 (`biome.json` at repo root):
 
 ## Key Technical Facts
 
+- **No arrow function methods:** Arrow function properties (`increment = () => {}`) have `this` lexically bound to the raw instance. `.bind()` is a no-op on arrow functions, so the GET trap cannot rebind `this` to the proxy. Mutations inside arrow functions bypass the SET trap entirely — no notifications, no reactivity. Always use prototype methods (`increment() {}`).
 - **Batching:** mutations are coalesced via `queueMicrotask`. Multiple synchronous writes (including array `push` which triggers multiple SET traps) produce a single subscriber notification.
 - **Internal state:** stored in a `WeakMap<proxy, StoreInternal>` — never on the user's object. Allows GC when a store is dereferenced.
 - **Non-proxyable types:** `Date`, `RegExp`, native `Map`, and native `Set` are treated as opaque values (internal slots can't be intercepted by Proxy). Use `reactiveMap()` and `reactiveSet()` for Map/Set semantics. Replace Date instances entirely to trigger updates.

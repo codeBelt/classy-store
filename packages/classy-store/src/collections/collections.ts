@@ -168,12 +168,12 @@ export class ReactiveSet<T> {
 
   /** Returns an iterator over the values (same as `values()`, matching Set API). */
   keys(): IterableIterator<T> {
-    return this._items[Symbol.iterator]();
+    return this._items.map((v) => v)[Symbol.iterator]();
   }
 
   /** Returns an iterator over the values. */
   values(): IterableIterator<T> {
-    return this._items[Symbol.iterator]();
+    return this._items.map((v) => v)[Symbol.iterator]();
   }
 
   /** Returns an iterator over [value, value] pairs, matching the native Set API. */

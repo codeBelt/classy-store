@@ -1,0 +1,207 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+
+  --color-border: var(--border);
+  --color-input: var(--input);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+
+  /* Radii */
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+
+  /* Animations */
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+  --animate-fade-in: fade-in 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  --animate-slide-up: slide-up 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  --animate-pulse-subtle: pulse-subtle 3s infinite ease-in-out;
+
+  @keyframes accordion-down {
+    from {
+      height: 0;
+    }
+
+    to {
+      height: var(--radix-accordion-content-height);
+    }
+  }
+
+  @keyframes accordion-up {
+    from {
+      height: var(--radix-accordion-content-height);
+    }
+
+    to {
+      height: 0;
+    }
+  }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes slide-up {
+    from {
+      transform: translateY(10px);
+      opacity: 0;
+    }
+
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  @keyframes pulse-subtle {
+    0%,
+    100% {
+      opacity: 1;
+    }
+
+    50% {
+      opacity: 0.7;
+    }
+  }
+}
+
+/* Base Variables - Premium Dark Theme */
+/* Base Variables - Premium Dark Theme */
+:root {
+  --background: #0a0a0a;
+  --foreground: #ffffff;
+  /* Improved to pure white for max contrast */
+
+  --card: #141414;
+  --card-foreground: #ffffff;
+
+  --popover: #0a0a0a;
+  --popover-foreground: #ffffff;
+
+  /* Vibrant Orange Primary - Shifted to Orange-400 for better WCAG on black (5.3:1) */
+  --primary: #fb923c;
+  /* Dark text on bright orange button (10.5:1 Contrast - AAA) */
+  --primary-foreground: #09090b;
+
+  --secondary: #27272a;
+  --secondary-foreground: #ffffff;
+
+  --muted: #27272a;
+  /* Lighter gray for better readability on dark bg (Zinc-400 is ~5.8:1) */
+  --muted-foreground: #a1a1aa;
+
+  --accent: #27272a;
+  --accent-foreground: #ffffff;
+
+  /* Darker Red for better contrast with white text */
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+
+  --border: #27272a;
+  --input: #27272a;
+  /* Match primary */
+  --ring: #fb923c;
+
+  --radius: 0.75rem;
+}
+
+/* Global Reset & Body Styles */
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings:
+      "rlig" 1,
+      "calt" 1;
+    /* Subtle mesh gradient background */
+    background-image:
+      radial-gradient(at 0% 0%, rgba(249, 115, 22, 0.08) 0px, transparent 50%),
+      radial-gradient(at 100% 0%, rgba(59, 130, 246, 0.05) 0px, transparent 50%);
+    background-attachment: fixed;
+  }
+}
+
+/* Custom Components / Utilities */
+@layer components {
+  /* Glassmorphism Card Style */
+  .glass-card {
+    @apply bg-card/60 backdrop-blur-md border border-white/10 shadow-lg rounded-xl transition-all duration-300;
+  }
+
+  .glass-card:hover {
+    @apply bg-card/80 border-white/20 shadow-xl scale-[1.01];
+  }
+
+  /* Text Gradients */
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-white via-white to-gray-400;
+  }
+
+  .text-gradient-primary {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-orange-400 to-amber-600;
+  }
+
+  /* Animations */
+  .animate-appear {
+    animation: fade-in 0.6s ease-out forwards;
+  }
+
+  .animate-slide-up-delay-1 {
+    animation: slide-up 0.5s ease-out 0.1s forwards;
+    opacity: 0;
+    /* Important for delay */
+  }
+
+  .animate-slide-up-delay-2 {
+    animation: slide-up 0.5s ease-out 0.2s forwards;
+    opacity: 0;
+  }
+
+  .animate-slide-up-delay-3 {
+    animation: slide-up 0.5s ease-out 0.3s forwards;
+    opacity: 0;
+  }
+}
+
+@layer utilities {
+  /* 
+   * Semantic fix: The codebase uses `text-muted` intending "muted text color" (readable gray),
+   * but by default `text-muted` maps to the theme color `muted` (dark gray background).
+   * We override it here to ensuring readability on dark backgrounds.
+   */
+  .text-muted {
+    color: var(--muted-foreground);
+  }
+}
