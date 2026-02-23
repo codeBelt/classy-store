@@ -1,6 +1,5 @@
 import {PersistControls} from '@/components/settings/PersistControls';
 import {SettingsForm} from '@/components/settings/SettingsForm';
-import {StorageDebugPanel} from '@/components/settings/StorageDebugPanel';
 
 export default function SettingsPage() {
   return (
@@ -23,7 +22,7 @@ export default function SettingsPage() {
         <SettingsForm />
         <div className="space-y-6">
           <PersistControls />
-          <StorageDebugPanel />
+          {/*<StorageDebugPanel />*/}
         </div>
       </div>
     </div>

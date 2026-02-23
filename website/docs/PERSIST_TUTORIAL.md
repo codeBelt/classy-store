@@ -293,6 +293,71 @@ function App() {
 }
 ```
 
+#### The hydration mismatch problem
+
+In SSR frameworks like Next.js, the server renders HTML using the store's class defaults (e.g., `theme = 'light'`). When the client hydrates, if `persist()` has already restored a different value from `localStorage` (e.g., `theme = 'dark'`), React sees a mismatch between the server-rendered HTML and the client state. This causes a **hydration error**.
+
+Setting `skipHydration: true` prevents `persist()` from reading `localStorage` until you explicitly call `rehydrate()` — letting you control *when* the stored state is applied and avoid the mismatch.
+
+#### `StoreHydrator` component pattern
+
+When you have multiple persisted stores, calling `rehydrate()` in individual components is repetitive. A better pattern is a single `StoreHydrator` component that gates rendering until all stores are hydrated:
+
+```tsx
+// StoreHydrator.tsx
+'use client';
+
+import {type ReactNode, useEffect, useState} from 'react';
+import {settingsPersist} from './stores/settings-store';
+import {todoPersist} from './stores/todo-store';
+
+// Collect all persist handles that use skipHydration: true
+const persists = [settingsPersist, todoPersist];
+
+export function StoreHydrator({children}: {children: ReactNode}) {
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    Promise.all(persists.map((p) => p.rehydrate())).then(() =>
+      setHydrated(true),
+    );
+  }, []);
+
+  if (!hydrated) {
+    return null; // or a loading spinner
+  }
+
+  return <>{children}</>;
+}
+```
+
+Wrap your app layout with `StoreHydrator` so nothing renders until `localStorage` values have been applied:
+
+```tsx
+// layout.tsx (Next.js App Router)
+import {StoreHydrator} from '@/components/StoreHydrator';
+
+export default function RootLayout({children}: {children: React.ReactNode}) {
+  return (
+    <html lang="en">
+      <body>
+        <StoreHydrator>
+          <NavBar />
+          <main>{children}</main>
+        </StoreHydrator>
+      </body>
+    </html>
+  );
+}
+```
+
+**How it works:**
+
+1. The server renders the page using each store's class defaults — no `localStorage` access.
+2. On the client, `StoreHydrator` mounts and calls `rehydrate()` on every persist handle.
+3. Until all handles resolve, `StoreHydrator` renders `null` (or a loading indicator), preventing any child component from reading stale default values.
+4. Once hydration completes, children render with the correct `localStorage`-restored state — no mismatch.
+
 ### `debounce` (Debouncing Writes)
 
 For stores that mutate frequently (form inputs, drag positions, real-time data), debouncing prevents excessive writes:
