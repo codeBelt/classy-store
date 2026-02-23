@@ -1,5 +1,11 @@
 # @codebelt/classy-store
 
+## 0.3.0
+
+### Minor Changes
+
+- [`a7b3d6a`](https://github.com/codeBelt/classy-store/commit/a7b3d6a17e8184695a84d15fa010da9988a45efd) Thanks [@codeBelt](https://github.com/codeBelt)! - refactor: simplify utils and core exports by removing unused functions and types
+
 ## 0.2.0
 
 ### Minor Changes
