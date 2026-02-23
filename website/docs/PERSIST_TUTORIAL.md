@@ -55,7 +55,7 @@ const handle = persist(todoStore, {
     "todos": [],
     "filter": "all"
   },
-  "expireIn": 1000 // expireIn only will only be added if you have set expireIn as an option
+  "expiresAt": 300000 // Only present if you set the expireIn option (5 minutes)
 }
 ```
 
@@ -80,7 +80,7 @@ Class getters like `get remaining()` are derived values. They compute their resu
 
 ### Configuration and Handle Overview
 
-Quickly highlight all the config items and methods on the returned handle. Most of the time you will not use them but they are there if you need them.
+Here is a quick overview of every configuration option and handle method. You won't need most of them day-to-day, but they're available when you do.
 
 ```ts
 import {persist} from '@codebelt/classy-store/utils';
@@ -337,11 +337,69 @@ persist(todoStore, {
 
 **Merge Strategies**
 
-When you add new properties to a store, old persisted data won't include them. The `merge` strategy controls how persisted state combines with the store's current state:
+When you add new properties to a store, old persisted data won't include them. The `merge` strategy controls how persisted state combines with the store's current state.
 
-- `'shallow'` (default): Persisted values overwrite the store's current values one key at a time.
-- `'replace'`: Replaces the entire nested object rather than merging keys into it.
-- **Custom function**: For full control, pass a function that receives `(persisted, current)` and returns the merged state.
+Imagine your store adds a new `tags` property, but old persisted data only has `todos` and `filter`:
+
+```ts
+// Current store class (v2 — added `tags`)
+class TodoStore {
+  filter: 'all' | 'active' | 'done' = 'all';
+  todos: {text: string; done: boolean}[] = [];
+  tags: string[] = ['work', 'personal'];  // new property with defaults
+}
+
+// Old persisted data in storage (no `tags` key):
+// { "version": 1, "state": { "filter": "done", "todos": [{"text": "Buy milk", "done": false}] } }
+```
+
+**`'shallow'`** (default) — persisted values overwrite current values one key at a time. Properties not in storage keep their default value:
+
+```ts
+persist(todoStore, {
+  name: 'todo-store',
+  merge: 'shallow',
+});
+
+// Result after hydration:
+// filter → "done"                              (from storage)
+// todos  → [{text: "Buy milk", done: false}]   (from storage)
+// tags   → ["work", "personal"]                (kept class default)
+```
+
+**`'replace'`** — only persisted keys are assigned. New properties not in storage are dropped. For nested objects, the entire object is replaced rather than merged:
+
+```ts
+persist(todoStore, {
+  name: 'todo-store',
+  merge: 'replace',
+});
+
+// Result after hydration:
+// filter → "done"                              (from storage)
+// todos  → [{text: "Buy milk", done: false}]   (from storage)
+// tags   → undefined                           (not in storage, dropped)
+```
+
+**Custom function** — for full control, pass a function that receives `(persisted, current)` and returns the merged state:
+
+```ts
+persist(todoStore, {
+  name: 'todo-store',
+  merge: (persisted, current) => {
+    return {
+      ...current,             // start with class defaults
+      ...persisted,           // overwrite with stored values
+      tags: [                 // custom: combine stored + default tags
+        ...new Set([
+          ...(persisted.tags as string[] ?? []),
+          ...(current.tags as string[] ?? []),
+        ]),
+      ],
+    };
+  },
+});
+```
 
 ---
 
@@ -494,9 +552,11 @@ console.log(`Welcome back! Theme: ${appStore.theme}`);
 | **SSR & manual hydration** | `skipHydration: true` + `handle.rehydrate()` |
 | **Debounce storage writes**| `debounce: 500` |
 | **Migrate schema versions**| `version: 2, migrate: (state, old) => { ... }` |
+| **Merge strategy** | `merge: 'shallow'` \| `'replace'` \| `(persisted, current) => merged` |
 | **Check hydration** | `handle.isHydrated` |
 | **Wait for hydration** | `await handle.hydrated` |
-| **Clear stored data** | `handle.clear()` |
-| **Force immediate save** | `handle.save()` |
+| **Clear stored data** | `await handle.clear()` |
+| **Force immediate save** | `await handle.save()` |
+| **Re-hydrate manually** | `await handle.rehydrate()` |
 | **Stop persisting** | `handle.unsubscribe()` |
 | **Check if data expired** | `handle.isExpired` |
