@@ -92,7 +92,6 @@ export const plannerPersist = persist(plannerStore, {
     return state;
   },
   merge: 'shallow',
-  skipHydration: true,
   syncTabs: true,
   expireIn: 7 * 24 * 60 * 60 * 1000,
   clearOnExpire: true,

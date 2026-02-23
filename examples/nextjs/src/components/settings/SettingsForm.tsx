@@ -5,7 +5,7 @@ import {ApiInfo} from '@/components/shared/ApiInfo';
 import {settingsStore} from '@/stores/settings-store';
 
 export function SettingsForm() {
-  const snap = useStore(settingsStore);
+  const store = useStore(settingsStore);
 
   return (
     <div className="bg-card border border-border rounded-lg p-4 space-y-4">
@@ -13,11 +13,7 @@ export function SettingsForm() {
       <ApiInfo
         apis={['createClassyStore (plain object)', 'useStore (auto-tracked)']}
         description="Plain object store (not a class). Direct property mutation — no setter methods needed."
-        code={`const settingsStore = createClassyStore({
-  theme: 'system',
-  fontSize: 16,
-  compactMode: false,
-});
+        code={`const settingsStore = create);
 // mutation: settingsStore.theme = 'dark';`}
       />
       <p className="text-xs text-muted">
@@ -28,7 +24,7 @@ export function SettingsForm() {
         <span className="text-muted text-xs">Theme</span>
         <select
           className="border border-border bg-background rounded px-3 py-1.5 text-sm"
-          value={snap.theme}
+          value={store.theme}
           onChange={(e) => {
             settingsStore.theme = e.target.value as 'light' | 'dark' | 'system';
           }}
@@ -40,12 +36,14 @@ export function SettingsForm() {
       </label>
 
       <label className="flex flex-col gap-1 text-sm">
-        <span className="text-muted text-xs">Font Size: {snap.fontSize}px</span>
+        <span className="text-muted text-xs">
+          Font Size: {store.fontSize}px
+        </span>
         <input
           type="range"
           min={12}
           max={24}
-          value={snap.fontSize}
+          value={store.fontSize}
           onChange={(e) => {
             settingsStore.fontSize = Number(e.target.value);
           }}
@@ -56,7 +54,7 @@ export function SettingsForm() {
       <label className="flex items-center gap-2 text-sm">
         <input
           type="checkbox"
-          checked={snap.compactMode}
+          checked={store.compactMode}
           onChange={() => {
             settingsStore.compactMode = !settingsStore.compactMode;
           }}
@@ -68,7 +66,7 @@ export function SettingsForm() {
       <label className="flex items-center gap-2 text-sm">
         <input
           type="checkbox"
-          checked={snap.notifications}
+          checked={store.notifications}
           onChange={() => {
             settingsStore.notifications = !settingsStore.notifications;
           }}
@@ -82,7 +80,7 @@ export function SettingsForm() {
         <input
           type="number"
           className="border border-border bg-background rounded px-3 py-1.5 text-sm w-24"
-          value={snap.defaultServings}
+          value={store.defaultServings}
           onChange={(e) => {
             settingsStore.defaultServings = Number(e.target.value) || 1;
           }}
@@ -93,7 +91,7 @@ export function SettingsForm() {
         <span className="text-muted text-xs">Measurement Unit</span>
         <select
           className="border border-border bg-background rounded px-3 py-1.5 text-sm"
-          value={snap.measurementUnit}
+          value={store.measurementUnit}
           onChange={(e) => {
             settingsStore.measurementUnit = e.target.value as
               | 'metric'
