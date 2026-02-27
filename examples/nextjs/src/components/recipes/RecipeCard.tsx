@@ -9,11 +9,11 @@ import {recipeStore} from '@/stores/recipe-store';
 export function RecipeCard({recipeId}: {recipeId: string}) {
   const recipe = useStore(
     recipeStore,
-    (s) => {
+    (state) => {
       // Access _entries directly — snapshot freezes ReactiveMap into a plain
       // object, so prototype methods like .get() aren't available.
       const entry = (
-        s.recipes._entries as ReadonlyArray<readonly [string, Recipe]>
+        state.recipes._entries as ReadonlyArray<readonly [string, Recipe]>
       ).find(([id]) => id === recipeId);
       if (!entry) return null;
       const r = entry[1];

@@ -22,7 +22,7 @@ const counterStore = createClassyStore(new CounterStore());
 
 // 3. Use it in React with automatic updates
 function Counter() {
-  const count = useStore(counterStore, (store) => store.count);
+  const count = useStore(counterStore, (state) => state.count);
   return (
     <button onClick={() => counterStore.increment()}>
       Count is {count}

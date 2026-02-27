@@ -40,7 +40,7 @@ describe('useStore — selector mode', () => {
     const s = createClassyStore(new Counter());
 
     function Display() {
-      const count = useStore(s, (snap) => snap.count);
+      const count = useStore(s, (state) => state.count);
       return <div data-testid="count">{count}</div>;
     }
 
@@ -60,7 +60,7 @@ describe('useStore — selector mode', () => {
     const renderCount = mock(() => {});
 
     function Display() {
-      const count = useStore(s, (snap) => snap.count);
+      const count = useStore(s, (state) => state.count);
       renderCount();
       return <div>{count}</div>;
     }
@@ -84,7 +84,7 @@ describe('useStore — selector mode', () => {
     const renderCount = mock(() => {});
 
     function CountDisplay() {
-      const count = useStore(s, (snap) => snap.count);
+      const count = useStore(s, (state) => state.count);
       renderCount();
       return <div>{count}</div>;
     }
@@ -115,7 +115,7 @@ describe('useStore — selector mode', () => {
     const renderCount = mock(() => {});
 
     function UserDisplay() {
-      const user = useStore(s, (snap) => snap.user);
+      const user = useStore(s, (state) => state.user);
       renderCount();
       return <div>{user.name}</div>;
     }
@@ -140,7 +140,7 @@ describe('useStore — selector mode', () => {
     const renderCount = mock(() => {});
 
     function List() {
-      const items = useStore(s, (snap) => snap.items);
+      const items = useStore(s, (state) => state.items);
       renderCount();
       return <div>{items.join(',')}</div>;
     }
@@ -172,7 +172,7 @@ describe('useStore — selector mode', () => {
     const s = createClassyStore(new Store());
 
     function Display() {
-      const doubled = useStore(s, (snap) => snap.doubled);
+      const doubled = useStore(s, (state) => state.doubled);
       return <div>{doubled}</div>;
     }
 
@@ -196,7 +196,7 @@ describe('useStore — selector mode', () => {
     function List() {
       const firstItem = useStore(
         s,
-        (snap) => ({name: snap.items[0]?.name}),
+        (state) => ({name: state.items[0]?.name}),
         (a, b) => a.name === b.name,
       );
       renderCount();
@@ -383,7 +383,7 @@ describe('useLocalStore', () => {
 
     function Display() {
       const store = useLocalStore(() => new Counter());
-      const count = useStore(store, (snap) => snap.count);
+      const count = useStore(store, (state) => state.count);
       return <div>{count}</div>;
     }
 
@@ -405,7 +405,7 @@ describe('useLocalStore', () => {
     function Display() {
       const store = useLocalStore(() => new Counter());
       storeRef = store;
-      const count = useStore(store, (snap) => snap.count);
+      const count = useStore(store, (state) => state.count);
       return <div>{count}</div>;
     }
 
@@ -431,7 +431,7 @@ describe('useLocalStore', () => {
 
     function Display({initial}: {initial: number}) {
       const store = useLocalStore(() => new Counter(initial));
-      const count = useStore(store, (snap) => snap.count);
+      const count = useStore(store, (state) => state.count);
       return <div data-initial={initial}>{count}</div>;
     }
 
@@ -464,7 +464,7 @@ describe('useLocalStore', () => {
     function Display() {
       const store = useLocalStore(() => new Store());
       storeRef = store;
-      const doubled = useStore(store, (snap) => snap.doubled);
+      const doubled = useStore(store, (state) => state.doubled);
       return <div>{doubled}</div>;
     }
 
@@ -554,8 +554,8 @@ describe('useStore — multiple stores', () => {
     const storeB = createClassyStore({name: 'hello'});
 
     function Display() {
-      const count = useStore(storeA, (s) => s.count);
-      const name = useStore(storeB, (s) => s.name);
+      const count = useStore(storeA, (state) => state.count);
+      const name = useStore(storeB, (state) => state.name);
       return (
         <div>
           {count}-{name}
@@ -574,8 +574,8 @@ describe('useStore — multiple stores', () => {
     const renderCount = mock(() => {});
 
     function Display() {
-      const count = useStore(storeA, (s) => s.count);
-      const name = useStore(storeB, (s) => s.name);
+      const count = useStore(storeA, (state) => state.count);
+      const name = useStore(storeB, (state) => state.name);
       renderCount();
       return (
         <div>
@@ -615,7 +615,7 @@ describe('useStore — selector edge cases', () => {
     const s = createClassyStore({data: null as string | null});
 
     function Display() {
-      const data = useStore(s, (snap) => snap.data);
+      const data = useStore(s, (state) => state.data);
       return <div>{data ?? 'none'}</div>;
     }
 
@@ -635,7 +635,7 @@ describe('useStore — selector edge cases', () => {
     const renderCount = mock(() => {});
 
     function Display() {
-      const isPositive = useStore(s, (snap) => snap.isPositive);
+      const isPositive = useStore(s, (state) => state.isPositive);
       renderCount();
       return <div>{isPositive ? 'yes' : 'no'}</div>;
     }
@@ -667,7 +667,7 @@ describe('useStore — selector edge cases', () => {
     function Display() {
       const fullName = useStore(
         s,
-        (snap) => `${snap.firstName} ${snap.lastName}`,
+        (state) => `${state.firstName} ${state.lastName}`,
       );
       return <div>{fullName}</div>;
     }

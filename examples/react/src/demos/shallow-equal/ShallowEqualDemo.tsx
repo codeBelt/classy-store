@@ -32,9 +32,9 @@ const COMPONENT_CODE = `// This selector picks two properties into a NEW object.
 
 // WITHOUT shallowEqual: re-renders on ANY store change
 // because {} !== {} (new object every time)
-const name = useStore(profileStore, (s) => ({
-  first: s.firstName,
-  last: s.lastName,
+const name = useStore(profileStore, (state) => ({
+  first: state.firstName,
+  last: state.lastName,
 }));
 
 // WITH shallowEqual: only re-renders when firstName
@@ -43,7 +43,7 @@ const name = useStore(profileStore, (s) => ({
 // sees the same values.
 const name = useStore(
   profileStore,
-  (s) => ({ first: s.firstName, last: s.lastName }),
+  (state) => ({ first: state.firstName, last: state.lastName }),
   shallowEqual
 );`;
 
@@ -54,9 +54,9 @@ const lastNames = ['Smith', 'Jones', 'Garcia', 'Kim', 'Patel'];
 let lnIdx = 0;
 
 function NameCardWithout() {
-  const name = useStore(profileStore, (s) => ({
-    first: s.firstName,
-    last: s.lastName,
+  const name = useStore(profileStore, (state) => ({
+    first: state.firstName,
+    last: state.lastName,
   }));
   const renders = useRenderCount();
 
@@ -81,7 +81,7 @@ function NameCardWithout() {
 function NameCardWith() {
   const name = useStore(
     profileStore,
-    (s) => ({first: s.firstName, last: s.lastName}),
+    (state) => ({first: state.firstName, last: state.lastName}),
     shallowEqual,
   );
   const renders = useRenderCount();
@@ -136,7 +136,7 @@ export function ShallowEqualDemo() {
   return (
     <DemoContainer
       title="shallowEqual in Action"
-      description="Both cards use the same selector: (s) => ({ first: s.firstName, last: s.lastName }). The selector always returns a new object — shallowEqual compares the values inside."
+      description="Both cards use the same selector: (state) => ({ first: state.firstName, last: state.lastName }). The selector always returns a new object — shallowEqual compares the values inside."
       codeTabs={[
         {label: 'Store', code: STORE_CODE, language: 'typescript'},
         {label: 'Selector', code: COMPONENT_CODE},

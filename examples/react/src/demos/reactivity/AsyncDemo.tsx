@@ -27,13 +27,13 @@ const STORE_CODE = `class PostStore {
 }`;
 
 const COMPONENT_CODE = `// Each selector isolates re-renders
-const loading = useStore(postStore, (s) => s.loading);
-const error = useStore(postStore, (s) => s.error);
-const posts = useStore(postStore, (s) => s.posts);
-const count = useStore(postStore, (s) => s.count);`;
+const loading = useStore(postStore, (state) => state.loading);
+const error = useStore(postStore, (state) => state.error);
+const posts = useStore(postStore, (state) => state.posts);
+const count = useStore(postStore, (state) => state.count);`;
 
 function LoadingIndicator() {
-  const loading = useStore(postStore, (store) => store.loading);
+  const loading = useStore(postStore, (state) => state.loading);
   const renders = useRenderCount();
   return (
     <div className="flex items-center justify-between bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2.5">
@@ -79,7 +79,7 @@ function LoadingIndicator() {
 }
 
 function ErrorDisplay() {
-  const error = useStore(postStore, (store) => store.error);
+  const error = useStore(postStore, (state) => state.error);
   const renders = useRenderCount();
   return (
     <div className="flex items-center justify-between bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2.5">
@@ -99,7 +99,7 @@ function ErrorDisplay() {
 }
 
 function PostList() {
-  const posts = useStore(postStore, (store) => store.posts);
+  const posts = useStore(postStore, (state) => state.posts);
   const renders = useRenderCount();
   return (
     <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-3 py-2.5">
@@ -130,7 +130,7 @@ function PostList() {
 }
 
 function PostCount() {
-  const count = useStore(postStore, (store) => store.count);
+  const count = useStore(postStore, (state) => state.count);
   const renders = useRenderCount();
   return (
     <div className="flex items-center gap-2">

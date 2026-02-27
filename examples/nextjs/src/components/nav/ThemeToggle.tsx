@@ -17,7 +17,7 @@ const next: Record<string, 'light' | 'dark' | 'system'> = {
 };
 
 export function ThemeToggle() {
-  const snap = useStore(settingsStore, (s) => s.theme);
+  const snap = useStore(settingsStore, (state) => state.theme);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {

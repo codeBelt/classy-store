@@ -29,7 +29,7 @@ import {useStore} from '@codebelt/classy-store/react';
 import {counterStore} from './stores';
 
 export function Counter() {
-  const count = useStore(counterStore, (store) => store.count);
+  const count = useStore(counterStore, (state) => state.count);
   return <button onClick={counterStore.increment}>Count: {count}</button>;
 }
 ```
@@ -87,7 +87,7 @@ Key points:
 ### Selector mode
 
 ```ts
-const count = useStore(counterStore, (store) => store.count);
+const count = useStore(counterStore, (state) => state.count);
 ```
 
 The selector receives an immutable snapshot and returns the slice you need. The component re-renders only when the selected value changes (compared with `Object.is`).
@@ -111,8 +111,8 @@ By default, `useStore` compares the selector's return value with `Object.is`, wh
 
 ```ts
 // ✅ No shallowEqual needed — structural sharing keeps the reference stable
-const count = useStore(todoStore, (store) => store.items.length);
-const todos = useStore(todoStore, (store) => store.items);
+const count = useStore(todoStore, (state) => state.items.length);
+const todos = useStore(todoStore, (state) => state.items);
 ```
 
 The problem shows up when your selector **derives a new value** — calling `.filter()`, `.map()`, or using object spread always allocates a new array or object, even when the underlying data hasn't changed. `Object.is` sees a different reference and triggers a re-render.
@@ -125,7 +125,7 @@ Without `shallowEqual` — `.filter()` creates a new array every time the snapsh
 import {useStore} from '@codebelt/classy-store/react';
 
 // ❌ New array reference every snapshot → unnecessary re-renders
-const active = useStore(todoStore, (store) => store.items.filter((item) => !item.done));
+const active = useStore(todoStore, (state) => state.items.filter((item) => !item.done));
 ```
 
 With `shallowEqual` — compares the array contents, not the reference:
@@ -137,7 +137,7 @@ import {useStore} from '@codebelt/classy-store/react';
 // ✅ Only re-renders when the filtered items actually change
 const active = useStore(
   todoStore,
-  (store) => store.items.filter((item) => !item.done),
+  (state) => state.items.filter((item) => !item.done),
   shallowEqual,
 );
 ```
@@ -146,10 +146,10 @@ const active = useStore(
 
 ```ts
 // ✅ No shallowEqual needed — cross-snapshot memoization keeps getter results stable
-const filtered = useStore(todoStore, (store) => store.filtered);
+const filtered = useStore(todoStore, (state) => state.filtered);
 
 // ✅ Primitives from getters also work fine
-const remaining = useStore(todoStore, (store) => store.remaining);
+const remaining = useStore(todoStore, (state) => state.remaining);
 ```
 
 `shallowEqual` is only needed when the **selector itself** derives a new value (via `.filter()`, `.map()`, object spread, etc.) — not when selecting a getter that does the derivation internally.
@@ -250,7 +250,7 @@ docStore.sections[0].body = 'Updated intro';
 
 While modifying nested properties directly through the proxy works, the same best practice applies here: prefer store methods over inline mutations. When nested updates are scattered across components, it becomes difficult to trace how deeply nested state changes. Methods give you a single place to look.
 
-Structural sharing means that when you mutate `metadata.title`, the snapshot for `sections` is reused from the previous snapshot (same reference). A component selecting `(store) => store.sections` won't re-render because its selected value hasn't changed.
+Structural sharing means that when you mutate `metadata.title`, the snapshot for `sections` is reused from the previous snapshot (same reference). A component selecting `(state) => state.sections` won't re-render because its selected value hasn't changed.
 
 ## Collections
 
@@ -366,7 +366,7 @@ class PostStore {
 }
 ```
 
-This means a component using `useStore(postStore, (store) => store.loading)` will re-render twice: once when loading starts, once when it ends. That's the correct behavior.
+This means a component using `useStore(postStore, (state) => state.loading)` will re-render twice: once when loading starts, once when it ends. That's the correct behavior.
 
 ## Local Stores
 
@@ -387,7 +387,7 @@ class CounterStore {
 
 function Counter() {
   const store = useLocalStore(() => new CounterStore());
-  const count = useStore(store, (s) => s.count);
+  const count = useStore(store, (state) => state.count);
 
   return <button onClick={() => store.increment()}>Count: {count}</button>;
 }
@@ -501,7 +501,7 @@ class Counter {
 }
 
 // ✅ Selector mode: no re-render (Object.is sees same count value)
-const count = useStore(counterStore, (store) => store.count);
+const count = useStore(counterStore, (state) => state.count);
 
 // ⚠️ Auto-tracked mode: re-renders (snapshot reference changed)
 const snap = useStore(counterStore);

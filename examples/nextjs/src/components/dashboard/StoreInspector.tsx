@@ -121,16 +121,16 @@ export function StoreInspector() {
                 ver: versions.planner,
                 color: 'text-orange-400',
               },
-            ].map((store) => (
+            ].map((state) => (
               <div
-                key={store.label}
+                key={state.label}
                 className="flex justify-between items-center text-xs"
               >
-                <span className="text-muted-foreground">{store.label} v:</span>
+                <span className="text-muted-foreground">{state.label} v:</span>
                 <span
-                  className={`font-mono font-medium ${store.color} bg-white/5 px-2 py-0.5 rounded`}
+                  className={`font-mono font-medium ${state.color} bg-white/5 px-2 py-0.5 rounded`}
                 >
-                  {store.ver}
+                  {state.ver}
                 </span>
               </div>
             ))}

@@ -30,24 +30,24 @@ export const counterStore = createClassyStore(
 
 const COMPONENT_CODE = `function CountCard() {
   // Only re-renders when count changes
-  const count = useStore(counterStore, (s) => s.count);
+  const count = useStore(counterStore, (state) => state.count);
   return <div>{count}</div>;
 }
 
 function NameCard() {
   // Only re-renders when name changes
-  const name = useStore(counterStore, (s) => s.name);
+  const name = useStore(counterStore, (state) => state.name);
   return <div>{name}</div>;
 }
 
 function BatchCard() {
   // 1000 mutations → 1 render (microtask batching)
-  const count = useStore(batchStore, (s) => s.count);
+  const count = useStore(batchStore, (state) => state.count);
   return <div>{count}</div>;
 }`;
 
 function CountCard() {
-  const count = useStore(counterStore, (store) => store.count);
+  const count = useStore(counterStore, (state) => state.count);
   const renders = useRenderCount();
   return (
     <div className="flex-1 flex items-center justify-between bg-indigo-500/10 border border-indigo-500/20 rounded-lg px-3 py-2.5">
@@ -65,7 +65,7 @@ function CountCard() {
 }
 
 function NameCard() {
-  const name = useStore(counterStore, (store) => store.name);
+  const name = useStore(counterStore, (state) => state.name);
   const renders = useRenderCount();
   return (
     <div className="flex-1 flex items-center justify-between bg-violet-500/10 border border-violet-500/20 rounded-lg px-3 py-2.5">
@@ -83,7 +83,7 @@ function NameCard() {
 }
 
 function BatchCard() {
-  const count = useStore(batchStore, (store) => store.count);
+  const count = useStore(batchStore, (state) => state.count);
   const renders = useRenderCount();
   return (
     <div className="flex-1 flex items-center justify-between bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2.5">

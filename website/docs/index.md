@@ -85,7 +85,7 @@ import {useStore} from '@codebelt/classy-store/react';
 
 // Selector mode: explicit control over what triggers re-renders
 function TodoCount() {
-  const remaining = useStore(todoStore, (store) => store.remaining);
+  const remaining = useStore(todoStore, (state) => state.remaining);
   return <span>{remaining} left</span>;
 }
 
@@ -128,9 +128,9 @@ React hook that subscribes to store changes via `useSyncExternalStore`.
 **Selector mode:**
 
 ```typescript
-const count = useStore(myStore, (store) => store.count);
-const user = useStore(myStore, (store) => store.user);
-const items = useStore(myStore, (store) => store.items);
+const count = useStore(myStore, (state) => state.count);
+const user = useStore(myStore, (state) => state.user);
+const items = useStore(myStore, (state) => state.items);
 ```
 
 The selector receives an immutable snapshot. Re-renders only when the selected value changes (via `Object.is` by default, or a custom `isEqual`).
@@ -151,9 +151,9 @@ Returns a tracking proxy. Properties your component reads are automatically trac
 import {shallowEqual} from '@codebelt/classy-store';
 import {useStore} from '@codebelt/classy-store/react';
 
-const userData = useStore(myStore, (store) => ({
-  name: store.user.name,
-  role: store.user.role,
+const userData = useStore(myStore, (state) => ({
+  name: state.user.name,
+  role: state.user.role,
 }), shallowEqual);
 ```
 
@@ -171,7 +171,7 @@ class CounterStore {
 
 function Counter() {
   const store = useLocalStore(() => new CounterStore());
-  const count = useStore(store, (s) => s.count);
+  const count = useStore(store, (state) => state.count);
 
   return <button onClick={() => store.increment()}>Count: {count}</button>;
 }
@@ -249,7 +249,7 @@ class UserStore {
 const userStore = createClassyStore(new UserStore());
 
 function UserList() {
-  const snap = useStore(userStore, (store) => [...store.users.entries()]);
+  const snap = useStore(userStore, (state) => [...state.users.entries()]);
   return (
     <ul>
       {snap.map(([id, user]) => (
@@ -282,7 +282,7 @@ class TagStore {
 const tagStore = createClassyStore(new TagStore());
 
 function TagList() {
-  const tags = useStore(tagStore, (store) => [...store.tags]);
+  const tags = useStore(tagStore, (state) => [...state.tags]);
   return tags.map(tag => <span key={tag}>{tag}</span>);
 }
 ```
@@ -379,8 +379,8 @@ const authStore = createClassyStore(new AuthStore());
 const uiStore = createClassyStore(new UiStore());
 
 function Header() {
-  const user = useStore(authStore, (store) => store.currentUser);
-  const theme = useStore(uiStore, (store) => store.theme);
+  const user = useStore(authStore, (state) => state.currentUser);
+  const theme = useStore(uiStore, (state) => state.theme);
   return <header className={theme}>{user?.name}</header>;
 }
 ```
@@ -438,7 +438,7 @@ const settingsStore = createClassyStore(new SettingsStore());
 
 // Only re-renders when push notification setting changes
 function PushToggle() {
-  const push = useStore(settingsStore, (store) => store.settings.notifications.push);
+  const push = useStore(settingsStore, (state) => state.settings.notifications.push);
   return <Switch checked={push} onChange={() => settingsStore.togglePush()} />;
 }
 ```
@@ -494,7 +494,7 @@ class Store {
 ```typescript
 // Stable reference across re-renders when items/filter haven't changed.
 // No shallowEqual required!
-const filtered = useStore(myStore, (store) => store.filtered);
+const filtered = useStore(myStore, (state) => state.filtered);
 ```
 
 ### Working with Date and RegExp

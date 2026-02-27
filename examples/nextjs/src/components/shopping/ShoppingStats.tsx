@@ -8,11 +8,11 @@ import {shoppingStore} from '@/stores/shopping-store';
 export function ShoppingStats() {
   const stats = useStore(
     shoppingStore,
-    (s) => ({
-      total: s.totalItems,
-      unchecked: s.uncheckedCount,
-      checked: s.checkedCount,
-      lastAction: s.lastAction,
+    (state) => ({
+      total: state.totalItems,
+      unchecked: state.uncheckedCount,
+      checked: state.checkedCount,
+      lastAction: state.lastAction,
     }),
     shallowEqual,
   );
@@ -22,11 +22,11 @@ export function ShoppingStats() {
       <ApiInfo
         apis={['useStore', 'selector', 'shallowEqual']}
         description="Selector returns an object with 4 derived values; shallowEqual compares each key to skip unnecessary renders."
-        code={`const stats = useStore(shoppingStore, (s) => ({
-  total: s.totalItems,
-  unchecked: s.uncheckedCount,
-  checked: s.checkedCount,
-  lastAction: s.lastAction,
+        code={`const stats = useStore(shoppingStore, (state) => ({
+  total: state.totalItems,
+  unchecked: state.uncheckedCount,
+  checked: state.checkedCount,
+  lastAction: state.lastAction,
 }), shallowEqual);`}
       />
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">

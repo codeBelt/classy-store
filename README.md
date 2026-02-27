@@ -46,7 +46,7 @@ const cartStore = createClassyStore(new CartStore());
 
 // 3. Use in any framework — React shown here
 function CartTotal() {
-  const total = useStore(cartStore, (store) => store.total);
+  const total = useStore(cartStore, (state) => state.total);
   return <span>${total.toFixed(2)}</span>;
 }
 

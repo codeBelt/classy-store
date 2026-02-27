@@ -86,8 +86,8 @@ describe('Batching — multi-prop methods cause single re-render', () => {
     const renderCount = mock(() => {});
 
     function Display() {
-      const count = useStore(s, (snap) => snap.count);
-      const name = useStore(s, (snap) => snap.name);
+      const count = useStore(s, (state) => state.count);
+      const name = useStore(s, (state) => state.name);
       renderCount();
       return (
         <div>
@@ -141,7 +141,7 @@ describe('Batching — multi-prop methods cause single re-render', () => {
     const renderCount = mock(() => {});
 
     function CountOnly() {
-      const count = useStore(s, (snap) => snap.count);
+      const count = useStore(s, (state) => state.count);
       renderCount();
       return <div>{count}</div>;
     }
@@ -170,7 +170,7 @@ describe('Batching — rapid mutations in a loop', () => {
     const renderCount = mock(() => {});
 
     function Display() {
-      const count = useStore(s, (snap) => snap.count);
+      const count = useStore(s, (state) => state.count);
       renderCount();
       return <div>{count}</div>;
     }
@@ -216,7 +216,7 @@ describe('Batching — rapid mutations in a loop', () => {
     const renderCount = mock(() => {});
 
     function Display() {
-      const length = useStore(s, (snap) => snap.items.length);
+      const length = useStore(s, (state) => state.items.length);
       renderCount();
       return <div>{length}</div>;
     }
@@ -246,7 +246,7 @@ describe('Set-then-revert — no re-render when value returns to original', () =
     const renderCount = mock(() => {});
 
     function Display() {
-      const count = useStore(s, (snap) => snap.count);
+      const count = useStore(s, (state) => state.count);
       renderCount();
       return <div>{count}</div>;
     }
@@ -297,7 +297,7 @@ describe('Set-then-revert — no re-render when value returns to original', () =
     const renderCount = mock(() => {});
 
     function Display() {
-      const name = useStore(s, (snap) => snap.user.name);
+      const name = useStore(s, (state) => state.user.name);
       renderCount();
       return <div>{name}</div>;
     }
@@ -322,7 +322,7 @@ describe('Set-then-revert — no re-render when value returns to original', () =
     const renderCount = mock(() => {});
 
     function Display() {
-      const user = useStore(s, (snap) => snap.user);
+      const user = useStore(s, (state) => state.user);
       renderCount();
       return <div>{user.name}</div>;
     }
@@ -355,7 +355,7 @@ describe('Async methods — re-renders split across await boundaries', () => {
     const renderCount = mock(() => {});
 
     function Display() {
-      const count = useStore(s, (snap) => snap.count);
+      const count = useStore(s, (state) => state.count);
       renderCount();
       return <div>{count}</div>;
     }
@@ -380,7 +380,7 @@ describe('Async methods — re-renders split across await boundaries', () => {
     const renderCount = mock(() => {});
 
     function Display() {
-      const count = useStore(s, (snap) => snap.count);
+      const count = useStore(s, (state) => state.count);
       renderCount();
       return <div>{count}</div>;
     }
@@ -403,7 +403,7 @@ describe('Async methods — re-renders split across await boundaries', () => {
     const renderCount = mock(() => {});
 
     function Display() {
-      const count = useStore(s, (snap) => snap.count);
+      const count = useStore(s, (state) => state.count);
       renderCount();
       return <div>{count}</div>;
     }
@@ -426,7 +426,7 @@ describe('Async methods — re-renders split across await boundaries', () => {
     const renderCount = mock(() => {});
 
     function Display() {
-      const count = useStore(s, (snap) => snap.count);
+      const count = useStore(s, (state) => state.count);
       renderCount();
       return <div>{count}</div>;
     }
@@ -479,13 +479,13 @@ describe('Multiple components sharing the same store', () => {
     const renderCountB = mock(() => {});
 
     function ComponentA() {
-      const count = useStore(s, (snap) => snap.count);
+      const count = useStore(s, (state) => state.count);
       renderCountA();
       return <span>{count}</span>;
     }
 
     function ComponentB() {
-      const name = useStore(s, (snap) => snap.name);
+      const name = useStore(s, (state) => state.name);
       renderCountB();
       return <span>{name}</span>;
     }
@@ -515,13 +515,13 @@ describe('Multiple components sharing the same store', () => {
     const renderCountB = mock(() => {});
 
     function ComponentA() {
-      const count = useStore(s, (snap) => snap.count);
+      const count = useStore(s, (state) => state.count);
       renderCountA();
       return <span>{count}</span>;
     }
 
     function ComponentB() {
-      const count = useStore(s, (snap) => snap.count);
+      const count = useStore(s, (state) => state.count);
       renderCountB();
       return <span>{count}</span>;
     }
@@ -590,13 +590,13 @@ describe('Multiple components sharing the same store', () => {
     const renderCountB = mock(() => {});
 
     function ComponentA() {
-      const count = useStore(s, (snap) => snap.count);
+      const count = useStore(s, (state) => state.count);
       renderCountA();
       return <span>{count}</span>;
     }
 
     function ComponentB() {
-      const name = useStore(s, (snap) => snap.name);
+      const name = useStore(s, (state) => state.name);
       renderCountB();
       return <span>{name}</span>;
     }
@@ -630,7 +630,7 @@ describe('Unmount safety', () => {
     const s = createClassyStore(new TestStore());
 
     function Display() {
-      const count = useStore(s, (snap) => snap.count);
+      const count = useStore(s, (state) => state.count);
       return <div>{count}</div>;
     }
 
@@ -652,7 +652,7 @@ describe('Unmount safety', () => {
     const s = createClassyStore(new TestStore());
 
     function Display() {
-      const count = useStore(s, (snap) => snap.count);
+      const count = useStore(s, (state) => state.count);
       return <div>{count}</div>;
     }
 
@@ -689,7 +689,7 @@ describe('shallowEqual as useStore isEqual — integration', () => {
     function Display() {
       const data = useStore(
         s,
-        (snap) => ({count: snap.count, name: snap.name}),
+        (state) => ({count: state.count, name: state.name}),
         shallowEqual,
       );
       renderCount();
@@ -720,7 +720,7 @@ describe('shallowEqual as useStore isEqual — integration', () => {
     function Display() {
       const data = useStore(
         s,
-        (snap) => ({count: snap.count, name: snap.name}),
+        (state) => ({count: state.count, name: state.name}),
         shallowEqual,
       );
       renderCount();

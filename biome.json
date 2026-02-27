@@ -30,7 +30,7 @@
       "recommended": true,
       "style": {
         "noImplicitBoolean": "error",
-        "noInferrableTypes": "error",
+        "noInferrableTypes": "off",
         "noParameterAssign": "error",
         "noUnusedTemplateLiteral": "error",
         "noUselessElse": "error",

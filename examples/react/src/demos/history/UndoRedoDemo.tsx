@@ -36,7 +36,7 @@ store.setContent('New content');
 history.resume(); // single history entry`;
 
 function TitleEditor() {
-  const title = useStore(textEditorStore, (s) => s.title);
+  const title = useStore(textEditorStore, (state) => state.title);
   const renders = useRenderCount();
 
   return (
@@ -58,7 +58,7 @@ function TitleEditor() {
 }
 
 function ContentEditor() {
-  const content = useStore(textEditorStore, (s) => s.content);
+  const content = useStore(textEditorStore, (state) => state.content);
   const renders = useRenderCount();
 
   return (

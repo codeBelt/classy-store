@@ -29,7 +29,7 @@ export function ShallowEqualPage() {
           when your <em>selector function</em> itself creates a new object or
           array (e.g.{' '}
           <code className="text-xs bg-zinc-800 px-1 rounded">
-            {'(s) => ({ a: s.x, b: s.y })'}
+            {'(state) => ({ a: state.x, b: state.y })'}
           </code>
           ) within a component.
         </TipBox>

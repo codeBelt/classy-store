@@ -33,7 +33,7 @@ const users = [...snap.users.entries()];
 const tags = [...snap.tags];
 
 // Computed getters
-const userCount = useStore(collectionStore, (s) => s.userCount);`;
+const userCount = useStore(collectionStore, (state) => state.userCount);`;
 
 function UserList() {
   const snap = useStore(collectionStore);
@@ -136,8 +136,8 @@ function TagList() {
 }
 
 function CountDisplay() {
-  const userCount = useStore(collectionStore, (store) => store.userCount);
-  const tagCount = useStore(collectionStore, (store) => store.tagCount);
+  const userCount = useStore(collectionStore, (state) => state.userCount);
+  const tagCount = useStore(collectionStore, (state) => state.tagCount);
   const renders = useRenderCount();
 
   return (

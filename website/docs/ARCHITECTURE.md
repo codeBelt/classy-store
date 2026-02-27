@@ -329,7 +329,7 @@ flowchart TD
 4. For getters reading other getters (e.g., `get filteredCount() { return this.filtered.length; }`): the inner getter is itself memoized, so it returns a stable reference, which the outer getter's dep check recognizes as unchanged.
 
 **Impact on `useStore`:** The existing hook benefits automatically — no changes needed:
-- **Selector mode:** `useStore(store, (store) => store.filtered)` gets a stable reference from the memoized snapshot getter. `Object.is` correctly detects "no change" without `shallowEqual`.
+- **Selector mode:** `useStore(store, (state) => state.filtered)` gets a stable reference from the memoized snapshot getter. `Object.is` correctly detects "no change" without `shallowEqual`.
 - **Auto-tracked mode:** `proxy-compare`'s `isChanged` gets stable references from snapshot getters, reducing false positives.
 
 ## Layer 3: React Hook (`react.ts`)
@@ -341,7 +341,7 @@ flowchart TD
 ### Mode 1: Selector
 
 ```typescript
-const count = useStore(myStore, (store) => store.count);
+const count = useStore(myStore, (state) => state.count);
 ```
 
 ```mermaid

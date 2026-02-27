@@ -607,7 +607,7 @@ console.log(`Welcome back! Theme: ${appStore.theme}`);
 |---|---|
 | **Persist everything** | `persist(myStore, {name: 'key'})` |
 | **Persist specific properties** | `properties: ['count', 'name']` |
-| **Handle Dates & Objects** | `{key: 'date', serialize: (d) => d.toISOString(), deserialize: (s) => new Date(s)}` |
+| **Handle Dates & Objects** | `{key: 'date', serialize: (d) => d.toISOString(), deserialize: (state) => new Date(s)}` |
 | **Handle Reactive collections** | `users: reactiveMap<string, User>()` (supported natively) |
 | **Use sessionStorage** | `storage: sessionStorage` |
 | **Use AsyncStorage** | `storage: AsyncStorage, syncTabs: false` |

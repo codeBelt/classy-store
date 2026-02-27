@@ -303,7 +303,7 @@ function SectionTable({section}: {section: FeatureSection}) {
                       {row.links.map((link) => {
                         const [page, component] = link.label
                           .split(' / ')
-                          .map((s) => s.trim());
+                          .map((state) => state.trim());
                         return (
                           <Link
                             key={link.label}

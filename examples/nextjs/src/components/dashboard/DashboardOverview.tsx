@@ -64,27 +64,27 @@ const Icons = {
 export function DashboardOverview() {
   const recipeStats = useStore(
     recipeStore,
-    (s) => ({
-      count: s.recipeCount,
-      avgTime: s.averageTotalTime,
+    (state) => ({
+      count: state.recipeCount,
+      avgTime: state.averageTotalTime,
     }),
     shallowEqual,
   );
 
   const shoppingStats = useStore(
     shoppingStore,
-    (s) => ({
-      total: s.totalItems,
-      unchecked: s.uncheckedCount,
+    (state) => ({
+      total: state.totalItems,
+      unchecked: state.uncheckedCount,
     }),
     shallowEqual,
   );
 
   const plannerStats = useStore(
     plannerStore,
-    (s) => ({
-      meals: s.totalMealsPlanned,
-      pct: s.completionPercentage,
+    (state) => ({
+      meals: state.totalMealsPlanned,
+      pct: state.completionPercentage,
     }),
     shallowEqual,
   );
@@ -124,9 +124,9 @@ export function DashboardOverview() {
           minimal={true}
           apis={['useStore', 'selector', 'shallowEqual']}
           description="Reads from 3 stores using selectors with shallowEqual."
-          code={`const stats = useStore(recipeStore, (s) => ({
-  count: s.recipeCount,
-  avgTime: s.averageTotalTime,
+          code={`const stats = useStore(recipeStore, (state) => ({
+  count: state.recipeCount,
+  avgTime: state.averageTotalTime,
 }), shallowEqual);`}
         />
       </div>

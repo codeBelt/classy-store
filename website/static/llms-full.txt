@@ -95,7 +95,7 @@ import {useStore} from '@codebelt/classy-store/react';
 
 // Selector mode: explicit control over what triggers re-renders
 function TodoCount() {
-  const remaining = useStore(todoStore, (store) => store.remaining);
+  const remaining = useStore(todoStore, (state) => state.remaining);
   return <span>{remaining} left</span>;
 }
 
@@ -138,9 +138,9 @@ React hook that subscribes to store changes via `useSyncExternalStore`.
 **Selector mode:**
 
 ```typescript
-const count = useStore(myStore, (store) => store.count);
-const user = useStore(myStore, (store) => store.user);
-const items = useStore(myStore, (store) => store.items);
+const count = useStore(myStore, (state) => state.count);
+const user = useStore(myStore, (state) => state.user);
+const items = useStore(myStore, (state) => state.items);
 ```
 
 The selector receives an immutable snapshot. Re-renders only when the selected value changes (via `Object.is` by default, or a custom `isEqual`).
@@ -161,9 +161,9 @@ Returns a tracking proxy. Properties your component reads are automatically trac
 import {shallowEqual} from '@codebelt/classy-store';
 import {useStore} from '@codebelt/classy-store/react';
 
-const userData = useStore(myStore, (store) => ({
-  name: store.user.name,
-  role: store.user.role,
+const userData = useStore(myStore, (state) => ({
+  name: state.user.name,
+  role: state.user.role,
 }), shallowEqual);
 ```
 
@@ -181,7 +181,7 @@ class CounterStore {
 
 function Counter() {
   const store = useLocalStore(() => new CounterStore());
-  const count = useStore(store, (s) => s.count);
+  const count = useStore(store, (state) => state.count);
 
   return <button onClick={() => store.increment()}>Count: {count}</button>;
 }
@@ -257,7 +257,7 @@ class UserStore {
 const userStore = createClassyStore(new UserStore());
 
 function UserList() {
-  const snap = useStore(userStore, (store) => [...store.users.entries()]);
+  const snap = useStore(userStore, (state) => [...state.users.entries()]);
   return (
     <ul>
       {snap.map(([id, user]) => (
@@ -290,7 +290,7 @@ class TagStore {
 const tagStore = createClassyStore(new TagStore());
 
 function TagList() {
-  const tags = useStore(tagStore, (store) => [...store.tags]);
+  const tags = useStore(tagStore, (state) => [...state.tags]);
   return tags.map(tag => <span key={tag}>{tag}</span>);
 }
 ```
@@ -379,8 +379,8 @@ const authStore = createClassyStore(new AuthStore());
 const uiStore = createClassyStore(new UiStore());
 
 function Header() {
-  const user = useStore(authStore, (store) => store.currentUser);
-  const theme = useStore(uiStore, (store) => store.theme);
+  const user = useStore(authStore, (state) => state.currentUser);
+  const theme = useStore(uiStore, (state) => state.theme);
   return <header className={theme}>{user?.name}</header>;
 }
 ```
@@ -438,7 +438,7 @@ const settingsStore = createClassyStore(new SettingsStore());
 
 // Only re-renders when push notification setting changes
 function PushToggle() {
-  const push = useStore(settingsStore, (store) => store.settings.notifications.push);
+  const push = useStore(settingsStore, (state) => state.settings.notifications.push);
   return <Switch checked={push} onChange={() => settingsStore.togglePush()} />;
 }
 ```
@@ -492,7 +492,7 @@ class Store {
 ```typescript
 // Stable reference across re-renders when items/filter haven't changed.
 // No shallowEqual required!
-const filtered = useStore(myStore, (store) => store.filtered);
+const filtered = useStore(myStore, (state) => state.filtered);
 ```
 
 ### Working with Date and RegExp
@@ -574,7 +574,7 @@ import {useStore} from '@codebelt/classy-store/react';
 import {counterStore} from './stores';
 
 export function Counter() {
-  const count = useStore(counterStore, (store) => store.count);
+  const count = useStore(counterStore, (state) => state.count);
   return <button onClick={counterStore.increment}>Count: {count}</button>;
 }
 ```
@@ -632,7 +632,7 @@ Key points:
 ### Selector mode
 
 ```ts
-const count = useStore(counterStore, (store) => store.count);
+const count = useStore(counterStore, (state) => state.count);
 ```
 
 The selector receives an immutable snapshot and returns the slice you need. The component re-renders only when the selected value changes (compared with `Object.is`).
@@ -656,8 +656,8 @@ By default, `useStore` compares the selector's return value with `Object.is`, wh
 
 ```ts
 // ✅ No shallowEqual needed — structural sharing keeps the reference stable
-const count = useStore(todoStore, (store) => store.items.length);
-const todos = useStore(todoStore, (store) => store.items);
+const count = useStore(todoStore, (state) => state.items.length);
+const todos = useStore(todoStore, (state) => state.items);
 ```
 
 The problem shows up when your selector **derives a new value** — calling `.filter()`, `.map()`, or using object spread always allocates a new array or object, even when the underlying data hasn't changed. `Object.is` sees a different reference and triggers a re-render.
@@ -671,7 +671,7 @@ import {useStore} from '@codebelt/classy-store/react';
 // ✅ Only re-renders when the filtered items actually change
 const active = useStore(
   todoStore,
-  (store) => store.items.filter((item) => !item.done),
+  (state) => state.items.filter((item) => !item.done),
   shallowEqual,
 );
 ```
@@ -680,8 +680,8 @@ const active = useStore(
 
 ```ts
 // ✅ No shallowEqual needed — cross-snapshot memoization keeps getter results stable
-const filtered = useStore(todoStore, (store) => store.filtered);
-const remaining = useStore(todoStore, (store) => store.remaining);
+const filtered = useStore(todoStore, (state) => state.filtered);
+const remaining = useStore(todoStore, (state) => state.remaining);
 ```
 
 ### Decision guide
@@ -859,7 +859,7 @@ class CounterStore {
 
 function Counter() {
   const store = useLocalStore(() => new CounterStore());
-  const count = useStore(store, (s) => s.count);
+  const count = useStore(store, (state) => state.count);
 
   return <button onClick={() => store.increment()}>Count: {count}</button>;
 }

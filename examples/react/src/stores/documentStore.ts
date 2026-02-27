@@ -15,7 +15,7 @@ export class DocumentStore {
   }
 
   updateSectionBody(id: number, body: string) {
-    const section = this.content.sections.find((store) => store.id === id);
+    const section = this.content.sections.find((state) => state.id === id);
     if (section) section.body = body;
   }
 

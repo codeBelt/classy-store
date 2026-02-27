@@ -27,13 +27,13 @@ persist(store, {
     'viewMode', 'sortBy', 'searchQuery',
     { key: 'lastEditedAt',
       serialize: (d) => d.toISOString(),
-      deserialize: (s) => new Date(s) },
+      deserialize: (state) => new Date(s) },
     { key: 'notes',
       serialize: (n) => [...n.entries()],
-      deserialize: (s) => reactiveMap(s) },
+      deserialize: (state) => reactiveMap(s) },
     { key: 'tags',
       serialize: (t) => [...t],
-      deserialize: (s) => reactiveSet(s) },
+      deserialize: (state) => reactiveSet(s) },
   ],
   migrate: (state, oldVersion) => {
     if (oldVersion === 0) return { ...state, sortBy: 'date' };

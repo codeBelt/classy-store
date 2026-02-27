@@ -19,7 +19,7 @@ export function ReactivityPage() {
         <TipBox>
           Selectors prevent re-renders when unrelated state changes. Use{' '}
           <code className="text-xs bg-zinc-800 px-1 rounded">
-            useStore(store, s =&gt; s.count)
+            useStore(store, (state) =&gt; state.count)
           </code>{' '}
           to only re-render when{' '}
           <code className="text-xs bg-zinc-800 px-1 rounded">count</code>{' '}

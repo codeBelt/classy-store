@@ -187,7 +187,7 @@ function getAutoTrackSnapshot<T extends object>(
  * ```tsx
  * function Counter() {
  *   const store = useLocalStore(() => new CounterStore());
- *   const count = useStore(store, s => s.count);
+ *   const count = useStore(store, (state) => state.count);
  *   return <button onClick={() => store.increment()}>{count}</button>;
  * }
  * ```
