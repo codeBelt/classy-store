@@ -30,6 +30,7 @@
     "svelte:dev": "cd examples/svelte && bun run dev",
     "solid:dev": "cd examples/solid && bun run dev",
     "angular:dev": "cd examples/angular && bun run start",
+    "react-todo:dev": "cd examples/react-todo && bun run dev",
     "---------- Docs (Docusaurus) ------------------------------------------": "",
     "demos:build": "cd examples/react && bun run build.ts --outdir=../../website/static/demos",
     "docs:dev": "bun run demos:build && cd website && bun run start",

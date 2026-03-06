@@ -1,0 +1,77 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+    --font-mono: "DM Mono", ui-monospace, monospace;
+    --color-surface: #0c0c0e;
+    --color-surface-raised: #141416;
+    --color-surface-overlay: #1a1a1e;
+    --color-border: #27272a;
+    --color-border-subtle: #1e1e22;
+    --color-accent: #6366f1;
+    --color-accent-hover: #818cf8;
+    --color-text-primary: #fafafa;
+    --color-text-secondary: #a1a1aa;
+    --color-text-muted: #52525b;
+    --color-danger: #ef4444;
+    --color-success: #22c55e;
+
+    @apply text-(--color-text-primary) bg-(--color-surface) antialiased;
+    font-family: var(--font-sans);
+  }
+
+  body {
+    @apply min-w-[320px] min-h-screen m-0;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@utility animate-fade-in {
+  animation: fade-in 300ms ease-out both;
+}
+
+@keyframes check-pop {
+  0% {
+    transform: scale(0.8);
+  }
+  50% {
+    transform: scale(1.15);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@utility animate-check-pop {
+  animation: check-pop 250ms ease-out;
+}
+
+@keyframes slide-out {
+  to {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+}
+
+@utility animate-slide-out {
+  animation: slide-out 200ms ease-in forwards;
+}
+
+@media (prefers-reduced-motion) {
+  *,
+  ::before,
+  ::after {
+    animation: none;
+  }
+}

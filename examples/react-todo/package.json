@@ -1,0 +1,27 @@
+{
+  "name": "classy-store-react-todo",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "---------- Dev --------------------------------------------------------": "",
+    "dev": "bun --hot --port 3002 src/index.ts",
+    "---------- Build ------------------------------------------------------": "",
+    "build": "bun run build.ts",
+    "start": "NODE_ENV=production bun src/index.ts",
+    "-----------------------------------------------------------------------": ""
+  },
+  "dependencies": {
+    "@codebelt/classy-store": "workspace:*",
+    "bun-plugin-tailwind": "0.1.2",
+    "proxy-compare": "3.0.1",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "tailwindcss": "4.1.18"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "@types/bun": "latest"
+  }
+}
