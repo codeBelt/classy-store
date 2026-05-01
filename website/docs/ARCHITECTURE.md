@@ -30,7 +30,7 @@ flowchart TB
   end
 
   subgraph layer3 ["Layer 3: React Hook (react.ts)"]
-    UseStore["useStore(store, selector?)"]
+    UseStore["useClassyStore(store, selector?)"]
     UseLocalStore["useLocalStore(factory)"]
     USES["useSyncExternalStore"]
     ProxyCompare["proxy-compare: track which snapshot props selector reads"]
@@ -73,9 +73,9 @@ src/
 ├── core/
 │   ├── core.ts                    # Layer 1: Write Proxy — createClassyStore(), subscribe(), getVersion()
 │   ├── core.test.ts               # tests: mutations, batching, methods, getters, arrays
-│   └── computed.test.tsx           # tests: write proxy + snapshot memoization, useStore integration
+│   └── computed.test.tsx           # tests: write proxy + snapshot memoization, useClassyStore integration
 ├── react/
-│   ├── react.ts                   # Layer 3: React Hook — useStore(), useLocalStore()
+│   ├── react.ts                   # Layer 3: React Hook — useClassyStore(), useLocalStore()
 │   ├── react.test.tsx             # tests: selector mode, auto-tracked mode, re-render control
 │   └── react.behavior.test.tsx    # tests: batching, set-then-revert, async, multi-component, unmount
 ├── snapshot/
@@ -328,26 +328,26 @@ flowchart TD
 3. Structural sharing guarantees that unchanged sub-trees have the same reference — so if `this.todos` hasn't changed, the reference comparison passes and the cached result is returned.
 4. For getters reading other getters (e.g., `get filteredCount() { return this.filtered.length; }`): the inner getter is itself memoized, so it returns a stable reference, which the outer getter's dep check recognizes as unchanged.
 
-**Impact on `useStore`:** The existing hook benefits automatically — no changes needed:
-- **Selector mode:** `useStore(store, (state) => state.filtered)` gets a stable reference from the memoized snapshot getter. `Object.is` correctly detects "no change" without `shallowEqual`.
+**Impact on `useClassyStore`:** The existing hook benefits automatically — no changes needed:
+- **Selector mode:** `useClassyStore(store, (state) => state.filtered)` gets a stable reference from the memoized snapshot getter. `Object.is` correctly detects "no change" without `shallowEqual`.
 - **Auto-tracked mode:** `proxy-compare`'s `isChanged` gets stable references from snapshot getters, reducing false positives.
 
 ## Layer 3: React Hook (`react.ts`)
 
 ### Overview
 
-`useStore` uses `useSyncExternalStore` for tear-free React integration. It supports two modes:
+`useClassyStore` uses `useSyncExternalStore` for tear-free React integration. It supports two modes:
 
 ### Mode 1: Selector
 
 ```typescript
-const count = useStore(myStore, (state) => state.count);
+const count = useClassyStore(myStore, (state) => state.count);
 ```
 
 ```mermaid
 sequenceDiagram
   participant React as React (useSyncExternalStore)
-  participant Hook as useStore
+  participant Hook as useClassyStore
   participant Snap as snapshot()
   participant Selector as selector(snap)
 
@@ -373,7 +373,7 @@ sequenceDiagram
 ### Mode 2: Auto-tracked (selectorless)
 
 ```typescript
-const snap = useStore(myStore);
+const snap = useClassyStore(myStore);
 // snap.count — tracked
 // snap.user.name — tracked
 ```
@@ -381,7 +381,7 @@ const snap = useStore(myStore);
 ```mermaid
 sequenceDiagram
   participant React as React (useSyncExternalStore)
-  participant Hook as useStore
+  participant Hook as useClassyStore
   participant Snap as snapshot()
   participant PC as proxy-compare
 

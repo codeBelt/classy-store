@@ -1,5 +1,5 @@
 import {shallowEqual} from '@codebelt/classy-store';
-import {useStore} from '@codebelt/classy-store/react';
+import {useClassyStore} from '@codebelt/classy-store/react';
 import {Button} from '../../components/Button';
 import {DemoContainer} from '../../components/DemoContainer';
 import {RenderBadge} from '../../components/RenderBadge';
@@ -32,7 +32,7 @@ const COMPONENT_CODE = `// This selector picks two properties into a NEW object.
 
 // WITHOUT shallowEqual: re-renders on ANY store change
 // because {} !== {} (new object every time)
-const name = useStore(profileStore, (state) => ({
+const name = useClassyStore(profileStore, (state) => ({
   first: state.firstName,
   last: state.lastName,
 }));
@@ -41,7 +41,7 @@ const name = useStore(profileStore, (state) => ({
 // or lastName actually change. Theme/notification
 // changes are ignored because the shallow comparison
 // sees the same values.
-const name = useStore(
+const name = useClassyStore(
   profileStore,
   (state) => ({ first: state.firstName, last: state.lastName }),
   shallowEqual
@@ -54,7 +54,7 @@ const lastNames = ['Smith', 'Jones', 'Garcia', 'Kim', 'Patel'];
 let lnIdx = 0;
 
 function NameCardWithout() {
-  const name = useStore(profileStore, (state) => ({
+  const name = useClassyStore(profileStore, (state) => ({
     first: state.firstName,
     last: state.lastName,
   }));
@@ -79,7 +79,7 @@ function NameCardWithout() {
 }
 
 function NameCardWith() {
-  const name = useStore(
+  const name = useClassyStore(
     profileStore,
     (state) => ({first: state.firstName, last: state.lastName}),
     shallowEqual,
@@ -105,7 +105,7 @@ function NameCardWith() {
 }
 
 function SettingsDisplay() {
-  const snap = useStore(profileStore);
+  const snap = useClassyStore(profileStore);
   const renders = useRenderCount();
 
   return (

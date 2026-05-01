@@ -25,11 +25,11 @@ export const counterStore = createClassyStore(new Counter());
 
 ```tsx
 // Counter.tsx
-import {useStore} from '@codebelt/classy-store/react';
+import {useClassyStore} from '@codebelt/classy-store/react';
 import {counterStore} from './stores';
 
 export function Counter() {
-  const count = useStore(counterStore, (state) => state.count);
+  const count = useClassyStore(counterStore, (state) => state.count);
   return <button onClick={counterStore.increment}>Count: {count}</button>;
 }
 ```
@@ -82,12 +82,12 @@ Key points:
 
 ## Reading State in React
 
-`useStore` has two modes. Pick the right one and your components only re-render when they need to.
+`useClassyStore` has two modes. Pick the right one and your components only re-render when they need to.
 
 ### Selector mode
 
 ```ts
-const count = useStore(counterStore, (state) => state.count);
+const count = useClassyStore(counterStore, (state) => state.count);
 ```
 
 The selector receives an immutable snapshot and returns the slice you need. The component re-renders only when the selected value changes (compared with `Object.is`).
@@ -97,7 +97,7 @@ The selector receives an immutable snapshot and returns the slice you need. The 
 ### Auto-tracked mode
 
 ```ts
-const snap = useStore(counterStore);
+const snap = useClassyStore(counterStore);
 // just use snap.count, snap.name, etc. in your JSX
 ```
 
@@ -107,12 +107,12 @@ No selector — you get back a tracking proxy over the snapshot. The library rec
 
 ### Custom equality with `shallowEqual`
 
-By default, `useStore` compares the selector's return value with `Object.is`, which is a reference check. This works perfectly for primitives and for selecting existing properties directly — structural sharing means that if `todos` didn't change, the snapshot returns the **same frozen array reference**, so `Object.is` returns `true` and the component skips the re-render.
+By default, `useClassyStore` compares the selector's return value with `Object.is`, which is a reference check. This works perfectly for primitives and for selecting existing properties directly — structural sharing means that if `todos` didn't change, the snapshot returns the **same frozen array reference**, so `Object.is` returns `true` and the component skips the re-render.
 
 ```ts
 // ✅ No shallowEqual needed — structural sharing keeps the reference stable
-const count = useStore(todoStore, (state) => state.items.length);
-const todos = useStore(todoStore, (state) => state.items);
+const count = useClassyStore(todoStore, (state) => state.items.length);
+const todos = useClassyStore(todoStore, (state) => state.items);
 ```
 
 The problem shows up when your selector **derives a new value** — calling `.filter()`, `.map()`, or using object spread always allocates a new array or object, even when the underlying data hasn't changed. `Object.is` sees a different reference and triggers a re-render.
@@ -122,20 +122,20 @@ The problem shows up when your selector **derives a new value** — calling `.fi
 Without `shallowEqual` — `.filter()` creates a new array every time the snapshot updates, even if the todo items haven't changed:
 
 ```ts
-import {useStore} from '@codebelt/classy-store/react';
+import {useClassyStore} from '@codebelt/classy-store/react';
 
 // ❌ New array reference every snapshot → unnecessary re-renders
-const active = useStore(todoStore, (state) => state.items.filter((item) => !item.done));
+const active = useClassyStore(todoStore, (state) => state.items.filter((item) => !item.done));
 ```
 
 With `shallowEqual` — compares the array contents, not the reference:
 
 ```ts
 import {shallowEqual} from '@codebelt/classy-store';
-import {useStore} from '@codebelt/classy-store/react';
+import {useClassyStore} from '@codebelt/classy-store/react';
 
 // ✅ Only re-renders when the filtered items actually change
-const active = useStore(
+const active = useClassyStore(
   todoStore,
   (state) => state.items.filter((item) => !item.done),
   shallowEqual,
@@ -146,10 +146,10 @@ const active = useStore(
 
 ```ts
 // ✅ No shallowEqual needed — cross-snapshot memoization keeps getter results stable
-const filtered = useStore(todoStore, (state) => state.filtered);
+const filtered = useClassyStore(todoStore, (state) => state.filtered);
 
 // ✅ Primitives from getters also work fine
-const remaining = useStore(todoStore, (state) => state.remaining);
+const remaining = useClassyStore(todoStore, (state) => state.remaining);
 ```
 
 `shallowEqual` is only needed when the **selector itself** derives a new value (via `.filter()`, `.map()`, object spread, etc.) — not when selecting a getter that does the derivation internally.
@@ -204,7 +204,7 @@ console.log(snap.count); // read-only
 snap.count = 5;          // throws in strict mode
 ```
 
-> **When to use:** Logging, debugging, serialization, passing state to non-React code (e.g., a canvas renderer, a Web Worker message). Inside React, `useStore` calls `snapshot()` for you — you rarely need it directly.
+> **When to use:** Logging, debugging, serialization, passing state to non-React code (e.g., a canvas renderer, a Web Worker message). Inside React, `useClassyStore` calls `snapshot()` for you — you rarely need it directly.
 
 Snapshots use structural sharing: unchanged sub-trees return the same frozen reference. If you only mutated `store.name`, then `snapshot(store).settings === previousSnapshot.settings`. This is why selectors on nested objects are efficient — if the sub-tree didn't change, `Object.is` returns `true` and the component skips the re-render.
 
@@ -366,7 +366,7 @@ class PostStore {
 }
 ```
 
-This means a component using `useStore(postStore, (state) => state.loading)` will re-render twice: once when loading starts, once when it ends. That's the correct behavior.
+This means a component using `useClassyStore(postStore, (state) => state.loading)` will re-render twice: once when loading starts, once when it ends. That's the correct behavior.
 
 ## Local Stores
 
@@ -377,7 +377,7 @@ By default, stores are module-level singletons — shared across your entire app
 `useLocalStore` creates a reactive store scoped to the component's lifetime. Each component instance gets its own isolated store. When the component unmounts, the store is garbage collected.
 
 ```tsx
-import {useLocalStore, useStore} from '@codebelt/classy-store/react';
+import {useLocalStore, useClassyStore} from '@codebelt/classy-store/react';
 
 class CounterStore {
   count = 0;
@@ -387,7 +387,7 @@ class CounterStore {
 
 function Counter() {
   const store = useLocalStore(() => new CounterStore());
-  const count = useStore(store, (state) => state.count);
+  const count = useClassyStore(store, (state) => state.count);
 
   return <button onClick={() => store.increment()}>Count: {count}</button>;
 }
@@ -401,7 +401,7 @@ The factory function (`() => new CounterStore()`) runs once per mount. Subsequen
 
 ```tsx
 import {useEffect} from 'react';
-import {useLocalStore, useStore} from '@codebelt/classy-store/react';
+import {useLocalStore, useClassyStore} from '@codebelt/classy-store/react';
 import {persist} from '@codebelt/classy-store/utils';
 
 class FormStore {
@@ -414,7 +414,7 @@ class FormStore {
 function EditProfile() {
   const store = useLocalStore(() => new FormStore());
   // Auto-tracked mode — this component reads both name and email (see Decision guide).
-  const snap = useStore(store);
+  const snap = useClassyStore(store);
 
   useEffect(() => {
     const handle = persist(store, { name: 'edit-profile-draft' });
@@ -468,7 +468,7 @@ class Store {
 }
 ```
 
-### Don't destructure the store outside `useStore`
+### Don't destructure the store outside `useClassyStore`
 
 Destructuring copies the primitive value at that moment and breaks the proxy connection.
 
@@ -501,10 +501,10 @@ class Counter {
 }
 
 // ✅ Selector mode: no re-render (Object.is sees same count value)
-const count = useStore(counterStore, (state) => state.count);
+const count = useClassyStore(counterStore, (state) => state.count);
 
 // ⚠️ Auto-tracked mode: re-renders (snapshot reference changed)
-const snap = useStore(counterStore);
+const snap = useClassyStore(counterStore);
 ```
 
 ### Loop batching

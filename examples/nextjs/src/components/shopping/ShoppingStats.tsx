@@ -1,12 +1,12 @@
 'use client';
 
 import {shallowEqual} from '@codebelt/classy-store';
-import {useStore} from '@codebelt/classy-store/react';
+import {useClassyStore} from '@codebelt/classy-store/react';
 import {ApiInfo} from '@/components/shared/ApiInfo';
 import {shoppingStore} from '@/stores/shopping-store';
 
 export function ShoppingStats() {
-  const stats = useStore(
+  const stats = useClassyStore(
     shoppingStore,
     (state) => ({
       total: state.totalItems,
@@ -20,9 +20,9 @@ export function ShoppingStats() {
   return (
     <div className="space-y-2">
       <ApiInfo
-        apis={['useStore', 'selector', 'shallowEqual']}
+        apis={['useClassyStore', 'selector', 'shallowEqual']}
         description="Selector returns an object with 4 derived values; shallowEqual compares each key to skip unnecessary renders."
-        code={`const stats = useStore(shoppingStore, (state) => ({
+        code={`const stats = useClassyStore(shoppingStore, (state) => ({
   total: state.totalItems,
   unchecked: state.uncheckedCount,
   checked: state.checkedCount,

@@ -1,16 +1,16 @@
 'use client';
 
-import {useStore} from '@codebelt/classy-store/react';
+import {useClassyStore} from '@codebelt/classy-store/react';
 import {ApiInfo} from '@/components/shared/ApiInfo';
 import {plannerStore} from '@/stores/planner-store';
 
 export function PlannerStats() {
-  const snap = useStore(plannerStore);
+  const snap = useClassyStore(plannerStore);
 
   return (
     <div className="space-y-2">
       <ApiInfo
-        apis={['useStore', 'computed getters']}
+        apis={['useClassyStore', 'computed getters']}
         description="Displays computed stats: totalMealsPlanned, completionPercentage."
         code={`get totalMealsPlanned() { ... }
 get completionPercentage() { ... }`}

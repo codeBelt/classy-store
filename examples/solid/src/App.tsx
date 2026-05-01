@@ -1,8 +1,8 @@
-import {useStore} from '@codebelt/classy-store/solid';
+import {useClassyStore} from '@codebelt/classy-store/solid';
 import {counterStore, history} from './store';
 
 export function App() {
-  const snap = useStore(counterStore);
+  const snap = useClassyStore(counterStore);
 
   return (
     <div

@@ -1,4 +1,4 @@
-import {useStore} from '@codebelt/classy-store/react';
+import {useClassyStore} from '@codebelt/classy-store/react';
 import {useState} from 'react';
 import {Button} from '../../components/Button';
 import {DemoContainer} from '../../components/DemoContainer';
@@ -36,7 +36,7 @@ store.setContent('New content');
 history.resume(); // single history entry`;
 
 function TitleEditor() {
-  const title = useStore(textEditorStore, (state) => state.title);
+  const title = useClassyStore(textEditorStore, (state) => state.title);
   const renders = useRenderCount();
 
   return (
@@ -58,7 +58,7 @@ function TitleEditor() {
 }
 
 function ContentEditor() {
-  const content = useStore(textEditorStore, (state) => state.content);
+  const content = useClassyStore(textEditorStore, (state) => state.content);
   const renders = useRenderCount();
 
   return (
@@ -80,7 +80,7 @@ function ContentEditor() {
 }
 
 function HistoryControls() {
-  const snap = useStore(textEditorStore);
+  const snap = useClassyStore(textEditorStore);
   const [paused, setPaused] = useState(false);
   const renders = useRenderCount();
 

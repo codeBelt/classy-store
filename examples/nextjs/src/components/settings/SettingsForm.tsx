@@ -1,17 +1,20 @@
 'use client';
 
-import {useStore} from '@codebelt/classy-store/react';
+import {useClassyStore} from '@codebelt/classy-store/react';
 import {ApiInfo} from '@/components/shared/ApiInfo';
 import {settingsStore} from '@/stores/settings-store';
 
 export function SettingsForm() {
-  const store = useStore(settingsStore);
+  const store = useClassyStore(settingsStore);
 
   return (
     <div className="bg-card border border-border rounded-lg p-4 space-y-4">
       <h2 className="font-semibold">Preferences</h2>
       <ApiInfo
-        apis={['createClassyStore (plain object)', 'useStore (auto-tracked)']}
+        apis={[
+          'createClassyStore (plain object)',
+          'useClassyStore (auto-tracked)',
+        ]}
         description="Plain object store (not a class). Direct property mutation — no setter methods needed."
         code={`const settingsStore = create);
 // mutation: settingsStore.theme = 'dark';`}

@@ -3,7 +3,7 @@ import {subscribe} from '../../core/core';
 import {snapshot} from '../../snapshot/snapshot';
 import type {Snapshot} from '../../types';
 
-export function useStore<T extends object>(
+export function useClassyStore<T extends object>(
   proxyStore: T,
 ): ShallowRef<Snapshot<T>> {
   const state = shallowRef(snapshot(proxyStore)) as unknown as ShallowRef<

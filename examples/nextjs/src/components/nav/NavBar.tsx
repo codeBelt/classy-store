@@ -1,6 +1,6 @@
 'use client';
 
-import {useStore} from '@codebelt/classy-store/react';
+import {useClassyStore} from '@codebelt/classy-store/react';
 import Link from 'next/link';
 import {usePathname} from 'next/navigation';
 import {shoppingStore} from '@/stores/shopping-store';
@@ -17,7 +17,7 @@ const links = [
 
 export function NavBar() {
   const pathname = usePathname();
-  const shoppingSnap = useStore(shoppingStore);
+  const shoppingSnap = useClassyStore(shoppingStore);
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-white/10 bg-black/50 backdrop-blur-xl supports-[backdrop-filter]:bg-black/20">

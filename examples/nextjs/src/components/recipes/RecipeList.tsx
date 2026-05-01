@@ -1,12 +1,12 @@
 'use client';
 
-import {useStore} from '@codebelt/classy-store/react';
+import {useClassyStore} from '@codebelt/classy-store/react';
 import {ApiInfo} from '@/components/shared/ApiInfo';
 import {recipeStore} from '@/stores/recipe-store';
 import {RecipeCard} from './RecipeCard';
 
 export function RecipeList() {
-  const snap = useStore(recipeStore);
+  const snap = useClassyStore(recipeStore);
 
   return (
     <div className="space-y-6">
@@ -32,9 +32,9 @@ export function RecipeList() {
 
           <ApiInfo
             alignment="left"
-            apis={['useStore (auto-tracked)', 'computed getters']}
-            description="Auto-tracked useStore reads computed getters like filteredRecipes and recipeCount."
-            code={`const snap = useStore(recipeStore);
+            apis={['useClassyStore (auto-tracked)', 'computed getters']}
+            description="Auto-tracked useClassyStore reads computed getters like filteredRecipes and recipeCount."
+            code={`const snap = useClassyStore(recipeStore);
 snap.filteredRecipes // computed getter
 snap.recipeCount     // computed getter`}
           />

@@ -2,7 +2,7 @@ import {afterEach, describe, expect, it, mock} from 'bun:test';
 import {act, type ReactNode} from 'react';
 import {createRoot} from 'react-dom/client';
 import {createClassyStore} from '../../core/core';
-import {useLocalStore, useStore} from './react';
+import {useClassyStore, useLocalStore} from './react';
 
 // ── Test harness ────────────────────────────────────────────────────────────
 
@@ -30,7 +30,7 @@ function render(element: ReactNode): void {
 
 // ── Selector mode tests ─────────────────────────────────────────────────────
 
-describe('useStore — selector mode', () => {
+describe('useClassyStore — selector mode', () => {
   afterEach(teardown);
 
   it('renders the selected value', () => {
@@ -40,7 +40,7 @@ describe('useStore — selector mode', () => {
     const s = createClassyStore(new Counter());
 
     function Display() {
-      const count = useStore(s, (state) => state.count);
+      const count = useClassyStore(s, (state) => state.count);
       return <div data-testid="count">{count}</div>;
     }
 
@@ -60,7 +60,7 @@ describe('useStore — selector mode', () => {
     const renderCount = mock(() => {});
 
     function Display() {
-      const count = useStore(s, (state) => state.count);
+      const count = useClassyStore(s, (state) => state.count);
       renderCount();
       return <div>{count}</div>;
     }
@@ -84,7 +84,7 @@ describe('useStore — selector mode', () => {
     const renderCount = mock(() => {});
 
     function CountDisplay() {
-      const count = useStore(s, (state) => state.count);
+      const count = useClassyStore(s, (state) => state.count);
       renderCount();
       return <div>{count}</div>;
     }
@@ -115,7 +115,7 @@ describe('useStore — selector mode', () => {
     const renderCount = mock(() => {});
 
     function UserDisplay() {
-      const user = useStore(s, (state) => state.user);
+      const user = useClassyStore(s, (state) => state.user);
       renderCount();
       return <div>{user.name}</div>;
     }
@@ -140,7 +140,7 @@ describe('useStore — selector mode', () => {
     const renderCount = mock(() => {});
 
     function List() {
-      const items = useStore(s, (state) => state.items);
+      const items = useClassyStore(s, (state) => state.items);
       renderCount();
       return <div>{items.join(',')}</div>;
     }
@@ -172,7 +172,7 @@ describe('useStore — selector mode', () => {
     const s = createClassyStore(new Store());
 
     function Display() {
-      const doubled = useStore(s, (state) => state.doubled);
+      const doubled = useClassyStore(s, (state) => state.doubled);
       return <div>{doubled}</div>;
     }
 
@@ -194,7 +194,7 @@ describe('useStore — selector mode', () => {
 
     // Selector always returns a new array reference, but custom isEqual does shallow comparison.
     function List() {
-      const firstItem = useStore(
+      const firstItem = useClassyStore(
         s,
         (state) => ({name: state.items[0]?.name}),
         (a, b) => a.name === b.name,
@@ -220,14 +220,14 @@ describe('useStore — selector mode', () => {
 
 // ── Auto-tracked (selectorless) mode tests ──────────────────────────────────
 
-describe('useStore — auto-tracked mode', () => {
+describe('useClassyStore — auto-tracked mode', () => {
   afterEach(teardown);
 
   it('renders accessed properties', () => {
     const s = createClassyStore({count: 42, name: 'hello'});
 
     function Display() {
-      const snap = useStore(s);
+      const snap = useClassyStore(s);
       return <div>{snap.count}</div>;
     }
 
@@ -241,7 +241,7 @@ describe('useStore — auto-tracked mode', () => {
     const renderCount = mock(() => {});
 
     function Display() {
-      const snap = useStore(s);
+      const snap = useClassyStore(s);
       renderCount();
       return <div>{snap.count}</div>;
     }
@@ -265,7 +265,7 @@ describe('useStore — auto-tracked mode', () => {
     const renderCount = mock(() => {});
 
     function CountOnly() {
-      const snap = useStore(s);
+      const snap = useClassyStore(s);
       renderCount();
       return <div>{snap.count}</div>;
     }
@@ -291,7 +291,7 @@ describe('useStore — auto-tracked mode', () => {
     const renderCount = mock(() => {});
 
     function UserName() {
-      const snap = useStore(s);
+      const snap = useClassyStore(s);
       renderCount();
       return <div>{snap.user.name}</div>;
     }
@@ -322,7 +322,7 @@ describe('useStore — auto-tracked mode', () => {
     const renderCount = mock(() => {});
 
     function ItemCount() {
-      const snap = useStore(s);
+      const snap = useClassyStore(s);
       renderCount();
       return <div>{snap.items.length}</div>;
     }
@@ -354,7 +354,7 @@ describe('useStore — auto-tracked mode', () => {
     const s = createClassyStore(new Store());
 
     function Display() {
-      const snap = useStore(s);
+      const snap = useClassyStore(s);
       return <div>{snap.doubled}</div>;
     }
 
@@ -383,7 +383,7 @@ describe('useLocalStore', () => {
 
     function Display() {
       const store = useLocalStore(() => new Counter());
-      const count = useStore(store, (state) => state.count);
+      const count = useClassyStore(store, (state) => state.count);
       return <div>{count}</div>;
     }
 
@@ -405,7 +405,7 @@ describe('useLocalStore', () => {
     function Display() {
       const store = useLocalStore(() => new Counter());
       storeRef = store;
-      const count = useStore(store, (state) => state.count);
+      const count = useClassyStore(store, (state) => state.count);
       return <div>{count}</div>;
     }
 
@@ -431,7 +431,7 @@ describe('useLocalStore', () => {
 
     function Display({initial}: {initial: number}) {
       const store = useLocalStore(() => new Counter(initial));
-      const count = useStore(store, (state) => state.count);
+      const count = useClassyStore(store, (state) => state.count);
       return <div data-initial={initial}>{count}</div>;
     }
 
@@ -464,7 +464,7 @@ describe('useLocalStore', () => {
     function Display() {
       const store = useLocalStore(() => new Store());
       storeRef = store;
-      const doubled = useStore(store, (state) => state.doubled);
+      const doubled = useClassyStore(store, (state) => state.doubled);
       return <div>{doubled}</div>;
     }
 
@@ -492,7 +492,7 @@ describe('useLocalStore', () => {
     function Display() {
       const store = useLocalStore(() => new Store());
       storeRef = store;
-      const snap = useStore(store);
+      const snap = useClassyStore(store);
       renderCount();
       return <div>{snap.name}</div>;
     }
@@ -525,14 +525,14 @@ describe('useLocalStore', () => {
 
 // ── Error handling ───────────────────────────────────────────────────────────
 
-describe('useStore — error handling', () => {
+describe('useClassyStore — error handling', () => {
   afterEach(teardown);
 
   it('throws when given a non-store proxy', () => {
     const plainObj = {count: 0};
 
     function BadComponent() {
-      const count = useStore(
+      const count = useClassyStore(
         plainObj as never,
         (s: {count: number}) => s.count,
       );
@@ -546,7 +546,7 @@ describe('useStore — error handling', () => {
 
 // ── Multiple stores in one component ─────────────────────────────────────────
 
-describe('useStore — multiple stores', () => {
+describe('useClassyStore — multiple stores', () => {
   afterEach(teardown);
 
   it('renders from two independent stores', () => {
@@ -554,8 +554,8 @@ describe('useStore — multiple stores', () => {
     const storeB = createClassyStore({name: 'hello'});
 
     function Display() {
-      const count = useStore(storeA, (state) => state.count);
-      const name = useStore(storeB, (state) => state.name);
+      const count = useClassyStore(storeA, (state) => state.count);
+      const name = useClassyStore(storeB, (state) => state.name);
       return (
         <div>
           {count}-{name}
@@ -574,8 +574,8 @@ describe('useStore — multiple stores', () => {
     const renderCount = mock(() => {});
 
     function Display() {
-      const count = useStore(storeA, (state) => state.count);
-      const name = useStore(storeB, (state) => state.name);
+      const count = useClassyStore(storeA, (state) => state.count);
+      const name = useClassyStore(storeB, (state) => state.name);
       renderCount();
       return (
         <div>
@@ -608,14 +608,14 @@ describe('useStore — multiple stores', () => {
 
 // ── Selector edge cases ──────────────────────────────────────────────────────
 
-describe('useStore — selector edge cases', () => {
+describe('useClassyStore — selector edge cases', () => {
   afterEach(teardown);
 
   it('handles selector returning undefined', () => {
     const s = createClassyStore({data: null as string | null});
 
     function Display() {
-      const data = useStore(s, (state) => state.data);
+      const data = useClassyStore(s, (state) => state.data);
       return <div>{data ?? 'none'}</div>;
     }
 
@@ -635,7 +635,7 @@ describe('useStore — selector edge cases', () => {
     const renderCount = mock(() => {});
 
     function Display() {
-      const isPositive = useStore(s, (state) => state.isPositive);
+      const isPositive = useClassyStore(s, (state) => state.isPositive);
       renderCount();
       return <div>{isPositive ? 'yes' : 'no'}</div>;
     }
@@ -665,7 +665,7 @@ describe('useStore — selector edge cases', () => {
     const s = createClassyStore({firstName: 'John', lastName: 'Doe'});
 
     function Display() {
-      const fullName = useStore(
+      const fullName = useClassyStore(
         s,
         (state) => `${state.firstName} ${state.lastName}`,
       );

@@ -3,7 +3,7 @@ import {act, type ReactNode} from 'react';
 import {createRoot, type Root} from 'react-dom/client';
 import {createClassyStore} from '../../core/core';
 import {shallowEqual} from '../../utils/equality/equality';
-import {useStore} from './react';
+import {useClassyStore} from './react';
 
 // ── Test harness ────────────────────────────────────────────────────────────
 
@@ -86,8 +86,8 @@ describe('Batching — multi-prop methods cause single re-render', () => {
     const renderCount = mock(() => {});
 
     function Display() {
-      const count = useStore(s, (state) => state.count);
-      const name = useStore(s, (state) => state.name);
+      const count = useClassyStore(s, (state) => state.count);
+      const name = useClassyStore(s, (state) => state.name);
       renderCount();
       return (
         <div>
@@ -114,7 +114,7 @@ describe('Batching — multi-prop methods cause single re-render', () => {
     const renderCount = mock(() => {});
 
     function Display() {
-      const snap = useStore(s);
+      const snap = useClassyStore(s);
       renderCount();
       return (
         <div>
@@ -141,7 +141,7 @@ describe('Batching — multi-prop methods cause single re-render', () => {
     const renderCount = mock(() => {});
 
     function CountOnly() {
-      const count = useStore(s, (state) => state.count);
+      const count = useClassyStore(s, (state) => state.count);
       renderCount();
       return <div>{count}</div>;
     }
@@ -170,7 +170,7 @@ describe('Batching — rapid mutations in a loop', () => {
     const renderCount = mock(() => {});
 
     function Display() {
-      const count = useStore(s, (state) => state.count);
+      const count = useClassyStore(s, (state) => state.count);
       renderCount();
       return <div>{count}</div>;
     }
@@ -193,7 +193,7 @@ describe('Batching — rapid mutations in a loop', () => {
     const renderCount = mock(() => {});
 
     function Display() {
-      const snap = useStore(s);
+      const snap = useClassyStore(s);
       renderCount();
       return <div>{snap.count}</div>;
     }
@@ -216,7 +216,7 @@ describe('Batching — rapid mutations in a loop', () => {
     const renderCount = mock(() => {});
 
     function Display() {
-      const length = useStore(s, (state) => state.items.length);
+      const length = useClassyStore(s, (state) => state.items.length);
       renderCount();
       return <div>{length}</div>;
     }
@@ -246,7 +246,7 @@ describe('Set-then-revert — no re-render when value returns to original', () =
     const renderCount = mock(() => {});
 
     function Display() {
-      const count = useStore(s, (state) => state.count);
+      const count = useClassyStore(s, (state) => state.count);
       renderCount();
       return <div>{count}</div>;
     }
@@ -273,7 +273,7 @@ describe('Set-then-revert — no re-render when value returns to original', () =
     const renderCount = mock(() => {});
 
     function Display() {
-      const snap = useStore(s);
+      const snap = useClassyStore(s);
       renderCount();
       return <div>{snap.count}</div>;
     }
@@ -297,7 +297,7 @@ describe('Set-then-revert — no re-render when value returns to original', () =
     const renderCount = mock(() => {});
 
     function Display() {
-      const name = useStore(s, (state) => state.user.name);
+      const name = useClassyStore(s, (state) => state.user.name);
       renderCount();
       return <div>{name}</div>;
     }
@@ -322,7 +322,7 @@ describe('Set-then-revert — no re-render when value returns to original', () =
     const renderCount = mock(() => {});
 
     function Display() {
-      const user = useStore(s, (state) => state.user);
+      const user = useClassyStore(s, (state) => state.user);
       renderCount();
       return <div>{user.name}</div>;
     }
@@ -355,7 +355,7 @@ describe('Async methods — re-renders split across await boundaries', () => {
     const renderCount = mock(() => {});
 
     function Display() {
-      const count = useStore(s, (state) => state.count);
+      const count = useClassyStore(s, (state) => state.count);
       renderCount();
       return <div>{count}</div>;
     }
@@ -380,7 +380,7 @@ describe('Async methods — re-renders split across await boundaries', () => {
     const renderCount = mock(() => {});
 
     function Display() {
-      const count = useStore(s, (state) => state.count);
+      const count = useClassyStore(s, (state) => state.count);
       renderCount();
       return <div>{count}</div>;
     }
@@ -403,7 +403,7 @@ describe('Async methods — re-renders split across await boundaries', () => {
     const renderCount = mock(() => {});
 
     function Display() {
-      const count = useStore(s, (state) => state.count);
+      const count = useClassyStore(s, (state) => state.count);
       renderCount();
       return <div>{count}</div>;
     }
@@ -426,7 +426,7 @@ describe('Async methods — re-renders split across await boundaries', () => {
     const renderCount = mock(() => {});
 
     function Display() {
-      const count = useStore(s, (state) => state.count);
+      const count = useClassyStore(s, (state) => state.count);
       renderCount();
       return <div>{count}</div>;
     }
@@ -449,7 +449,7 @@ describe('Async methods — re-renders split across await boundaries', () => {
     const renderCount = mock(() => {});
 
     function Display() {
-      const snap = useStore(s);
+      const snap = useClassyStore(s);
       renderCount();
       return <div>{snap.count}</div>;
     }
@@ -479,13 +479,13 @@ describe('Multiple components sharing the same store', () => {
     const renderCountB = mock(() => {});
 
     function ComponentA() {
-      const count = useStore(s, (state) => state.count);
+      const count = useClassyStore(s, (state) => state.count);
       renderCountA();
       return <span>{count}</span>;
     }
 
     function ComponentB() {
-      const name = useStore(s, (state) => state.name);
+      const name = useClassyStore(s, (state) => state.name);
       renderCountB();
       return <span>{name}</span>;
     }
@@ -515,13 +515,13 @@ describe('Multiple components sharing the same store', () => {
     const renderCountB = mock(() => {});
 
     function ComponentA() {
-      const count = useStore(s, (state) => state.count);
+      const count = useClassyStore(s, (state) => state.count);
       renderCountA();
       return <span>{count}</span>;
     }
 
     function ComponentB() {
-      const count = useStore(s, (state) => state.count);
+      const count = useClassyStore(s, (state) => state.count);
       renderCountB();
       return <span>{count}</span>;
     }
@@ -554,13 +554,13 @@ describe('Multiple components sharing the same store', () => {
     const renderCountB = mock(() => {});
 
     function ComponentA() {
-      const snap = useStore(s);
+      const snap = useClassyStore(s);
       renderCountA();
       return <span>{snap.count}</span>;
     }
 
     function ComponentB() {
-      const snap = useStore(s);
+      const snap = useClassyStore(s);
       renderCountB();
       return <span>{snap.name}</span>;
     }
@@ -590,13 +590,13 @@ describe('Multiple components sharing the same store', () => {
     const renderCountB = mock(() => {});
 
     function ComponentA() {
-      const count = useStore(s, (state) => state.count);
+      const count = useClassyStore(s, (state) => state.count);
       renderCountA();
       return <span>{count}</span>;
     }
 
     function ComponentB() {
-      const name = useStore(s, (state) => state.name);
+      const name = useClassyStore(s, (state) => state.name);
       renderCountB();
       return <span>{name}</span>;
     }
@@ -630,7 +630,7 @@ describe('Unmount safety', () => {
     const s = createClassyStore(new TestStore());
 
     function Display() {
-      const count = useStore(s, (state) => state.count);
+      const count = useClassyStore(s, (state) => state.count);
       return <div>{count}</div>;
     }
 
@@ -652,7 +652,7 @@ describe('Unmount safety', () => {
     const s = createClassyStore(new TestStore());
 
     function Display() {
-      const count = useStore(s, (state) => state.count);
+      const count = useClassyStore(s, (state) => state.count);
       return <div>{count}</div>;
     }
 
@@ -677,9 +677,9 @@ describe('Unmount safety', () => {
   });
 });
 
-// ── Block 7: shallowEqual as useStore isEqual — integration ─────────────────
+// ── Block 7: shallowEqual as useClassyStore isEqual — integration ─────────────
 
-describe('shallowEqual as useStore isEqual — integration', () => {
+describe('shallowEqual as useClassyStore isEqual — integration', () => {
   afterEach(teardown);
 
   it('prevents re-render when shallow values are unchanged', async () => {
@@ -687,7 +687,7 @@ describe('shallowEqual as useStore isEqual — integration', () => {
     const renderCount = mock(() => {});
 
     function Display() {
-      const data = useStore(
+      const data = useClassyStore(
         s,
         (state) => ({count: state.count, name: state.name}),
         shallowEqual,
@@ -718,7 +718,7 @@ describe('shallowEqual as useStore isEqual — integration', () => {
     const renderCount = mock(() => {});
 
     function Display() {
-      const data = useStore(
+      const data = useClassyStore(
         s,
         (state) => ({count: state.count, name: state.name}),
         shallowEqual,

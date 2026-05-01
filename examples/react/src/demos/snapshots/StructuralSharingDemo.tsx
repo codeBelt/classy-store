@@ -1,5 +1,5 @@
 import {snapshot, subscribe} from '@codebelt/classy-store';
-import {useStore} from '@codebelt/classy-store/react';
+import {useClassyStore} from '@codebelt/classy-store/react';
 import {useEffect, useRef, useState} from 'react';
 import {Button} from '../../components/Button';
 import {DemoContainer} from '../../components/DemoContainer';
@@ -94,7 +94,7 @@ function TreeNode({
   depth?: number;
   children?: React.ReactNode;
 }) {
-  useStore(documentStore, () => snapshot(documentStore));
+  useClassyStore(documentStore, () => snapshot(documentStore));
   const {snap, prev} = useRefComparison();
 
   const currentVal = getValue(snap);

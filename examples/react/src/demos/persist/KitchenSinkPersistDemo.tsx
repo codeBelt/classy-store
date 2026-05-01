@@ -1,4 +1,4 @@
-import {useStore} from '@codebelt/classy-store/react';
+import {useClassyStore} from '@codebelt/classy-store/react';
 import {useEffect, useState} from 'react';
 import {Button} from '../../components/Button';
 import {DemoContainer} from '../../components/DemoContainer';
@@ -101,7 +101,7 @@ function AddNoteForm() {
 }
 
 function NotesList() {
-  const snap = useStore(kitchenSinkStore);
+  const snap = useClassyStore(kitchenSinkStore);
   const renders = useRenderCount();
   const notes = snap.filteredNotes;
 
@@ -168,7 +168,7 @@ function NotesList() {
 }
 
 function TagsSection() {
-  const snap = useStore(kitchenSinkStore);
+  const snap = useClassyStore(kitchenSinkStore);
   const renders = useRenderCount();
   const [newTag, setNewTag] = useState('');
   const tags = [...snap.tags];
@@ -229,8 +229,8 @@ function TagsSection() {
 }
 
 function ViewControls() {
-  const viewMode = useStore(kitchenSinkStore, (state) => state.viewMode);
-  const sortBy = useStore(kitchenSinkStore, (state) => state.sortBy);
+  const viewMode = useClassyStore(kitchenSinkStore, (state) => state.viewMode);
+  const sortBy = useClassyStore(kitchenSinkStore, (state) => state.sortBy);
   const renders = useRenderCount();
 
   return (
@@ -277,7 +277,10 @@ function ViewControls() {
 }
 
 function SearchInput() {
-  const searchQuery = useStore(kitchenSinkStore, (state) => state.searchQuery);
+  const searchQuery = useClassyStore(
+    kitchenSinkStore,
+    (state) => state.searchQuery,
+  );
   const renders = useRenderCount();
 
   return (
@@ -295,7 +298,7 @@ function SearchInput() {
 }
 
 function LastEdited() {
-  const lastEditedAt = useStore(
+  const lastEditedAt = useClassyStore(
     kitchenSinkStore,
     (state) => state.lastEditedAt,
   );
@@ -318,7 +321,7 @@ function LastEdited() {
 
 function StorageInspector() {
   const [raw, setRaw] = useState(() => localStorage.getItem('kitchen-sink'));
-  const snap = useStore(kitchenSinkStore);
+  const snap = useClassyStore(kitchenSinkStore);
 
   const current = localStorage.getItem('kitchen-sink');
   if (current !== raw) {

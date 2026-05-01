@@ -81,17 +81,17 @@ const todoStore = createClassyStore(new TodoStore());
 ### 3. Use in React components
 
 ```tsx
-import {useStore} from '@codebelt/classy-store/react';
+import {useClassyStore} from '@codebelt/classy-store/react';
 
 // Selector mode: explicit control over what triggers re-renders
 function TodoCount() {
-  const remaining = useStore(todoStore, (state) => state.remaining);
+  const remaining = useClassyStore(todoStore, (state) => state.remaining);
   return <span>{remaining} left</span>;
 }
 
 // Auto-tracked mode: reads are tracked automatically
 function TodoList() {
-  const snap = useStore(todoStore);
+  const snap = useClassyStore(todoStore);
   return (
     <ul>
       {snap.filtered.map((todo, index) => (
@@ -121,16 +121,16 @@ const myStore = createClassyStore(new MyClass());
 - **Getters** are automatically memoized — they only recompute when a dependency changes (like MobX `@computed`)
 - **Nested objects/arrays** are lazily deep-proxied on first access
 
-### `useStore(store, selector?, isEqual?)`
+### `useClassyStore(store, selector?, isEqual?)`
 
 React hook that subscribes to store changes via `useSyncExternalStore`.
 
 **Selector mode:**
 
 ```typescript
-const count = useStore(myStore, (state) => state.count);
-const user = useStore(myStore, (state) => state.user);
-const items = useStore(myStore, (state) => state.items);
+const count = useClassyStore(myStore, (state) => state.count);
+const user = useClassyStore(myStore, (state) => state.user);
+const items = useClassyStore(myStore, (state) => state.items);
 ```
 
 The selector receives an immutable snapshot. Re-renders only when the selected value changes (via `Object.is` by default, or a custom `isEqual`).
@@ -138,7 +138,7 @@ The selector receives an immutable snapshot. Re-renders only when the selected v
 **Auto-tracked mode:**
 
 ```typescript
-const snap = useStore(myStore);
+const snap = useClassyStore(myStore);
 // Access snap.count, snap.user.name, etc.
 // Only re-renders when accessed properties change
 ```
@@ -149,9 +149,9 @@ Returns a tracking proxy. Properties your component reads are automatically trac
 
 ```typescript
 import {shallowEqual} from '@codebelt/classy-store';
-import {useStore} from '@codebelt/classy-store/react';
+import {useClassyStore} from '@codebelt/classy-store/react';
 
-const userData = useStore(myStore, (state) => ({
+const userData = useClassyStore(myStore, (state) => ({
   name: state.user.name,
   role: state.user.role,
 }), shallowEqual);
@@ -162,7 +162,7 @@ const userData = useStore(myStore, (state) => ({
 Creates a component-scoped reactive store. Each component instance gets its own isolated store, garbage collected on unmount.
 
 ```tsx
-import {useLocalStore, useStore} from '@codebelt/classy-store/react';
+import {useLocalStore, useClassyStore} from '@codebelt/classy-store/react';
 
 class CounterStore {
   count = 0;
@@ -171,7 +171,7 @@ class CounterStore {
 
 function Counter() {
   const store = useLocalStore(() => new CounterStore());
-  const count = useStore(store, (state) => state.count);
+  const count = useClassyStore(store, (state) => state.count);
 
   return <button onClick={() => store.increment()}>Count: {count}</button>;
 }
@@ -183,7 +183,7 @@ The factory runs once per mount. Subsequent re-renders reuse the same store inst
 
 ### `snapshot(store)`
 
-Creates a deeply frozen, immutable snapshot of the current state. Used internally by `useStore` but also available directly.
+Creates a deeply frozen, immutable snapshot of the current state. Used internally by `useClassyStore` but also available directly.
 
 ```typescript
 import {snapshot} from '@codebelt/classy-store';
@@ -232,7 +232,7 @@ Creates a reactive Map-like collection backed by a plain array. Use inside a `cr
 ```typescript
 import {createClassyStore} from '@codebelt/classy-store';
 import {reactiveMap} from '@codebelt/classy-store/collections';
-import {useStore} from '@codebelt/classy-store/react';
+import {useClassyStore} from '@codebelt/classy-store/react';
 
 class UserStore {
   users = reactiveMap<string, { name: string; role: string }>();
@@ -249,7 +249,7 @@ class UserStore {
 const userStore = createClassyStore(new UserStore());
 
 function UserList() {
-  const snap = useStore(userStore, (state) => [...state.users.entries()]);
+  const snap = useClassyStore(userStore, (state) => [...state.users.entries()]);
   return (
     <ul>
       {snap.map(([id, user]) => (
@@ -269,7 +269,7 @@ Creates a reactive Set-like collection backed by a plain array. Use inside a `cr
 ```typescript
 import {createClassyStore} from '@codebelt/classy-store';
 import {reactiveSet} from '@codebelt/classy-store/collections';
-import {useStore} from '@codebelt/classy-store/react';
+import {useClassyStore} from '@codebelt/classy-store/react';
 
 class TagStore {
   tags = reactiveSet<string>();
@@ -282,7 +282,7 @@ class TagStore {
 const tagStore = createClassyStore(new TagStore());
 
 function TagList() {
-  const tags = useStore(tagStore, (state) => [...state.tags]);
+  const tags = useClassyStore(tagStore, (state) => [...state.tags]);
   return tags.map(tag => <span key={tag}>{tag}</span>);
 }
 ```
@@ -379,8 +379,8 @@ const authStore = createClassyStore(new AuthStore());
 const uiStore = createClassyStore(new UiStore());
 
 function Header() {
-  const user = useStore(authStore, (state) => state.currentUser);
-  const theme = useStore(uiStore, (state) => state.theme);
+  const user = useClassyStore(authStore, (state) => state.currentUser);
+  const theme = useClassyStore(uiStore, (state) => state.theme);
   return <header className={theme}>{user?.name}</header>;
 }
 ```
@@ -438,7 +438,7 @@ const settingsStore = createClassyStore(new SettingsStore());
 
 // Only re-renders when push notification setting changes
 function PushToggle() {
-  const push = useStore(settingsStore, (state) => state.settings.notifications.push);
+  const push = useClassyStore(settingsStore, (state) => state.settings.notifications.push);
   return <Switch checked={push} onChange={() => settingsStore.togglePush()} />;
 }
 ```
@@ -494,7 +494,7 @@ class Store {
 ```typescript
 // Stable reference across re-renders when items/filter haven't changed.
 // No shallowEqual required!
-const filtered = useStore(myStore, (state) => state.filtered);
+const filtered = useClassyStore(myStore, (state) => state.filtered);
 ```
 
 ### Working with Date and RegExp
@@ -522,9 +522,9 @@ For `Map` and `Set` semantics, use [`reactiveMap()`](#reactivemapk-vinitial) and
 
 | Mode | Best for | How it works |
 |------|----------|--------------|
-| `useStore(store, selector)` | Derived values, primitives, specific slices | Selector runs on snapshot, compared with `Object.is` |
-| `useStore(store)` | Components reading many props, rapid prototyping | `proxy-compare` tracks reads automatically |
-| `useStore(store, selector, shallowEqual)` | Selectors returning new objects/arrays | Shallow comparison prevents unnecessary re-renders |
+| `useClassyStore(store, selector)` | Derived values, primitives, specific slices | Selector runs on snapshot, compared with `Object.is` |
+| `useClassyStore(store)` | Components reading many props, rapid prototyping | `proxy-compare` tracks reads automatically |
+| `useClassyStore(store, selector, shallowEqual)` | Selectors returning new objects/arrays | Shallow comparison prevents unnecessary re-renders |
 
 ## Comparison with other libraries
 
@@ -548,7 +548,7 @@ I wanted state management that feels like writing plain TypeScript.
 
 - **A class is the store.** Define fields, methods, and getters — that's your state, your actions, and your derived values. The class *is* the type. TypeScript infers everything automatically.
 - **Getters are computed values.** Write `get filtered()` and it's memoized with dependency tracking out of the box. It caches until a dependency changes.
-- **Framework bindings that feel native.** React's `useStore`, Vue's `useStore` (ShallowRef), Svelte's `toSvelteStore`, Solid's `useStore` (signal getter), Angular's `injectStore` — each integration matches the framework's reactive idioms.
+- **Framework bindings that feel native.** React's `useClassyStore`, Vue's `useClassyStore` (ShallowRef), Svelte's `toSvelteStore`, Solid's `useClassyStore` (signal getter), Angular's `injectStore` — each integration matches the framework's reactive idioms.
 - **Call methods directly.** `todoStore.addTodo('Buy milk')` — a real object with real methods, callable from anywhere.
 - **Observe only what matters.** Components re-render when the specific properties they read change.
 
@@ -562,7 +562,7 @@ This library wouldn't exist without the ideas pioneered by these projects. Each 
 
 **[Valtio](https://github.com/pmndrs/valtio)** — Daishi Kato's proxy-based masterpiece gave us the core architectural pattern: a mutable write proxy for ergonomic mutations paired with immutable snapshots for React integration. Valtio's structural sharing approach — where unchanged sub-trees keep the same frozen reference across snapshots — is what makes `Object.is` selectors efficient without custom equality. We also adopted its `proxy-compare` library for automatic property tracking in selectorless mode.
 
-**[Zustand](https://github.com/pmndrs/zustand)** — Also by Daishi Kato, Zustand set the standard for minimal, hook-first state management. Its selector pattern (`useStore(store, s => s.count)`) with `Object.is` equality is what we use in selector mode. Zustand proved that you don't need Providers, context wrappers, or HOCs — just a hook and a store. Its focus on tiny bundle size pushed us to keep things lean.
+**[Zustand](https://github.com/pmndrs/zustand)** — Also by Daishi Kato, Zustand set the standard for minimal, hook-first state management. Its selector pattern (`useClassyStore(store, s => s.count)`) with `Object.is` equality is what we use in selector mode. Zustand proved that you don't need Providers, context wrappers, or HOCs — just a hook and a store. Its focus on tiny bundle size pushed us to keep things lean.
 
 **[proxy-compare](https://github.com/dai-shi/proxy-compare)** — The ~1KB utility (also by Dai-shi) that powers our auto-tracked mode. It wraps frozen snapshot objects in a tracking proxy, recording which properties a component reads, then efficiently diffs only those properties between snapshots. This eliminates the need for manual selectors in most cases.
 

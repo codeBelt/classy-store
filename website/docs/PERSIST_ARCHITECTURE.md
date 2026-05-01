@@ -4,7 +4,7 @@ Internal design documentation for the `persist()` utility in `@codebelt/classy-s
 
 ## Design Principles
 
-1. **Standalone utility, not middleware.** `persist` is a plain function that consumes two existing public APIs (`subscribe` and `snapshot`) and nothing else. No changes to `core.ts`, `snapshot.ts`, or `useStore.ts` were needed.
+1. **Standalone utility, not middleware.** `persist` is a plain function that consumes two existing public APIs (`subscribe` and `snapshot`) and nothing else. No changes to `core.ts`, `snapshot.ts`, or `useClassyStore` were needed.
 
 2. **Tree-shakeable.** `persist` lives in a separate entry point (`@codebelt/classy-store/utils`). Applications that don't use persistence pay zero cost -- the code is never bundled.
 
@@ -243,7 +243,7 @@ graph LR
   utilsIndex["utils/index.ts"] --> persist
 ```
 
-`persist` has **no dependency** on `useStore.ts`, `types.ts`, or `collections.ts`. It only uses:
+`persist` has **no dependency** on `useClassyStore`, `types.ts`, or `collections.ts`. It only uses:
 - `subscribe()` -- to listen for store mutations
 - `snapshot()` -- to create an immutable copy for serialization
 - `findGetterDescriptor()` -- to detect class getters during property resolution

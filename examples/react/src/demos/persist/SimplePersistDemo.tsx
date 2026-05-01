@@ -1,4 +1,4 @@
-import {useStore} from '@codebelt/classy-store/react';
+import {useClassyStore} from '@codebelt/classy-store/react';
 import {useState} from 'react';
 import {Button} from '../../components/Button';
 import {DemoContainer} from '../../components/DemoContainer';
@@ -35,7 +35,7 @@ const store = createClassyStore(new PreferencesStore());
 persist(store, { name: 'preferences' });`;
 
 function ThemeToggle() {
-  const theme = useStore(preferencesStore, (state) => state.theme);
+  const theme = useClassyStore(preferencesStore, (state) => state.theme);
   const renders = useRenderCount();
 
   return (
@@ -66,7 +66,7 @@ function ThemeToggle() {
 }
 
 function FontSizeSlider() {
-  const fontSize = useStore(preferencesStore, (state) => state.fontSize);
+  const fontSize = useClassyStore(preferencesStore, (state) => state.fontSize);
   const renders = useRenderCount();
 
   return (
@@ -93,7 +93,10 @@ function FontSizeSlider() {
 }
 
 function AccentColorPicker() {
-  const accentColor = useStore(preferencesStore, (state) => state.accentColor);
+  const accentColor = useClassyStore(
+    preferencesStore,
+    (state) => state.accentColor,
+  );
   const renders = useRenderCount();
 
   return (
@@ -122,7 +125,7 @@ function AccentColorPicker() {
 }
 
 function LivePreview() {
-  const snap = useStore(preferencesStore);
+  const snap = useClassyStore(preferencesStore);
   const renders = useRenderCount();
 
   return (
@@ -155,7 +158,7 @@ function LivePreview() {
 
 function StorageViewer() {
   const [raw, setRaw] = useState(() => localStorage.getItem('preferences'));
-  const snap = useStore(preferencesStore);
+  const snap = useClassyStore(preferencesStore);
 
   const current = localStorage.getItem('preferences');
   if (current !== raw) {

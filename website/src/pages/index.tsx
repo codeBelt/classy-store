@@ -7,7 +7,7 @@ import clsx from 'clsx';
 import styles from './index.module.css';
 
 const ExampleCode = `import {createClassyStore} from '@codebelt/classy-store';
-import {useStore} from '@codebelt/classy-store/react';
+import {useClassyStore} from '@codebelt/classy-store/react';
 
 // 1. Define your state and logic in a class
 class CounterStore {
@@ -22,7 +22,7 @@ const counterStore = createClassyStore(new CounterStore());
 
 // 3. Use it in React with automatic updates
 function Counter() {
-  const count = useStore(counterStore, (state) => state.count);
+  const count = useClassyStore(counterStore, (state) => state.count);
   return (
     <button onClick={() => counterStore.increment()}>
       Count is {count}

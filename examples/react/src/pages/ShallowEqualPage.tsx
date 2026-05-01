@@ -39,7 +39,9 @@ export function ShallowEqualPage() {
           Use{' '}
           <code className="text-xs bg-zinc-800 px-1 rounded">shallowEqual</code>{' '}
           as the third argument to{' '}
-          <code className="text-xs bg-zinc-800 px-1 rounded">useStore</code>{' '}
+          <code className="text-xs bg-zinc-800 px-1 rounded">
+            useClassyStore
+          </code>{' '}
           when your selector creates a new object or array by combining multiple
           properties. Without it, every store change triggers a re-render
           because{' '}

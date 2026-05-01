@@ -1,13 +1,13 @@
 'use client';
 
 import {shallowEqual} from '@codebelt/classy-store';
-import {useStore} from '@codebelt/classy-store/react';
+import {useClassyStore} from '@codebelt/classy-store/react';
 import {ApiInfo} from '@/components/shared/ApiInfo';
 import type {Recipe} from '@/stores/recipe-store';
 import {recipeStore} from '@/stores/recipe-store';
 
 export function RecipeCard({recipeId}: {recipeId: string}) {
-  const recipe = useStore(
+  const recipe = useClassyStore(
     recipeStore,
     (state) => {
       // Access _entries directly — snapshot freezes ReactiveMap into a plain
@@ -38,7 +38,7 @@ export function RecipeCard({recipeId}: {recipeId: string}) {
         <ApiInfo
           minimal={true}
           alignment="left"
-          apis={['useStore', 'selector', 'shallowEqual']}
+          apis={['useClassyStore', 'selector', 'shallowEqual']}
           description="Selector extracts a single recipe by ID; shallowEqual prevents re-renders when unrelated recipes change."
         />
       </div>

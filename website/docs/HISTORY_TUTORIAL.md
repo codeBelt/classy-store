@@ -72,7 +72,7 @@ Use these to enable/disable undo/redo buttons:
 
 ```tsx
 function UndoRedoButtons() {
-  const snap = useStore(drawingStore);
+  const snap = useClassyStore(drawingStore);
 
   return (
     <div>
