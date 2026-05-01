@@ -1,5 +1,11 @@
 # @codebelt/classy-store
 
+## 0.4.0
+
+### Minor Changes
+
+- [#20](https://github.com/codeBelt/classy-store/pull/20) [`1199324`](https://github.com/codeBelt/classy-store/commit/1199324a3858a69f465cfc12fb92df97ea0ba100) Thanks [@codeBelt](https://github.com/codeBelt)! - refactor: rename `useStore` to `useClassyStore`
+
 ## 0.3.1
 
 ### Patch Changes
