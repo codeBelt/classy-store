@@ -1,6 +1,6 @@
 'use client';
 
-import {useLocalStore, useStore} from '@codebelt/classy-store/react';
+import {useClassyStore, useLocalStore} from '@codebelt/classy-store/react';
 import type {HistoryHandle} from '@codebelt/classy-store/utils';
 import {withHistory} from '@codebelt/classy-store/utils';
 import {useRef} from 'react';
@@ -17,7 +17,7 @@ export function RecipeEditor() {
   if (!historyRef.current) {
     historyRef.current = withHistory(store, {limit: 30});
   }
-  const snap = useStore(store);
+  const snap = useClassyStore(store);
 
   return (
     <div className="space-y-4">

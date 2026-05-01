@@ -1,6 +1,6 @@
 'use client';
 
-import {useStore} from '@codebelt/classy-store/react';
+import {useClassyStore} from '@codebelt/classy-store/react';
 import type {DayName, DayPlan} from '@/stores/planner-store';
 import {plannerStore} from '@/stores/planner-store';
 import type {Recipe} from '@/stores/recipe-store';
@@ -15,7 +15,7 @@ export function MealSlotPicker({
   slot: keyof DayPlan;
   currentId: string | null;
 }) {
-  const recipeSnap = useStore(recipeStore);
+  const recipeSnap = useClassyStore(recipeStore);
   const recipes = (
     recipeSnap.recipes._entries as ReadonlyArray<readonly [string, Recipe]>
   ).map(([, r]) => r);

@@ -1,5 +1,5 @@
 import {createClassyStore} from '@codebelt/classy-store';
-import {useStore} from '@codebelt/classy-store/react';
+import {useClassyStore} from '@codebelt/classy-store/react';
 import {devtools} from '@codebelt/classy-store/utils';
 import {useEffect, useState} from 'react';
 import {Button} from '../../components/Button';
@@ -58,7 +58,7 @@ useEffect(() => {
 // state changes, time-travel, and dispatch.`;
 
 function DevtoolsCounter() {
-  const snap = useStore(devtoolsCounterStore);
+  const snap = useClassyStore(devtoolsCounterStore);
   const renders = useRenderCount();
   const [connected, setConnected] = useState(false);
 

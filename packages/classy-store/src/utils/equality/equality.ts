@@ -1,6 +1,6 @@
 /**
  * Shallow-equal comparison for objects and arrays.
- * Useful as a custom `isEqual` for `useStore` selectors that return objects/arrays.
+ * Useful as a custom `isEqual` for `useClassyStore` selectors that return objects/arrays.
  *
  * - Primitives compared with `Object.is`.
  * - Arrays: length + element-wise `Object.is`.

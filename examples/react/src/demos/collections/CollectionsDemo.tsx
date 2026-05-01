@@ -1,4 +1,4 @@
-import {useStore} from '@codebelt/classy-store/react';
+import {useClassyStore} from '@codebelt/classy-store/react';
 import {Button} from '../../components/Button';
 import {DemoContainer} from '../../components/DemoContainer';
 import {RenderBadge} from '../../components/RenderBadge';
@@ -26,17 +26,17 @@ const STORE_CODE = `class CollectionStore {
 }`;
 
 const COMPONENT_CODE = `// Auto-tracked mode — no selector needed
-const snap = useStore(collectionStore);
+const snap = useClassyStore(collectionStore);
 
 // Iterate reactive collections
 const users = [...snap.users.entries()];
 const tags = [...snap.tags];
 
 // Computed getters
-const userCount = useStore(collectionStore, (state) => state.userCount);`;
+const userCount = useClassyStore(collectionStore, (state) => state.userCount);`;
 
 function UserList() {
-  const snap = useStore(collectionStore);
+  const snap = useClassyStore(collectionStore);
   const renders = useRenderCount();
   const users = [...snap.users.entries()];
 
@@ -98,7 +98,7 @@ function UserList() {
 }
 
 function TagList() {
-  const snap = useStore(collectionStore);
+  const snap = useClassyStore(collectionStore);
   const renders = useRenderCount();
   const tags = [...snap.tags];
 
@@ -136,8 +136,8 @@ function TagList() {
 }
 
 function CountDisplay() {
-  const userCount = useStore(collectionStore, (state) => state.userCount);
-  const tagCount = useStore(collectionStore, (state) => state.tagCount);
+  const userCount = useClassyStore(collectionStore, (state) => state.userCount);
+  const tagCount = useClassyStore(collectionStore, (state) => state.tagCount);
   const renders = useRenderCount();
 
   return (

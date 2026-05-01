@@ -65,7 +65,7 @@ const sections: FeatureSection[] = [
     title: 'React Bindings',
     rows: [
       {
-        api: 'useStore() auto-tracked',
+        api: 'useClassyStore() auto-tracked',
         description:
           'Proxy-based tracking \u2014 only re-renders when accessed properties change',
         links: [
@@ -76,7 +76,7 @@ const sections: FeatureSection[] = [
         ],
       },
       {
-        api: 'useStore() with selector',
+        api: 'useClassyStore() with selector',
         description:
           'Selector extracts derived values; combined with shallowEqual for efficiency',
         links: [

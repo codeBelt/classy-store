@@ -1,11 +1,11 @@
 'use client';
 
-import {useStore} from '@codebelt/classy-store/react';
+import {useClassyStore} from '@codebelt/classy-store/react';
 import {ApiInfo} from '@/components/shared/ApiInfo';
 import {recipeStore} from '@/stores/recipe-store';
 
 export function RecipeFilter() {
-  const snap = useStore(recipeStore);
+  const snap = useClassyStore(recipeStore);
 
   return (
     <div className="glass-card p-6 space-y-4 animate-slide-up-delay-1">
@@ -13,9 +13,9 @@ export function RecipeFilter() {
         <h2 className="font-semibold text-lg tracking-tight">Filter Recipes</h2>
         <ApiInfo
           alignment="left"
-          apis={['useStore (auto-tracked)', 'deep nested mutation']}
+          apis={['useClassyStore (auto-tracked)', 'deep nested mutation']}
           description="Auto-tracked mode — only re-renders when accessed properties change. Mutates nested store.filter.searchTerm directly."
-          code={`const snap = useStore(recipeStore);
+          code={`const snap = useClassyStore(recipeStore);
 // deep nested mutation:
 recipeStore.filter.maxPrepTime = Number(value) || 0;`}
         />

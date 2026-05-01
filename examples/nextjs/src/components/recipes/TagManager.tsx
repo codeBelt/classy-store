@@ -1,12 +1,12 @@
 'use client';
 
-import {useStore} from '@codebelt/classy-store/react';
+import {useClassyStore} from '@codebelt/classy-store/react';
 import {useState} from 'react';
 import {ApiInfo} from '@/components/shared/ApiInfo';
 import {recipeStore} from '@/stores/recipe-store';
 
 export function TagManager() {
-  const snap = useStore(recipeStore);
+  const snap = useClassyStore(recipeStore);
   const [newTag, setNewTag] = useState('');
 
   const handleAdd = () => {
@@ -28,7 +28,7 @@ export function TagManager() {
         </h2>
         <ApiInfo
           alignment="left"
-          apis={['useStore (auto-tracked)', 'reactiveSet']}
+          apis={['useClassyStore (auto-tracked)', 'reactiveSet']}
           description="Demonstrates ReactiveSet's add/delete/iteration through tag management."
           code={`recipeStore.addTag(tag);    // ReactiveSet.add()
 recipeStore.removeTag(tag); // ReactiveSet.delete()`}

@@ -1,5 +1,5 @@
 import {createClassyStore} from '@codebelt/classy-store';
-import {useStore} from '@codebelt/classy-store/react';
+import {useClassyStore} from '@codebelt/classy-store/react';
 import {useState} from 'react';
 import {CodeBlock} from '../components/CodeBlock';
 
@@ -28,7 +28,7 @@ const todoStore = createClassyStore(new TodoStore());
 // ── Quick Start Code ────────────────────────────────────────────────────────
 
 const QUICK_START = `import { createClassyStore } from '@codebelt/classy-store';
-import { useStore } from '@codebelt/classy-store/react';
+import { useClassyStore } from '@codebelt/classy-store/react';
 
 class TodoStore {
   items: { text: string; done: boolean }[] = [];
@@ -50,7 +50,7 @@ class TodoStore {
 const todoStore = createClassyStore(new TodoStore());
 
 function TodoApp() {
-  const snap = useStore(todoStore);
+  const snap = useClassyStore(todoStore);
   return (
     <div>
       <h2>{snap.remaining} remaining</h2>
@@ -71,7 +71,7 @@ function TodoApp() {
 // ── Live Demo Component ─────────────────────────────────────────────────────
 
 function LiveTodoApp() {
-  const snap = useStore(todoStore);
+  const snap = useClassyStore(todoStore);
   const [input, setInput] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {

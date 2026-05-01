@@ -17,10 +17,10 @@ packages/classy-store/src/
 ├── collections/collections.ts     # ReactiveMap and ReactiveSet (array-backed Map/Set emulation)
 ├── collections/index.ts           # Collections barrel: reactiveMap, reactiveSet, ReactiveMap, ReactiveSet
 ├── frameworks/
-│   ├── react/react.ts             # Layer 3 (React): useStore(), useLocalStore() via useSyncExternalStore
-│   ├── vue/vue.ts                 # Vue: useStore() → ShallowRef<Snapshot<T>> (onUnmounted cleanup)
+│   ├── react/react.ts             # Layer 3 (React): useClassyStore(), useLocalStore() via useSyncExternalStore
+│   ├── vue/vue.ts                 # Vue: useClassyStore() → ShallowRef<Snapshot<T>> (onUnmounted cleanup)
 │   ├── svelte/svelte.ts           # Svelte: toSvelteStore() → ClassyReadable<Snapshot<T>>
-│   ├── solid/solid.ts             # Solid: useStore() → () => Snapshot<T> signal (onCleanup)
+│   ├── solid/solid.ts             # Solid: useClassyStore() → () => Snapshot<T> signal (onCleanup)
 │   └── angular/angular.ts         # Angular: injectStore() → Signal<Snapshot<T>> (DestroyRef)
 └── utils/
     ├── index.ts                   # Utils barrel: persist, devtools, subscribeKey, withHistory
@@ -101,7 +101,7 @@ Enforced by Biome 2.4.0 (`biome.json` at repo root):
 - **Computed memoization:** two layers — the write proxy caches getter results keyed on dependency versions/values; the snapshot layer adds cross-snapshot caching using structural sharing reference equality.
 - **Structural sharing:** unchanged sub-trees reuse the previous frozen snapshot reference. This makes `Object.is` comparisons in selectors efficient without `shallowEqual`.
 - **Version numbers:** monotonically increasing integers stored per proxy node. Child mutations propagate version bumps up to the root. The snapshot cache is keyed on version — a cache hit is O(1).
-- **React auto-tracking:** `useStore(store)` (no selector) wraps the snapshot in a `proxy-compare` tracking proxy. Only properties the component actually reads trigger re-renders. `proxy-compare` is the library's only production dependency.
+- **React auto-tracking:** `useClassyStore(store)` (no selector) wraps the snapshot in a `proxy-compare` tracking proxy. Only properties the component actually reads trigger re-renders. `proxy-compare` is the library's only production dependency.
 
 ## Package Export Entry Points
 
@@ -109,10 +109,10 @@ Enforced by Biome 2.4.0 (`biome.json` at repo root):
 |---|---|
 | `@codebelt/classy-store` | `createClassyStore`, `snapshot`, `subscribe`, `getVersion`, `shallowEqual`, `Snapshot` type |
 | `@codebelt/classy-store/collections` | `reactiveMap`, `reactiveSet`, `ReactiveMap` type, `ReactiveSet` type |
-| `@codebelt/classy-store/react` | `useStore`, `useLocalStore` |
-| `@codebelt/classy-store/vue` | `useStore` (ShallowRef) |
+| `@codebelt/classy-store/react` | `useClassyStore`, `useLocalStore` |
+| `@codebelt/classy-store/vue` | `useClassyStore` (ShallowRef) |
 | `@codebelt/classy-store/svelte` | `toSvelteStore` (ClassyReadable) |
-| `@codebelt/classy-store/solid` | `useStore` (signal getter) |
+| `@codebelt/classy-store/solid` | `useClassyStore` (signal getter) |
 | `@codebelt/classy-store/angular` | `injectStore` (Signal) |
 | `@codebelt/classy-store/utils` | `persist`, `devtools`, `subscribeKey`, `withHistory` |
 

@@ -1,6 +1,6 @@
 'use client';
 
-import {useStore} from '@codebelt/classy-store/react';
+import {useClassyStore} from '@codebelt/classy-store/react';
 import {useEffect, useState} from 'react';
 import {settingsStore} from '@/stores/settings-store';
 
@@ -17,7 +17,7 @@ const next: Record<string, 'light' | 'dark' | 'system'> = {
 };
 
 export function ThemeToggle() {
-  const snap = useStore(settingsStore, (state) => state.theme);
+  const snap = useClassyStore(settingsStore, (state) => state.theme);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {

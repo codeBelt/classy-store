@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import {useStore} from '@codebelt/classy-store/vue';
+import {useClassyStore} from '@codebelt/classy-store/vue';
 import {counterStore, history} from './store';
 
-const snap = useStore(counterStore);
+const snap = useClassyStore(counterStore);
 </script>
 
 <template>

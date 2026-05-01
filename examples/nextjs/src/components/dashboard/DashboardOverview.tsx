@@ -1,7 +1,7 @@
 'use client';
 
 import {shallowEqual} from '@codebelt/classy-store';
-import {useStore} from '@codebelt/classy-store/react';
+import {useClassyStore} from '@codebelt/classy-store/react';
 import {ApiInfo} from '@/components/shared/ApiInfo';
 import {plannerStore} from '@/stores/planner-store';
 import {recipeStore} from '@/stores/recipe-store';
@@ -62,7 +62,7 @@ const Icons = {
 };
 
 export function DashboardOverview() {
-  const recipeStats = useStore(
+  const recipeStats = useClassyStore(
     recipeStore,
     (state) => ({
       count: state.recipeCount,
@@ -71,7 +71,7 @@ export function DashboardOverview() {
     shallowEqual,
   );
 
-  const shoppingStats = useStore(
+  const shoppingStats = useClassyStore(
     shoppingStore,
     (state) => ({
       total: state.totalItems,
@@ -80,7 +80,7 @@ export function DashboardOverview() {
     shallowEqual,
   );
 
-  const plannerStats = useStore(
+  const plannerStats = useClassyStore(
     plannerStore,
     (state) => ({
       meals: state.totalMealsPlanned,
@@ -122,9 +122,9 @@ export function DashboardOverview() {
         <h2 className="text-xl font-semibold tracking-tight">Overview</h2>
         <ApiInfo
           minimal={true}
-          apis={['useStore', 'selector', 'shallowEqual']}
+          apis={['useClassyStore', 'selector', 'shallowEqual']}
           description="Reads from 3 stores using selectors with shallowEqual."
-          code={`const stats = useStore(recipeStore, (state) => ({
+          code={`const stats = useClassyStore(recipeStore, (state) => ({
   count: state.recipeCount,
   avgTime: state.averageTotalTime,
 }), shallowEqual);`}

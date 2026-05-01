@@ -20,7 +20,7 @@ import type {Snapshot} from '../../types';
  * @param selector  - Picks data from the immutable snapshot.
  * @param isEqual   - Optional custom equality function (default: `Object.is`).
  */
-export function useStore<T extends object, S>(
+export function useClassyStore<T extends object, S>(
   proxyStore: T,
   selector: (snap: Snapshot<T>) => S,
   isEqual?: (a: S, b: S) => boolean,
@@ -34,11 +34,11 @@ export function useStore<T extends object, S>(
  *
  * @param proxyStore - A reactive proxy created by `createClassyStore()`.
  */
-export function useStore<T extends object>(proxyStore: T): Snapshot<T>;
+export function useClassyStore<T extends object>(proxyStore: T): Snapshot<T>;
 
 // ── Implementation ────────────────────────────────────────────────────────────
 
-export function useStore<T extends object, S>(
+export function useClassyStore<T extends object, S>(
   proxyStore: T,
   selector?: (snap: Snapshot<T>) => S,
   isEqual?: (a: S, b: S) => boolean,
@@ -176,7 +176,7 @@ function getAutoTrackSnapshot<T extends object>(
  * The factory function runs **once** per mount (via `useState` initializer).
  * Each component instance gets its own isolated store.
  *
- * Use the returned proxy with `useStore()` to read state in the same component
+ * Use the returned proxy with `useClassyStore()` to read state in the same component
  * or pass it down via props/context to share within a subtree.
  *
  * @param factory - A function that returns a class instance (or plain object).
@@ -187,7 +187,7 @@ function getAutoTrackSnapshot<T extends object>(
  * ```tsx
  * function Counter() {
  *   const store = useLocalStore(() => new CounterStore());
- *   const count = useStore(store, (state) => state.count);
+ *   const count = useClassyStore(store, (state) => state.count);
  *   return <button onClick={() => store.increment()}>{count}</button>;
  * }
  * ```

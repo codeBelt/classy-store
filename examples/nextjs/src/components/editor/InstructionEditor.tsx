@@ -1,11 +1,11 @@
 'use client';
 
-import {useStore} from '@codebelt/classy-store/react';
+import {useClassyStore} from '@codebelt/classy-store/react';
 import {ApiInfo} from '@/components/shared/ApiInfo';
 import type {RecipeEditorStore} from '@/stores/recipe-editor-store';
 
 export function InstructionEditor({store}: {store: RecipeEditorStore}) {
-  const snap = useStore(store);
+  const snap = useClassyStore(store);
 
   return (
     <div className="bg-card border border-border rounded-lg p-4 space-y-3">

@@ -1,4 +1,4 @@
-import {useLocalStore, useStore} from '@codebelt/classy-store/react';
+import {useClassyStore, useLocalStore} from '@codebelt/classy-store/react';
 import {Button} from '../../components/Button';
 import {DemoContainer} from '../../components/DemoContainer';
 import {RenderBadge} from '../../components/RenderBadge';
@@ -23,7 +23,7 @@ const COMPONENT_CODE = `function CounterInstance({ label }: { label: string }) {
   const store = useLocalStore(
     () => new LocalCounterStore(label)
   );
-  const snap = useStore(store);
+  const snap = useClassyStore(store);
 
   return (
     <div>
@@ -41,7 +41,7 @@ const COMPONENT_CODE = `function CounterInstance({ label }: { label: string }) {
 
 function CounterInstance({label, color}: {label: string; color: string}) {
   const store = useLocalStore(() => new LocalCounterStore(label));
-  const snap = useStore(store);
+  const snap = useClassyStore(store);
   const renders = useRenderCount();
 
   return (

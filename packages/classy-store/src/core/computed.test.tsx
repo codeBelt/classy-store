@@ -1,7 +1,7 @@
 import {afterEach, describe, expect, it, mock} from 'bun:test';
 import {act, type ReactNode} from 'react';
 import {createRoot} from 'react-dom/client';
-import {useStore} from '../frameworks/react/react';
+import {useClassyStore} from '../frameworks/react/react';
 import {snapshot} from '../snapshot/snapshot';
 import type {Snapshot} from '../types';
 import {createClassyStore} from './core';
@@ -683,9 +683,9 @@ describe('computed getters — snapshot memoization', () => {
   });
 });
 
-// ── Integration tests with useStore ─────────────────────────────────────────
+// ── Integration tests with useClassyStore ──────────────────────────────────────
 
-describe('computed getters — useStore integration', () => {
+describe('computed getters — useClassyStore integration', () => {
   let container: HTMLDivElement;
 
   function setup(): void {
@@ -706,7 +706,7 @@ describe('computed getters — useStore integration', () => {
 
   afterEach(teardown);
 
-  // 13. useStore selector with getter returns stable reference
+  // 13. useClassyStore selector with getter returns stable reference
   it('selector with getter returns stable reference — no re-render on unrelated change', async () => {
     class TodoStore {
       todos = [{text: 'Buy milk', done: false}];
@@ -725,7 +725,7 @@ describe('computed getters — useStore integration', () => {
     const renderCount = mock(() => {});
 
     function ActiveList() {
-      const active = useStore(
+      const active = useClassyStore(
         todoStore,
         (snap: Snapshot<TodoStore>) => snap.activeTodos,
       );
@@ -766,7 +766,7 @@ describe('computed getters — useStore integration', () => {
     const s = createClassyStore(new Store());
 
     function Display() {
-      const snap = useStore(s);
+      const snap = useClassyStore(s);
       return <div>{snap.doubled}</div>;
     }
 

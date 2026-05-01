@@ -1,4 +1,4 @@
-import {useStore} from '@codebelt/classy-store/react';
+import {useClassyStore} from '@codebelt/classy-store/react';
 import {subscribeKey} from '@codebelt/classy-store/utils';
 import {useEffect, useState} from 'react';
 import {Button} from '../../components/Button';
@@ -47,7 +47,7 @@ interface LogEntry {
 let logId = 0;
 
 export function SubscribeKeyDemo() {
-  const snap = useStore(subscribeKeyStore);
+  const snap = useClassyStore(subscribeKeyStore);
   const renders = useRenderCount();
   const [countLog, setCountLog] = useState<LogEntry[]>([]);
   const [nameLog, setNameLog] = useState<LogEntry[]>([]);

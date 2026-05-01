@@ -1,6 +1,6 @@
 'use client';
 
-import {useStore} from '@codebelt/classy-store/react';
+import {useClassyStore} from '@codebelt/classy-store/react';
 import type {HistoryHandle} from '@codebelt/classy-store/utils';
 import {ApiInfo} from '@/components/shared/ApiInfo';
 
@@ -12,7 +12,7 @@ export function HistoryControls({
   store: object;
 }) {
   // Subscribe to store changes so we re-render when canUndo/canRedo changes.
-  useStore(store);
+  useClassyStore(store);
 
   return (
     <div className="bg-card border border-border rounded-lg p-4 space-y-3">
