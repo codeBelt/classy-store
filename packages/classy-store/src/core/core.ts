@@ -232,6 +232,9 @@ function createStoreProxy<T extends object>(
         internal.childInternals.delete(prop);
       }
 
+      // Drop any cached bound method — the previous binding is dead now.
+      boundMethods.delete(prop);
+
       Reflect.set(_target, prop, value);
       scheduleNotify(internal);
       return true;
@@ -293,6 +296,7 @@ function createStoreProxy<T extends object>(
         internal.childProxies.delete(prop);
         internal.childInternals.delete(prop);
       }
+      boundMethods.delete(prop);
       const deleted = Reflect.deleteProperty(_target, prop);
       if (deleted) {
         scheduleNotify(internal);

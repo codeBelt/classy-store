@@ -32,7 +32,10 @@ export function canProxy(value: unknown): value is object {
   if (typeof value !== 'object' || value === null) return false;
   if (Array.isArray(value)) return true;
   // Allow class instances that opt-in via the PROXYABLE symbol.
-  const ctor = (value as {constructor?: unknown}).constructor;
+  // Read constructor from the prototype, NOT the instance, so that user data
+  // with a `constructor` field of its own can't trick the check.
+  const proto = Object.getPrototypeOf(value);
+  const ctor = proto?.constructor;
   if (ctor && (ctor as Record<symbol, unknown>)[PROXYABLE]) {
     return true;
   }

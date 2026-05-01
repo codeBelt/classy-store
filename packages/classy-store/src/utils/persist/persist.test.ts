@@ -779,6 +779,32 @@ describe('persist()', () => {
 
       handle.unsubscribe();
     });
+
+    it('does not write back to storage when applying a remote tab event (no ping-pong loop)', async () => {
+      const storage = createMockStorage();
+      const s = createClassyStore({count: 0});
+      const handle = persist(s, {name: 'test', storage, syncTabs: true});
+      await handle.hydrated;
+
+      const setItemSpy = mock(storage.setItem);
+      storage.setItem = setItemSpy;
+
+      const event = new StorageEvent('storage', {
+        key: 'test',
+        newValue: JSON.stringify({version: 0, state: {count: 42}}),
+      });
+      globalThis.dispatchEvent(event);
+
+      // Wait for the microtask that resets the hydrating flag, plus any
+      // queued write-back that should NOT happen.
+      await tick();
+      await tick();
+
+      expect(s.count).toBe(42);
+      expect(setItemSpy).not.toHaveBeenCalled();
+
+      handle.unsubscribe();
+    });
   });
 
   // ── expireIn / TTL ─────────────────────────────────────────────────────

@@ -508,7 +508,16 @@ export function persist<T extends object>(
     if (disposed) return;
     if (event.key !== name) return;
     if (event.newValue === null) return; // cleared
-    applyPersistedState(event.newValue);
+    // Suppress writes triggered by mutations from this apply, otherwise
+    // tabs ping-pong storage events forever.
+    hydrating = true;
+    try {
+      applyPersistedState(event.newValue);
+    } finally {
+      queueMicrotask(() => {
+        hydrating = false;
+      });
+    }
   }
 
   // ── Initialize ─────────────────────────────────────────────────────────

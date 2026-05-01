@@ -452,5 +452,16 @@ describe('snapshot()', () => {
       const snap = snapshot(s);
       expect(snap.count).toBe(42);
     });
+
+    it('throws a clear error when the store contains a circular reference', () => {
+      const raw: {self: unknown; data: {parent: unknown}} = {
+        self: null,
+        data: {parent: null},
+      };
+      raw.self = raw;
+      raw.data.parent = raw.data;
+      const s = createClassyStore(raw);
+      expect(() => snapshot(s)).toThrow(/circular reference/);
+    });
   });
 });
