@@ -21,8 +21,7 @@ jobs:
       - run: bun run build
       - uses: actions/setup-node@v6
         with:
-          node-version: '22'
-          registry-url: 'https://registry.npmjs.org'
+          node-version: '24'
       - name: Create Release PR or Detect Publishable Versions
         id: changesets
         uses: changesets/action@v1
@@ -36,8 +35,8 @@ jobs:
         if: steps.changesets.outputs.hasChangesets == 'false'
         working-directory: packages/classy-store
         run: |
-          PKG_NAME=$(node -p "require('./package.json').name")
-          PKG_VERSION=$(node -p "require('./package.json').version")
+          PKG_NAME=$(jq -r .name package.json)
+          PKG_VERSION=$(jq -r .version package.json)
           if npm view "${PKG_NAME}@${PKG_VERSION}" version 2>/dev/null; then
             echo "Version ${PKG_VERSION} already published — skipping."
           else
