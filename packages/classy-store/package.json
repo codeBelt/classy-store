@@ -1,6 +1,6 @@
 {
   "name": "@codebelt/classy-store",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "description": "Class-based reactive state management — ES6 Proxy + immutable snapshots",
   "repository": {
     "type": "git",
