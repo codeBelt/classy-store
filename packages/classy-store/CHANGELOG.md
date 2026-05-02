@@ -1,5 +1,11 @@
 # @codebelt/classy-store
 
+## 0.5.0
+
+### Minor Changes
+
+- [#27](https://github.com/codeBelt/classy-store/pull/27) [`0d930e4`](https://github.com/codeBelt/classy-store/commit/0d930e45e2324e30d55506bd5b6f1c465c209d25) Thanks [@codeBelt](https://github.com/codeBelt)! - feat: add createStoreHook for simplified React store integration
+
 ## 0.4.1
 
 ### Patch Changes
