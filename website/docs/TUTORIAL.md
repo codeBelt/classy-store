@@ -432,6 +432,54 @@ function EditProfile() {
 
 The `useEffect` cleanup ensures the persist subscription is removed and the store can be garbage collected when the component unmounts.
 
+## Creating a Bound Hook with `createStoreHook`
+
+When you have a module-level store, you typically also export a typed hook for it:
+
+```ts
+// Before — manual boilerplate for each store
+import {createClassyStore} from '@codebelt/classy-store';
+import {useClassyStore} from '@codebelt/classy-store/react';
+import type {Snapshot} from '@codebelt/classy-store';
+
+export const catalogStore = createClassyStore(new CatalogPageStore());
+
+export function useCatalogStore<S>(
+  selector: (snap: Snapshot<CatalogPageStore>) => S,
+): S {
+  return useClassyStore(catalogStore, selector);
+}
+```
+
+`createStoreHook` does this in one line:
+
+```ts
+// After — one-liner
+import {createClassyStore} from '@codebelt/classy-store';
+import {createStoreHook} from '@codebelt/classy-store/react';
+
+export const catalogStore = createClassyStore(new CatalogPageStore());
+export const useCatalogStore = createStoreHook(catalogStore);
+```
+
+The returned hook supports both selector and auto-tracked modes, plus custom `isEqual` — identical to `useClassyStore`, but with the store already bound:
+
+```tsx
+// Selector mode
+const count = useCatalogStore((state) => state.count);
+
+// Auto-tracked mode
+const snap = useCatalogStore();
+
+// Custom equality
+const data = useCatalogStore(
+  (state) => ({count: state.count, loading: state.loading}),
+  shallowEqual,
+);
+```
+
+`createStoreHook` validates its argument immediately — if you pass something that isn't a store proxy, it throws at module load time rather than on first render.
+
 ## Tips & Gotchas
 
 ### Mutate through methods, not from components

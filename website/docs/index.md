@@ -181,6 +181,56 @@ The factory runs once per mount. Subsequent re-renders reuse the same store inst
 
 > See the [Local Stores](./TUTORIAL.md#local-stores) section in the Tutorial for persistence patterns and more examples.
 
+### `createStoreHook(store)`
+
+Creates a pre-bound React hook for a specific store proxy. Eliminates the boilerplate of writing a typed wrapper around `useClassyStore` for every store instance.
+
+```tsx
+import {createClassyStore} from '@codebelt/classy-store';
+import {createStoreHook} from '@codebelt/classy-store/react';
+
+class CatalogPageStore {
+  items: string[] = [];
+  loading = false;
+
+  get count() { return this.items.length; }
+
+  addItem(item: string) { this.items.push(item); }
+}
+
+const catalogStore = createClassyStore(new CatalogPageStore());
+export const useCatalogStore = createStoreHook(catalogStore);
+```
+
+The returned hook supports both selector mode and auto-tracked mode — identical to `useClassyStore`, but with the store already bound:
+
+```tsx
+// Selector mode
+function ItemCount() {
+  const count = useCatalogStore((state) => state.count);
+  return <span>{count} items</span>;
+}
+
+// Auto-tracked mode
+function ItemList() {
+  const snap = useCatalogStore();
+  return <ul>{snap.items.map((item) => <li key={item}>{item}</li>)}</ul>;
+}
+
+// Custom equality
+import {shallowEqual} from '@codebelt/classy-store';
+
+function Summary() {
+  const data = useCatalogStore(
+    (state) => ({count: state.count, loading: state.loading}),
+    shallowEqual,
+  );
+  return <div>{data.loading ? 'Loading...' : `${data.count} items`}</div>;
+}
+```
+
+Validates at creation time — throws if the argument is not a store proxy.
+
 ### `snapshot(store)`
 
 Creates a deeply frozen, immutable snapshot of the current state. Used internally by `useClassyStore` but also available directly.
