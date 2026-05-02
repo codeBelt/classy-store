@@ -109,7 +109,7 @@ Enforced by Biome 2.4.0 (`biome.json` at repo root):
 |---|---|
 | `@codebelt/classy-store` | `createClassyStore`, `snapshot`, `subscribe`, `getVersion`, `shallowEqual`, `Snapshot` type |
 | `@codebelt/classy-store/collections` | `reactiveMap`, `reactiveSet`, `ReactiveMap` type, `ReactiveSet` type |
-| `@codebelt/classy-store/react` | `useClassyStore`, `useLocalStore` |
+| `@codebelt/classy-store/react` | `useClassyStore`, `useLocalStore`, `createStoreHook` |
 | `@codebelt/classy-store/vue` | `useClassyStore` (ShallowRef) |
 | `@codebelt/classy-store/svelte` | `toSvelteStore` (ClassyReadable) |
 | `@codebelt/classy-store/solid` | `useClassyStore` (signal getter) |

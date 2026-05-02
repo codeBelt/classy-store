@@ -189,9 +189,39 @@ function Counter() {
 
 The factory runs once per mount. Subsequent re-renders reuse the same store instance.
 
+### `createStoreHook(store)`
+
+Creates a pre-bound React hook for a specific store proxy. Eliminates the boilerplate of writing a typed wrapper around `useClassyStore` for every store instance.
+
+```ts
+import {createClassyStore} from '@codebelt/classy-store';
+import {createStoreHook} from '@codebelt/classy-store/react';
+
+const catalogStore = createClassyStore(new CatalogPageStore());
+export const useCatalogStore = createStoreHook(catalogStore);
+```
+
+The returned hook supports both selector mode and auto-tracked mode — identical to `useClassyStore`, but with the store already bound:
+
+```tsx
+// Selector mode
+const count = useCatalogStore((state) => state.count);
+
+// Auto-tracked mode
+const snap = useCatalogStore();
+
+// Custom equality
+const data = useCatalogStore(
+  (state) => ({count: state.count, loading: state.loading}),
+  shallowEqual,
+);
+```
+
+Validates at creation time — throws if the argument is not a store proxy.
+
 ### `snapshot(store)`
 
-Creates a deeply frozen, immutable snapshot of the current state. Used internally by `useStore` but also available directly.
+Creates a deeply frozen, immutable snapshot of the current state. Used internally by `useClassyStore` but also available directly.
 
 ```typescript
 import {snapshot} from '@codebelt/classy-store';
@@ -893,6 +923,36 @@ function EditProfile() {
   );
 }
 ```
+
+## Creating a Bound Hook with `createStoreHook`
+
+When you have a module-level store, you typically also export a typed hook for it. `createStoreHook` does this in one line:
+
+```ts
+import {createClassyStore} from '@codebelt/classy-store';
+import {createStoreHook} from '@codebelt/classy-store/react';
+
+export const catalogStore = createClassyStore(new CatalogPageStore());
+export const useCatalogStore = createStoreHook(catalogStore);
+```
+
+The returned hook supports both selector and auto-tracked modes, plus custom `isEqual` — identical to `useClassyStore`, but with the store already bound:
+
+```tsx
+// Selector mode
+const count = useCatalogStore((state) => state.count);
+
+// Auto-tracked mode
+const snap = useCatalogStore();
+
+// Custom equality
+const data = useCatalogStore(
+  (state) => ({count: state.count, loading: state.loading}),
+  shallowEqual,
+);
+```
+
+`createStoreHook` validates its argument immediately — if you pass something that isn't a store proxy, it throws at module load time rather than on first render.
 
 ## Tips & Gotchas
 

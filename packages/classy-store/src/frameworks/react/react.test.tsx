@@ -2,7 +2,7 @@ import {afterEach, describe, expect, it, mock} from 'bun:test';
 import {act, type ReactNode} from 'react';
 import {createRoot} from 'react-dom/client';
 import {createClassyStore} from '../../core/core';
-import {useClassyStore, useLocalStore} from './react';
+import {createStoreHook, useClassyStore, useLocalStore} from './react';
 
 // ── Test harness ────────────────────────────────────────────────────────────
 
@@ -760,5 +760,100 @@ describe('useClassyStore — selector edge cases', () => {
 
     // Selector returns the same `null` each time → no re-renders.
     expect(renderCount).toHaveBeenCalledTimes(before);
+  });
+});
+
+// ── createStoreHook tests ──────────────────────────────────────────────────
+
+describe('createStoreHook', () => {
+  afterEach(teardown);
+
+  it('selector mode — renders and re-renders', async () => {
+    class Counter {
+      count = 0;
+      increment() {
+        this.count++;
+      }
+    }
+    const store = createClassyStore(new Counter());
+    const useCounter = createStoreHook(store);
+
+    function Display() {
+      const count = useCounter((s) => s.count);
+      return <div>{count}</div>;
+    }
+
+    setup();
+    render(<Display />);
+    expect(container.textContent).toBe('0');
+
+    await act(async () => {
+      store.increment();
+      await flush();
+    });
+
+    expect(container.textContent).toBe('1');
+  });
+
+  it('auto-tracked (selectorless) mode', async () => {
+    const store = createClassyStore({count: 0, name: 'hello'});
+    const useStore = createStoreHook(store);
+    const renderCount = mock(() => {});
+
+    function Display() {
+      const snap = useStore();
+      renderCount();
+      return <div>{snap.count}</div>;
+    }
+
+    setup();
+    render(<Display />);
+    expect(container.textContent).toBe('0');
+    expect(renderCount).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      store.count = 5;
+      await flush();
+    });
+
+    expect(container.textContent).toBe('5');
+    expect(renderCount).toHaveBeenCalledTimes(2);
+  });
+
+  it('supports custom isEqual', async () => {
+    const store = createClassyStore({items: [{id: 1, name: 'a'}]});
+    const useStore = createStoreHook(store);
+    const renderCount = mock(() => {});
+
+    function List() {
+      const first = useStore(
+        (s) => ({name: s.items[0]?.name}),
+        (a, b) => a.name === b.name,
+      );
+      renderCount();
+      return <div>{first.name}</div>;
+    }
+
+    setup();
+    render(<List />);
+    expect(renderCount).toHaveBeenCalledTimes(1);
+
+    // Push new item — first item name unchanged → no re-render.
+    await act(async () => {
+      store.items.push({id: 2, name: 'b'});
+      await flush();
+    });
+
+    expect(renderCount).toHaveBeenCalledTimes(1);
+  });
+
+  it('throws when given a non-store proxy', () => {
+    const plainObj = {count: 0};
+
+    // No setup()/teardown needed — this throws before any DOM interaction.
+    setup();
+    expect(() => createStoreHook(plainObj as never)).toThrow(
+      /not a store proxy/,
+    );
   });
 });
