@@ -683,4 +683,82 @@ describe('useClassyStore — selector edge cases', () => {
 
     expect(container.textContent).toBe('Jane Doe');
   });
+
+  it('selector returning undefined twice in a row does not over-invoke selector', async () => {
+    // Pre-fix, the fast path used `resultRef.current !== undefined` which
+    // skipped memoization whenever the selector legitimately returned
+    // `undefined`. With `hasResultRef` the fast path engages.
+    const s = createClassyStore({maybe: undefined as string | undefined});
+    const renderCount = mock(() => {});
+    const selector = mock((state: {maybe: string | undefined}) => state.maybe);
+
+    function Display() {
+      const v = useClassyStore(s, selector);
+      renderCount();
+      return <div>{v ?? 'none'}</div>;
+    }
+
+    setup();
+    render(<Display />);
+    expect(container.textContent).toBe('none');
+    const initialRenders = renderCount.mock.calls.length;
+    const initialSelectorCalls = selector.mock.calls.length;
+
+    // Mutate an unrelated absent property — but this object only has `maybe`,
+    // so to force a re-evaluation, change to undefined explicitly.
+    await act(async () => {
+      s.maybe = undefined;
+      await flush();
+    });
+
+    // No notification should fire (same value), so no extra renders.
+    expect(renderCount).toHaveBeenCalledTimes(initialRenders);
+    expect(selector.mock.calls.length).toBe(initialSelectorCalls);
+  });
+
+  it('selector transitioning from undefined to defined triggers a re-render', async () => {
+    const s = createClassyStore({maybe: undefined as string | undefined});
+
+    function Display() {
+      const v = useClassyStore(s, (state) => state.maybe);
+      return <div>{v ?? 'none'}</div>;
+    }
+
+    setup();
+    render(<Display />);
+    expect(container.textContent).toBe('none');
+
+    await act(async () => {
+      s.maybe = 'hello';
+      await flush();
+    });
+    expect(container.textContent).toBe('hello');
+  });
+
+  it('selector returning null is stable across mutations', async () => {
+    const s = createClassyStore({count: 0});
+    const renderCount = mock(() => {});
+
+    function Display() {
+      // Always returns null regardless of state.
+      const v = useClassyStore(s, (_state) => null);
+      renderCount();
+      return <div>{v === null ? 'null' : String(v)}</div>;
+    }
+
+    setup();
+    render(<Display />);
+    expect(container.textContent).toBe('null');
+    const before = renderCount.mock.calls.length;
+
+    await act(async () => {
+      s.count = 1;
+      await flush();
+      s.count = 2;
+      await flush();
+    });
+
+    // Selector returns the same `null` each time → no re-renders.
+    expect(renderCount).toHaveBeenCalledTimes(before);
+  });
 });
