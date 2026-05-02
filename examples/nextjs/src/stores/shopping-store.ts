@@ -1,6 +1,7 @@
 import {createClassyStore} from '@codebelt/classy-store';
 import type {PropertyTransform} from '@codebelt/classy-store/utils';
 import {devtools, persist, subscribeKey} from '@codebelt/classy-store/utils';
+import {ssrSafeLocalStorage} from './_storage';
 
 export type ShoppingItem = {
   id: string;
@@ -84,6 +85,7 @@ const itemsTransform: PropertyTransform<ShoppingStore> = {
 
 export const shoppingPersist = persist(shoppingStore, {
   name: 'classy-shopping-list',
+  storage: ssrSafeLocalStorage,
   properties: [itemsTransform, 'lastAction'],
   merge: (persisted, current) => ({
     ...current,

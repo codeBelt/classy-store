@@ -452,5 +452,34 @@ describe('snapshot()', () => {
       const snap = snapshot(s);
       expect(snap.count).toBe(42);
     });
+
+    it('throws a clear error when the store contains a circular reference', () => {
+      const raw: {self: unknown; data: {parent: unknown}} = {
+        self: null,
+        data: {parent: null},
+      };
+      raw.self = raw;
+      raw.data.parent = raw.data;
+      const s = createClassyStore(raw);
+      expect(() => snapshot(s)).toThrow(/circular reference/);
+    });
+
+    it('throws on a self-referencing array (tracked sub-tree)', () => {
+      const raw: {items: unknown[]} = {items: []};
+      raw.items.push(raw.items);
+      const s = createClassyStore(raw);
+      expect(() => snapshot(s)).toThrow(/circular reference/);
+    });
+
+    it('throws on a circular reference inside an untracked nested plain object', () => {
+      // An untracked path triggers when a plain nested object has never been
+      // read through the proxy (no child internal exists), so snapshot() goes
+      // through deepFreezeClone for it. We freeze the snapshot at the root
+      // BEFORE accessing inner refs, so `outer` is untracked at that point.
+      const inner: {self: unknown} = {self: null};
+      inner.self = inner;
+      const s = createClassyStore({outer: {nested: inner}});
+      expect(() => snapshot(s)).toThrow(/circular reference/);
+    });
   });
 });

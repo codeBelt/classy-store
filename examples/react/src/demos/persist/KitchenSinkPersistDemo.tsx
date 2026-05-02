@@ -20,6 +20,7 @@ const STORE_CODE = `class KitchenSinkStore {
 
 persist(store, {
   name: 'kitchen-sink',
+  storage: localStorage,
   debounce: 300,
   version: 1,
   merge: 'shallow',

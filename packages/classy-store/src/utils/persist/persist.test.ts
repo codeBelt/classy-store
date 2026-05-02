@@ -433,42 +433,6 @@ describe('persist()', () => {
       expect(s.sidebar).toBe(true); // kept (not in storage)
     });
 
-    it('replace merge: only uses persisted keys, drops missing defaults', async () => {
-      const storage = createMockStorage();
-      storage.data.set(
-        'test',
-        JSON.stringify({version: 0, state: {theme: 'dark'}}),
-      );
-
-      const s = createClassyStore({theme: 'light', fontSize: 14});
-      const handle = persist(s, {name: 'test', storage, merge: 'replace'});
-      await handle.hydrated;
-
-      expect(s.theme).toBe('dark');
-      // With 'replace', fontSize is not in persisted state so it should NOT be applied
-      // (only persisted keys are used). The store keeps its default since 'fontSize'
-      // is not in the merged result and the apply loop skips keys not in merged.
-      expect(s.fontSize).toBe(14);
-    });
-
-    it('replace merge: does not spread current defaults into merged state', async () => {
-      const storage = createMockStorage();
-      // Persist only has 'a', the store has 'a' and 'b'
-      storage.data.set(
-        'test',
-        JSON.stringify({version: 0, state: {a: 'from-storage'}}),
-      );
-
-      const s = createClassyStore({a: 'default-a', b: 'default-b'});
-      const handle = persist(s, {name: 'test', storage, merge: 'replace'});
-      await handle.hydrated;
-
-      expect(s.a).toBe('from-storage');
-      // 'b' is not in persisted state and replace doesn't merge current defaults,
-      // so 'b' stays at its default because the apply loop checks `key in merged`
-      expect(s.b).toBe('default-b');
-    });
-
     it('custom merge function', async () => {
       const storage = createMockStorage();
       storage.data.set(
@@ -779,6 +743,32 @@ describe('persist()', () => {
 
       handle.unsubscribe();
     });
+
+    it('does not write back to storage when applying a remote tab event (no ping-pong loop)', async () => {
+      const storage = createMockStorage();
+      const s = createClassyStore({count: 0});
+      const handle = persist(s, {name: 'test', storage, syncTabs: true});
+      await handle.hydrated;
+
+      const setItemSpy = mock(storage.setItem);
+      storage.setItem = setItemSpy;
+
+      const event = new StorageEvent('storage', {
+        key: 'test',
+        newValue: JSON.stringify({version: 0, state: {count: 42}}),
+      });
+      globalThis.dispatchEvent(event);
+
+      // Wait for the microtask that resets the hydrating flag, plus any
+      // queued write-back that should NOT happen.
+      await tick();
+      await tick();
+
+      expect(s.count).toBe(42);
+      expect(setItemSpy).not.toHaveBeenCalled();
+
+      handle.unsubscribe();
+    });
   });
 
   // ── expireIn / TTL ─────────────────────────────────────────────────────
@@ -1001,30 +991,12 @@ describe('persist()', () => {
       expect(s.count).toBe(0); // invalid envelope skipped
     });
 
-    it('returns a dormant handle when no storage adapter is available (SSR)', () => {
-      // Override the localStorage getter so getDefaultStorage() catches
-      // and returns undefined, triggering the dormant handle path.
-      const desc = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
-      Object.defineProperty(globalThis, 'localStorage', {
-        get() {
-          throw new Error('no localStorage');
-        },
-        configurable: true,
-      });
-      try {
-        const s = createClassyStore({count: 0});
-        const handle = persist(s, {name: 'test'});
-
-        // Should not throw — returns a dormant handle.
-        expect(handle).toBeDefined();
-        expect(handle.isHydrated).toBe(true);
-        expect(handle.isExpired).toBe(false);
-        expect(handle.hydrated).toBeInstanceOf(Promise);
-      } finally {
-        if (desc) {
-          Object.defineProperty(globalThis, 'localStorage', desc);
-        }
-      }
+    it('returns a working handle when storage adapter is provided', () => {
+      const storage = createMockStorage();
+      const s = createClassyStore({count: 0});
+      const handle = persist(s, {name: 'test', storage});
+      expect(handle).toBeDefined();
+      expect(handle.hydrated).toBeInstanceOf(Promise);
     });
 
     it('handles null state in envelope gracefully', async () => {
@@ -1163,128 +1135,6 @@ describe('persist()', () => {
       expect(stored?.state).not.toHaveProperty('label');
     });
 
-    it('dormant handle no-ops do not throw', async () => {
-      const desc = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
-      Object.defineProperty(globalThis, 'localStorage', {
-        get() {
-          throw new Error('no localStorage');
-        },
-        configurable: true,
-      });
-      try {
-        const s = createClassyStore({count: 0});
-        const handle = persist(s, {name: 'test'});
-
-        // All methods should be safe to call.
-        await handle.save(); // no-op
-        await handle.clear(); // no-op
-        handle.unsubscribe(); // no-op
-      } finally {
-        if (desc) {
-          Object.defineProperty(globalThis, 'localStorage', desc);
-        }
-      }
-    });
-
-    it('dormant handle hydrated promise resolves immediately', async () => {
-      const desc = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
-      Object.defineProperty(globalThis, 'localStorage', {
-        get() {
-          throw new Error('no localStorage');
-        },
-        configurable: true,
-      });
-      try {
-        const s = createClassyStore({count: 0});
-        const handle = persist(s, {name: 'test'});
-
-        // hydrated resolves immediately for dormant handles.
-        await handle.hydrated;
-        expect(handle.isHydrated).toBe(true);
-        expect(s.count).toBe(0); // keeps default
-      } finally {
-        if (desc) {
-          Object.defineProperty(globalThis, 'localStorage', desc);
-        }
-      }
-    });
-
-    it('dormant handle rehydrate() activates when storage becomes available', async () => {
-      const storage = createMockStorage();
-      storage.data.set(
-        'ssr-test',
-        JSON.stringify({version: 0, state: {count: 42}}),
-      );
-
-      // Use a mutable options object. Initially storage is undefined and
-      // localStorage is blocked, producing a dormant handle. Then we set
-      // options.storage before calling rehydrate(), simulating storage
-      // becoming available on the client.
-      const opts: Parameters<typeof persist>[1] = {
-        name: 'ssr-test',
-        storage: undefined,
-        syncTabs: false,
-      };
-
-      const desc = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
-      Object.defineProperty(globalThis, 'localStorage', {
-        get() {
-          throw new Error('no localStorage');
-        },
-        configurable: true,
-      });
-
-      const s = createClassyStore({count: 0});
-      let handle: ReturnType<typeof persist> | undefined;
-
-      try {
-        handle = persist(s, opts);
-        expect(handle.isHydrated).toBe(true); // dormant
-        expect(s.count).toBe(0);
-      } finally {
-        if (desc) {
-          Object.defineProperty(globalThis, 'localStorage', desc);
-        }
-      }
-
-      // Simulate client mount: storage is now available via options.
-      opts.storage = storage;
-
-      // rehydrate() re-checks options.storage and bootstraps full lifecycle.
-      await handle?.rehydrate();
-      expect(s.count).toBe(42);
-
-      // After activation, mutations should persist.
-      s.count = 100;
-      await tick();
-      const stored = parseStored(storage, 'ssr-test');
-      expect(stored?.state.count).toBe(100);
-
-      handle?.unsubscribe();
-    });
-
-    it('dormant rehydrate() is a no-op when storage is still unavailable', async () => {
-      const desc = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
-      Object.defineProperty(globalThis, 'localStorage', {
-        get() {
-          throw new Error('no localStorage');
-        },
-        configurable: true,
-      });
-      try {
-        const s = createClassyStore({count: 0});
-        const handle = persist(s, {name: 'test'});
-
-        // rehydrate() on dormant handle with no storage still available — no-op.
-        await handle.rehydrate();
-        expect(s.count).toBe(0);
-      } finally {
-        if (desc) {
-          Object.defineProperty(globalThis, 'localStorage', desc);
-        }
-      }
-    });
-
     it('multiple persists on the same store with different keys', async () => {
       const storage1 = createMockStorage();
       const storage2 = createMockStorage();
@@ -1312,6 +1162,179 @@ describe('persist()', () => {
       expect(stored1?.state).not.toHaveProperty('name');
       expect(stored2?.state.name).toBe('world');
       expect(stored2?.state).not.toHaveProperty('count');
+    });
+  });
+
+  // ── onError callback ────────────────────────────────────────────────────
+
+  describe('onError callback', () => {
+    it('reports a setItem failure with operation "write" and keeps the store usable', async () => {
+      const storage = createMockStorage();
+      storage.setItem = () => {
+        throw new Error('quota exceeded');
+      };
+      const onError = mock((_e: unknown, _op: string) => {});
+      const s = createClassyStore({count: 0});
+      const handle = persist(s, {name: 'test', storage, onError});
+      await handle.hydrated;
+
+      s.count = 1;
+      await tick();
+
+      expect(onError).toHaveBeenCalledTimes(1);
+      const [err, op] = onError.mock.calls[0];
+      expect((err as Error).message).toBe('quota exceeded');
+      expect(op).toBe('write');
+
+      // Store still mutable.
+      s.count = 2;
+      await tick();
+      expect(s.count).toBe(2);
+    });
+
+    it('reports an async setItem rejection (no unhandled rejection)', async () => {
+      const storage = createAsyncMockStorage();
+      storage.setItem = () => Promise.reject(new Error('disk full'));
+      const onError = mock((_e: unknown, _op: string) => {});
+      const s = createClassyStore({count: 0});
+      const handle = persist(s, {name: 'test', storage, onError});
+      await handle.hydrated;
+
+      s.count = 1;
+      await tick();
+      await tick();
+
+      expect(onError).toHaveBeenCalledTimes(1);
+      expect(onError.mock.calls[0][1]).toBe('write');
+    });
+
+    it('reports a getItem failure with operation "read"', async () => {
+      const storage = createMockStorage();
+      storage.getItem = () => {
+        throw new Error('cannot read');
+      };
+      const onError = mock((_e: unknown, _op: string) => {});
+      const s = createClassyStore({count: 0});
+      persist(s, {name: 'test', storage, onError});
+      await tick();
+      await tick();
+
+      expect(onError).toHaveBeenCalledTimes(1);
+      expect(onError.mock.calls[0][1]).toBe('read');
+    });
+
+    it('reports a JSON parse failure with operation "parse"', async () => {
+      const storage = createMockStorage();
+      storage.data.set('test', '{not valid json');
+      const onError = mock((_e: unknown, _op: string) => {});
+      const s = createClassyStore({count: 0});
+      const handle = persist(s, {name: 'test', storage, onError});
+      await handle.hydrated;
+
+      expect(onError).toHaveBeenCalledTimes(1);
+      expect(onError.mock.calls[0][1]).toBe('parse');
+    });
+
+    it('reports a removeItem failure during clear() with operation "remove"', async () => {
+      const storage = createMockStorage();
+      storage.removeItem = () => {
+        throw new Error('locked');
+      };
+      const onError = mock((_e: unknown, _op: string) => {});
+      const s = createClassyStore({count: 0});
+      const handle = persist(s, {name: 'test', storage, onError});
+      await handle.hydrated;
+
+      await handle.clear();
+      expect(onError).toHaveBeenCalledTimes(1);
+      expect(onError.mock.calls[0][1]).toBe('remove');
+    });
+
+    it('a throwing onError callback does not crash subsequent operations', async () => {
+      const storage = createMockStorage();
+      storage.setItem = () => {
+        throw new Error('first failure');
+      };
+      const s = createClassyStore({count: 0});
+      const handle = persist(s, {
+        name: 'test',
+        storage,
+        onError: () => {
+          throw new Error('user callback exploded');
+        },
+      });
+      await handle.hydrated;
+
+      s.count = 1;
+      await tick();
+
+      // Should not throw — and store remains mutable.
+      s.count = 2;
+      await tick();
+      expect(s.count).toBe(2);
+    });
+  });
+
+  // ── Race conditions ────────────────────────────────────────────────────
+
+  describe('race conditions', () => {
+    it('rehydrate cancels a pending debounced write so loaded state wins', async () => {
+      const storage = createMockStorage();
+      storage.data.set(
+        'test',
+        JSON.stringify({version: 0, state: {count: 100}}),
+      );
+      const s = createClassyStore({count: 0});
+      // Mutate first; the debounce timer holds the (locally) newer value.
+      const handle = persist(s, {
+        name: 'test',
+        storage,
+        debounce: 1000,
+        skipHydration: true,
+      });
+      s.count = 5;
+      await tick();
+      // Debounce timer is now armed with count=5.
+
+      await handle.rehydrate();
+
+      // After rehydration: store reflects loaded value, and the pending
+      // debounce timer must NOT fire and overwrite storage with count=5.
+      expect(s.count).toBe(100);
+
+      await wait(1100);
+      const storedNow = JSON.parse(storage.data.get('test') ?? '{}');
+      expect(storedNow.state.count).toBe(100);
+    });
+
+    it('cross-tab event cancels a pending debounced write', async () => {
+      const storage = createMockStorage();
+      const s = createClassyStore({count: 0});
+      const handle = persist(s, {
+        name: 'test',
+        storage,
+        debounce: 1000,
+        syncTabs: true,
+      });
+      await handle.hydrated;
+
+      s.count = 5;
+      await tick();
+      // Debounce armed with count=5.
+
+      const event = new StorageEvent('storage', {
+        key: 'test',
+        newValue: JSON.stringify({version: 0, state: {count: 77}}),
+      });
+      globalThis.dispatchEvent(event);
+
+      expect(s.count).toBe(77);
+
+      await wait(1100);
+      // Pending write must have been cancelled — storage still empty (no setItem ran).
+      expect(storage.data.has('test')).toBe(false);
+
+      handle.unsubscribe();
     });
   });
 });

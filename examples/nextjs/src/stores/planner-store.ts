@@ -1,5 +1,6 @@
 import {createClassyStore} from '@codebelt/classy-store';
 import {devtools, persist} from '@codebelt/classy-store/utils';
+import {ssrSafeLocalStorage} from './_storage';
 
 export type MealSlot = {
   recipeId: string | null;
@@ -82,6 +83,7 @@ export const plannerStore = createClassyStore(new PlannerStore());
 
 export const plannerPersist = persist(plannerStore, {
   name: 'classy-meal-planner',
+  storage: ssrSafeLocalStorage,
   properties: ['days'],
   debounce: 500,
   version: 2,

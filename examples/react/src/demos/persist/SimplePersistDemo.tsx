@@ -32,7 +32,7 @@ const STORE_CODE = `class PreferencesStore {
 }
 
 const store = createClassyStore(new PreferencesStore());
-persist(store, { name: 'preferences' });`;
+persist(store, { name: 'preferences', storage: localStorage });`;
 
 function ThemeToggle() {
   const theme = useClassyStore(preferencesStore, (state) => state.theme);
@@ -183,7 +183,7 @@ export function SimplePersistDemo() {
   return (
     <DemoContainer
       title="Simple Persist"
-      description="persist(store, { name: 'preferences' }) — that's it. All properties are saved to localStorage automatically."
+      description="persist(store, { name: 'preferences', storage: localStorage }) — pass any storage adapter; properties are saved on every batched mutation."
       codeTabs={[{label: 'Store', code: STORE_CODE, language: 'typescript'}]}
     >
       <div className="flex flex-col gap-4">

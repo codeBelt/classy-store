@@ -23,9 +23,9 @@ export function PersistPage() {
         <SimplePersistDemo />
         <KitchenSinkPersistDemo />
         <TipBox>
-          The simplest setup is just{' '}
+          The simplest setup is{' '}
           <code className="text-xs bg-zinc-800 px-1 rounded">
-            persist(store, {'{'} name: 'key' {'}'})
+            persist(store, {'{'} name: 'key', storage: localStorage {'}'})
           </code>
           . Add{' '}
           <code className="text-xs bg-zinc-800 px-1 rounded">properties</code>{' '}

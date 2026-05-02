@@ -175,7 +175,7 @@ Both `'shallow'` and `'replace'` produce the same result for flat stores. The di
 
 ## Cross-Tab Sync
 
-When `syncTabs` is enabled (default for `localStorage`), the utility listens for the `window.storage` event:
+When `syncTabs: true` is set, the utility listens for the `window.storage` event:
 
 ```mermaid
 sequenceDiagram

@@ -172,7 +172,7 @@ persist(uiStore, {
   name: 'ui-state',
   storage: sessionStorage,
   properties: ['sidebarOpen', 'activeTab'],
-  // syncTabs defaults to false for sessionStorage
+  // syncTabs defaults to false; opt in only for localStorage
 });
 ```
 
@@ -194,12 +194,13 @@ await handle.hydrated;
 
 ### `syncTabs` (Cross-Tab Synchronization)
 
-When using `localStorage`, state syncs automatically across browser tabs. If a user logs out in Tab A, Tab B picks up the change immediately:
+Opt in to keep `localStorage`-backed state in sync across browser tabs. When another tab writes to the same key, this tab re-hydrates from the new value:
 
 ```ts
 persist(authStore, {
   name: 'auth',
-  // syncTabs: true -- default for localStorage
+  storage: localStorage,
+  syncTabs: true,
 });
 
 // Tab A: user logs out
@@ -266,14 +267,27 @@ persist(sessionStore, {
 
 ### `skipHydration` (SSR / Next.js Support)
 
-`persist()` is SSR-safe out of the box. When `localStorage` is unavailable (server-side rendering, restricted environments), it returns a **dormant handle** instead of throwing. The store keeps its class defaults on the server, and you activate persistence on the client via `rehydrate()`.
-
-This means you can call `persist()` at module scope -- no `typeof window` guards needed:
+`persist()` requires a `storage` adapter. For SSR (Next.js, etc.) where module init runs on the server, supply an adapter that falls back to in-memory when `localStorage` is undefined and gate hydration on the client with `skipHydration: true`:
 
 ```ts
+// _storage.ts -- shared SSR-safe adapter
+const memory = new Map<string, string>();
+export const ssrSafeLocalStorage = {
+  getItem: (k: string) => (typeof localStorage !== 'undefined' ? localStorage.getItem(k) : memory.get(k) ?? null),
+  setItem: (k: string, v: string) => {
+    if (typeof localStorage !== 'undefined') localStorage.setItem(k, v);
+    else memory.set(k, v);
+  },
+  removeItem: (k: string) => {
+    if (typeof localStorage !== 'undefined') localStorage.removeItem(k);
+    else memory.delete(k);
+  },
+};
+
 // store.ts -- runs on both server and client
 export const handle = persist(todoStore, {
   name: 'todo-store',
+  storage: ssrSafeLocalStorage,
   skipHydration: true,
 });
 ```
@@ -423,6 +437,7 @@ class TodoStore {
 ```ts
 persist(todoStore, {
   name: 'todo-store',
+  storage: localStorage,
   merge: 'shallow',
 });
 
@@ -430,20 +445,6 @@ persist(todoStore, {
 // filter → "done"                              (from storage)
 // todos  → [{text: "Buy milk", done: false}]   (from storage)
 // tags   → ["work", "personal"]                (kept class default)
-```
-
-**`'replace'`** — only persisted keys are assigned. New properties not in storage are dropped. For nested objects, the entire object is replaced rather than merged:
-
-```ts
-persist(todoStore, {
-  name: 'todo-store',
-  merge: 'replace',
-});
-
-// Result after hydration:
-// filter → "done"                              (from storage)
-// todos  → [{text: "Buy milk", done: false}]   (from storage)
-// tags   → undefined                           (not in storage, dropped)
 ```
 
 **Custom function** — for full control, pass a function that receives `(persisted, current)` and returns the merged state:

@@ -95,12 +95,13 @@ export function withHistory<T extends object>(
     undo() {
       if (pointer <= 0) return;
       pointer--;
+      const prevPaused = paused;
       paused = true;
       try {
         applySnapshot(history[pointer]);
       } finally {
         queueMicrotask(() => {
-          paused = false;
+          paused = prevPaused;
         });
       }
     },
@@ -108,12 +109,13 @@ export function withHistory<T extends object>(
     redo() {
       if (pointer >= history.length - 1) return;
       pointer++;
+      const prevPaused = paused;
       paused = true;
       try {
         applySnapshot(history[pointer]);
       } finally {
         queueMicrotask(() => {
-          paused = false;
+          paused = prevPaused;
         });
       }
     },

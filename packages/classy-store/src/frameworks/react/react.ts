@@ -57,6 +57,9 @@ export function useClassyStore<T extends object, S>(
   // Selector mode refs
   const snapRef = useRef<Snapshot<T> | undefined>(undefined);
   const resultRef = useRef<S | undefined>(undefined);
+  // Tracks whether `resultRef` holds a real prior result (so a selector that
+  // legitimately returns `undefined` still benefits from the fast path).
+  const hasResultRef = useRef(false);
 
   // Auto-track mode refs
   const affected = useRef(new WeakMap<object, unknown>()).current;
@@ -68,7 +71,14 @@ export function useClassyStore<T extends object, S>(
 
   const getSnapshot = (): Snapshot<T> | S =>
     selector
-      ? getSelectorSnapshot(proxyStore, snapRef, resultRef, selector, isEqual)
+      ? getSelectorSnapshot(
+          proxyStore,
+          snapRef,
+          resultRef,
+          hasResultRef,
+          selector,
+          isEqual,
+        )
       : getAutoTrackSnapshot(
           proxyStore,
           affected,
@@ -96,14 +106,15 @@ function getSelectorSnapshot<T extends object, S>(
   proxyStore: T,
   snapRef: React.RefObject<Snapshot<T> | undefined>,
   resultRef: React.RefObject<S | undefined>,
+  hasResultRef: React.RefObject<boolean>,
   selector: (snap: Snapshot<T>) => S,
   isEqual?: (a: S, b: S) => boolean,
 ): S {
   const nextSnap = snapshot(proxyStore);
 
   // Fast path: same snapshot reference → same result.
-  if (snapRef.current === nextSnap && resultRef.current !== undefined) {
-    return resultRef.current;
+  if (snapRef.current === nextSnap && hasResultRef.current) {
+    return resultRef.current as S;
   }
 
   const nextResult = selector(nextSnap);
@@ -111,15 +122,16 @@ function getSelectorSnapshot<T extends object, S>(
 
   // Check equality with previous result.
   if (
-    resultRef.current !== undefined &&
+    hasResultRef.current &&
     (isEqual
-      ? isEqual(resultRef.current, nextResult)
-      : Object.is(resultRef.current, nextResult))
+      ? isEqual(resultRef.current as S, nextResult)
+      : Object.is(resultRef.current as S, nextResult))
   ) {
-    return resultRef.current;
+    return resultRef.current as S;
   }
 
   resultRef.current = nextResult;
+  hasResultRef.current = true;
   return nextResult;
 }
 

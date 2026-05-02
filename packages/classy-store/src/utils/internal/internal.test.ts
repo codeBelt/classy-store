@@ -239,4 +239,26 @@ describe('canProxy — additional', () => {
     }
     expect(canProxy(new Child())).toBe(true);
   });
+
+  it('is not fooled by an own `constructor` data field on a plain object', () => {
+    // User data with its own `constructor` field must not be checked against
+    // PROXYABLE on that field — the check must read constructor from the prototype.
+    const tricky = {constructor: {[PROXYABLE]: true}, value: 1};
+    // Plain objects are still proxyable, so this should be true — but for the
+    // RIGHT reason (isPlainObject), not because the fake constructor was honored.
+    expect(canProxy(tricky)).toBe(true);
+
+    // A non-plain object with an own `constructor` data field must not be proxied.
+    class Opaque {
+      value = 1;
+    }
+    const opaque = new Opaque();
+    Object.defineProperty(opaque, 'constructor', {
+      value: {[PROXYABLE]: true},
+      enumerable: true,
+      writable: true,
+      configurable: true,
+    });
+    expect(canProxy(opaque)).toBe(false);
+  });
 });

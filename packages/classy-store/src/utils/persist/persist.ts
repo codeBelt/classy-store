@@ -41,11 +41,11 @@ export type PersistOptions<T extends object> = {
   name: string;
 
   /**
-   * Storage adapter. Defaults to `globalThis.localStorage`.
+   * Storage adapter. Required.
    * Any object with getItem/setItem/removeItem (sync or async).
    * Works with: localStorage, sessionStorage, AsyncStorage, localForage, etc.
    */
-  storage?: StorageAdapter;
+  storage: StorageAdapter;
 
   /**
    * Which properties to persist.
@@ -88,8 +88,6 @@ export type PersistOptions<T extends object> = {
    *
    * - `'shallow'` (default): persisted values overwrite current values one key at a time.
    *   Properties not in storage keep their current value.
-   * - `'replace'`: same behavior as `'shallow'` for flat stores — only stored keys are assigned.
-   *   For nested objects, the entire object is replaced rather than merged.
    * - Custom function: receives `(persistedState, currentState)` and returns merged state.
    *   Enables deep merge or any custom logic.
    *
@@ -98,7 +96,6 @@ export type PersistOptions<T extends object> = {
    */
   merge?:
     | 'shallow'
-    | 'replace'
     | ((
         persisted: Record<string, unknown>,
         current: Record<string, unknown>,
@@ -116,10 +113,10 @@ export type PersistOptions<T extends object> = {
    * When another tab writes to the same storage key, this tab automatically
    * re-hydrates from the new value.
    *
-   * Only works with `localStorage` (storage events don't fire for sessionStorage
-   * or async adapters).
+   * Only meaningful for `localStorage` — `storage` events don't fire for
+   * `sessionStorage` or async adapters.
    *
-   * Default: `true` when storage is `localStorage`, `false` otherwise.
+   * Default: `false`.
    */
   syncTabs?: boolean;
 
@@ -136,7 +133,19 @@ export type PersistOptions<T extends object> = {
    * but left in storage).
    */
   clearOnExpire?: boolean;
+
+  /**
+   * Called when a storage operation fails. Use this to surface quota
+   * exhaustion, private-mode restrictions, network errors from async
+   * adapters, or corrupted-data parse failures.
+   *
+   * The store keeps working — failures do not throw.
+   */
+  onError?: (error: unknown, operation: PersistOperation) => void;
 };
+
+/** Operation that can produce an `onError` callback invocation. */
+export type PersistOperation = 'write' | 'read' | 'remove' | 'parse';
 
 /**
  * Handle returned by `persist()`. Provides control over the persist lifecycle.
@@ -220,38 +229,6 @@ function resolveProperties<T extends object>(
   return result;
 }
 
-/**
- * Detect if the given storage adapter is `globalThis.localStorage`.
- */
-function isLocalStorage(storage: StorageAdapter): boolean {
-  try {
-    return (
-      typeof globalThis !== 'undefined' &&
-      typeof globalThis.localStorage !== 'undefined' &&
-      storage === (globalThis.localStorage as unknown as StorageAdapter)
-    );
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Get the default storage adapter (`localStorage`), or `undefined` if unavailable.
- */
-function getDefaultStorage(): StorageAdapter | undefined {
-  try {
-    if (
-      typeof globalThis !== 'undefined' &&
-      typeof globalThis.localStorage !== 'undefined'
-    ) {
-      return globalThis.localStorage as unknown as StorageAdapter;
-    }
-  } catch {
-    // SSR or restricted environment — no localStorage.
-  }
-  return undefined;
-}
-
 // ── Main implementation ──────────────────────────────────────────────────────
 
 /**
@@ -261,11 +238,6 @@ function getDefaultStorage(): StorageAdapter | undefined {
  * (with optional per-property transforms, debouncing, and versioned envelopes).
  * On init (or manual rehydrate), reads from storage and applies the state back
  * to the store proxy.
- *
- * When no storage adapter is available (e.g. during SSR), returns a dormant
- * handle instead of throwing. Calling `rehydrate()` on the dormant handle will
- * bootstrap the full persist lifecycle if storage has become available (e.g.
- * after client-side mount).
  *
  * @param proxyStore - A reactive proxy created by `createClassyStore()`.
  * @param options - Persistence configuration.
@@ -277,26 +249,37 @@ export function persist<T extends object>(
 ): PersistHandle {
   const {
     name,
+    storage,
     properties: propertiesOption,
     debounce: debounceMs = 0,
     version = 0,
     migrate,
     merge = 'shallow',
     skipHydration = false,
-    syncTabs: syncTabsOption,
+    syncTabs = false,
     expireIn,
     clearOnExpire = false,
+    onError,
   } = options;
+
+  /** Route a failure through `onError` (or swallow silently if not provided). */
+  function reportError(error: unknown, operation: PersistOperation): void {
+    if (onError) {
+      try {
+        onError(error, operation);
+      } catch {
+        // User callback failed — nothing more we can do.
+      }
+    }
+  }
 
   // ── Mutable state shared by handle closures ─────────────────────────────
 
   let disposed = false;
-  let active = false;
   let hydrating = false;
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
   let hydratedFlag = false;
   let expiredFlag = false;
-  let unsubscribeFromStore: (() => void) | null = null;
 
   // Hydration promise + resolver.
   let resolveHydrated!: () => void;
@@ -306,62 +289,15 @@ export function persist<T extends object>(
     rejectHydrated = reject;
   });
 
-  // These are initialized by setup() — declared here so closures can reference them.
-  let resolvedProps: Array<{key: string; transform?: PropertyTransform<T>}> =
-    [];
-  let transformMap = new Map<string, PropertyTransform<T>>();
-  let propKeys: string[] = [];
-  let storage!: StorageAdapter;
-
-  // ── Setup (core persist lifecycle) ──────────────────────────────────────
-
-  function setup(storageAdapter: StorageAdapter): void {
-    if (active) return;
-    active = true;
-    storage = storageAdapter;
-
-    resolvedProps = resolveProperties(proxyStore, propertiesOption);
-
-    // Build a map of key → transform for fast lookup during save/restore.
-    transformMap = new Map<string, PropertyTransform<T>>();
-    for (const prop of resolvedProps) {
-      if (prop.transform) {
-        transformMap.set(prop.key, prop.transform);
-      }
-    }
-
-    propKeys = resolvedProps.map((p) => p.key);
-
-    // Cross-tab sync.
-    const shouldSyncTabs =
-      syncTabsOption !== undefined
-        ? syncTabsOption
-        : isLocalStorage(storageAdapter);
-
-    if (
-      shouldSyncTabs &&
-      typeof globalThis !== 'undefined' &&
-      typeof globalThis.addEventListener === 'function'
-    ) {
-      globalThis.addEventListener('storage', onStorageEvent);
-    }
-
-    // Subscribe to store mutations.
-    unsubscribeFromStore = subscribe(proxyStore, scheduleWrite);
-
-    // Kick off initial hydration (unless skipped).
-    if (!skipHydration) {
-      void hydrateFromStorage()
-        .then(() => {
-          hydratedFlag = true;
-          resolveHydrated();
-        })
-        .catch((error) => {
-          hydratedFlag = true;
-          rejectHydrated(error);
-        });
+  const resolvedProps = resolveProperties(proxyStore, propertiesOption);
+  // Build a map of key → transform for fast lookup during save/restore.
+  const transformMap = new Map<string, PropertyTransform<T>>();
+  for (const prop of resolvedProps) {
+    if (prop.transform) {
+      transformMap.set(prop.key, prop.transform);
     }
   }
+  const propKeys = resolvedProps.map((p) => p.key);
 
   // ── Save logic ─────────────────────────────────────────────────────────
 
@@ -389,8 +325,12 @@ export function persist<T extends object>(
   /** Write the current state to storage. */
   async function writeToStorage(): Promise<void> {
     if (disposed) return;
-    const json = serializeState();
-    await storage.setItem(name, json);
+    try {
+      const json = serializeState();
+      await storage.setItem(name, json);
+    } catch (error) {
+      reportError(error, 'write');
+    }
   }
 
   /** Schedule a debounced write (or write immediately if debounce is 0). */
@@ -421,8 +361,8 @@ export function persist<T extends object>(
     let envelope: PersistEnvelope;
     try {
       envelope = JSON.parse(raw) as PersistEnvelope;
-    } catch {
-      // Corrupted data — skip.
+    } catch (error) {
+      reportError(error, 'parse');
       return;
     }
 
@@ -441,7 +381,11 @@ export function persist<T extends object>(
       Date.now() >= envelope.expiresAt
     ) {
       expiredFlag = true;
-      if (clearOnExpire) void storage.removeItem(name);
+      if (clearOnExpire) {
+        void Promise.resolve(storage.removeItem(name)).catch((error) => {
+          reportError(error, 'remove');
+        });
+      }
       return;
     }
 
@@ -471,9 +415,6 @@ export function persist<T extends object>(
     let merged: Record<string, unknown>;
     if (typeof merge === 'function') {
       merged = merge(state, currentState);
-    } else if (merge === 'replace') {
-      // Only use persisted keys — new defaults not in storage are dropped.
-      merged = state;
     } else {
       // 'shallow': persisted values overwrite current, but properties not
       // in storage keep their current (default) value.
@@ -490,8 +431,21 @@ export function persist<T extends object>(
 
   /** Read from storage and apply to the store. */
   async function hydrateFromStorage(): Promise<void> {
-    const raw = await storage.getItem(name);
+    let raw: string | null;
+    try {
+      raw = await storage.getItem(name);
+    } catch (error) {
+      reportError(error, 'read');
+      return;
+    }
     if (raw !== null) {
+      // A debounced local write may be pending from a mutation issued before
+      // we got around to hydrating; the freshly-loaded state would be
+      // overwritten when that timer fires. Cancel it before applying.
+      if (debounceTimer !== null) {
+        clearTimeout(debounceTimer);
+        debounceTimer = null;
+      }
       hydrating = true;
       applyPersistedState(raw);
       // Reset after microtask so the batched subscription callback
@@ -508,21 +462,44 @@ export function persist<T extends object>(
     if (disposed) return;
     if (event.key !== name) return;
     if (event.newValue === null) return; // cleared
-    applyPersistedState(event.newValue);
+    // A pending local debounced write would otherwise overwrite the remote
+    // state once its timer fires.
+    if (debounceTimer !== null) {
+      clearTimeout(debounceTimer);
+      debounceTimer = null;
+    }
+    // Suppress writes triggered by mutations from this apply, otherwise
+    // tabs ping-pong storage events forever.
+    hydrating = true;
+    try {
+      applyPersistedState(event.newValue);
+    } finally {
+      queueMicrotask(() => {
+        hydrating = false;
+      });
+    }
   }
 
   // ── Initialize ─────────────────────────────────────────────────────────
 
-  const maybeStorage = options.storage ?? getDefaultStorage();
+  if (syncTabs) {
+    globalThis.addEventListener('storage', onStorageEvent);
+  }
 
-  if (maybeStorage) {
-    // Storage available — set up immediately.
-    setup(maybeStorage);
-  } else {
-    // No storage (SSR / restricted environment).
-    // Resolve hydrated immediately — the store keeps its defaults.
-    hydratedFlag = true;
-    resolveHydrated();
+  // Subscribe to store mutations.
+  const unsubscribeFromStore = subscribe(proxyStore, scheduleWrite);
+
+  // Kick off initial hydration (unless skipped).
+  if (!skipHydration) {
+    void hydrateFromStorage()
+      .then(() => {
+        hydratedFlag = true;
+        resolveHydrated();
+      })
+      .catch((error) => {
+        hydratedFlag = true;
+        rejectHydrated(error);
+      });
   }
 
   // ── Build handle ───────────────────────────────────────────────────────
@@ -549,22 +526,16 @@ export function persist<T extends object>(
       }
 
       // Unsubscribe from store mutations.
-      if (unsubscribeFromStore) {
-        unsubscribeFromStore();
-      }
+      unsubscribeFromStore();
 
       // Remove cross-tab sync listener.
-      if (
-        active &&
-        typeof globalThis !== 'undefined' &&
-        typeof globalThis.removeEventListener === 'function'
-      ) {
+      if (syncTabs) {
         globalThis.removeEventListener('storage', onStorageEvent);
       }
     },
 
     async save() {
-      if (disposed || !active) return;
+      if (disposed) return;
       // Cancel pending debounce and write immediately.
       if (debounceTimer !== null) {
         clearTimeout(debounceTimer);
@@ -574,29 +545,16 @@ export function persist<T extends object>(
     },
 
     async clear() {
-      if (disposed || !active) return;
-      await storage.removeItem(name);
+      if (disposed) return;
+      try {
+        await storage.removeItem(name);
+      } catch (error) {
+        reportError(error, 'remove');
+      }
     },
 
     async rehydrate() {
-      if (!active) {
-        // Try to activate with storage that may now be available (e.g. client mount).
-        const s = options.storage ?? getDefaultStorage();
-        if (s) {
-          // Reset hydration state so setup's hydration path works correctly.
-          hydratedFlag = false;
-          setup(s);
-          // If skipHydration was false, setup already kicked off hydration.
-          // If skipHydration was true, we need to hydrate manually below.
-          if (!skipHydration) {
-            // setup() already started hydration — just wait for it.
-            await hydratedPromise;
-            return;
-          }
-        } else {
-          return; // Still no storage — nothing to do.
-        }
-      }
+      if (disposed) return;
       expiredFlag = false;
       await hydrateFromStorage();
       if (!hydratedFlag) {

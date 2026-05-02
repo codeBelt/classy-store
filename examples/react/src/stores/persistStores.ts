@@ -48,6 +48,7 @@ export const preferencesStore = createClassyStore(new PreferencesStore());
 
 export const preferencesHandle = persist(preferencesStore, {
   name: 'preferences',
+  storage: localStorage,
 });
 
 // ── Kitchen Sink Store ──────────────────────────────────────────────────────
@@ -150,6 +151,7 @@ export const kitchenSinkStore = createClassyStore(new KitchenSinkStore());
 
 export const kitchenSinkHandle = persist(kitchenSinkStore, {
   name: 'kitchen-sink',
+  storage: localStorage,
   debounce: 300,
   version: 1,
   merge: 'shallow',

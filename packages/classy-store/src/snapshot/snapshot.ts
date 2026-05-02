@@ -168,13 +168,18 @@ function snapshotValue(
   value: unknown,
   parentInternal: StoreInternal,
   key: string | symbol,
+  inProgress: WeakSet<object>,
 ): unknown {
   const childInternal = parentInternal.childInternals.get(key);
   if (childInternal) {
-    return createSnapshotRecursive(childInternal.target, childInternal);
+    return createSnapshotRecursive(
+      childInternal.target,
+      childInternal,
+      inProgress,
+    );
   }
   if (canProxy(value)) {
-    return deepFreezeClone(value as object);
+    return deepFreezeClone(value as object, inProgress);
   }
   return value;
 }
@@ -183,9 +188,15 @@ function snapshotValue(
  * Deep-clone and freeze a plain object or array that is NOT tracked by a proxy.
  * Cached by raw object identity for structural sharing across snapshots.
  */
-function deepFreezeClone(value: object): object {
+function deepFreezeClone(value: object, inProgress: WeakSet<object>): object {
   const cached = untrackedCache.get(value);
   if (cached) return cached;
+  if (inProgress.has(value)) {
+    throw new Error(
+      '@codebelt/classy-store: circular reference detected in snapshot',
+    );
+  }
+  inProgress.add(value);
 
   let clone: Record<string | symbol, unknown> | unknown[];
 
@@ -194,7 +205,7 @@ function deepFreezeClone(value: object): object {
     for (let i = 0; i < value.length; i++) {
       const item = value[i];
       (clone as unknown[])[i] = canProxy(item)
-        ? deepFreezeClone(item as object)
+        ? deepFreezeClone(item as object, inProgress)
         : item;
     }
   } else {
@@ -204,13 +215,14 @@ function deepFreezeClone(value: object): object {
       if (!desc || !('value' in desc)) continue;
       const item = desc.value;
       (clone as Record<string | symbol, unknown>)[key] = canProxy(item)
-        ? deepFreezeClone(item as object)
+        ? deepFreezeClone(item as object, inProgress)
         : item;
     }
   }
 
   Object.freeze(clone);
   untrackedCache.set(value, clone);
+  inProgress.delete(value);
   return clone;
 }
 
@@ -284,6 +296,7 @@ function installMemoizedGetters(
 function createSnapshotRecursive<T extends object>(
   target: T,
   internal: StoreInternal,
+  inProgress: WeakSet<object> = new WeakSet(),
 ): T {
   // Cache hit: version unchanged → return the same frozen snapshot reference.
   const cached = snapshotCache.get(target);
@@ -291,12 +304,24 @@ function createSnapshotRecursive<T extends object>(
     return cached[1] as T;
   }
 
+  if (inProgress.has(target)) {
+    throw new Error(
+      '@codebelt/classy-store: circular reference detected in snapshot',
+    );
+  }
+  inProgress.add(target);
+
   let snap: Record<string | symbol, unknown> | unknown[];
 
   if (Array.isArray(target)) {
     snap = [];
     for (let i = 0; i < target.length; i++) {
-      (snap as unknown[])[i] = snapshotValue(target[i], internal, String(i));
+      (snap as unknown[])[i] = snapshotValue(
+        target[i],
+        internal,
+        String(i),
+        inProgress,
+      );
     }
   } else {
     // Preserve the prototype chain and install memoized getters on the snapshot.
@@ -312,6 +337,7 @@ function createSnapshotRecursive<T extends object>(
         desc.value,
         internal,
         key,
+        inProgress,
       );
     }
 
@@ -322,6 +348,7 @@ function createSnapshotRecursive<T extends object>(
   Object.freeze(snap);
   // Cache AFTER populating + freezing. The reference is stable.
   snapshotCache.set(target, [internal.version, snap]);
+  inProgress.delete(target);
   return snap as T;
 }
 

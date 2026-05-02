@@ -24,11 +24,14 @@ export class ReactiveMap<K, V> {
   /** Deduplicates initial entries by key (last value wins, matching native `Map`). */
   constructor(initial?: Iterable<[K, V]>) {
     if (initial) {
+      // Track key → index for O(1) dedupe instead of O(n) linear scan.
+      const indexByKey = new Map<K, number>();
       for (const [k, v] of initial) {
-        const index = this._entries.findIndex(([ek]) => Object.is(ek, k));
-        if (index !== -1) {
-          this._entries[index] = [k, v];
+        const existing = indexByKey.get(k);
+        if (existing !== undefined) {
+          this._entries[existing] = [k, v];
         } else {
+          indexByKey.set(k, this._entries.length);
           this._entries.push([k, v]);
         }
       }
@@ -75,19 +78,64 @@ export class ReactiveMap<K, V> {
     this._entries.splice(0, this._entries.length);
   }
 
-  /** Returns an iterator over the keys. */
+  /**
+   * Returns an iterator over the keys.
+   * Snapshot semantics: the iterator reflects the entries at call time and
+   * is unaffected by subsequent mutations.
+   */
   keys(): IterableIterator<K> {
-    return this._entries.map(([k]) => k)[Symbol.iterator]();
+    const snap = this._entries.slice();
+    let i = 0;
+    return {
+      next: () =>
+        i < snap.length
+          ? {value: snap[i++][0], done: false}
+          : {value: undefined as unknown as K, done: true},
+      [Symbol.iterator]() {
+        return this;
+      },
+    };
   }
 
-  /** Returns an iterator over the values. */
+  /**
+   * Returns an iterator over the values.
+   * Snapshot semantics: the iterator reflects the entries at call time and
+   * is unaffected by subsequent mutations.
+   */
   values(): IterableIterator<V> {
-    return this._entries.map(([, v]) => v)[Symbol.iterator]();
+    const snap = this._entries.slice();
+    let i = 0;
+    return {
+      next: () =>
+        i < snap.length
+          ? {value: snap[i++][1], done: false}
+          : {value: undefined as unknown as V, done: true},
+      [Symbol.iterator]() {
+        return this;
+      },
+    };
   }
 
-  /** Returns an iterator over [key, value] pairs. */
+  /**
+   * Returns an iterator over [key, value] pairs.
+   * Snapshot semantics: the iterator reflects the entries at call time and
+   * is unaffected by subsequent mutations.
+   */
   entries(): IterableIterator<[K, V]> {
-    return this._entries.map(([k, v]) => [k, v] as [K, V])[Symbol.iterator]();
+    const snap = this._entries.slice();
+    let i = 0;
+    return {
+      next: () => {
+        if (i >= snap.length) {
+          return {value: undefined as unknown as [K, V], done: true};
+        }
+        const e = snap[i++];
+        return {value: [e[0], e[1]] as [K, V], done: false};
+      },
+      [Symbol.iterator]() {
+        return this;
+      },
+    };
   }
 
   /** Calls `callback` for each entry, matching the native `Map.forEach` signature. */
@@ -127,8 +175,11 @@ export class ReactiveSet<T> {
   /** Deduplicates initial values using `Object.is` comparison. */
   constructor(initial?: Iterable<T>) {
     if (initial) {
+      // Use a Set for O(1) dedupe (Set uses SameValueZero — NaN-aware, like Object.is for our purposes).
+      const seen = new Set<T>();
       for (const v of initial) {
-        if (!this._items.some((item) => Object.is(item, v))) {
+        if (!seen.has(v)) {
+          seen.add(v);
           this._items.push(v);
         }
       }
@@ -166,19 +217,54 @@ export class ReactiveSet<T> {
     this._items.splice(0, this._items.length);
   }
 
-  /** Returns an iterator over the values (same as `values()`, matching Set API). */
+  /**
+   * Returns an iterator over the values (same as `values()`, matching Set API).
+   * Snapshot semantics: the iterator reflects the items at call time and
+   * is unaffected by subsequent mutations.
+   */
   keys(): IterableIterator<T> {
-    return this._items.map((v) => v)[Symbol.iterator]();
+    return this.values();
   }
 
-  /** Returns an iterator over the values. */
+  /**
+   * Returns an iterator over the values.
+   * Snapshot semantics: the iterator reflects the items at call time and
+   * is unaffected by subsequent mutations.
+   */
   values(): IterableIterator<T> {
-    return this._items.map((v) => v)[Symbol.iterator]();
+    const snap = this._items.slice();
+    let i = 0;
+    return {
+      next: () =>
+        i < snap.length
+          ? {value: snap[i++], done: false}
+          : {value: undefined as unknown as T, done: true},
+      [Symbol.iterator]() {
+        return this;
+      },
+    };
   }
 
-  /** Returns an iterator over [value, value] pairs, matching the native Set API. */
+  /**
+   * Returns an iterator over [value, value] pairs, matching the native Set API.
+   * Snapshot semantics: the iterator reflects the items at call time and
+   * is unaffected by subsequent mutations.
+   */
   entries(): IterableIterator<[T, T]> {
-    return this._items.map((v) => [v, v] as [T, T])[Symbol.iterator]();
+    const snap = this._items.slice();
+    let i = 0;
+    return {
+      next: () => {
+        if (i >= snap.length) {
+          return {value: undefined as unknown as [T, T], done: true};
+        }
+        const v = snap[i++];
+        return {value: [v, v] as [T, T], done: false};
+      },
+      [Symbol.iterator]() {
+        return this;
+      },
+    };
   }
 
   /** Calls `callback` for each item, matching the native `Set.forEach` signature. */

@@ -36,6 +36,7 @@ export const counterStore = createClassyStore(new CounterStore());
 
 export const persistHandle = persist(counterStore, {
   name: 'classy-solid-example',
+  storage: localStorage,
   properties: ['count', 'step', 'label'],
 });
 

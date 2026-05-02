@@ -175,6 +175,41 @@ describe('withHistory', () => {
     h.dispose();
   });
 
+  it('undo() does not silently un-pause an explicitly paused recorder', async () => {
+    class Store {
+      count = 0;
+    }
+
+    const store = createClassyStore(new Store());
+    const h = withHistory(store);
+
+    store.count = 1;
+    await tick();
+    store.count = 2;
+    await tick();
+
+    // User pauses recording, then performs an undo. The undo internally
+    // toggles `paused` while applying the snapshot — but it must restore
+    // the prior (user-set) paused state, not unconditionally clear it.
+    h.pause();
+    h.undo();
+    expect(store.count).toBe(1);
+
+    // Wait past the microtask that restores `paused`.
+    await tick();
+
+    // A subsequent mutation should NOT be recorded — recorder is still paused.
+    store.count = 99;
+    await tick();
+
+    // Redo should still go to 2 (the recorded state), proving the
+    // mutation to 99 was not added to history.
+    h.redo();
+    expect(store.count).toBe(2);
+
+    h.dispose();
+  });
+
   it('skips getters during state restoration', async () => {
     class Store {
       count = 5;
