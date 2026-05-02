@@ -1,5 +1,11 @@
 # @codebelt/classy-store
 
+## 0.4.1
+
+### Patch Changes
+
+- [#25](https://github.com/codeBelt/classy-store/pull/25) [`5fb91d3`](https://github.com/codeBelt/classy-store/commit/5fb91d398a1cb001003b6d2a6ff9b5e7d656845b) Thanks [@codeBelt](https://github.com/codeBelt)! - core improvements and tests
+
 ## 0.4.0
 
 ### Minor Changes
