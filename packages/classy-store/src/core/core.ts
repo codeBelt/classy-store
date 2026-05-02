@@ -16,7 +16,11 @@ const internalsMap = new WeakMap<object, StoreInternal>();
  * a getter reads during evaluation. A stack (not a single variable) is needed
  * because getter A can read getter B, which pushes a second tracker.
  */
-const trackerStack: {internal: StoreInternal; deps: DepEntry[]}[] = [];
+const trackerStack: {
+  internal: StoreInternal;
+  prop: string | symbol;
+  deps: DepEntry[];
+}[] = [];
 
 /** Returns the tracker currently recording deps, or `null` if none is active. */
 function activeTracker() {
@@ -120,8 +124,23 @@ function evaluateComputed(
     return cached.value;
   }
 
+  // Cycle detection: if this (internal, prop) pair is already being
+  // evaluated higher in the stack, the getter chain is recursive.
+  for (const existing of trackerStack) {
+    if (existing.internal === internal && existing.prop === prop) {
+      const cycle = trackerStack
+        .slice(trackerStack.indexOf(existing))
+        .map((f) => String(f.prop))
+        .concat(String(prop))
+        .join(' → ');
+      throw new Error(
+        `@codebelt/classy-store: circular computed getter dependency: ${cycle}`,
+      );
+    }
+  }
+
   // Push a new tracker frame for this getter evaluation.
-  const frame = {internal, deps: [] as DepEntry[]};
+  const frame = {internal, prop, deps: [] as DepEntry[]};
   trackerStack.push(frame);
   try {
     const value = getterFn.call(receiver);

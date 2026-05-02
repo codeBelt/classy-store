@@ -747,4 +747,118 @@ describe('createClassyStore() — core reactivity', () => {
       expect(secondListener).toHaveBeenCalledTimes(1);
     });
   });
+
+  describe('bound method cache invalidation', () => {
+    it('reassigning a method returns the new function on next access', async () => {
+      class Store {
+        count = 0;
+        bump() {
+          this.count++;
+        }
+      }
+      const s = createClassyStore(new Store());
+
+      // Cache the original bound method by accessing it.
+      const original = s.bump;
+      expect(s.bump).toBe(original); // cached
+
+      // Reassign.
+      const replacement = function (this: Store) {
+        this.count += 100;
+      };
+      (s as unknown as {bump: () => void}).bump = replacement;
+      await flush();
+
+      // New access must NOT return the stale cached binding.
+      expect(s.bump).not.toBe(original);
+      s.bump();
+      expect(s.count).toBe(100);
+    });
+
+    it('deleting a reassigned own method clears the bound cache; re-adding returns a fresh binding', async () => {
+      const s = createClassyStore({
+        count: 0,
+        bump(this: {count: number}) {
+          this.count++;
+        },
+      });
+
+      // Cache the original binding.
+      const original = s.bump;
+      expect(s.bump).toBe(original);
+
+      // Delete the own property.
+      delete (s as Partial<typeof s>).bump;
+      await flush();
+      expect(s.bump).toBeUndefined();
+
+      // Re-add — must return a fresh binding, not the cached old one.
+      (s as {bump?: () => void}).bump = function (this: {count: number}) {
+        this.count += 5;
+      };
+      await flush();
+
+      expect(s.bump).not.toBe(original);
+      s.bump?.();
+      expect(s.count).toBe(5);
+    });
+  });
+
+  describe('computed getter error handling', () => {
+    it('a getter that throws propagates the error and leaves the store usable', async () => {
+      class Store {
+        count = 0;
+        get bad(): number {
+          if (this.count === 0) throw new Error('not ready');
+          return this.count * 2;
+        }
+      }
+      const s = createClassyStore(new Store());
+
+      expect(() => s.bad).toThrow('not ready');
+
+      // Store still mutable + reactive after throw.
+      const listener = mock(() => {});
+      subscribe(s, listener);
+      s.count = 3;
+      await flush();
+      expect(listener).toHaveBeenCalledTimes(1);
+      expect(s.bad).toBe(6);
+    });
+
+    it('throws a clear error on circular getter dependency (A → B → A)', () => {
+      class Store {
+        get a(): number {
+          return (this as unknown as Store).b + 1;
+        }
+        get b(): number {
+          return (this as unknown as Store).a + 1;
+        }
+      }
+      const s = createClassyStore(new Store());
+
+      expect(() => s.a).toThrow(/circular computed getter dependency/);
+      expect(() => s.a).toThrow(/a → b → a/);
+    });
+
+    it('throws a clear error on self-referencing getter', () => {
+      class Store {
+        get loop(): number {
+          return (this as unknown as Store).loop + 1;
+        }
+      }
+      const s = createClassyStore(new Store());
+      expect(() => s.loop).toThrow(/circular computed getter dependency/);
+    });
+  });
+
+  describe('deep version propagation', () => {
+    it('mutation 4 levels deep bumps the root version', async () => {
+      const s = createClassyStore({a: {b: {c: {d: 0}}}});
+      const v0 = getVersion(s);
+      s.a.b.c.d = 99;
+      await flush();
+      expect(getVersion(s)).toBeGreaterThan(v0);
+    });
+  });
 });

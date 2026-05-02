@@ -13,9 +13,7 @@ type DevToolsMessage = {
 type DevToolsConnection = {
   init: (state: unknown) => void;
   send: (action: string | {type: string}, state: unknown) => void;
-  subscribe: (
-    listener: (message: DevToolsMessage) => void,
-  ) => (() => void) | {unsubscribe: () => void};
+  subscribe: (listener: (message: DevToolsMessage) => void) => () => void;
 };
 
 type DevToolsExtension = {
@@ -118,13 +116,6 @@ export function devtools<T extends object>(
   // Return dispose function
   return () => {
     unsubscribeFromStore();
-    if (typeof devToolsUnsub === 'function') {
-      devToolsUnsub();
-    } else if (
-      devToolsUnsub &&
-      typeof devToolsUnsub.unsubscribe === 'function'
-    ) {
-      devToolsUnsub.unsubscribe();
-    }
+    devToolsUnsub();
   };
 }

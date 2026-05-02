@@ -370,29 +370,6 @@ describe('devtools', () => {
     expect(ext.connect).toHaveBeenCalledWith({name: 'ClassyStore'});
   });
 
-  it('handles connection.subscribe returning {unsubscribe} object', async () => {
-    const unsubMock = mock(() => {});
-    const conn = createMockConnection();
-    // Override subscribe to return an object with unsubscribe method
-    conn.subscribe = mock((listener: (message: unknown) => void) => {
-      conn._listener = listener;
-      return {unsubscribe: unsubMock};
-    });
-    const ext = createMockExtension(conn);
-    setExtension(ext);
-
-    class Store {
-      count = 0;
-    }
-
-    const store = createClassyStore(new Store());
-    const dispose = devtools(store);
-
-    dispose();
-
-    expect(unsubMock).toHaveBeenCalledTimes(1);
-  });
-
   it('sends multiple state updates for sequential mutations', async () => {
     const conn = createMockConnection();
     const ext = createMockExtension(conn);
@@ -476,5 +453,41 @@ describe('devtools', () => {
 
     // The partial state change should NOT be sent as a STORE_UPDATE
     expect(conn.send.mock.calls.length).toBe(sendCountBefore);
+  });
+
+  it('JUMP_TO_ACTION followed by user mutation does not loop', async () => {
+    const conn = createMockConnection();
+    setExtension(createMockExtension(conn));
+
+    class Store {
+      count = 0;
+    }
+    const store = createClassyStore(new Store());
+    devtools(store);
+
+    store.count = 5;
+    await tick();
+
+    // Time-travel back to count=0.
+    conn._listener?.({
+      type: 'DISPATCH',
+      payload: {type: 'JUMP_TO_ACTION'},
+      state: JSON.stringify({count: 0}),
+    });
+    await tick();
+
+    const sendCountAfterJump = conn.send.mock.calls.length;
+
+    // User mutates after the time-travel.
+    store.count = 99;
+    await tick();
+
+    // Exactly ONE additional send (the user mutation), not multiple.
+    expect(conn.send.mock.calls.length).toBe(sendCountAfterJump + 1);
+
+    // Subsequent mutation also single send.
+    store.count = 100;
+    await tick();
+    expect(conn.send.mock.calls.length).toBe(sendCountAfterJump + 2);
   });
 });

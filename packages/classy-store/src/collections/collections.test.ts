@@ -336,6 +336,46 @@ describe('reactiveMap() — edge cases', () => {
       ['y', 20],
     ]);
   });
+
+  test('keys() / values() / entries() return snapshot iterators, not live iterators', () => {
+    const m = reactiveMap<string, number>([
+      ['a', 1],
+      ['b', 2],
+      ['c', 3],
+    ]);
+    const keysIter = m.keys();
+    const valuesIter = m.values();
+    const entriesIter = m.entries();
+
+    m.set('d', 4);
+    m.delete('a');
+
+    expect([...keysIter]).toEqual(['a', 'b', 'c']);
+    expect([...valuesIter]).toEqual([1, 2, 3]);
+    expect([...entriesIter]).toEqual([
+      ['a', 1],
+      ['b', 2],
+      ['c', 3],
+    ]);
+  });
+
+  test('large initial iterable with duplicates dedupes correctly (last value wins)', () => {
+    const initial: [number, string][] = [];
+    for (let i = 0; i < 1000; i++) {
+      initial.push([i, `v${i}`]);
+    }
+    // Add duplicates that overwrite the first half with new values.
+    for (let i = 0; i < 500; i++) {
+      initial.push([i, `dup${i}`]);
+    }
+
+    const m = reactiveMap(initial);
+    expect(m.size).toBe(1000);
+    expect(m.get(0)).toBe('dup0');
+    expect(m.get(499)).toBe('dup499');
+    expect(m.get(500)).toBe('v500');
+    expect(m.get(999)).toBe('v999');
+  });
 });
 
 // ── ReactiveSet — additional edge cases ────────────────────────────────────
