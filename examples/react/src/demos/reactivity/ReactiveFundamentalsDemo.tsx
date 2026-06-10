@@ -9,6 +9,20 @@ import {CounterStore, counterStore} from '../../stores/counterStore';
 
 const batchStore = createClassyStore(new CounterStore());
 
+class DemoFormStore {
+  name = 'Alice';
+
+  setName(value: string) {
+    this.name = value;
+  }
+
+  reset() {
+    this.name = 'Alice';
+  }
+}
+
+const formStore = createClassyStore(new DemoFormStore());
+
 const names = ['World', 'Bun', 'React', 'Store'];
 let nameIndex = 0;
 
@@ -44,6 +58,17 @@ function BatchCard() {
   // 1000 mutations → 1 render (microtask batching)
   const count = useClassyStore(batchStore, (state) => state.count);
   return <div>{count}</div>;
+}
+
+function NameInput() {
+  const name = useClassyStore(formStore, (state) => state.name, { sync: true });
+
+  return (
+    <input
+      value={name}
+      onChange={(event) => formStore.setName(event.target.value)}
+    />
+  );
 }`;
 
 function CountCard() {
@@ -100,13 +125,34 @@ function BatchCard() {
   );
 }
 
+function NameInputCard() {
+  const name = useClassyStore(formStore, (state) => state.name, {sync: true});
+  const renders = useRenderCount();
+
+  return (
+    <div className="flex-1 flex items-center justify-between gap-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-3 py-2.5">
+      <label className="flex-1 min-w-0">
+        <span className="block text-[10px] text-zinc-400 uppercase tracking-wide mb-1">
+          Name Input
+        </span>
+        <input
+          value={name}
+          onChange={(event) => formStore.setName(event.target.value)}
+          className="w-full rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-sm text-zinc-100 outline-none focus:border-emerald-400"
+        />
+      </label>
+      <RenderBadge count={renders} />
+    </div>
+  );
+}
+
 export function ReactiveFundamentalsDemo() {
   const [lastBatch, setLastBatch] = useState(false);
 
   return (
     <DemoContainer
       title="Reactive Fundamentals"
-      description="Render isolation via selectors + microtask batching + mutable deep updates — all in one store."
+      description="Render isolation via selectors + controlled inputs + microtask batching + mutable deep updates — all in one store."
       codeTabs={[
         {label: 'Store', code: STORE_CODE, language: 'typescript'},
         {label: 'Component', code: COMPONENT_CODE},
@@ -115,6 +161,7 @@ export function ReactiveFundamentalsDemo() {
       <div className="flex flex-col gap-3 mb-4">
         <CountCard />
         <NameCard />
+        <NameInputCard />
         <BatchCard />
       </div>
 
@@ -144,6 +191,7 @@ export function ReactiveFundamentalsDemo() {
           onClick={() => {
             counterStore.reset();
             batchStore.reset();
+            formStore.reset();
             setLastBatch(false);
           }}
         >

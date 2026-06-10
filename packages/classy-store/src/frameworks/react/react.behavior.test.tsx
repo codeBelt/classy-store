@@ -690,7 +690,7 @@ describe('shallowEqual as useClassyStore isEqual — integration', () => {
       const data = useClassyStore(
         s,
         (state) => ({count: state.count, name: state.name}),
-        shallowEqual,
+        {isEqual: shallowEqual},
       );
       renderCount();
       return (
@@ -721,7 +721,7 @@ describe('shallowEqual as useClassyStore isEqual — integration', () => {
       const data = useClassyStore(
         s,
         (state) => ({count: state.count, name: state.name}),
-        shallowEqual,
+        {isEqual: shallowEqual},
       );
       renderCount();
       return (

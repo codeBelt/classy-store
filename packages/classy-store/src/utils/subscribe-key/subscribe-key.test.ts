@@ -217,6 +217,25 @@ describe('subscribeKey', () => {
     expect(cb2).toHaveBeenCalledTimes(1);
   });
 
+  it('supports sync notifications', async () => {
+    class Store {
+      count = 0;
+    }
+
+    const store = createClassyStore(new Store());
+    const cb = mock((_value: number, _prev: number) => {});
+
+    subscribeKey(store, 'count', cb, {sync: true});
+
+    store.count = 1;
+
+    expect(cb).toHaveBeenCalledTimes(1);
+    expect(cb).toHaveBeenCalledWith(1, 0);
+
+    await tick();
+    expect(cb).toHaveBeenCalledTimes(1);
+  });
+
   it('unsubscribing one subscriber does not affect others', async () => {
     class Store {
       count = 0;

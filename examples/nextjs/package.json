@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "@codebelt/classy-store": "workspace:*",
-    "next": "16.1.6",
+    "next": "16.2.9",
     "react": "19.2.3",
     "react-dom": "19.2.3"
   },

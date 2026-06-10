@@ -17,7 +17,7 @@ export function RecipeEditor() {
   if (!historyRef.current) {
     historyRef.current = withHistory(store, {limit: 30});
   }
-  const snap = useClassyStore(store);
+  const snap = useClassyStore(store, {sync: true});
 
   return (
     <div className="space-y-4">

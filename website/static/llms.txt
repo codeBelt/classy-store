@@ -8,10 +8,11 @@
 
 - [Introduction & API Reference](https://codebelt.github.io/classy-store/docs/): Full API
   covering `createClassyStore`, `useClassyStore`, `createStoreHook`, `snapshot`, `subscribe`,
-  `shallowEqual`, `reactiveMap`, `reactiveSet` (collections entry), and all patterns
+  `shallowEqual`, controlled input `{sync: true}` subscriptions, `reactiveMap`, `reactiveSet`
+  (collections entry), and all patterns
 - [Tutorial](https://codebelt.github.io/classy-store/docs/TUTORIAL): Step-by-step guide —
   store definition, React hook modes (selector/auto-tracked), `createStoreHook`, collections,
-  inheritance, async patterns, local stores
+  controlled inputs with `sync`, inheritance, async patterns, local stores
 
 ## Utilities
 
@@ -28,7 +29,8 @@
 ## Architecture
 
 - [Core Architecture](https://codebelt.github.io/classy-store/docs/ARCHITECTURE): Three-layer
-  design (write proxy → snapshot → framework hook), computed memoization, structural sharing
+  design (write proxy → snapshot → framework hook), sync vs batched notifications, computed
+  memoization, structural sharing
 - [Persist Architecture](https://codebelt.github.io/classy-store/docs/PERSIST_ARCHITECTURE):
   Save/restore flows, merge strategies, cross-tab sync, storage envelope format
 

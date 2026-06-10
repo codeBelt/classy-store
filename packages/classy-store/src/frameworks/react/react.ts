@@ -8,22 +8,32 @@ import {
 import {snapshot} from '../../snapshot/snapshot';
 import type {Snapshot} from '../../types';
 
+type EqualityFn<T> = (a: T, b: T) => boolean;
+
+export type UseClassyStoreOptions = {
+  sync?: boolean;
+};
+
+export type UseClassyStoreSelectorOptions<S> = UseClassyStoreOptions & {
+  isEqual?: EqualityFn<S>;
+};
+
 // ── Overloads ─────────────────────────────────────────────────────────────────
 
 /**
  * Subscribe to a store proxy with an explicit selector.
  *
  * Re-renders only when the selected value changes (compared via `Object.is`
- * by default, or a custom `isEqual`).
+ * by default, or `options.isEqual`).
  *
  * @param proxyStore - A reactive proxy created by `createClassyStore()`.
  * @param selector  - Picks data from the immutable snapshot.
- * @param isEqual   - Optional custom equality function (default: `Object.is`).
+ * @param options   - Controls equality and subscriber notification timing.
  */
 export function useClassyStore<T extends object, S>(
   proxyStore: T,
   selector: (snap: Snapshot<T>) => S,
-  isEqual?: (a: S, b: S) => boolean,
+  options?: UseClassyStoreSelectorOptions<S>,
 ): S;
 
 /**
@@ -33,23 +43,40 @@ export function useClassyStore<T extends object, S>(
  * The component only re-renders when a property it actually read changes.
  *
  * @param proxyStore - A reactive proxy created by `createClassyStore()`.
+ * @param options - Controls subscriber notification timing.
  */
-export function useClassyStore<T extends object>(proxyStore: T): Snapshot<T>;
+export function useClassyStore<T extends object>(
+  proxyStore: T,
+  options?: UseClassyStoreOptions,
+): Snapshot<T>;
 
 // ── Implementation ────────────────────────────────────────────────────────────
 
 export function useClassyStore<T extends object, S>(
   proxyStore: T,
-  selector?: (snap: Snapshot<T>) => S,
-  isEqual?: (a: S, b: S) => boolean,
+  selectorOrOptions?: ((snap: Snapshot<T>) => S) | UseClassyStoreOptions,
+  selectorOptions?: UseClassyStoreSelectorOptions<S>,
 ): Snapshot<T> | S {
   // Validate that the argument is actually a store proxy (throws if not).
   getInternal(proxyStore);
 
+  const selector =
+    typeof selectorOrOptions === 'function' ? selectorOrOptions : undefined;
+  const options:
+    | UseClassyStoreOptions
+    | UseClassyStoreSelectorOptions<S>
+    | undefined =
+    typeof selectorOrOptions === 'function'
+      ? selectorOptions
+      : selectorOrOptions;
+  const sync = options?.sync === true;
+  const isEqual = selectorOptions?.isEqual;
+
   // Stable subscribe function (internal identity never changes for a given store).
   const subscribe = useCallback(
-    (onStoreChange: () => void) => coreSubscribe(proxyStore, onStoreChange),
-    [proxyStore],
+    (onStoreChange: () => void) =>
+      coreSubscribe(proxyStore, onStoreChange, sync ? {sync: true} : undefined),
+    [proxyStore, sync],
   );
 
   // ── Refs used by both modes (always allocated to satisfy Rules of Hooks) ──
@@ -97,7 +124,7 @@ export function useClassyStore<T extends object, S>(
  *
  * Fast-paths when the snapshot reference hasn't changed (O(1)). Otherwise
  * runs the selector against the new snapshot and compares the result to the
- * previous one via `Object.is` (or a custom `isEqual`). Returns the previous
+ * previous one via `Object.is` (or `options.isEqual`). Returns the previous
  * result reference when equal, preventing unnecessary React re-renders.
  *
  * Pure function -- no hooks, safe to call from `useSyncExternalStore`.
@@ -108,7 +135,7 @@ function getSelectorSnapshot<T extends object, S>(
   resultRef: React.RefObject<S | undefined>,
   hasResultRef: React.RefObject<boolean>,
   selector: (snap: Snapshot<T>) => S,
-  isEqual?: (a: S, b: S) => boolean,
+  isEqual?: EqualityFn<S>,
 ): S {
   const nextSnap = snapshot(proxyStore);
 
@@ -207,19 +234,19 @@ export function createStoreHook<T extends object>(proxyStore: T) {
   // Fail fast at creation time rather than on first render.
   getInternal(proxyStore);
 
-  function useStore(): Snapshot<T>;
+  function useStore(options?: UseClassyStoreOptions): Snapshot<T>;
   function useStore<S>(
     selector: (snap: Snapshot<T>) => S,
-    isEqual?: (a: S, b: S) => boolean,
+    options?: UseClassyStoreSelectorOptions<S>,
   ): S;
   function useStore<S>(
-    selector?: (snap: Snapshot<T>) => S,
-    isEqual?: (a: S, b: S) => boolean,
-  ) {
+    selectorOrOptions?: ((snap: Snapshot<T>) => S) | UseClassyStoreOptions,
+    options?: UseClassyStoreSelectorOptions<S>,
+  ): Snapshot<T> | S {
     return useClassyStore(
       proxyStore,
-      selector as (snap: Snapshot<T>) => S,
-      isEqual,
+      selectorOrOptions as (snap: Snapshot<T>) => S,
+      options,
     );
   }
   return useStore;

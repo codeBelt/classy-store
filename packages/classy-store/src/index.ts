@@ -7,5 +7,5 @@
  */
 export {createClassyStore, getVersion, subscribe} from './core/core';
 export {snapshot} from './snapshot/snapshot';
-export type {Snapshot} from './types';
+export type {Snapshot, SubscribeOptions} from './types';
 export {shallowEqual} from './utils/equality/equality';

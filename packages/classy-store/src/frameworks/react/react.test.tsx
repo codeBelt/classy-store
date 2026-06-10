@@ -79,6 +79,37 @@ describe('useClassyStore — selector mode', () => {
     expect(renderCount).toHaveBeenCalledTimes(2);
   });
 
+  it('supports sync selector subscriptions', () => {
+    class Counter {
+      count = 0;
+      increment() {
+        this.count++;
+      }
+    }
+    const store = createClassyStore(new Counter());
+    const renderCount = mock(() => {});
+
+    function Display() {
+      const count = useClassyStore(store, (state) => state.count, {
+        sync: true,
+      });
+      renderCount();
+      return <div>{count}</div>;
+    }
+
+    setup();
+    render(<Display />);
+    expect(container.textContent).toBe('0');
+    expect(renderCount).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      store.increment();
+    });
+
+    expect(container.textContent).toBe('1');
+    expect(renderCount).toHaveBeenCalledTimes(2);
+  });
+
   it('does NOT re-render when unrelated prop changes', async () => {
     const s = createClassyStore({count: 0, name: 'hello'});
     const renderCount = mock(() => {});
@@ -197,7 +228,7 @@ describe('useClassyStore — selector mode', () => {
       const firstItem = useClassyStore(
         s,
         (state) => ({name: state.items[0]?.name}),
-        (a, b) => a.name === b.name,
+        {isEqual: (previous, next) => previous.name === next.name},
       );
       renderCount();
       return <div>{firstItem.name}</div>;
@@ -254,6 +285,29 @@ describe('useClassyStore — auto-tracked mode', () => {
     await act(async () => {
       s.count = 5;
       await flush();
+    });
+
+    expect(container.textContent).toBe('5');
+    expect(renderCount).toHaveBeenCalledTimes(2);
+  });
+
+  it('supports sync auto-tracked subscriptions', () => {
+    const store = createClassyStore({count: 0, name: 'hello'});
+    const renderCount = mock(() => {});
+
+    function Display() {
+      const snap = useClassyStore(store, {sync: true});
+      renderCount();
+      return <div>{snap.count}</div>;
+    }
+
+    setup();
+    render(<Display />);
+    expect(container.textContent).toBe('0');
+    expect(renderCount).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      store.count = 5;
     });
 
     expect(container.textContent).toBe('5');
@@ -795,6 +849,32 @@ describe('createStoreHook', () => {
     expect(container.textContent).toBe('1');
   });
 
+  it('supports sync selector options', () => {
+    class Counter {
+      count = 0;
+      increment() {
+        this.count++;
+      }
+    }
+    const store = createClassyStore(new Counter());
+    const useCounter = createStoreHook(store);
+
+    function Display() {
+      const count = useCounter((state) => state.count, {sync: true});
+      return <div>{count}</div>;
+    }
+
+    setup();
+    render(<Display />);
+    expect(container.textContent).toBe('0');
+
+    act(() => {
+      store.increment();
+    });
+
+    expect(container.textContent).toBe('1');
+  });
+
   it('auto-tracked (selectorless) mode', async () => {
     const store = createClassyStore({count: 0, name: 'hello'});
     const useStore = createStoreHook(store);
@@ -820,16 +900,35 @@ describe('createStoreHook', () => {
     expect(renderCount).toHaveBeenCalledTimes(2);
   });
 
+  it('supports sync auto-tracked options', () => {
+    const store = createClassyStore({count: 0, name: 'hello'});
+    const useStore = createStoreHook(store);
+
+    function Display() {
+      const snap = useStore({sync: true});
+      return <div>{snap.count}</div>;
+    }
+
+    setup();
+    render(<Display />);
+    expect(container.textContent).toBe('0');
+
+    act(() => {
+      store.count = 5;
+    });
+
+    expect(container.textContent).toBe('5');
+  });
+
   it('supports custom isEqual', async () => {
     const store = createClassyStore({items: [{id: 1, name: 'a'}]});
     const useStore = createStoreHook(store);
     const renderCount = mock(() => {});
 
     function List() {
-      const first = useStore(
-        (s) => ({name: s.items[0]?.name}),
-        (a, b) => a.name === b.name,
-      );
+      const first = useStore((s) => ({name: s.items[0]?.name}), {
+        isEqual: (previous, next) => previous.name === next.name,
+      });
       renderCount();
       return <div>{first.name}</div>;
     }

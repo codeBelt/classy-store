@@ -91,17 +91,17 @@ const todoStore = createClassyStore(new TodoStore());
 ### 3. Use in React components
 
 ```tsx
-import {useStore} from '@codebelt/classy-store/react';
+import {useClassyStore} from '@codebelt/classy-store/react';
 
 // Selector mode: explicit control over what triggers re-renders
 function TodoCount() {
-  const remaining = useStore(todoStore, (state) => state.remaining);
+  const remaining = useClassyStore(todoStore, (state) => state.remaining);
   return <span>{remaining} left</span>;
 }
 
 // Auto-tracked mode: reads are tracked automatically
 function TodoList() {
-  const snap = useStore(todoStore);
+  const snap = useClassyStore(todoStore);
   return (
     <ul>
       {snap.filtered.map((todo, index) => (
@@ -131,24 +131,34 @@ const myStore = createClassyStore(new MyClass());
 - **Getters** are automatically memoized — they only recompute when a dependency changes (like MobX `@computed`)
 - **Nested objects/arrays** are lazily deep-proxied on first access
 
-### `useStore(store, selector?, isEqual?)`
+### `useClassyStore(store, selector?, options?)`
 
 React hook that subscribes to store changes via `useSyncExternalStore`.
+
+```typescript
+type UseClassyStoreOptions = {
+  sync?: boolean;
+};
+
+type UseClassyStoreSelectorOptions<S> = UseClassyStoreOptions & {
+  isEqual?: (previous: S, next: S) => boolean;
+};
+```
 
 **Selector mode:**
 
 ```typescript
-const count = useStore(myStore, (state) => state.count);
-const user = useStore(myStore, (state) => state.user);
-const items = useStore(myStore, (state) => state.items);
+const count = useClassyStore(myStore, (state) => state.count);
+const user = useClassyStore(myStore, (state) => state.user);
+const items = useClassyStore(myStore, (state) => state.items);
 ```
 
-The selector receives an immutable snapshot. Re-renders only when the selected value changes (via `Object.is` by default, or a custom `isEqual`).
+The selector receives an immutable snapshot. Re-renders only when the selected value changes via `Object.is` by default, or `options.isEqual`.
 
 **Auto-tracked mode:**
 
 ```typescript
-const snap = useStore(myStore);
+const snap = useClassyStore(myStore);
 // Access snap.count, snap.user.name, etc.
 // Only re-renders when accessed properties change
 ```
@@ -159,20 +169,35 @@ Returns a tracking proxy. Properties your component reads are automatically trac
 
 ```typescript
 import {shallowEqual} from '@codebelt/classy-store';
-import {useStore} from '@codebelt/classy-store/react';
+import {useClassyStore} from '@codebelt/classy-store/react';
 
-const userData = useStore(myStore, (state) => ({
+const userData = useClassyStore(myStore, (state) => ({
   name: state.user.name,
   role: state.user.role,
-}), shallowEqual);
+}), {isEqual: shallowEqual});
 ```
+
+**Controlled input timing:**
+
+```tsx
+const name = useClassyStore(formStore, (state) => state.name, {sync: true});
+
+return (
+  <input
+    value={name}
+    onChange={(event) => formStore.setName(event.target.value)}
+  />
+);
+```
+
+The default subscription is batched in a microtask. Use `sync: true` for controlled form fields so React receives the external-store update during the input event turn and can preserve caret position and IME composition.
 
 ### `useLocalStore(factory)`
 
 Creates a component-scoped reactive store. Each component instance gets its own isolated store, garbage collected on unmount.
 
 ```tsx
-import {useLocalStore, useStore} from '@codebelt/classy-store/react';
+import {useLocalStore, useClassyStore} from '@codebelt/classy-store/react';
 
 class CounterStore {
   count = 0;
@@ -181,7 +206,7 @@ class CounterStore {
 
 function Counter() {
   const store = useLocalStore(() => new CounterStore());
-  const count = useStore(store, (state) => state.count);
+  const count = useClassyStore(store, (state) => state.count);
 
   return <button onClick={() => store.increment()}>Count: {count}</button>;
 }
@@ -213,7 +238,7 @@ const snap = useCatalogStore();
 // Custom equality
 const data = useCatalogStore(
   (state) => ({count: state.count, loading: state.loading}),
-  shallowEqual,
+  {isEqual: shallowEqual},
 );
 ```
 
@@ -231,9 +256,9 @@ const snap = snapshot(myStore);
 // Structural sharing: unchanged sub-trees === previous snapshot
 ```
 
-### `subscribe(store, callback)`
+### `subscribe(store, callback, options?)`
 
-Low-level subscription API. Returns an unsubscribe function. The callback fires once per batched mutation (after microtask).
+Low-level subscription API. Returns an unsubscribe function. By default, the callback fires once per batched mutation after the microtask flush. Pass `{sync: true}` to notify immediately on each mutation.
 
 ```typescript
 import {subscribe} from '@codebelt/classy-store';
@@ -241,6 +266,14 @@ import {subscribe} from '@codebelt/classy-store';
 const unsub = subscribe(myStore, () => {
   console.log('Store changed');
 });
+
+const unsubSync = subscribe(
+  myStore,
+  () => {
+    console.log('Store changed synchronously');
+  },
+  {sync: true},
+);
 
 // Later: unsub();
 ```
@@ -270,7 +303,7 @@ Creates a reactive Map-like collection backed by a plain array. Use inside a `cr
 ```typescript
 import {createClassyStore} from '@codebelt/classy-store';
 import {reactiveMap} from '@codebelt/classy-store/collections';
-import {useStore} from '@codebelt/classy-store/react';
+import {useClassyStore} from '@codebelt/classy-store/react';
 
 class UserStore {
   users = reactiveMap<string, { name: string; role: string }>();
@@ -287,7 +320,7 @@ class UserStore {
 const userStore = createClassyStore(new UserStore());
 
 function UserList() {
-  const snap = useStore(userStore, (state) => [...state.users.entries()]);
+  const snap = useClassyStore(userStore, (state) => [...state.users.entries()]);
   return (
     <ul>
       {snap.map(([id, user]) => (
@@ -307,7 +340,7 @@ Creates a reactive Set-like collection backed by a plain array. Use inside a `cr
 ```typescript
 import {createClassyStore} from '@codebelt/classy-store';
 import {reactiveSet} from '@codebelt/classy-store/collections';
-import {useStore} from '@codebelt/classy-store/react';
+import {useClassyStore} from '@codebelt/classy-store/react';
 
 class TagStore {
   tags = reactiveSet<string>();
@@ -320,7 +353,7 @@ class TagStore {
 const tagStore = createClassyStore(new TagStore());
 
 function TagList() {
-  const tags = useStore(tagStore, (state) => [...state.tags]);
+  const tags = useClassyStore(tagStore, (state) => [...state.tags]);
   return tags.map(tag => <span key={tag}>{tag}</span>);
 }
 ```
@@ -409,8 +442,8 @@ const authStore = createClassyStore(new AuthStore());
 const uiStore = createClassyStore(new UiStore());
 
 function Header() {
-  const user = useStore(authStore, (state) => state.currentUser);
-  const theme = useStore(uiStore, (state) => state.theme);
+  const user = useClassyStore(authStore, (state) => state.currentUser);
+  const theme = useClassyStore(uiStore, (state) => state.theme);
   return <header className={theme}>{user?.name}</header>;
 }
 ```
@@ -468,7 +501,7 @@ const settingsStore = createClassyStore(new SettingsStore());
 
 // Only re-renders when push notification setting changes
 function PushToggle() {
-  const push = useStore(settingsStore, (state) => state.settings.notifications.push);
+  const push = useClassyStore(settingsStore, (state) => state.settings.notifications.push);
   return <Switch checked={push} onChange={() => settingsStore.togglePush()} />;
 }
 ```
@@ -522,7 +555,7 @@ class Store {
 ```typescript
 // Stable reference across re-renders when items/filter haven't changed.
 // No shallowEqual required!
-const filtered = useStore(myStore, (state) => state.filtered);
+const filtered = useClassyStore(myStore, (state) => state.filtered);
 ```
 
 ### Working with Date and RegExp
@@ -549,9 +582,9 @@ For `Map` and `Set` semantics, use `reactiveMap()` and `reactiveSet()` instead o
 
 | Mode | Best for | How it works |
 |------|----------|--------------|
-| `useStore(store, selector)` | Derived values, primitives, specific slices | Selector runs on snapshot, compared with `Object.is` |
-| `useStore(store)` | Components reading many props, rapid prototyping | `proxy-compare` tracks reads automatically |
-| `useStore(store, selector, shallowEqual)` | Selectors returning new objects/arrays | Shallow comparison prevents unnecessary re-renders |
+| `useClassyStore(store, selector)` | Derived values, primitives, specific slices | Selector runs on snapshot, compared with `Object.is` |
+| `useClassyStore(store)` | Components reading many props, rapid prototyping | `proxy-compare` tracks reads automatically |
+| `useClassyStore(store, selector, {isEqual: shallowEqual})` | Selectors returning new objects/arrays | Shallow comparison prevents unnecessary re-renders |
 
 ## Comparison with other libraries
 
@@ -600,11 +633,11 @@ export const counterStore = createClassyStore(new Counter());
 
 ```tsx
 // Counter.tsx
-import {useStore} from '@codebelt/classy-store/react';
+import {useClassyStore} from '@codebelt/classy-store/react';
 import {counterStore} from './stores';
 
 export function Counter() {
-  const count = useStore(counterStore, (state) => state.count);
+  const count = useClassyStore(counterStore, (state) => state.count);
   return <button onClick={counterStore.increment}>Count: {count}</button>;
 }
 ```
@@ -657,12 +690,12 @@ Key points:
 
 ## Reading State in React
 
-`useStore` has two modes. Pick the right one and your components only re-render when they need to.
+`useClassyStore` has two modes. Pick the right one and your components only re-render when they need to.
 
 ### Selector mode
 
 ```ts
-const count = useStore(counterStore, (state) => state.count);
+const count = useClassyStore(counterStore, (state) => state.count);
 ```
 
 The selector receives an immutable snapshot and returns the slice you need. The component re-renders only when the selected value changes (compared with `Object.is`).
@@ -672,7 +705,7 @@ The selector receives an immutable snapshot and returns the slice you need. The 
 ### Auto-tracked mode
 
 ```ts
-const snap = useStore(counterStore);
+const snap = useClassyStore(counterStore);
 // just use snap.count, snap.name, etc. in your JSX
 ```
 
@@ -682,12 +715,12 @@ No selector — you get back a tracking proxy over the snapshot. The library rec
 
 ### Custom equality with `shallowEqual`
 
-By default, `useStore` compares the selector's return value with `Object.is`, which is a reference check. This works perfectly for primitives and for selecting existing properties directly — structural sharing means that if `todos` didn't change, the snapshot returns the **same frozen array reference**, so `Object.is` returns `true` and the component skips the re-render.
+By default, `useClassyStore` compares the selector's return value with `Object.is`, which is a reference check. This works perfectly for primitives and for selecting existing properties directly — structural sharing means that if `todos` didn't change, the snapshot returns the **same frozen array reference**, so `Object.is` returns `true` and the component skips the re-render.
 
 ```ts
 // ✅ No shallowEqual needed — structural sharing keeps the reference stable
-const count = useStore(todoStore, (state) => state.items.length);
-const todos = useStore(todoStore, (state) => state.items);
+const count = useClassyStore(todoStore, (state) => state.items.length);
+const todos = useClassyStore(todoStore, (state) => state.items);
 ```
 
 The problem shows up when your selector **derives a new value** — calling `.filter()`, `.map()`, or using object spread always allocates a new array or object, even when the underlying data hasn't changed. `Object.is` sees a different reference and triggers a re-render.
@@ -696,13 +729,13 @@ With `shallowEqual` — compares the array contents, not the reference:
 
 ```ts
 import {shallowEqual} from '@codebelt/classy-store';
-import {useStore} from '@codebelt/classy-store/react';
+import {useClassyStore} from '@codebelt/classy-store/react';
 
 // ✅ Only re-renders when the filtered items actually change
-const active = useStore(
+const active = useClassyStore(
   todoStore,
   (state) => state.items.filter((item) => !item.done),
-  shallowEqual,
+  {isEqual: shallowEqual},
 );
 ```
 
@@ -710,8 +743,8 @@ const active = useStore(
 
 ```ts
 // ✅ No shallowEqual needed — cross-snapshot memoization keeps getter results stable
-const filtered = useStore(todoStore, (state) => state.filtered);
-const remaining = useStore(todoStore, (state) => state.remaining);
+const filtered = useClassyStore(todoStore, (state) => state.filtered);
+const remaining = useClassyStore(todoStore, (state) => state.remaining);
 ```
 
 ### Decision guide
@@ -719,6 +752,41 @@ const remaining = useStore(todoStore, (state) => state.remaining);
 - **Use selectors by default.** They're explicit and produce the fewest re-renders.
 - **Use auto-tracked mode** when you'd need 3+ selectors in one component or when you're exploring the API.
 - **Add `shallowEqual`** when your selector returns objects/arrays and you're seeing unnecessary re-renders.
+
+### Controlled inputs with `sync`
+
+Classy Store batches subscriber notifications by default. That is the right default for most UI because multiple synchronous mutations collapse into one settled update.
+
+Controlled React inputs are the important exception. React needs the latest external-store value during the input event turn so it can preserve the DOM value, caret position, and IME composition state. If the store waits until the next microtask to notify React, typing in the middle of a controlled input can move the caret or interrupt composition for languages such as Korean, Japanese, and Chinese.
+
+Use `{sync: true}` for the specific store reads that control form fields:
+
+```tsx
+class ProfileFormStore {
+  name = '';
+
+  setName(value: string) {
+    this.name = value;
+  }
+}
+
+const profileFormStore = createClassyStore(new ProfileFormStore());
+
+function NameInput() {
+  const name = useClassyStore(profileFormStore, (state) => state.name, {
+    sync: true,
+  });
+
+  return (
+    <input
+      value={name}
+      onChange={(event) => profileFormStore.setName(event.target.value)}
+    />
+  );
+}
+```
+
+Use `sync` narrowly for controlled `<input>`, `<textarea>`, checkbox, radio, and similar field bindings. Keep the default batched subscription for broad dashboards, persistence, devtools, history, and views that only need the final settled state.
 
 ## Batching
 
@@ -757,7 +825,7 @@ Snapshots use structural sharing: unchanged sub-trees return the same frozen ref
 
 ## Subscribing Outside React
 
-`subscribe()` registers a callback that fires once per batched mutation. It returns an unsubscribe function.
+`subscribe()` registers a callback that fires once per batched mutation by default. It returns an unsubscribe function. Pass `{sync: true}` only when a subscriber must observe every mutation immediately.
 
 ```ts
 import {subscribe, snapshot} from '@codebelt/classy-store';
@@ -879,7 +947,7 @@ class PostStore {
 By default, stores are module-level singletons. For component-scoped state that is garbage collected on unmount, use `useLocalStore`.
 
 ```tsx
-import {useLocalStore, useStore} from '@codebelt/classy-store/react';
+import {useLocalStore, useClassyStore} from '@codebelt/classy-store/react';
 
 class CounterStore {
   count = 0;
@@ -889,7 +957,7 @@ class CounterStore {
 
 function Counter() {
   const store = useLocalStore(() => new CounterStore());
-  const count = useStore(store, (state) => state.count);
+  const count = useClassyStore(store, (state) => state.count);
 
   return <button onClick={() => store.increment()}>Count: {count}</button>;
 }
@@ -903,12 +971,12 @@ The factory function (`() => new CounterStore()`) runs once per mount. Subsequen
 
 ```tsx
 import {useEffect} from 'react';
-import {useLocalStore, useStore} from '@codebelt/classy-store/react';
+import {useLocalStore, useClassyStore} from '@codebelt/classy-store/react';
 import {persist} from '@codebelt/classy-store/utils';
 
 function EditProfile() {
   const store = useLocalStore(() => new FormStore());
-  const snap = useStore(store);
+  const snap = useClassyStore(store);
 
   useEffect(() => {
     const handle = persist(store, { name: 'edit-profile-draft' });
@@ -948,7 +1016,7 @@ const snap = useCatalogStore();
 // Custom equality
 const data = useCatalogStore(
   (state) => ({count: state.count, loading: state.loading}),
-  shallowEqual,
+  {isEqual: shallowEqual},
 );
 ```
 
@@ -972,7 +1040,7 @@ increment = () => { this.count++; };
 increment() { this.count++; }
 ```
 
-### Don't destructure the store outside `useStore`
+### Don't destructure the store outside `useClassyStore`
 
 ```ts
 // ❌ Breaks reactivity — `count` is just the number 0
@@ -1502,7 +1570,7 @@ history.canRedo; // true if there's a next state
 
 ```tsx
 function UndoRedoButtons() {
-  const snap = useStore(drawingStore);
+  const snap = useClassyStore(drawingStore);
 
   return (
     <div>
@@ -1612,11 +1680,11 @@ Internal design documentation for contributors and maintainers.
 
 The library is organized into three distinct layers, each with a single responsibility:
 
-1. **Layer 1 — Write Proxy (`core.ts`):** ES6 Proxy wrapping the class instance. Intercepts SET, GET, and DELETE traps. Batches mutations via `queueMicrotask`. Lazily wraps nested objects in child proxies.
+1. **Layer 1 — Write Proxy (`core.ts`):** ES6 Proxy wrapping the class instance. Intercepts SET, GET, and DELETE traps. Notifies sync subscribers immediately and batches default subscribers via `queueMicrotask`. Lazily wraps nested objects in child proxies.
 
 2. **Layer 2 — Immutable Snapshots (`snapshot.ts`):** `snapshot(proxy)` creates a deeply frozen plain-JS copy. Structural sharing reuses unchanged sub-tree references. Getter results are memoized per-snapshot and cross-snapshot.
 
-3. **Layer 3 — React Hook (`react.ts`):** `useStore` uses `useSyncExternalStore` for tear-free React 18+ integration. Supports selector mode (`Object.is` comparison) and auto-tracked mode (`proxy-compare`).
+3. **Layer 3 — React Hook (`react.ts`):** `useClassyStore` uses `useSyncExternalStore` for tear-free React 18+ integration. Supports selector mode (`Object.is` or `options.isEqual`) and auto-tracked mode (`proxy-compare`).
 
 ## Internal State Storage
 
@@ -1626,12 +1694,12 @@ All internal bookkeeping is stored in a `WeakMap<proxy, StoreInternal>`:
 type StoreInternal = {
   target: object;                           // Raw class instance
   version: number;                          // Monotonically increasing
-  listeners: Set<() => void>;               // Subscriber callbacks
+  batchedListeners: Set<() => void>;        // Subscribers notified once per microtask
+  syncListeners: Set<() => void>;           // Subscribers notified immediately per mutation
   childProxies: Map<string|symbol, object>; // Cached child proxies
   childInternals: Map<string|symbol, StoreInternal>;
   parent: StoreInternal | null;             // For version propagation
   notifyScheduled: boolean;                 // Batch dedup flag
-  snapshotCache: [number, object] | null;   // Version-stamped snapshot cache
   computedCache: Map<string|symbol, ComputedEntry>; // Memoized getter cache
 };
 ```
@@ -1643,7 +1711,7 @@ type StoreInternal = {
 2. Clean up child proxy if the property is being replaced
 3. Forward write to raw target via `Reflect.set`
 4. Bump version for this node and all ancestors
-5. Schedule notification via `queueMicrotask` (deduped)
+5. Notify sync listeners immediately, then schedule batched listeners via `queueMicrotask` (deduped)
 
 **GET trap (priority order):**
 1. **Memoized getter detection** — walk prototype chain with `Object.getOwnPropertyDescriptor`. If a getter is found, call `evaluateComputed()`.
@@ -1654,6 +1722,8 @@ type StoreInternal = {
 ## Batching via `queueMicrotask`
 
 Array operations like `push()` trigger multiple SET traps (element + length). Rather than notifying per-trap, a dirty flag + `queueMicrotask` coalesces all synchronous mutations into one notification.
+
+Subscribers opt into immediate timing with `{sync: true}`. Sync subscribers run after version propagation and before the batched microtask. They are intentionally not deduped: two writes mean two sync notifications. React controlled inputs use this timing so `useSyncExternalStore` can observe the new external-store value during the input event turn, preserving caret position and IME composition.
 
 ## Version Propagation
 
@@ -1680,7 +1750,8 @@ Class getters are automatically memoized at two layers:
 ## Key Design Decisions
 
 - **Why ES6 Proxy?** Supports intercepting property creation, deletion, and arbitrary key access — essential for arrays and dynamic objects.
-- **Why `queueMicrotask` for batching?** Runs after current sync code but before the next paint. Multiple mutations in the same event handler = 1 notification.
+- **Why `queueMicrotask` for batching?** Runs after current sync code but before the next paint. Multiple mutations in the same event handler = 1 default notification.
+- **Why `{sync: true}`?** Controlled React inputs need same-turn external-store updates so React can preserve caret position and IME composition. The sync path is opt-in so broad UI subscribers keep the batched default.
 - **Why structural sharing?** Without it, `Object.is(prevSelector, nextSelector)` would always return `false` for object/array selectors.
 - **Why `proxy-compare`?** Battle-tested (~1KB) property access tracking by the creator of Valtio/Zustand/Jotai.
 - **Why `useSyncExternalStore`?** React's official API for external stores — prevents tearing in concurrent mode, same API used by Zustand and Redux.
@@ -1692,7 +1763,8 @@ Class getters are automatically memoized at two layers:
 |-----------|-----------|-------|
 | Property read | O(1) | Direct Proxy GET trap |
 | Property write | O(depth) | Versions bump from node to root |
-| Notification | O(listeners) | Once per microtask batch |
+| Batched notification | O(listeners) | Once per microtask batch |
+| Sync notification | O(listeners) | Once per mutation for `{sync: true}` subscribers |
 | Getter (cache hit) | O(deps) | Check deps validity, return cached |
 | Snapshot (cache hit) | O(1) | Version check only |
 | Snapshot (cache miss) | O(changed branches) | Structural sharing skips unchanged |

@@ -68,7 +68,7 @@ export function DashboardOverview() {
       count: state.recipeCount,
       avgTime: state.averageTotalTime,
     }),
-    shallowEqual,
+    {isEqual: shallowEqual},
   );
 
   const shoppingStats = useClassyStore(
@@ -77,7 +77,7 @@ export function DashboardOverview() {
       total: state.totalItems,
       unchecked: state.uncheckedCount,
     }),
-    shallowEqual,
+    {isEqual: shallowEqual},
   );
 
   const plannerStats = useClassyStore(
@@ -86,7 +86,7 @@ export function DashboardOverview() {
       meals: state.totalMealsPlanned,
       pct: state.completionPercentage,
     }),
-    shallowEqual,
+    {isEqual: shallowEqual},
   );
 
   const cards = [
@@ -127,7 +127,7 @@ export function DashboardOverview() {
           code={`const stats = useClassyStore(recipeStore, (state) => ({
   count: state.recipeCount,
   avgTime: state.averageTotalTime,
-}), shallowEqual);`}
+        }), {isEqual: shallowEqual});`}
         />
       </div>
 

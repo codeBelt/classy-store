@@ -1,6 +1,6 @@
 import {subscribe} from '../../core/core';
 import {snapshot} from '../../snapshot/snapshot';
-import type {Snapshot} from '../../types';
+import type {Snapshot, SubscribeOptions} from '../../types';
 
 /**
  * Subscribe to changes on a single property of a store proxy.
@@ -12,6 +12,7 @@ import type {Snapshot} from '../../types';
  * @param proxyStore - A reactive proxy created by `createClassyStore()`.
  * @param key - The property key to watch.
  * @param callback - Called with `(value, previousValue)` when the property changes.
+ * @param options - Controls subscriber notification timing.
  * @returns An unsubscribe function.
  */
 export function subscribeKey<
@@ -21,17 +22,22 @@ export function subscribeKey<
   proxyStore: T,
   key: K,
   callback: (value: Snapshot<T>[K], previousValue: Snapshot<T>[K]) => void,
+  options?: SubscribeOptions,
 ): () => void {
   let previousValue = snapshot(proxyStore)[key];
 
-  return subscribe(proxyStore, () => {
-    const snap = snapshot(proxyStore);
-    const currentValue = snap[key];
+  return subscribe(
+    proxyStore,
+    () => {
+      const snap = snapshot(proxyStore);
+      const currentValue = snap[key];
 
-    if (!Object.is(currentValue, previousValue)) {
-      const prev = previousValue;
-      previousValue = currentValue;
-      callback(currentValue, prev);
-    }
-  });
+      if (!Object.is(currentValue, previousValue)) {
+        const prev = previousValue;
+        previousValue = currentValue;
+        callback(currentValue, prev);
+      }
+    },
+    options,
+  );
 }
