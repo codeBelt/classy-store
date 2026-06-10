@@ -1,5 +1,11 @@
 # @codebelt/classy-store
 
+## 0.6.0
+
+### Minor Changes
+
+- [#29](https://github.com/codeBelt/classy-store/pull/29) [`342a3a1`](https://github.com/codeBelt/classy-store/commit/342a3a1eb5b2205aa231742786c42d659bd269ea) Thanks [@codeBelt](https://github.com/codeBelt)! - Add sync option
+
 ## 0.5.0
 
 ### Minor Changes
