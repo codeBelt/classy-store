@@ -277,6 +277,51 @@ describe('createClassyStore() — core reactivity', () => {
       expect(listener2).toHaveBeenCalledTimes(1);
     });
 
+    it('sync listeners fire immediately without waiting for the batch flush', async () => {
+      const s = createClassyStore({count: 0});
+      const listener = mock(() => {});
+      subscribe(s, listener, {sync: true});
+
+      s.count = 1;
+
+      expect(listener).toHaveBeenCalledTimes(1);
+      await flush();
+      expect(listener).toHaveBeenCalledTimes(1);
+    });
+
+    it('sync listeners fire per mutation while batched listeners stay deduped', async () => {
+      const s = createClassyStore({a: 0, b: 0});
+      const syncListener = mock(() => {});
+      const batchedListener = mock(() => {});
+      subscribe(s, syncListener, {sync: true});
+      subscribe(s, batchedListener);
+
+      s.a = 1;
+      s.b = 2;
+
+      expect(syncListener).toHaveBeenCalledTimes(2);
+      expect(batchedListener).toHaveBeenCalledTimes(0);
+
+      await flush();
+
+      expect(syncListener).toHaveBeenCalledTimes(2);
+      expect(batchedListener).toHaveBeenCalledTimes(1);
+    });
+
+    it('unsubscribe stops sync notifications', async () => {
+      const s = createClassyStore({count: 0});
+      const listener = mock(() => {});
+      const unsub = subscribe(s, listener, {sync: true});
+
+      s.count = 1;
+      expect(listener).toHaveBeenCalledTimes(1);
+
+      unsub();
+      s.count = 2;
+      await flush();
+      expect(listener).toHaveBeenCalledTimes(1);
+    });
+
     it('subscribe on a child proxy fires when the child mutates', async () => {
       const s = createClassyStore({user: {name: 'Alice'}});
       const listener = mock(() => {});
@@ -743,6 +788,24 @@ describe('createClassyStore() — core reactivity', () => {
 
       s.count = 1;
       await flush();
+
+      expect(secondListener).toHaveBeenCalledTimes(1);
+    });
+
+    it('calls remaining sync listeners even if an earlier one throws', () => {
+      const s = createClassyStore({count: 0});
+      const secondListener = mock(() => {});
+
+      subscribe(
+        s,
+        () => {
+          throw new Error('boom');
+        },
+        {sync: true},
+      );
+      subscribe(s, secondListener, {sync: true});
+
+      s.count = 1;
 
       expect(secondListener).toHaveBeenCalledTimes(1);
     });

@@ -44,7 +44,7 @@ const name = useClassyStore(profileStore, (state) => ({
 const name = useClassyStore(
   profileStore,
   (state) => ({ first: state.firstName, last: state.lastName }),
-  shallowEqual
+  { isEqual: shallowEqual }
 );`;
 
 const firstNames = ['Alice', 'Bob', 'Charlie', 'Diana', 'Eve'];
@@ -82,7 +82,7 @@ function NameCardWith() {
   const name = useClassyStore(
     profileStore,
     (state) => ({first: state.firstName, last: state.lastName}),
-    shallowEqual,
+    {isEqual: shallowEqual},
   );
   const renders = useRenderCount();
 

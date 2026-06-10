@@ -14,7 +14,7 @@ export function ShoppingStats() {
       checked: state.checkedCount,
       lastAction: state.lastAction,
     }),
-    shallowEqual,
+    {isEqual: shallowEqual},
   );
 
   return (
@@ -27,7 +27,7 @@ export function ShoppingStats() {
   unchecked: state.uncheckedCount,
   checked: state.checkedCount,
   lastAction: state.lastAction,
-}), shallowEqual);`}
+}), {isEqual: shallowEqual});`}
       />
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div className="bg-card border border-border rounded-lg p-4">

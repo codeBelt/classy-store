@@ -55,6 +55,19 @@ function AddButton() {
 }
 ```
 
+For React controlled inputs, opt the field subscription into synchronous timing so React can preserve caret position and IME composition:
+
+```tsx
+const name = useClassyStore(formStore, (state) => state.name, {sync: true});
+
+return (
+  <input
+    value={name}
+    onChange={(event) => formStore.setName(event.target.value)}
+  />
+);
+```
+
 ## 📦 Installation
 
 ```bash

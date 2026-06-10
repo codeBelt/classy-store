@@ -1,4 +1,4 @@
-import type {DepEntry, StoreInternal} from '../types';
+import type {DepEntry, StoreInternal, SubscribeOptions} from '../types';
 import {canProxy, findGetterDescriptor} from '../utils/internal/internal';
 
 // ── Global state ──────────────────────────────────────────────────────────────
@@ -164,16 +164,16 @@ export function getInternal(proxy: object): StoreInternal {
   return internal;
 }
 
-// ── Notification batching ─────────────────────────────────────────────────────
+// ── Mutation notification ─────────────────────────────────────────────────────
 
 /**
  * Bump version from the mutated node up to the root, invalidate snapshot caches,
- * and schedule a single microtask notification (deduped at the root level).
+ * notify sync subscribers, and schedule a single batched microtask notification.
  *
  * Version propagation is what enables structural sharing in snapshots: unchanged
  * children keep their old version, so the snapshot cache returns the same frozen ref.
  */
-function scheduleNotify(internal: StoreInternal): void {
+function notifyMutation(internal: StoreInternal): void {
   let current: StoreInternal | null = internal;
   while (current) {
     current.version = ++globalVersion;
@@ -181,11 +181,21 @@ function scheduleNotify(internal: StoreInternal): void {
   }
 
   const root = getRoot(internal);
+  for (const listener of Array.from(root.syncListeners)) {
+    try {
+      listener();
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  if (root.batchedListeners.size === 0) return;
+
   if (!root.notifyScheduled) {
     root.notifyScheduled = true;
     queueMicrotask(() => {
       root.notifyScheduled = false;
-      for (const listener of root.listeners) {
+      for (const listener of Array.from(root.batchedListeners)) {
         try {
           listener();
         } catch (e) {
@@ -212,10 +222,10 @@ function getRoot(internal: StoreInternal): StoreInternal {
  *
  * This is the core of the library's reactivity. The proxy intercepts:
  * - **SET**: compares old/new with `Object.is`, cleans up child proxies on replacement,
- *   forwards the write, and schedules a batched notification.
+ *   forwards the write, and notifies subscribers.
  * - **GET**: detects class getters (memoized), binds methods to the proxy, lazily wraps
  *   nested objects/arrays in child proxies, and records dependencies for computed getters.
- * - **DELETE**: cleans up child proxies and schedules notification.
+ * - **DELETE**: cleans up child proxies and notifies subscribers.
  *
  * Nested objects are recursively wrapped on first access (lazy deep proxy).
  */
@@ -226,7 +236,8 @@ function createStoreProxy<T extends object>(
   const internal: StoreInternal = {
     target,
     version: ++globalVersion,
-    listeners: new Set(),
+    batchedListeners: new Set(),
+    syncListeners: new Set(),
     childProxies: new Map(),
     childInternals: new Map(),
     parent,
@@ -255,7 +266,7 @@ function createStoreProxy<T extends object>(
       boundMethods.delete(prop);
 
       Reflect.set(_target, prop, value);
-      scheduleNotify(internal);
+      notifyMutation(internal);
       return true;
     },
 
@@ -318,7 +329,7 @@ function createStoreProxy<T extends object>(
       boundMethods.delete(prop);
       const deleted = Reflect.deleteProperty(_target, prop);
       if (deleted) {
-        scheduleNotify(internal);
+        notifyMutation(internal);
       }
       return deleted;
     },
@@ -352,21 +363,28 @@ export function createClassyStore<T extends object>(instance: T): T {
 }
 
 /**
- * Subscribe to store changes. The callback fires once per batched mutation
- * (coalesced via `queueMicrotask`), not once per individual property write.
+ * Subscribe to store changes. By default, the callback fires once per batched
+ * mutation turn (coalesced via `queueMicrotask`). Pass `{sync: true}` to notify
+ * immediately after each mutation.
  *
  * @param proxy - A reactive proxy created by `createClassyStore()`.
- * @param callback - Invoked after each batched mutation.
+ * @param callback - Invoked when the store changes.
+ * @param options - Controls subscriber notification timing.
  * @returns An unsubscribe function. Call it to stop receiving notifications.
  */
-export function subscribe(proxy: object, callback: () => void): () => void {
+export function subscribe(
+  proxy: object,
+  callback: () => void,
+  options?: SubscribeOptions,
+): () => void {
   const internal = getInternal(proxy);
   // Always subscribe on the root so notifications fire regardless of
   // whether the user subscribes to the root proxy or a child proxy.
   const root = getRoot(internal);
-  root.listeners.add(callback);
+  const listeners = options?.sync ? root.syncListeners : root.batchedListeners;
+  listeners.add(callback);
   return () => {
-    root.listeners.delete(callback);
+    listeners.delete(callback);
   };
 }
 

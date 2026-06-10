@@ -138,7 +138,7 @@ import {useClassyStore} from '@codebelt/classy-store/react';
 const active = useClassyStore(
   todoStore,
   (state) => state.items.filter((item) => !item.done),
-  shallowEqual,
+  {isEqual: shallowEqual},
 );
 ```
 
@@ -161,6 +161,41 @@ const remaining = useClassyStore(todoStore, (state) => state.remaining);
 - **Use selectors by default.** They're explicit and produce the fewest re-renders.
 - **Use auto-tracked mode** when you'd need 3+ selectors in one component or when you're exploring the API.
 - **Add `shallowEqual`** when your selector returns objects/arrays and you're seeing unnecessary re-renders.
+
+### Controlled inputs with `sync`
+
+Classy Store batches subscriber notifications by default. That is the right default for most UI because multiple synchronous mutations collapse into one settled update.
+
+Controlled React inputs are the important exception. React needs the latest external-store value during the input event turn so it can preserve the DOM value, caret position, and IME composition state. If the store waits until the next microtask to notify React, typing in the middle of a controlled input can move the caret or interrupt composition for languages such as Korean, Japanese, and Chinese.
+
+Use `{sync: true}` for the specific store reads that control form fields:
+
+```tsx
+class ProfileFormStore {
+  name = '';
+
+  setName(value: string) {
+    this.name = value;
+  }
+}
+
+const profileFormStore = createClassyStore(new ProfileFormStore());
+
+function NameInput() {
+  const name = useClassyStore(profileFormStore, (state) => state.name, {
+    sync: true,
+  });
+
+  return (
+    <input
+      value={name}
+      onChange={(event) => profileFormStore.setName(event.target.value)}
+    />
+  );
+}
+```
+
+Use `sync` narrowly for controlled `<input>`, `<textarea>`, checkbox, radio, and similar field bindings. Keep the default batched subscription for broad dashboards, persistence, devtools, history, and views that only need the final settled state.
 
 ## Batching
 
@@ -474,7 +509,7 @@ const snap = useCatalogStore();
 // Custom equality
 const data = useCatalogStore(
   (state) => ({count: state.count, loading: state.loading}),
-  shallowEqual,
+  {isEqual: shallowEqual},
 );
 ```
 

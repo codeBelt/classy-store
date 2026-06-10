@@ -73,6 +73,12 @@ export type ComputedEntry = {
   deps: DepEntry[];
 };
 
+/** Options that control how store subscribers are notified. */
+export type SubscribeOptions = {
+  /** Notify this subscriber immediately instead of waiting for the batched microtask. */
+  sync?: boolean;
+};
+
 // ── Store internal bookkeeping ───────────────────────────────────────────────
 
 /** Internal bookkeeping for a store proxy, stored in a WeakMap keyed by the proxy. */
@@ -81,8 +87,10 @@ export type StoreInternal = {
   target: object;
   /** Monotonically increasing version counter. */
   version: number;
-  /** Set of subscriber callbacks notified on mutation. */
-  listeners: Set<() => void>;
+  /** Subscriber callbacks notified once per batched mutation turn. */
+  batchedListeners: Set<() => void>;
+  /** Subscriber callbacks notified immediately on each mutation. */
+  syncListeners: Set<() => void>;
   /** Cached child proxies for nested plain objects/arrays (keyed by property name). */
   childProxies: Map<string | symbol, object>;
   /** Cached child internals for propagating version bumps up the tree. */

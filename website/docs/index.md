@@ -121,9 +121,19 @@ const myStore = createClassyStore(new MyClass());
 - **Getters** are automatically memoized — they only recompute when a dependency changes (like MobX `@computed`)
 - **Nested objects/arrays** are lazily deep-proxied on first access
 
-### `useClassyStore(store, selector?, isEqual?)`
+### `useClassyStore(store, selector?, options?)`
 
 React hook that subscribes to store changes via `useSyncExternalStore`.
+
+```typescript
+type UseClassyStoreOptions = {
+  sync?: boolean;
+};
+
+type UseClassyStoreSelectorOptions<S> = UseClassyStoreOptions & {
+  isEqual?: (previous: S, next: S) => boolean;
+};
+```
 
 **Selector mode:**
 
@@ -133,7 +143,7 @@ const user = useClassyStore(myStore, (state) => state.user);
 const items = useClassyStore(myStore, (state) => state.items);
 ```
 
-The selector receives an immutable snapshot. Re-renders only when the selected value changes (via `Object.is` by default, or a custom `isEqual`).
+The selector receives an immutable snapshot. Re-renders only when the selected value changes via `Object.is` by default, or `options.isEqual`.
 
 **Auto-tracked mode:**
 
@@ -154,8 +164,23 @@ import {useClassyStore} from '@codebelt/classy-store/react';
 const userData = useClassyStore(myStore, (state) => ({
   name: state.user.name,
   role: state.user.role,
-}), shallowEqual);
+}), {isEqual: shallowEqual});
 ```
+
+**Controlled input timing:**
+
+```tsx
+const name = useClassyStore(formStore, (state) => state.name, {sync: true});
+
+return (
+  <input
+    value={name}
+    onChange={(event) => formStore.setName(event.target.value)}
+  />
+);
+```
+
+The default subscription is batched in a microtask. Use `sync: true` for controlled form fields so React receives the external-store update during the input event turn and can preserve caret position and IME composition.
 
 ### `useLocalStore(factory)`
 
@@ -223,7 +248,7 @@ import {shallowEqual} from '@codebelt/classy-store';
 function Summary() {
   const data = useCatalogStore(
     (state) => ({count: state.count, loading: state.loading}),
-    shallowEqual,
+    {isEqual: shallowEqual},
   );
   return <div>{data.loading ? 'Loading...' : `${data.count} items`}</div>;
 }
@@ -243,9 +268,9 @@ const snap = snapshot(myStore);
 // Structural sharing: unchanged sub-trees === previous snapshot
 ```
 
-### `subscribe(store, callback)`
+### `subscribe(store, callback, options?)`
 
-Low-level subscription API. Returns an unsubscribe function. The callback fires once per batched mutation (after microtask).
+Low-level subscription API. Returns an unsubscribe function. By default, the callback fires once per batched mutation after the microtask flush. Pass `{sync: true}` to notify immediately on each mutation.
 
 ```typescript
 import {subscribe} from '@codebelt/classy-store';
@@ -253,6 +278,14 @@ import {subscribe} from '@codebelt/classy-store';
 const unsub = subscribe(myStore, () => {
   console.log('Store changed');
 });
+
+const unsubSync = subscribe(
+  myStore,
+  () => {
+    console.log('Store changed synchronously');
+  },
+  {sync: true},
+);
 
 // Later: unsub();
 ```
@@ -574,7 +607,8 @@ For `Map` and `Set` semantics, use [`reactiveMap()`](#reactivemapk-vinitial) and
 |------|----------|--------------|
 | `useClassyStore(store, selector)` | Derived values, primitives, specific slices | Selector runs on snapshot, compared with `Object.is` |
 | `useClassyStore(store)` | Components reading many props, rapid prototyping | `proxy-compare` tracks reads automatically |
-| `useClassyStore(store, selector, shallowEqual)` | Selectors returning new objects/arrays | Shallow comparison prevents unnecessary re-renders |
+| `useClassyStore(store, selector, {isEqual: shallowEqual})` | Selectors returning new objects/arrays | Shallow comparison prevents unnecessary re-renders |
+| `useClassyStore(store, selector, {sync: true})` | Controlled form fields | Notifies React during the input event turn |
 
 ## Comparison with other libraries
 

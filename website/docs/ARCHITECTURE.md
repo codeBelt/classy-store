@@ -14,10 +14,11 @@ flowchart TB
 
   subgraph layer1 ["Layer 1: Write Proxy (core.ts)"]
     storeFn["createClassyStore(instance)"]
-    SetTrap["SET trap: forward write → bump version → schedule notify"]
+    SetTrap["SET trap: forward write → bump version → notify subscribers"]
     GetTrap["GET trap: return value, bind methods, lazy-wrap nested objects, memoize getters"]
     DeleteTrap["DELETE trap: same as SET"]
     Batch["queueMicrotask: coalesce synchronous mutations → 1 notification"]
+    SyncNotify["sync listeners: notify immediately per mutation"]
     DeepProxy["Lazy deep proxy: nested objects/arrays wrapped on first access"]
   end
 
@@ -46,6 +47,7 @@ flowchart TB
   storeFn --> SetTrap
   storeFn --> GetTrap
   storeFn --> DeleteTrap
+  SetTrap --> SyncNotify
   SetTrap --> Batch
   Batch --> SnapshotFn
   GetTrap --> DeepProxy
@@ -118,7 +120,7 @@ PERSIST_ARCHITECTURE.md            # Persist utility internals
 
 ### Overview
 
-The `createClassyStore()` function wraps a class instance in an ES6 Proxy. All mutations — property writes, array operations, nested object changes — are intercepted and batched into a single notification per microtask.
+The `createClassyStore()` function wraps a class instance in an ES6 Proxy. All mutations — property writes, array operations, nested object changes — are intercepted. Subscribers are batched by default into a single notification per microtask, with an opt-in synchronous path for controlled React inputs and other code that must observe each mutation immediately.
 
 ### Data Flow: Mutation → Notification
 
@@ -128,20 +130,23 @@ sequenceDiagram
   participant Proxy as Write Proxy
   participant Target as Raw Target
   participant Internal as StoreInternal
+  participant Sync as Sync Subscribers
   participant Micro as queueMicrotask
-  participant Listeners as Subscribers
+  participant Batched as Batched Subscribers
 
   User->>Proxy: store.count = 5
   Proxy->>Target: Reflect.set(target, 'count', 5)
   Proxy->>Internal: bumpVersion(internal) up to root
   Proxy->>Internal: snapshotCache = null (invalidate)
-  Proxy->>Micro: scheduleNotify() (if not already scheduled)
+  Proxy->>Sync: notify sync listeners immediately
+  Proxy->>Micro: schedule batched notify (if not already scheduled)
   Note over Micro: Coalesces all sync mutations
   User->>Proxy: store.name = 'new'
   Proxy->>Target: Reflect.set(target, 'name', 'new')
   Proxy->>Internal: bumpVersion (version increments again)
+  Proxy->>Sync: notify sync listeners again
   Note over Micro: Still same microtask batch
-  Micro->>Listeners: notify all (once)
+  Micro->>Batched: notify batched listeners once
 ```
 
 ### Internal State Storage
@@ -152,12 +157,12 @@ All internal bookkeeping is stored in a `WeakMap<proxy, StoreInternal>`:
 type StoreInternal = {
   target: object;                           // Raw class instance
   version: number;                          // Monotonically increasing
-  listeners: Set<() => void>;               // Subscriber callbacks
+  batchedListeners: Set<() => void>;        // Subscribers notified once per microtask
+  syncListeners: Set<() => void>;           // Subscribers notified immediately per mutation
   childProxies: Map<string|symbol, object>; // Cached child proxies
   childInternals: Map<string|symbol, StoreInternal>;
   parent: StoreInternal | null;             // For version propagation
   notifyScheduled: boolean;                 // Batch dedup flag
-  snapshotCache: [number, object] | null;       // Version-stamped snapshot cache
   computedCache: Map<string|symbol, ComputedEntry>; // Memoized getter cache
 };
 ```
@@ -169,7 +174,7 @@ type StoreInternal = {
 2. Clean up child proxy if the property is being replaced
 3. Forward write to raw target via `Reflect.set`
 4. Bump version for this node and all ancestors
-5. Schedule notification via `queueMicrotask` (deduped)
+5. Notify sync listeners immediately, then schedule batched listeners via `queueMicrotask` (deduped)
 
 **GET trap (priority order):**
 1. **Memoized getter detection** — walk prototype chain with `Object.getOwnPropertyDescriptor`. If a getter is found, call `evaluateComputed()` which checks dependency validity and returns the cached result or re-evaluates with dependency tracking.
@@ -177,7 +182,7 @@ type StoreInternal = {
 3. **Nested objects/arrays** — if value passes `canProxy()` (plain object or array), lazily wrap in a child proxy. Child proxies are cached in `childProxies` Map. Also records a dependency if a getter is currently being tracked.
 4. **Primitives** — return as-is. Also records a dependency if a getter is currently being tracked.
 
-**DELETE trap:** Same pattern as SET — clean up child proxy, delete from target, bump version, schedule notify.
+**DELETE trap:** Same pattern as SET — clean up child proxy, delete from target, bump version, notify sync listeners, and schedule batched listeners.
 
 ### Batching via `queueMicrotask`
 
@@ -189,6 +194,8 @@ store.items.push('a')
   → SET trap for length  → scheduleNotify (already flagged, skips)
   → microtask fires → notifies listeners ONCE
 ```
+
+Subscribers opt into immediate timing with `{sync: true}`. Sync subscribers run after version propagation and before the batched microtask. They are intentionally not deduped: two writes mean two sync notifications. React controlled inputs use this timing so `useSyncExternalStore` can observe the new external-store value during the input event turn, preserving caret position and IME composition.
 
 ### Version Propagation
 
@@ -336,7 +343,7 @@ flowchart TD
 
 ### Overview
 
-`useClassyStore` uses `useSyncExternalStore` for tear-free React integration. It supports two modes:
+`useClassyStore` uses `useSyncExternalStore` for tear-free React integration. Subscriptions are batched by default, and can opt into synchronous notification with `{sync: true}` for controlled inputs that need React to observe the store update during the input event turn. It supports two modes:
 
 ### Mode 1: Selector
 
@@ -367,8 +374,16 @@ sequenceDiagram
 
 **Equality chain:**
 1. Same snapshot reference? → skip selector entirely (O(1))
-2. Run selector → compare result with `Object.is` (or custom `isEqual`)
+2. Run selector → compare result with `Object.is` (or `options.isEqual`)
 3. Same result → return previous reference (no re-render)
+
+**Controlled input timing:**
+
+```typescript
+const name = useClassyStore(formStore, (state) => state.name, {sync: true});
+```
+
+The core store still batches subscribers by default with `queueMicrotask`. A controlled input subscription can opt into sync timing so the `useSyncExternalStore` callback runs in the same mutation turn as the input event, preserving caret position and IME composition.
 
 ### Mode 2: Auto-tracked (selectorless)
 

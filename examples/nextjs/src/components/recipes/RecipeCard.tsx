@@ -27,7 +27,7 @@ export function RecipeCard({recipeId}: {recipeId: string}) {
         ingredientCount: r.ingredients.length,
       };
     },
-    shallowEqual,
+    {isEqual: shallowEqual},
   );
 
   if (!recipe) return null;
