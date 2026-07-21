@@ -41,3 +41,5 @@ website/build
 website/.docusaurus
 website/.cache-loader
 website/static/demos
+
+.playwright-mcp

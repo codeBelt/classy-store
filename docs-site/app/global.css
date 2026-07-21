@@ -21,14 +21,23 @@ html > body[data-scroll-locked] {
   --color-fd-primary: #7c3aed;
   --color-fd-primary-foreground: #ffffff;
   --color-fd-ring: #7c3aed;
-  --cs-g1: #6366f1;
-  --cs-g2: #8b5cf6;
-  --cs-g3: #d946ef;
+  /* Deeper, more saturated stops read better on the light background */
+  --cs-g1: #4f46e5;
+  --cs-g2: #7c3aed;
+  --cs-g3: #c026d3;
+  --cs-fn: #4338ca;
+  --cs-orb-opacity: 0.3;
 }
 .dark {
   --color-fd-primary: #a78bfa;
   --color-fd-primary-foreground: #0b0b12;
   --color-fd-ring: #a78bfa;
+  /* Brighter stops pop on the dark background */
+  --cs-g1: #6366f1;
+  --cs-g2: #8b5cf6;
+  --cs-g3: #d946ef;
+  --cs-fn: #818cf8;
+  --cs-orb-opacity: 0.5;
 }
 
 /* Tint the leading section icons in the sidebar with the brand color */
@@ -51,7 +60,7 @@ html > body[data-scroll-locked] {
   position: absolute;
   border-radius: 9999px;
   filter: blur(60px);
-  opacity: 0.5;
+  opacity: var(--cs-orb-opacity);
   pointer-events: none;
   animation: cs-float 10s ease-in-out infinite;
 }
@@ -91,7 +100,7 @@ html > body[data-scroll-locked] {
   color: var(--color-fd-primary);
 }
 .cs-code .cs-fn {
-  color: #8b5cf6;
+  color: var(--cs-fn);
 }
 .cs-code .cs-num {
   color: #f59e0b;
