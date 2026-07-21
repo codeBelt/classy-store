@@ -1,0 +1,131 @@
+---
+title: React Hooks
+description: Read store state with selector mode, auto-tracked mode, and bound hooks.
+---
+
+`useClassyStore` has two modes. Pick the right one and your components only re-render when they
+need to.
+
+## Selector mode
+
+```tsx
+const count = useClassyStore(counterStore, (state) => state.count);
+```
+
+The selector receives an immutable snapshot and returns the slice you need. The component
+re-renders only when the selected value changes, compared with `Object.is`.
+
+<Callout title="When to use">
+  The default choice. It is explicit about what the component depends on and produces the fewest
+  re-renders.
+</Callout>
+
+## Auto-tracked mode
+
+```tsx
+const snap = useClassyStore(counterStore);
+// use snap.count, snap.user.name, etc. in JSX
+```
+
+With no selector you get a tracking proxy over the snapshot. The library records which properties
+your component reads during render and only re-renders when one of those properties changes.
+
+<Callout title="When to use">
+  When you would otherwise need three or more selectors in one component, when prototyping, or when
+  the shape of the data you access is dynamic.
+</Callout>
+
+## Custom equality with `shallowEqual`
+
+By default the selector's return value is compared with `Object.is`, a reference check. Structural
+sharing keeps existing references stable, so selecting properties directly needs nothing extra:
+
+```tsx
+// ✅ Structural sharing keeps the reference stable — no custom equality needed
+const count = useClassyStore(todoStore, (state) => state.items.length);
+const todos = useClassyStore(todoStore, (state) => state.items);
+```
+
+The issue appears when a selector **derives a new value** — `.filter()`, `.map()`, or object spread
+allocate a new reference every time, so `Object.is` always sees a change:
+
+```tsx
+// ❌ New array reference every snapshot → unnecessary re-renders
+const active = useClassyStore(todoStore, (state) =>
+  state.items.filter((item) => !item.done),
+);
+```
+
+Pass `shallowEqual` to compare one level deep instead:
+
+```tsx
+import { shallowEqual } from '@codebelt/classy-store';
+import { useClassyStore } from '@codebelt/classy-store/react';
+
+// ✅ Only re-renders when the filtered items actually change
+const active = useClassyStore(
+  todoStore,
+  (state) => state.items.filter((item) => !item.done),
+  { isEqual: shallowEqual },
+);
+```
+
+<Callout type="info" title="Getters never need shallowEqual">
+  Class getters are memoized across snapshots. If a getter's dependencies are structurally
+  unchanged, the cached result (same reference) is returned, so `Object.is` already works. Only add
+  `shallowEqual` when the **selector itself** derives a new object or array inline.
+</Callout>
+
+## Decision guide
+
+- **Use selectors by default** — explicit and fewest re-renders.
+- **Use auto-tracked mode** when a component would need three or more selectors, or while exploring.
+- **Add `shallowEqual`** when a selector returns a newly derived object or array.
+- **Use `{ sync: true }`** for controlled form fields — see [Forms & Inputs](/docs/guide/forms-and-inputs).
+
+## Bound hooks with `createStoreHook`
+
+For a module-level store, `createStoreHook` removes the boilerplate of a typed wrapper:
+
+```tsx
+import { createClassyStore } from '@codebelt/classy-store';
+import { createStoreHook } from '@codebelt/classy-store/react';
+
+export const catalogStore = createClassyStore(new CatalogPageStore());
+export const useCatalogStore = createStoreHook(catalogStore);
+```
+
+The returned hook supports both modes plus custom equality — identical to `useClassyStore`, but
+with the store already bound:
+
+```tsx
+const count = useCatalogStore((state) => state.count); // selector mode
+const snap = useCatalogStore(); // auto-tracked mode
+const data = useCatalogStore(
+  (state) => ({ count: state.count, loading: state.loading }),
+  { isEqual: shallowEqual },
+);
+```
+
+It validates its argument immediately and throws at module load time if you pass something that is
+not a store proxy.
+
+## Set-then-revert
+
+If you set a value and revert it in the same synchronous block, **selector mode** skips the
+re-render because the selected value is unchanged. **Auto-tracked mode** still re-renders because
+any mutation bumps the store version and produces a new snapshot reference.
+
+```tsx
+class Counter {
+  count = 0;
+
+  reset() {
+    this.count = 5; // changed
+    this.count = 0; // back to original
+  }
+}
+
+const count = useClassyStore(counterStore, (state) => state.count); // ✅ no re-render
+const snap = useClassyStore(counterStore); // ⚠️ re-renders (new snapshot reference)
+```

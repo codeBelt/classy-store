@@ -1,0 +1,99 @@
+---
+title: History (Undo/Redo)
+description: Add undo and redo to any store via a snapshot stack.
+---
+
+`withHistory()` adds undo/redo to any store proxy by maintaining a stack of snapshots captured on
+each mutation. Import it from `@codebelt/classy-store/utils`.
+
+```typescript
+import { createClassyStore } from '@codebelt/classy-store';
+import { withHistory } from '@codebelt/classy-store/utils';
+
+class DrawingStore {
+  color = '#000000';
+  strokeWidth = 2;
+  points: { x: number; y: number }[] = [];
+
+  addPoint(x: number, y: number) {
+    this.points = [...this.points, { x, y }];
+  }
+
+  setColor(color: string) {
+    this.color = color;
+  }
+}
+
+const drawingStore = createClassyStore(new DrawingStore());
+const history = withHistory(drawingStore);
+```
+
+The initial state is captured as the first entry. Every mutation is recorded from then on.
+
+## Undo and redo
+
+```typescript
+drawingStore.setColor('#ff0000');
+drawingStore.setStrokeWidth(5);
+
+history.undo(); // strokeWidth back to 2
+history.undo(); // color back to '#000000'
+history.redo(); // color is '#ff0000' again
+```
+
+Use `canUndo` / `canRedo` to drive button states:
+
+```tsx
+function UndoRedoButtons() {
+  const snap = useClassyStore(drawingStore);
+  return (
+    <div>
+      <button onClick={history.undo} disabled={!history.canUndo}>Undo</button>
+      <button onClick={history.redo} disabled={!history.canRedo}>Redo</button>
+    </div>
+  );
+}
+```
+
+## Options and handle
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `limit` | `number` | `100` | Maximum number of history entries |
+
+| Member | Description |
+| --- | --- |
+| `undo()` | Restore the previous state |
+| `redo()` | Restore the next state (after an undo) |
+| `canUndo` | Whether there is a previous state |
+| `canRedo` | Whether there is a next state |
+| `pause()` | Stop recording entries |
+| `resume()` | Resume recording entries |
+| `dispose()` | Unsubscribe and clear the stack |
+
+Undo and redo do **not** create new entries — recording is paused while state is restored. When
+applying a snapshot, getters and methods are skipped.
+
+## Batch with pause / resume
+
+Wrap multiple related mutations that should count as a single history entry:
+
+```typescript
+history.pause();
+store.setCell('A1', '1');
+store.setCell('A2', '2');
+store.setCell('A3', '3');
+history.resume();
+// The three writes collapse into one undoable entry.
+```
+
+## Keyboard shortcuts
+
+```typescript
+document.addEventListener('keydown', (e) => {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
+    e.preventDefault();
+    e.shiftKey ? history.redo() : history.undo();
+  }
+});
+```

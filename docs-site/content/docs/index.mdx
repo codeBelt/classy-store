@@ -1,13 +1,101 @@
 ---
-title: Hello World
-description: Your first document
+title: Introduction
+description: Class-based reactive state management for React, Vue, Svelte, Solid, and Angular.
 ---
 
-Welcome to the docs! You can start writing documents in `/content/docs`.
+**Classy Store** is a class-based reactive state management library. You write a plain
+TypeScript class — fields become state, methods become actions, and getters become
+automatically memoized computed values. Wrap it with `createClassyStore()` and you get a
+reactive proxy back, with fine-grained re-renders and immutable snapshots handled for you.
 
-## What is Next?
+<Callout title="At a glance">
+  ~2.3&nbsp;KB gzipped · built on ES6 Proxy, `useSyncExternalStore`, and `proxy-compare`.
+  One production dependency.
+</Callout>
+
+```typescript
+class CounterStore {
+  count = 0;
+
+  get double() {
+    return this.count * 2;
+  }
+
+  increment() {
+    this.count++;
+  }
+}
+
+const store = createClassyStore(new CounterStore());
+```
+
+## Why Classy Store
+
+- **Class-based stores** — plain classes with fields, methods, and getters.
+- **No wrappers** — no `observer()`, no `Provider`, no HOCs, no decorators.
+- **Fine-grained reactivity** — components only re-render when properties they read change.
+- **Immutable snapshots** — structural sharing keeps unchanged sub-trees reference-equal.
+- **Memoized computed values** — class getters are cached and recompute only when a dependency changes.
+- **Batched updates** — multiple synchronous mutations coalesce into one re-render.
+- **Type-safe** — full TypeScript inference from your class definitions.
+- **Framework bindings** — first-class integrations for React, Vue, Svelte, Solid, and Angular.
+- **Reactive collections** — `reactiveMap()` and `reactiveSet()` for Map/Set-like state.
+- **Batteries included** — persistence, Redux DevTools, undo/redo, and property subscriptions in a tree-shakeable entry point.
+
+## Get started
 
 <Cards>
-  <Card title="Learn more about Next.js" href="https://nextjs.org/docs" />
-  <Card title="Learn more about Fumadocs" href="https://fumadocs.dev" />
+  <Card title="Installation" href="/docs/getting-started/installation">
+    Install the package and the optional peer dependency for your framework.
+  </Card>
+  <Card title="Quick Start" href="/docs/getting-started/quick-start">
+    Build your first reactive store and wire it into React in five minutes.
+  </Card>
 </Cards>
+
+## How it compares
+
+| Feature | Classy Store | Zustand | MobX | Valtio |
+| --- | --- | --- | --- | --- |
+| Class-based stores | Yes | No | Yes | No |
+| No observer / Provider | Yes | Yes | No | Yes |
+| Auto-tracking | Yes | No | Yes (observer) | Yes |
+| Selector mode | Yes | Yes | No | Manual |
+| Memoized computed | Yes (automatic) | Manual | Yes (computed) | No |
+| Immutable snapshots | Yes | No | No | Yes |
+| Structural sharing | Yes | N/A | N/A | Yes |
+| Built-in persistence | Yes | Yes (middleware) | No | No |
+| DevTools integration | Yes | Yes | Yes | Yes |
+| Undo / redo | Yes | Manual | Manual | Manual |
+| Bundle size | ~2.3 KB | ~1.2 KB | ~16 KB | ~3 KB |
+
+## Vision
+
+State management should feel like writing plain TypeScript.
+
+- **A class is the store.** Define fields, methods, and getters — that is your state, your
+  actions, and your derived values. The class *is* the type, and TypeScript infers everything.
+- **Getters are computed values.** Write `get filtered()` and it is memoized with dependency
+  tracking out of the box. It stays cached until a dependency changes.
+- **Framework bindings that feel native.** React's `useClassyStore`, Vue's `useClassyStore`
+  (`ShallowRef`), Svelte's `toSvelteStore`, Solid's `useClassyStore` (signal getter), and
+  Angular's `injectStore` each match the framework's own reactive idioms.
+- **Call methods directly.** `todoStore.addTodo('Buy milk')` — a real object with real methods,
+  callable from anywhere.
+- **Observe only what matters.** Components re-render when the specific properties they read change.
+
+## Acknowledgements
+
+Classy Store builds on ideas pioneered by several projects:
+
+- **[MobX](https://github.com/mobxjs/mobx)** — proved that classes with fields, methods, and
+  getters are a natural way to model state, with automatic computed memoization and fine-grained
+  dependency tracking.
+- **[Valtio](https://github.com/pmndrs/valtio)** — the core pattern of a mutable write proxy paired
+  with immutable snapshots, plus structural sharing that makes `Object.is` selectors efficient.
+- **[Zustand](https://github.com/pmndrs/zustand)** — the minimal, hook-first selector pattern with
+  `Object.is` equality and no Providers or HOCs.
+- **[proxy-compare](https://github.com/dai-shi/proxy-compare)** — the tracking proxy that powers
+  auto-tracked mode, recording which properties a component reads and diffing only those.
+- **[React](https://react.dev)** — `useSyncExternalStore` provides the tear-free, concurrent-safe
+  foundation of the hook layer.

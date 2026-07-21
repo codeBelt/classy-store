@@ -1,0 +1,77 @@
+---
+title: Local Stores
+description: Component-scoped stores that are garbage collected on unmount.
+---
+
+By default, stores are module-level singletons shared across your app. For state scoped to a single
+component, use `useLocalStore`. Each component instance gets its own isolated store, garbage
+collected when the component unmounts.
+
+```tsx
+import { useLocalStore, useClassyStore } from '@codebelt/classy-store/react';
+
+class CounterStore {
+  count = 0;
+  get doubled() {
+    return this.count * 2;
+  }
+  increment() {
+    this.count++;
+  }
+}
+
+function Counter() {
+  const store = useLocalStore(() => new CounterStore());
+  const count = useClassyStore(store, (state) => state.count);
+
+  return <button onClick={() => store.increment()}>Count: {count}</button>;
+}
+```
+
+The factory (`() => new CounterStore()`) runs once per mount. Subsequent re-renders reuse the same
+store instance.
+
+## Persisting a local store
+
+`persist()` subscribes to the store, which keeps a reference alive. Call `handle.unsubscribe()` on
+unmount so the store can be garbage collected.
+
+```tsx
+import { useEffect } from 'react';
+import { useLocalStore, useClassyStore } from '@codebelt/classy-store/react';
+import { persist } from '@codebelt/classy-store/utils';
+
+class FormStore {
+  name = '';
+  email = '';
+  setName(v: string) {
+    this.name = v;
+  }
+  setEmail(v: string) {
+    this.email = v;
+  }
+}
+
+function EditProfile() {
+  const store = useLocalStore(() => new FormStore());
+  const snap = useClassyStore(store);
+
+  useEffect(() => {
+    const handle = persist(store, { name: 'edit-profile-draft' });
+    return () => handle.unsubscribe();
+  }, [store]);
+
+  return (
+    <form>
+      <input value={snap.name} onChange={(e) => store.setName(e.target.value)} />
+      <input value={snap.email} onChange={(e) => store.setEmail(e.target.value)} />
+    </form>
+  );
+}
+```
+
+<Callout type="warn" title="Always clean up subscriptions">
+  Utilities that subscribe to a store — `persist()`, `devtools()`, `withHistory()`,
+  `subscribeKey()` — hold a reference to it. For a local store, dispose them in the `useEffect`
+  cleanup so the store can be collected on unmount.
+</Callout>

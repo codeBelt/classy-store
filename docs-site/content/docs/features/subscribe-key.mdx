@@ -1,0 +1,78 @@
+---
+title: subscribeKey
+description: Subscribe to changes on a single store property.
+---
+
+`subscribeKey()` is the property-level equivalent of `subscribe()`. Instead of firing on every
+mutation, it fires only when the specific key you are watching actually changes. Import it from
+`@codebelt/classy-store/utils`.
+
+```typescript
+import { createClassyStore } from '@codebelt/classy-store';
+import { subscribeKey } from '@codebelt/classy-store/utils';
+
+class SettingsStore {
+  theme: 'light' | 'dark' = 'light';
+  fontSize = 14;
+  language = 'en';
+
+  setTheme(theme: 'light' | 'dark') {
+    this.theme = theme;
+  }
+}
+
+const settingsStore = createClassyStore(new SettingsStore());
+
+const unsub = subscribeKey(settingsStore, 'theme', (value, previousValue) => {
+  console.log(`Theme changed from "${previousValue}" to "${value}"`);
+  document.documentElement.setAttribute('data-theme', value);
+});
+
+// later: unsub();
+```
+
+Only `theme` changes trigger the callback; mutations to `fontSize` or `language` are ignored.
+
+## Signature
+
+```typescript
+function subscribeKey<T extends object, K extends keyof T>(
+  proxyStore: T,
+  key: K,
+  callback: (value: Snapshot<T>[K], previousValue: Snapshot<T>[K]) => void,
+  options?: { sync?: boolean },
+): () => void;
+```
+
+The callback receives the current and previous values, compared with `Object.is`. Because snapshots
+use structural sharing, that comparison is cheap — no deep equality is needed.
+
+## Examples
+
+```typescript
+// Redirect on auth changes
+subscribeKey(authStore, 'token', (token, previousToken) => {
+  if (token && !previousToken) router.push('/dashboard');
+  else if (!token && previousToken) router.push('/login');
+});
+
+// Sync a value with an external system
+subscribeKey(playerStore, 'volume', (volume) => {
+  audioContext.gainNode.gain.value = volume;
+});
+```
+
+## `subscribeKey` vs `subscribe`
+
+| | `subscribe()` | `subscribeKey()` |
+| --- | --- | --- |
+| Fires on | Any mutation in the store | Only when the watched key changes |
+| Callback args | none | `(value, previousValue)` |
+| Use case | General side effects | Property-specific reactions |
+
+To watch several keys, call `subscribeKey()` once per key — each subscription is independent.
+
+```typescript
+const unsub1 = subscribeKey(store, 'theme', handleThemeChange);
+const unsub2 = subscribeKey(store, 'language', handleLanguageChange);
+```

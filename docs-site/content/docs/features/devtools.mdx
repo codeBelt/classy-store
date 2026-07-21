@@ -1,0 +1,90 @@
+---
+title: DevTools
+description: Inspect state and time-travel with the Redux DevTools extension.
+---
+
+`devtools()` connects a store to the [Redux DevTools](https://github.com/reduxjs/redux-devtools)
+browser extension. Every batched mutation sends a snapshot to the panel, and you can jump to any
+point in history to time-travel.
+
+## Prerequisites
+
+Install the Redux DevTools extension for your browser:
+[Chrome](https://chrome.google.com/webstore/detail/redux-devtools/lmhkpmbekcpmknklioeibfkpmmfibljd) ·
+[Firefox](https://addons.mozilla.org/en-US/firefox/addon/reduxdevtools/) ·
+[Edge](https://microsoftedge.microsoft.com/addons/detail/redux-devtools/nnkgneoiohoecpdiaponcejilbhhikei).
+
+## Connect a store
+
+```typescript
+import { createClassyStore } from '@codebelt/classy-store';
+import { devtools } from '@codebelt/classy-store/utils';
+
+class CounterStore {
+  count = 0;
+  step = 1;
+
+  get doubled() {
+    return this.count * 2;
+  }
+
+  increment() {
+    this.count += this.step;
+  }
+}
+
+const counterStore = createClassyStore(new CounterStore());
+
+const disconnect = devtools(counterStore, { name: 'CounterStore' });
+```
+
+Open the panel and you will see `CounterStore` with its initial state. Each batched mutation appears
+as a `STORE_UPDATE` entry in the timeline.
+
+## Time-travel
+
+Click any previous entry, or use **Jump to State** / **Jump to Action**. The store proxy updates to
+match that state — components re-render and stay in sync. When applying state, getters and methods
+are skipped (getters recompute automatically).
+
+## Options
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | `string` | `'ClassyStore'` | Display name in the DevTools panel |
+| `enabled` | `boolean` | `true` | Set to `false` to disable (returns a noop) |
+
+`devtools()` returns a dispose function that disconnects and unsubscribes.
+
+## Development only
+
+Tie `enabled` to your build environment so production has zero cost:
+
+```typescript
+devtools(counterStore, {
+  name: 'CounterStore',
+  enabled: import.meta.env.DEV,
+});
+```
+
+When disabled — or when the extension is not installed — `devtools()` returns a noop immediately
+without throwing, so it is safe under SSR and in Node.
+
+## Multiple stores
+
+Give each store a unique name to distinguish them in the instance dropdown:
+
+```typescript
+devtools(authStore, { name: 'AuthStore' });
+devtools(todoStore, { name: 'TodoStore' });
+devtools(uiStore, { name: 'UiStore' });
+```
+
+## Cleanup in React
+
+```tsx
+useEffect(() => {
+  const disconnect = devtools(counterStore, { name: 'CounterStore' });
+  return () => disconnect();
+}, []);
+```

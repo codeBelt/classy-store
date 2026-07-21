@@ -1,0 +1,13 @@
+{
+  "title": "Guide",
+  "icon": "BookOpen",
+  "pages": [
+    "defining-stores",
+    "react-hooks",
+    "computed-values",
+    "snapshots",
+    "local-stores",
+    "forms-and-inputs",
+    "async-patterns"
+  ]
+}

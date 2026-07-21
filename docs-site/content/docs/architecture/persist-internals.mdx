@@ -1,0 +1,145 @@
+---
+title: Persist Internals
+description: How the persist() utility hooks into the core without touching it.
+---
+
+`persist()` is a standalone utility in `@codebelt/classy-store/utils`. It consumes two public APIs —
+`subscribe()` and `snapshot()` — and nothing else, so the core never had to change to support it.
+
+## Design principles
+
+- **Standalone, not middleware.** A plain function that takes a proxy and returns a handle. The proxy
+  *is* the interception layer, so no middleware hook is required.
+- **Tree-shakeable.** Lives in a separate entry point; apps that do not persist pay zero cost.
+- **Storage-agnostic.** The `StorageAdapter` interface accepts sync (`localStorage`) and async
+  (`AsyncStorage`) implementations through the same type, handled transparently with `await`.
+- **Class-aware.** Getters and methods are excluded automatically — only source-of-truth data
+  properties are saved.
+
+## How it hooks in
+
+<Mermaid chart={`flowchart LR
+  subgraph existingCore ["Existing Core (unchanged)"]
+    Mutation["store.prop = x"] --> Batch["queueMicrotask notify"]
+    Batch --> Listeners["subscribe callbacks"]
+  end
+
+  subgraph persistLayer ["persist() utility"]
+    Listeners --> Debounce["debounce timer"]
+    Debounce --> Snap["snapshot(proxy)"]
+    Snap --> Pick["pick properties"]
+    Pick --> Serialize["per-property serialize"]
+    Serialize --> Envelope["JSON.stringify envelope"]
+    Envelope --> Storage["storage.setItem()"]
+  end
+
+  subgraph hydration ["Hydration (init / cross-tab / manual)"]
+    Read["storage.getItem()"] --> Parse["JSON.parse"]
+    Parse --> Migrate["version check + migrate"]
+    Migrate --> Deserialize["per-property deserialize"]
+    Deserialize --> Merge["merge strategy"]
+    Merge --> Apply["proxy[key] = value"]
+    Apply --> Mutation
+  end`} />
+
+The key insight: writing `proxy[key] = value` during hydration flows through the existing SET trap,
+which handles child-proxy cleanup, version bumping, and notification scheduling automatically. The
+utility never touches proxy internals.
+
+## Save flow
+
+Triggered by the `subscribe` callback after each batched mutation:
+
+1. If disposed, return.
+2. If `debounce > 0`, reset the timer; otherwise continue immediately.
+3. `snapshot(proxy)` — a frozen immutable copy.
+4. For each persisted key, read from the snapshot and apply its `serialize` transform if present.
+5. Wrap in an envelope `{ version, state }`, stamping `expiresAt` when `expireIn` is set.
+6. `await storage.setItem(name, JSON.stringify(envelope))`.
+
+Property resolution happens **once** at `persist()` call time. When `properties` is omitted, the
+utility snapshots the store and excludes getters (via `findGetterDescriptor()` walking the prototype
+chain) and methods (`typeof value === 'function'`).
+
+### Storage envelope
+
+```json
+{
+  "version": 1,
+  "state": {
+    "todos": [{ "text": "Buy milk", "done": false }],
+    "filter": "all"
+  },
+  "expiresAt": 1700000000000
+}
+```
+
+`version` is always present (default `0`). `expiresAt` appears only when `expireIn` is set and is
+refreshed on every write; envelopes without it never expire.
+
+## Restore flow
+
+Auto-hydration on init, `handle.rehydrate()`, and cross-tab sync all call the same
+`applyPersistedState(raw)`:
+
+1. `JSON.parse` and validate the envelope shape (skip silently if corrupted).
+2. If `expiresAt` has passed, set the expired flag, optionally `removeItem`, and skip hydration.
+3. If the stored version differs and `migrate` exists, run it.
+4. Apply per-property `deserialize` transforms.
+5. Merge with the current state, then assign each key back to the proxy — which flows through the SET
+   trap and triggers a batched notification.
+
+### Merge strategies
+
+| Strategy | Behavior |
+| --- | --- |
+| `'shallow'` (default) | `{ ...current, ...persisted }` — persisted keys overwrite, new keys keep defaults |
+| `'replace'` | Same at the top level; signals full replacement semantics for nested objects |
+| Custom `fn` | `fn(persisted, current)` — full control for deep merges or selective overrides |
+
+## Cross-tab sync
+
+With `syncTabs: true`, the utility listens for the `storage` event, which fires only in *other*
+same-origin tabs (preventing loops) and only for `localStorage`.
+
+<Mermaid chart={`sequenceDiagram
+  participant TabA as Tab A
+  participant LS as localStorage
+  participant Event as window storage event
+  participant TabB as Tab B (this instance)
+
+  TabA->>LS: setItem('my-store', newJSON)
+  LS->>Event: StorageEvent (key, newValue)
+  Event->>TabB: onStorageEvent fires
+  TabB->>TabB: ignore if key mismatch or newValue null
+  TabB->>TabB: applyPersistedState(newValue)`} />
+
+When `syncTabs` is not set explicitly, it defaults to `true` only when the adapter is identically
+`globalThis.localStorage`.
+
+## Cleanup
+
+`handle.unsubscribe()` sets a disposed flag, cancels any pending debounce timer, removes the store
+subscription, and detaches the `storage` listener. Afterwards `save()` is a no-op, while `clear()`
+and `rehydrate()` still operate directly on storage.
+
+## Dependency graph
+
+<Mermaid chart={`graph LR
+  persist["utils/persist.ts"] --> subscribe["core.ts: subscribe()"]
+  persist --> snapshot["snapshot.ts: snapshot()"]
+  persist --> findGetter["findGetterDescriptor()"]
+  utilsIndex["utils/index.ts"] --> persist`} />
+
+`persist` has no dependency on `useClassyStore`, `collections`, or shared types.
+
+## Design decisions
+
+- **A function, not a decorator or middleware.** The proxy already is the interception layer; a
+  function that takes a proxy and returns a handle is the most composable API.
+- **Per-property transforms over a global serialize/deserialize.** Class stores have known per-field
+  types, so transforming a single `Date` among ten strings stays ergonomic.
+- **Getters excluded automatically.** They recompute from persisted data; storing their output risks
+  restoring a stale value that contradicts the inputs.
+- **A `hydrated` Promise over lifecycle hooks.** It composes with `async`/`await` and Suspense; the
+  `isHydrated` boolean covers the synchronous check.

@@ -1,0 +1,124 @@
+---
+title: Quick Start
+description: Build your first reactive store and connect it to React in five minutes.
+---
+
+A Classy Store is just a class. This guide builds a small todo store and wires it into React.
+
+<Steps>
+
+<Step>
+
+### Define a store class
+
+Fields are state, getters are computed values, and methods are actions.
+
+```typescript title="todo-store.ts"
+interface Todo {
+  text: string;
+  done: boolean;
+}
+
+class TodoStore {
+  todos: Todo[] = [];
+  filter: 'all' | 'done' | 'pending' = 'all';
+
+  // Getters are memoized computed values
+  get filtered() {
+    if (this.filter === 'all') return this.todos;
+    return this.todos.filter((todo) =>
+      this.filter === 'done' ? todo.done : !todo.done,
+    );
+  }
+
+  get remaining() {
+    return this.todos.filter((todo) => !todo.done).length;
+  }
+
+  addTodo(text: string) {
+    this.todos.push({ text, done: false });
+  }
+
+  toggle(index: number) {
+    this.todos[index]!.done = !this.todos[index]!.done;
+  }
+}
+```
+
+</Step>
+
+<Step>
+
+### Create a reactive store
+
+Wrap an instance with `createClassyStore()`. The returned value is a reactive proxy — mutate it
+directly and subscribers are notified.
+
+```typescript title="todo-store.ts"
+import { createClassyStore } from '@codebelt/classy-store';
+
+export const todoStore = createClassyStore(new TodoStore());
+```
+
+</Step>
+
+<Step>
+
+### Use it in React components
+
+Read state with `useClassyStore` and call methods directly on the store to mutate it.
+
+```tsx title="TodoApp.tsx"
+import { useClassyStore } from '@codebelt/classy-store/react';
+import { todoStore } from './todo-store';
+
+// Selector mode: explicit control over what triggers re-renders
+function TodoCount() {
+  const remaining = useClassyStore(todoStore, (state) => state.remaining);
+  return <span>{remaining} left</span>;
+}
+
+// Auto-tracked mode: reads are tracked automatically
+function TodoList() {
+  const snap = useClassyStore(todoStore);
+  return (
+    <ul>
+      {snap.filtered.map((todo, index) => (
+        <li key={index}>{todo.text}</li>
+      ))}
+    </ul>
+  );
+}
+
+// Actions: call methods directly on the store
+function AddButton() {
+  return <button onClick={() => todoStore.addTodo('New')}>Add</button>;
+}
+```
+
+</Step>
+
+</Steps>
+
+<Callout type="warn" title="Use prototype methods, not arrow functions">
+  Define actions as prototype methods (`increment() {}`). Arrow-function fields
+  (`increment = () => {}`) bind `this` to the raw instance, bypass the proxy, and produce no
+  reactivity.
+</Callout>
+
+## Next steps
+
+<Cards>
+  <Card title="Defining stores" href="/docs/guide/defining-stores">
+    Fields, methods, getters, nested objects, and inheritance.
+  </Card>
+  <Card title="React hooks" href="/docs/guide/react-hooks">
+    Selector mode, auto-tracked mode, and `createStoreHook`.
+  </Card>
+  <Card title="Computed values" href="/docs/guide/computed-values">
+    How getters are memoized across renders and snapshots.
+  </Card>
+  <Card title="Features" href="/docs/features/persist">
+    Persistence, DevTools, undo/redo, and property subscriptions.
+  </Card>
+</Cards>

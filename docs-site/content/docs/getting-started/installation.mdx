@@ -1,0 +1,74 @@
+---
+title: Installation
+description: Install Classy Store and the optional peer dependency for your framework.
+---
+
+Install the core package with your package manager of choice:
+
+<Tabs items={['bun', 'npm', 'pnpm', 'yarn']}>
+
+<Tab value="bun">
+
+```bash
+bun add @codebelt/classy-store
+```
+
+</Tab>
+
+<Tab value="npm">
+
+```bash
+npm install @codebelt/classy-store
+```
+
+</Tab>
+
+<Tab value="pnpm">
+
+```bash
+pnpm add @codebelt/classy-store
+```
+
+</Tab>
+
+<Tab value="yarn">
+
+```bash
+yarn add @codebelt/classy-store
+```
+
+</Tab>
+
+</Tabs>
+
+## Framework peer dependencies
+
+All framework peer dependencies are optional — install only what your project uses. The core
+package works on its own for headless or vanilla usage.
+
+| Framework | Peer dependency | Import |
+| --- | --- | --- |
+| React | `react >= 18.0.0` | `@codebelt/classy-store/react` |
+| Vue | `vue >= 3.0.0` | `@codebelt/classy-store/vue` |
+| Svelte | `svelte >= 4.0.0` | `@codebelt/classy-store/svelte` |
+| Solid | `solid-js >= 1.0.0` | `@codebelt/classy-store/solid` |
+| Angular | `@angular/core >= 17.0.0` | `@codebelt/classy-store/angular` |
+
+## Entry points
+
+Every feature ships from a dedicated, tree-shakeable entry point so you only bundle what you import.
+
+| Import path | Contents |
+| --- | --- |
+| `@codebelt/classy-store` | `createClassyStore`, `snapshot`, `subscribe`, `getVersion`, `shallowEqual`, `Snapshot` |
+| `@codebelt/classy-store/collections` | `reactiveMap`, `reactiveSet`, `ReactiveMap`, `ReactiveSet` |
+| `@codebelt/classy-store/utils` | `persist`, `devtools`, `subscribeKey`, `withHistory` |
+| `@codebelt/classy-store/react` | `useClassyStore`, `useLocalStore`, `createStoreHook` |
+| `@codebelt/classy-store/vue` | `useClassyStore` |
+| `@codebelt/classy-store/svelte` | `toSvelteStore` |
+| `@codebelt/classy-store/solid` | `useClassyStore` |
+| `@codebelt/classy-store/angular` | `injectStore` |
+
+<Callout title="Next">
+  Continue to the [Quick Start](/docs/getting-started/quick-start) to build your first store.
+</Callout>

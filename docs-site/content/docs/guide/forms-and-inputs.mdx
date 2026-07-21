@@ -1,0 +1,48 @@
+---
+title: Forms & Inputs
+description: Use synchronous notifications for controlled inputs to preserve caret and IME state.
+---
+
+Classy Store batches subscriber notifications by default, which is the right choice for most UI:
+multiple synchronous mutations collapse into one settled update.
+
+Controlled React inputs are the important exception. React needs the latest external-store value
+*during the input event turn* so it can preserve the DOM value, caret position, and IME composition
+state. If the store waits until the next microtask to notify React, typing in the middle of a
+controlled input can move the caret or interrupt composition for languages such as Korean, Japanese,
+and Chinese.
+
+## Use `{ sync: true }` for field bindings
+
+Pass `{ sync: true }` for the specific store reads that control form fields:
+
+```tsx
+class ProfileFormStore {
+  name = '';
+
+  setName(value: string) {
+    this.name = value;
+  }
+}
+
+const profileFormStore = createClassyStore(new ProfileFormStore());
+
+function NameInput() {
+  const name = useClassyStore(profileFormStore, (state) => state.name, {
+    sync: true,
+  });
+
+  return (
+    <input
+      value={name}
+      onChange={(event) => profileFormStore.setName(event.target.value)}
+    />
+  );
+}
+```
+
+<Callout title="Scope sync narrowly">
+  Use `sync` for controlled `<input>`, `<textarea>`, checkbox, radio, and similar field bindings.
+  Keep the default batched subscription for dashboards, persistence, devtools, history, and any view
+  that only needs the final settled state.
+</Callout>

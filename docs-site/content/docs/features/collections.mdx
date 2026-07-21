@@ -1,0 +1,95 @@
+---
+title: Reactive Collections
+description: Map and Set semantics that stay reactive and JSON-serializable.
+---
+
+Native `Map` and `Set` use internal slots that a Proxy cannot intercept, so mutations like `.set()`
+or `.add()` are invisible to the store. `reactiveMap()` and `reactiveSet()` provide the same API
+backed by plain arrays, so every operation is tracked.
+
+Import them from `@codebelt/classy-store/collections`.
+
+<Callout title="Prefer native collections for most state">
+  Use native `Map`/`Set` when you can — they are faster and you only lose reactivity on in-place
+  mutation (replace the whole collection to notify). Reach for `reactiveMap()` / `reactiveSet()`
+  when you need individual operations to be reactive **and** JSON-serializable for
+  [`persist()`](/docs/features/persist).
+</Callout>
+
+## ReactiveMap
+
+```typescript
+import { createClassyStore } from '@codebelt/classy-store';
+import { reactiveMap } from '@codebelt/classy-store/collections';
+
+class UserStore {
+  users = reactiveMap<string, { name: string; role: string }>();
+
+  get count() {
+    return this.users.size;
+  }
+
+  addUser(id: string, name: string, role: string) {
+    this.users.set(id, { name, role });
+  }
+
+  removeUser(id: string) {
+    this.users.delete(id);
+  }
+}
+
+const userStore = createClassyStore(new UserStore());
+```
+
+Supports `get`, `set`, `has`, `delete`, `clear`, `size`, `keys`, `values`, `entries`, `forEach`, and
+`for...of`.
+
+## ReactiveSet
+
+```typescript
+import { createClassyStore } from '@codebelt/classy-store';
+import { reactiveSet } from '@codebelt/classy-store/collections';
+
+class TagStore {
+  tags = reactiveSet<string>();
+
+  addTag(tag: string) {
+    this.tags.add(tag);
+  }
+}
+
+const tagStore = createClassyStore(new TagStore());
+```
+
+Supports `add`, `has`, `delete`, `clear`, `size`, `keys`, `values`, `entries`, `forEach`, and
+`for...of`.
+
+## Persistence
+
+Because reactive collections are array-backed, `persist()` can serialize them natively — no custom
+transforms required.
+
+```typescript
+import { persist } from '@codebelt/classy-store/utils';
+
+persist(userStore, { name: 'user-store' });
+```
+
+A `ReactiveMap` is stored as an array of entries, and a `ReactiveSet` as an array of values:
+
+```json
+{
+  "version": 0,
+  "state": {
+    "users": [
+      ["u1", { "name": "Alice", "role": "admin" }],
+      ["u2", { "name": "Bob", "role": "viewer" }]
+    ]
+  }
+}
+```
+
+<Callout type="warn" title="Not real Map/Set instances">
+  `reactiveMap()` and `reactiveSet()` emulate the API on top of arrays, so `instanceof Map` and
+  `instanceof Set` return `false`. Lookups are O(n) linear scans.
+</Callout>

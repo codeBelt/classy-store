@@ -1,0 +1,80 @@
+---
+title: Computed Values
+description: Class getters are automatically memoized with dependency tracking.
+---
+
+Any `get` accessor on a store class is a computed value. There is no `computed()` wrapper — getters
+are memoized automatically at two levels, and only recompute when a dependency changes.
+
+```typescript
+class Store {
+  items = ['a', 'b', 'c'];
+  filter = 'all';
+
+  get filtered() {
+    // Runs only when `items` or `filter` changes.
+    // Repeated reads return the same cached reference.
+    if (this.filter === 'all') return this.items;
+    return this.items.filter((item) => item === this.filter);
+  }
+
+  get filteredCount() {
+    // Nested getters work: reads this.filtered (itself memoized)
+    return this.filtered.length;
+  }
+}
+```
+
+## Two layers of memoization
+
+**Write proxy.** While a getter runs, the library records which properties it reads. The result is
+cached and only recomputed when one of those dependencies changes. Reading the getter multiple
+times without an intervening mutation returns the same reference.
+
+**Snapshots.** Getter results are also stable *across* snapshots. When a new snapshot is created,
+if a getter's tracked dependencies are structurally identical (same reference via structural
+sharing), the previous result is reused without re-executing the getter.
+
+## Why this matters for selectors
+
+Because getter results are stable across snapshots, selectors that return a getter work with the
+default `Object.is` comparison — no `shallowEqual` needed:
+
+```tsx
+// ✅ Stable across re-renders while items/filter are unchanged
+const filtered = useClassyStore(myStore, (state) => state.filtered);
+
+// ✅ Primitive results from getters work the same way
+const remaining = useClassyStore(myStore, (state) => state.remaining);
+```
+
+<Callout title="Getters vs. inline selectors">
+  Do the derivation in a getter and select it, rather than deriving inside the selector. A getter is
+  memoized and cached; an inline `.filter()` / `.map()` in a selector allocates a new reference every
+  render and needs [`shallowEqual`](/docs/guide/react-hooks#custom-equality-with-shallowequal).
+</Callout>
+
+## Nested and inherited getters
+
+Getters can read other getters, and getters defined on a base class are memoized just like those on
+the most-derived class. If a subclass overrides a base getter, the most-derived version wins.
+
+```typescript
+class BaseStore {
+  error: string | null = null;
+  get hasError() {
+    return this.error !== null;
+  }
+}
+
+class FormStore extends BaseStore {
+  fields = { name: '', email: '' };
+  get isComplete() {
+    return this.fields.name !== '' && this.fields.email !== '';
+  }
+  get canSubmit() {
+    // reads both a derived getter and an inherited getter
+    return this.isComplete && !this.hasError;
+  }
+}
+```

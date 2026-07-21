@@ -1,0 +1,147 @@
+---
+title: Other Frameworks
+description: Use Classy Store with Vue, Svelte, Solid, and Angular.
+---
+
+The store itself is framework-agnostic — `createClassyStore()`, methods, getters, and every utility
+work the same everywhere. Each framework binding exposes the current snapshot in that framework's own
+reactive idiom, and you always mutate by calling store methods directly.
+
+Every example below uses the same store:
+
+```typescript title="store.ts"
+import { createClassyStore } from '@codebelt/classy-store';
+
+class CounterStore {
+  count = 0;
+  step = 1;
+
+  get doubled() {
+    return this.count * 2;
+  }
+
+  increment() {
+    this.count += this.step;
+  }
+
+  reset() {
+    this.count = 0;
+  }
+}
+
+export const counterStore = createClassyStore(new CounterStore());
+```
+
+<Tabs items={['Vue', 'Svelte', 'Solid', 'Angular']}>
+
+<Tab value="Vue">
+
+`useClassyStore` returns a `ShallowRef<Snapshot<T>>`. In `<script setup>` read `snap.value`; in the
+template refs unwrap automatically, so you write `snap.count`. Cleanup happens on unmount.
+
+```vue title="Counter.vue"
+<script setup lang="ts">
+import { useClassyStore } from '@codebelt/classy-store/vue';
+import { counterStore } from './store';
+
+const snap = useClassyStore(counterStore);
+</script>
+
+<template>
+  <p>Count: {{ snap.count }} · Doubled: {{ snap.doubled }}</p>
+  <button @click="counterStore.increment()">+{{ snap.step }}</button>
+  <button @click="counterStore.reset()">Reset</button>
+</template>
+```
+
+</Tab>
+
+<Tab value="Svelte">
+
+`toSvelteStore` returns a readable store. Subscribe with the `$` prefix so `$snap` tracks the latest
+snapshot.
+
+```svelte title="Counter.svelte"
+<script lang="ts">
+  import { toSvelteStore } from '@codebelt/classy-store/svelte';
+  import { counterStore } from './store';
+
+  const snap = toSvelteStore(counterStore);
+</script>
+
+<p>Count: {$snap.count} · Doubled: {$snap.doubled}</p>
+<button on:click={() => counterStore.increment()}>+{$snap.step}</button>
+<button on:click={() => counterStore.reset()}>Reset</button>
+```
+
+</Tab>
+
+<Tab value="Solid">
+
+`useClassyStore` returns a signal getter — call it to read the snapshot: `snap()`. Cleanup runs via
+`onCleanup`.
+
+```tsx title="Counter.tsx"
+import { useClassyStore } from '@codebelt/classy-store/solid';
+import { counterStore } from './store';
+
+export function Counter() {
+  const snap = useClassyStore(counterStore);
+
+  return (
+    <>
+      <p>
+        Count: {snap().count} · Doubled: {snap().doubled}
+      </p>
+      <button onClick={() => counterStore.increment()}>+{snap().step}</button>
+      <button onClick={() => counterStore.reset()}>Reset</button>
+    </>
+  );
+}
+```
+
+</Tab>
+
+<Tab value="Angular">
+
+`injectStore` returns a readonly `Signal<Snapshot<T>>`. Call the signal to read: `snap()`. Cleanup is
+tied to the component's `DestroyRef`.
+
+```typescript title="counter.component.ts"
+import { Component } from '@angular/core';
+import { injectStore } from '@codebelt/classy-store/angular';
+import { counterStore } from './store';
+
+@Component({
+  selector: 'app-counter',
+  standalone: true,
+  template: `
+    <p>Count: {{ snap().count }} · Doubled: {{ snap().doubled }}</p>
+    <button (click)="counterStore.increment()">+{{ snap().step }}</button>
+    <button (click)="counterStore.reset()">Reset</button>
+  `,
+})
+export class CounterComponent {
+  snap = injectStore(counterStore);
+  counterStore = counterStore;
+}
+```
+
+</Tab>
+
+</Tabs>
+
+## Binding summary
+
+| Framework | Binding | Returns | Read as |
+| --- | --- | --- | --- |
+| React | `useClassyStore` | `Snapshot<T>` (or selected value) | `snap.count` |
+| Vue | `useClassyStore` | `ShallowRef<Snapshot<T>>` | `snap.count` (template) |
+| Svelte | `toSvelteStore` | `Readable<Snapshot<T>>` | `$snap.count` |
+| Solid | `useClassyStore` | `() => Snapshot<T>` | `snap().count` |
+| Angular | `injectStore` | `Signal<Snapshot<T>>` | `snap().count` |
+
+<Callout title="Utilities work everywhere">
+  `persist()`, `devtools()`, `withHistory()`, and `subscribeKey()` operate on the store proxy, not on
+  any framework, so they behave identically across all five bindings.
+</Callout>

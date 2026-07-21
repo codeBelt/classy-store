@@ -1,6 +1,6 @@
-@import 'tailwindcss';
-@import 'fumadocs-ui/css/neutral.css';
-@import 'fumadocs-ui/css/preset.css';
+@import "tailwindcss";
+@import "fumadocs-ui/css/neutral.css";
+@import "fumadocs-ui/css/preset.css";
 
 html {
   scrollbar-gutter: stable;
@@ -14,4 +14,93 @@ html > body[data-scroll-locked] {
 /* Mobile sidebar drawer width (Fumadocs default is w-[85%] capped at 380px, which is too wide). */
 #nd-sidebar-mobile {
   width: min(85vw, 18rem);
+}
+
+/* ── Brand accent (violet) ────────────────────────────────────── */
+:root {
+  --color-fd-primary: #7c3aed;
+  --color-fd-primary-foreground: #ffffff;
+  --color-fd-ring: #7c3aed;
+  --cs-g1: #6366f1;
+  --cs-g2: #8b5cf6;
+  --cs-g3: #d946ef;
+}
+.dark {
+  --color-fd-primary: #a78bfa;
+  --color-fd-primary-foreground: #0b0b12;
+  --color-fd-ring: #a78bfa;
+}
+
+/* Tint the leading section icons in the sidebar with the brand color */
+#nd-sidebar a > svg:first-child,
+#nd-sidebar button > svg:first-child {
+  color: var(--color-fd-primary);
+}
+
+/* ── Home page helpers ──────────────────────────────────────── */
+@keyframes cs-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-18px);
+  }
+}
+.cs-orb {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(60px);
+  opacity: 0.5;
+  pointer-events: none;
+  animation: cs-float 10s ease-in-out infinite;
+}
+.cs-dotgrid {
+  background-image: radial-gradient(
+    var(--color-fd-border) 1px,
+    transparent 1px
+  );
+  background-size: 22px 22px;
+  -webkit-mask-image: radial-gradient(
+    ellipse 75% 70% at 50% 30%,
+    #000 30%,
+    transparent 72%
+  );
+  mask-image: radial-gradient(
+    ellipse 75% 70% at 50% 30%,
+    #000 30%,
+    transparent 72%
+  );
+}
+.cs-grad-text {
+  background-image: linear-gradient(
+    100deg,
+    var(--cs-g1),
+    var(--cs-g2),
+    var(--cs-g3)
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.cs-glass {
+  background-color: color-mix(in srgb, var(--color-fd-card) 72%, transparent);
+  backdrop-filter: blur(10px);
+}
+.cs-code .cs-k {
+  color: var(--color-fd-primary);
+}
+.cs-code .cs-fn {
+  color: #8b5cf6;
+}
+.cs-code .cs-num {
+  color: #f59e0b;
+}
+.cs-code .cs-cm {
+  color: var(--color-fd-muted-foreground);
+}
+@media (prefers-reduced-motion: reduce) {
+  .cs-orb {
+    animation: none;
+  }
 }

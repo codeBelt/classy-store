@@ -1,0 +1,5 @@
+{
+  "title": "Features",
+  "icon": "Sparkles",
+  "pages": ["collections", "persist", "devtools", "history", "subscribe-key"]
+}

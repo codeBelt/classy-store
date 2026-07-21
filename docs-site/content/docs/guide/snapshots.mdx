@@ -1,0 +1,104 @@
+---
+title: Snapshots & Subscriptions
+description: Immutable snapshots, batched notifications, and subscribing outside of React.
+---
+
+Inside React, `useClassyStore` handles snapshots and subscriptions for you. The same primitives are
+available directly for logging, persistence, and non-React integrations.
+
+## Snapshots
+
+`snapshot()` returns a deeply frozen, immutable copy of the store's current state.
+
+```typescript
+import { snapshot } from '@codebelt/classy-store';
+
+const snap = snapshot(counterStore);
+console.log(snap.count); // read-only
+snap.count = 5; // throws in strict mode
+```
+
+Snapshots use **structural sharing**: unchanged sub-trees return the same frozen reference. If you
+only mutated `store.name`, then `snapshot(store).settings === previousSnapshot.settings`. This is
+what makes selectors on nested objects efficient — if a sub-tree did not change, `Object.is` returns
+`true` and the component skips the re-render.
+
+<Callout title="Snapshot caching is O(1)">
+  Calling `snapshot()` repeatedly without an intervening mutation returns the same cached frozen
+  object, so there is no cost to calling it liberally.
+</Callout>
+
+```typescript
+const a = snapshot(counterStore);
+const b = snapshot(counterStore);
+a === b; // true — same cached object
+
+counterStore.increment();
+
+const c = snapshot(counterStore);
+a === c; // false — new snapshot after mutation
+```
+
+## Batching
+
+Every synchronous mutation is coalesced into a single notification — and therefore a single React
+re-render. The library queues a microtask on the first mutation; every write before that microtask
+fires joins the same batch, including loops.
+
+```typescript
+class FormStore {
+  name = '';
+  email = '';
+  submitted = false;
+
+  submit(name: string, email: string) {
+    this.name = name; // batched
+    this.email = email; // batched
+    this.submitted = true; // batched → one re-render total
+  }
+}
+```
+
+Mutations separated by an `await` land in different microtasks and notify separately — see
+[Async Patterns](/docs/guide/async-patterns).
+
+## Subscribing outside React
+
+`subscribe()` registers a callback that fires once per batched mutation and returns an unsubscribe
+function.
+
+```typescript
+import { subscribe, snapshot } from '@codebelt/classy-store';
+
+const unsub = subscribe(counterStore, () => {
+  localStorage.setItem('counter', JSON.stringify(snapshot(counterStore).count));
+});
+
+// later: unsub();
+```
+
+Pass `{ sync: true }` to notify immediately on each mutation instead of once per batch:
+
+```typescript
+const unsub = subscribe(store, () => console.log('changed'), { sync: true });
+```
+
+<Callout title="When to use">
+  Analytics, `localStorage` persistence, WebSocket bridges, or any side effect that reacts to store
+  changes but is not a React component.
+</Callout>
+
+## Version numbers
+
+`getVersion()` returns a monotonically increasing counter that bumps on any mutation in the store's
+sub-tree (child mutations propagate up to the root). It is useful for debugging, testing whether a
+store changed, or custom cache invalidation.
+
+```typescript
+import { getVersion } from '@codebelt/classy-store';
+
+const v1 = getVersion(store);
+store.count++;
+// after the microtask flush:
+const v2 = getVersion(store); // v2 > v1
+```

@@ -1,0 +1,80 @@
+---
+title: Async Patterns
+description: Loading states and data fetching with natural microtask boundaries.
+---
+
+Async methods work naturally. Mutations before `await` and after `await` land in separate
+microtasks, so they produce separate notifications — which means React sees the loading state
+immediately, then the result.
+
+```typescript
+class PostStore {
+  posts: { id: number; title: string }[] = [];
+  loading = false;
+  error: string | null = null;
+
+  async fetchPosts() {
+    this.loading = true; // notification 1: shows the spinner
+    this.error = null;
+    try {
+      const res = await fetch('/api/posts');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      this.posts = await res.json(); // batched with the finally block
+    } catch (error) {
+      this.error = error instanceof Error ? error.message : 'Unknown error';
+    } finally {
+      this.loading = false; // notification 2: hides the spinner, shows data or error
+    }
+  }
+}
+
+const postStore = createClassyStore(new PostStore());
+```
+
+A component reading `state.loading` re-renders twice: once when loading starts and once when it
+ends. That is the correct behavior — the two updates are on opposite sides of the `await`.
+
+<Callout title="Batching and await">
+  Synchronous mutations within the same tick are batched into one notification. An `await` ends the
+  current microtask batch, so mutations after it notify separately. You rarely need to think about
+  this — it lines up with how loading states should behave.
+</Callout>
+
+## Sharing async state across stores
+
+Extract common loading/error handling into a base class and extend it — base methods stay reactive
+through the prototype chain.
+
+```typescript
+class AsyncStore {
+  loading = false;
+  error: string | null = null;
+
+  get hasError() {
+    return this.error !== null;
+  }
+
+  protected async run(task: () => Promise<void>) {
+    this.loading = true;
+    this.error = null;
+    try {
+      await task();
+    } catch (error) {
+      this.error = error instanceof Error ? error.message : 'Failed';
+    } finally {
+      this.loading = false;
+    }
+  }
+}
+
+class UsersStore extends AsyncStore {
+  users: string[] = [];
+
+  fetchUsers() {
+    return this.run(async () => {
+      const res = await fetch('/api/users');
+      this.users = await res.json();
+    });
+  }
+}
+```

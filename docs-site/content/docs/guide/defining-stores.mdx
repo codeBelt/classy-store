@@ -1,0 +1,168 @@
+---
+title: Defining Stores
+description: Model state, actions, and derived values as a plain TypeScript class.
+---
+
+A store is any class instance wrapped with `createClassyStore()`. State lives as fields,
+mutations are plain assignments inside methods, and derived values are `get` accessors.
+
+```typescript title="todo-store.ts"
+import { createClassyStore } from '@codebelt/classy-store';
+
+class TodoStore {
+  items: { id: number; text: string; done: boolean }[] = [];
+  filter: 'all' | 'active' | 'done' = 'all';
+
+  get remaining() {
+    return this.items.filter((item) => !item.done).length;
+  }
+
+  add(text: string) {
+    this.items.push({ id: Date.now(), text, done: false });
+  }
+
+  toggle(id: number) {
+    const item = this.items.find((todo) => todo.id === id);
+    if (item) item.done = !item.done;
+  }
+
+  remove(id: number) {
+    this.items = this.items.filter((todo) => todo.id !== id);
+  }
+}
+
+export const todoStore = createClassyStore(new TodoStore());
+```
+
+- **Methods** mutate state by assigning to `this`. The proxy intercepts every write.
+- **Getters** run against the proxied state, so they always reflect the latest values. They are
+  automatically memoized — see [Computed Values](/docs/guide/computed-values).
+- **Nested objects and arrays** are wrapped in child proxies on first access, so `item.done = true`
+  triggers a notification just like a top-level write.
+
+## Nested state
+
+Deep objects and arrays are automatically reactive — no special API required.
+
+```typescript
+class DocStore {
+  metadata = { title: 'Untitled', author: 'Anonymous' };
+  sections = [
+    { id: 1, heading: 'Intro', body: 'Hello' },
+    { id: 2, heading: 'Methods', body: 'We used proxies.' },
+  ];
+}
+
+const docStore = createClassyStore(new DocStore());
+
+docStore.metadata.title = 'My Document'; // deep mutation → notification
+docStore.sections[0].body = 'Updated intro'; // array element mutation → notification
+```
+
+Thanks to structural sharing, mutating `metadata.title` reuses the previous snapshot of
+`sections`. A component selecting `state.sections` will not re-render because its selected value
+did not change.
+
+## Array operations
+
+Arrays support all standard operations — `push`, `splice`, `pop`, `shift`, index assignment — and
+multiple synchronous writes are collapsed into a single notification.
+
+```typescript
+class ListStore {
+  items: string[] = [];
+
+  addMany(newItems: string[]) {
+    for (const item of newItems) {
+      this.items.push(item); // batched → one re-render total
+    }
+  }
+
+  removeAt(index: number) {
+    this.items.splice(index, 1);
+  }
+}
+```
+
+## Class inheritance
+
+Subclasses work out of the box. Methods, getters, and `super` calls from any ancestor are fully
+reactive, and `snapshot()` preserves the prototype chain.
+
+```typescript
+class BaseStore {
+  loading = false;
+  error: string | null = null;
+
+  get hasError() {
+    return this.error !== null;
+  }
+
+  setLoading(value: boolean) {
+    this.loading = value;
+  }
+
+  setError(message: string | null) {
+    this.error = message;
+  }
+}
+
+class UserStore extends BaseStore {
+  users: { id: string; name: string }[] = [];
+
+  get activeCount() {
+    return this.users.length;
+  }
+
+  async fetchUsers() {
+    this.setLoading(true); // base method — reactive
+    this.setError(null);
+    try {
+      const res = await fetch('/api/users');
+      this.users = await res.json();
+    } catch (error) {
+      this.setError(error instanceof Error ? error.message : 'Failed');
+    } finally {
+      this.setLoading(false);
+    }
+  }
+}
+
+const userStore = createClassyStore(new UserStore());
+// snapshot(userStore) instanceof UserStore === true
+```
+
+## Gotchas
+
+<Callout type="warn" title="Do not use arrow functions for methods">
+  Arrow-function fields (`increment = () => {}`) bind `this` lexically to the raw instance. The
+  proxy's GET trap cannot rebind them, so mutations inside bypass the SET trap entirely — no
+  notifications, no reactivity. Always use prototype methods (`increment() {}`).
+</Callout>
+
+**Mutate through methods, not from components.** Centralizing mutations keeps logic in one place
+and makes it easier to trace and test. Prefer `store.increment()` over `store.count++` scattered
+across components.
+
+**Do not destructure the store.** Destructuring copies the primitive value at that moment and
+breaks the proxy connection.
+
+```typescript
+const { count } = counterStore; // ❌ just the number, not reactive
+counterStore.count; // ✅ always read through the proxy
+```
+
+**Non-proxyable types.** Native `Date`, `RegExp`, `Map`, and `Set` use internal slots that proxies
+cannot intercept. Replace `Date`/`RegExp` values entirely to trigger an update, and use
+[`reactiveMap()` / `reactiveSet()`](/docs/features/collections) instead of the native collections.
+
+```typescript
+class Store {
+  date = new Date();
+
+  refresh() {
+    // this.date.setFullYear(2025); // ❌ mutation is invisible
+    this.date = new Date(); // ✅ replacement triggers an update
+  }
+}
+```

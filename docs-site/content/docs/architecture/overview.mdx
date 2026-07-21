@@ -1,0 +1,274 @@
+---
+title: Overview
+description: The three-layer internal architecture — write proxy, snapshots, and framework hooks.
+---
+
+Classy Store is organized into three layers, each with a single responsibility: a mutable **write
+proxy** for ergonomic mutations, an immutable **snapshot** layer for change detection, and thin
+**framework bindings** on top.
+
+<Mermaid chart={`flowchart TB
+  subgraph userCode ["User Code"]
+    ClassDef["class MyStore { fields, methods, getters }"]
+  end
+
+  subgraph layer1 ["Layer 1: Write Proxy (core.ts)"]
+    storeFn["createClassyStore(instance)"]
+    SetTrap["SET trap: forward write, bump version, notify"]
+    GetTrap["GET trap: bind methods, lazy-wrap nested, memoize getters"]
+    Batch["queueMicrotask: coalesce mutations into 1 notification"]
+  end
+
+  subgraph layer2 ["Layer 2: Snapshot (snapshot.ts)"]
+    SnapshotFn["snapshot(proxy): immutable deep copy"]
+    StructuralShare["Structural sharing: unchanged refs reused"]
+    VersionCache["Version-stamped cache: skip rebuild if unchanged"]
+  end
+
+  subgraph layer3 ["Layer 3: Framework Hooks"]
+    UseStore["useClassyStore(store, selector?)"]
+    USES["useSyncExternalStore"]
+    ProxyCompare["proxy-compare: track which props are read"]
+  end
+
+  ClassDef --> storeFn
+  storeFn --> SetTrap
+  storeFn --> GetTrap
+  SetTrap --> Batch
+  Batch --> SnapshotFn
+  SnapshotFn --> StructuralShare
+  StructuralShare --> VersionCache
+  UseStore --> USES
+  USES --> VersionCache
+  VersionCache --> ProxyCompare`} />
+
+## Layer 1: Write proxy
+
+`createClassyStore()` wraps a class instance in an ES6 Proxy. All mutations — property writes, array
+operations, nested changes — are intercepted. Subscribers are batched by default into one
+notification per microtask, with an opt-in synchronous path for controlled inputs.
+
+### Internal state
+
+All bookkeeping lives in a `WeakMap<proxy, StoreInternal>`, never on the user's object — which keeps
+the instance clean and allows garbage collection once the store is dereferenced.
+
+```typescript
+type StoreInternal = {
+  target: object; // raw class instance
+  version: number; // monotonically increasing
+  batchedListeners: Set<() => void>; // notified once per microtask
+  syncListeners: Set<() => void>; // notified immediately per mutation
+  childProxies: Map<string | symbol, object>; // cached child proxies
+  childInternals: Map<string | symbol, StoreInternal>;
+  parent: StoreInternal | null; // for version propagation
+  notifyScheduled: boolean; // batch dedup flag
+  computedCache: Map<string | symbol, ComputedEntry>; // memoized getters
+};
+```
+
+### Mutation → notification
+
+<Mermaid chart={`sequenceDiagram
+  participant User as User Code
+  participant Proxy as Write Proxy
+  participant Target as Raw Target
+  participant Sync as Sync Subscribers
+  participant Micro as queueMicrotask
+  participant Batched as Batched Subscribers
+
+  User->>Proxy: store.count = 5
+  Proxy->>Target: Reflect.set(target, 'count', 5)
+  Proxy->>Proxy: bump version up to root, invalidate snapshot cache
+  Proxy->>Sync: notify sync listeners immediately
+  Proxy->>Micro: schedule batched notify (deduped)
+  User->>Proxy: store.name = 'new'
+  Proxy->>Target: Reflect.set(target, 'name', 'new')
+  Proxy->>Sync: notify sync listeners again
+  Micro->>Batched: notify batched listeners once`} />
+
+**SET trap:** compare via `Object.is` (noop if equal) → clean up replaced child proxy → `Reflect.set`
+→ bump version for this node and all ancestors → notify sync listeners, then schedule the batched
+microtask.
+
+**GET trap (priority order):** memoized getter detection → method binding (so `this` mutations go
+through the SET trap) → lazy child proxy for nested objects/arrays → primitives returned as-is. The
+last two also record a dependency when a getter is being tracked.
+
+### Batching
+
+Array operations like `push()` trigger multiple SET traps (element + length). A dirty flag plus
+`queueMicrotask` coalesces every synchronous mutation into one notification. Subscribers opt into
+immediate timing with `{ sync: true }`; sync listeners are intentionally not deduped so controlled
+inputs observe each keystroke.
+
+### Version propagation
+
+<Mermaid chart={`graph TD
+  Root["Root (v=10 to v=13)"] --> User["user (v=11 to v=12)"]
+  Root --> Settings["settings (v=5, unchanged)"]
+  User --> Name["name = 'Bob' (mutation here)"]
+  User --> Age["age = 30 (unchanged)"]`} />
+
+When a nested property mutates, versions bump from the mutated node up to the root. Unchanged
+sub-trees keep their version, which is what lets the snapshot layer reuse cached references.
+
+## Layer 2: Immutable snapshots
+
+`snapshot(proxy)` creates a deeply frozen, plain-JS copy of the state. Unchanged sub-trees reuse
+previous snapshot references (structural sharing).
+
+<Mermaid chart={`flowchart TD
+  Start["snapshot(proxy)"] --> CheckCache{"Version match in cache?"}
+  CheckCache -->|Yes| ReturnCached["Return cached snapshot (O(1))"]
+  CheckCache -->|No| CreateSnap["Create new snapshot object"]
+  CreateSnap --> IterateKeys["For each own key"]
+  IterateKeys --> CheckChild{"Has child internal?"}
+  CheckChild -->|Yes| Recurse["Recurse into child"]
+  CheckChild -->|No| CheckProxy{"Plain object or array?"}
+  CheckProxy -->|Yes| DeepClone["deepFreezeClone (cached by identity)"]
+  CheckProxy -->|No| CopyValue["Copy as-is (primitive/function)"]
+  Recurse --> Freeze["Object.freeze"]
+  DeepClone --> Freeze
+  CopyValue --> Freeze
+  Freeze --> Cache["Cache by [version, snapshot]"]`} />
+
+### Structural sharing
+
+```text
+Snapshot v1:                    Snapshot v2 (after user.name = 'Bob'):
+┌──────────┐                    ┌──────────┐
+│ root     │                    │ root     │ (new object)
+│ user ────┼──→ {name:'Alice'}  │ user ────┼──→ {name:'Bob'} (new)
+│ settings─┼──→ {theme:'dark'}  │ settings─┼──→ {theme:'dark'} (SAME ref ===)
+└──────────┘                    └──────────┘
+```
+
+`snap2.settings === snap1.settings` because the sub-tree's version did not change — a cache hit
+returns the same reference.
+
+## Computed getter memoization
+
+Class getters are memoized at two layers with no user-facing API — analogous to MobX `@computed`,
+implemented transparently via Proxy.
+
+<Mermaid chart={`flowchart TD
+  GetterAccess["store.filtered accessed"] --> CheckDeps{"Dependencies changed?"}
+  CheckDeps -->|No| ReturnCached["Return cached value"]
+  CheckDeps -->|Yes| Recompute["Re-run getter with dependency tracking"]
+  Recompute --> CacheResult["Cache result + deps"]
+  CacheResult --> ReturnCached`} />
+
+**Write proxy.** `evaluateComputed()` runs the getter while a tracker stack records reads. A
+**version** dependency (nested object/array) is validated by comparing `internal.version`; a
+**value** dependency (primitive) by `Object.is`. Both are O(1) per dependency. Nested getters
+propagate their dependencies to the outer getter.
+
+**Snapshot.** Getter results are stable across snapshots when dependencies are structurally
+unchanged. A lightweight tracking proxy records which `this` properties the getter reads; on the next
+snapshot, each is checked with `Object.is`. Structural sharing guarantees unchanged sub-trees share a
+reference, so the cached result is returned. Selectors selecting a getter therefore work with plain
+`Object.is` — no `shallowEqual` needed.
+
+## Layer 3: Framework hooks
+
+`useClassyStore` uses `useSyncExternalStore` for tear-free integration. It has two modes.
+
+### Selector mode
+
+<Mermaid chart={`sequenceDiagram
+  participant React as useSyncExternalStore
+  participant Hook as useClassyStore
+  participant Snap as snapshot()
+  participant Selector as selector(snap)
+
+  React->>Hook: getSnapshot()
+  Hook->>Snap: snapshot(proxy)
+  Snap-->>Hook: frozen snapshot
+  Hook->>Selector: selector(snapshot)
+  Selector-->>Hook: selected value
+  Hook->>Hook: Object.is(prev, next)?
+  alt Same value
+    Hook-->>React: return cached (no re-render)
+  else Different value
+    Hook-->>React: return new value (re-render)
+  end`} />
+
+The equality chain short-circuits: same snapshot reference skips the selector entirely (O(1)),
+otherwise the selector runs and the result is compared with `Object.is` (or `options.isEqual`).
+
+### Auto-tracked mode
+
+<Mermaid chart={`sequenceDiagram
+  participant React as useSyncExternalStore
+  participant Hook as useClassyStore
+  participant Snap as snapshot()
+  participant PC as proxy-compare
+
+  React->>Hook: getSnapshot()
+  Hook->>Snap: snapshot(proxy)
+  Snap-->>Hook: frozen snapshot
+  alt Same snapshot ref
+    Hook-->>React: return cached tracking proxy
+  else Different snapshot
+    Hook->>PC: isChanged(prev, next, affected)
+    alt No tracked prop changed
+      Hook-->>React: return cached proxy (no re-render)
+    else Tracked prop changed
+      Hook->>PC: createProxy(next, affected)
+      Hook-->>React: return new proxy (re-render)
+    end
+  end`} />
+
+`proxy-compare` wraps the frozen snapshot in a proxy that records which properties the component
+reads into an `affected` WeakMap, then diffs only those properties between snapshots.
+
+## Module dependencies
+
+<Mermaid chart={`graph LR
+  react["react.ts"] --> core["core.ts"]
+  react --> snapshot["snapshot.ts"]
+  react --> proxyCompare["proxy-compare"]
+  snapshot --> core
+  core --> internal["utils/internal"]
+
+  subgraph utilities ["Utilities"]
+    persist["persist.ts"]
+    devtools["devtools.ts"]
+    subscribeKey["subscribe-key.ts"]
+    withHistory["history.ts"]
+  end
+
+  persist --> core
+  persist --> snapshot
+  devtools --> core
+  subscribeKey --> core
+  withHistory --> snapshot`} />
+
+## Key design decisions
+
+- **ES6 Proxy over `Object.defineProperty`** — intercepts property creation, deletion, and arbitrary
+  key access, which is essential for arrays and dynamic objects.
+- **`queueMicrotask` batching** — runs after synchronous code but before paint, so multiple mutations
+  (and multi-trap array operations) collapse into one notification with no missed updates.
+- **Structural sharing** — keeps unchanged sub-trees reference-equal so `Object.is` selectors are
+  efficient without custom equality.
+- **`proxy-compare` for auto-tracking** — a ~1 KB, battle-tested reader that diffs only accessed
+  properties; the library's single production dependency.
+- **`useSyncExternalStore`** — React's official external-store API: tear-free, concurrent-safe, and
+  SSR-capable.
+- **`WeakMap` internals** — no metadata on the user's object, and the store is collectable once
+  dereferenced.
+
+## Performance characteristics
+
+| Operation | Complexity | Notes |
+| --- | --- | --- |
+| Property read | O(1) | Direct GET trap |
+| Property write | O(depth) | Version bumps from node to root |
+| Notification | O(listeners) | Once per microtask batch |
+| Getter (cache hit) | O(deps) | Validate deps, return cached |
+| Snapshot (cache hit) | O(1) | Version check only |
+| Snapshot (cache miss) | O(changed branches) | Structural sharing skips unchanged |
+| Selector equality | O(1) for primitives | `Object.is` |
+| Auto-track diff | O(accessed props) | `proxy-compare` checks only read props |
