@@ -15,7 +15,8 @@
       "!build",
       "!**/_generated",
       "!coverage",
-      "!**/.angular"
+      "!**/.angular",
+      "!docs-site"
     ]
   },
   "formatter": {

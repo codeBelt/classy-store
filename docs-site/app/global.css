@@ -1,0 +1,17 @@
+@import 'tailwindcss';
+@import 'fumadocs-ui/css/neutral.css';
+@import 'fumadocs-ui/css/preset.css';
+
+html {
+  scrollbar-gutter: stable;
+}
+
+html > body[data-scroll-locked] {
+  margin-right: 0px !important;
+  --removed-body-scroll-bar-size: 0px !important;
+}
+
+/* Mobile sidebar drawer width (Fumadocs default is w-[85%] capped at 380px, which is too wide). */
+#nd-sidebar-mobile {
+  width: min(85vw, 18rem);
+}
