@@ -36,7 +36,7 @@
 
 ## Optional: Full Documentation
 
-- [React SSR](https://codebelt.github.io/classy-store/docs/REACT_SSR): Request-scoped stores, matching hydration, deferred persistence, and streaming constraints
+- [React SSR](https://codebelt.github.io/classy-store/docs/REACT_SSR): `prepareStoreForHydration`, request-scoped stores, and persistence-safe streamed/selective hydration
 
 - [llms-full.txt](https://codebelt.github.io/classy-store/llms-full.txt): All documentation
   concatenated into one file for LLM context windows

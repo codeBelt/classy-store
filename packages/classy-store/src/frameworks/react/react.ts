@@ -21,6 +21,29 @@ export type UseClassyStoreSelectorOptions<S> = {
   isEqual?: EqualityFn<S>;
 };
 
+// A late Suspense boundary may still need the initial data after earlier
+// consumers have hydrated and changed the live store.
+const hydrationSnapshots = new WeakMap<object, object>();
+
+/**
+ * Capture the initial snapshot used for server rendering and client hydration.
+ *
+ * Call on each request's store and on its client counterpart, initialized with
+ * the same data, before rendering or starting persistence. Repeated calls keep
+ * the first snapshot. The returned proxy is unchanged and remains mutable.
+ * Client-only stores do not need preparation.
+ *
+ * Prepare the exact proxy passed to the hooks. Opaque snapshot leaves such as
+ * Date and Map retain their identity; replace them instead of mutating in place.
+ */
+export function prepareStoreForHydration<T extends object>(proxyStore: T): T {
+  getInternal(proxyStore);
+  if (!hydrationSnapshots.has(proxyStore)) {
+    hydrationSnapshots.set(proxyStore, snapshot(proxyStore));
+  }
+  return proxyStore;
+}
+
 // ── Overloads ─────────────────────────────────────────────────────────────────
 
 /**
@@ -75,18 +98,42 @@ export function useClassyStore<T extends object, S>(
   // Each selector gets its own snapshot cache so concurrent renders do not
   // overwrite one another's cached snapshot or selected result.
   const committedSelectionRef = useRef<{value: S} | undefined>(undefined);
-  const getSelectedSnapshot = useMemo(
-    () =>
-      selector
+  const initialSnapshot = hydrationSnapshots.get(proxyStore) as
+    | Snapshot<T>
+    | undefined;
+  const {getSelectedSnapshot, getServerSnapshot} = useMemo(() => {
+    let hydrationSelection: {value: S; snapshot: Snapshot<T>} | undefined;
+    const readServerSelection =
+      initialSnapshot && selector
         ? createSelectorSnapshotGetter(
-            proxyStore,
+            () => initialSnapshot,
             selector,
-            committedSelectionRef,
+            () => undefined,
+            isEqual,
+          )
+        : undefined;
+
+    return {
+      getSelectedSnapshot: selector
+        ? createSelectorSnapshotGetter(
+            () => snapshot(proxyStore),
+            selector,
+            () => hydrationSelection ?? committedSelectionRef.current,
             isEqual,
           )
         : undefined,
-    [proxyStore, selector, isEqual],
-  );
+      getServerSnapshot: initialSnapshot
+        ? () => {
+            if (!readServerSelection) return initialSnapshot;
+            const value = readServerSelection();
+            // Seed only this selector's live cache, and only when React actually
+            // hydrates. Never overwrite committed data from an abandoned render.
+            hydrationSelection = {value, snapshot: initialSnapshot};
+            return value;
+          }
+        : undefined,
+    };
+  }, [proxyStore, selector, isEqual, initialSnapshot]);
 
   // Each render owns its read set. A suspended or abandoned render cannot
   // overwrite the committed getter's tracked properties. Proxy identity is
@@ -107,7 +154,21 @@ export function useClassyStore<T extends object, S>(
     return nextSnapshot;
   };
 
-  const result = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+  const readServerSnapshot = (): Snapshot<T> | S => {
+    const serverResult = getServerSnapshot
+      ? getServerSnapshot()
+      : getSnapshot();
+    // This render's read set can filter the first live update, too. Seed only
+    // when React hydrates so client-only mounts always start from current data.
+    if (!selector) previousAutoSnapshot = serverResult as Snapshot<T>;
+    return serverResult;
+  };
+
+  const result = useSyncExternalStore(
+    subscribe,
+    getSnapshot,
+    readServerSnapshot,
+  );
 
   useEffect(() => {
     committedSelectionRef.current = selector ? {value: result as S} : undefined;
@@ -128,22 +189,27 @@ export function useClassyStore<T extends object, S>(
  * `undefined`. Equal selections retain their reference across selector changes.
  */
 function createSelectorSnapshotGetter<T extends object, S>(
-  proxyStore: T,
+  getStoreSnapshot: () => Snapshot<T>,
   selector: (snap: Snapshot<T>) => S,
-  committedSelectionRef: React.RefObject<{value: S} | undefined>,
+  getPreviousSelection: () => {value: S; snapshot?: Snapshot<T>} | undefined,
   isEqual?: EqualityFn<S>,
 ): () => S {
   let previousSnapshot: Snapshot<T> | undefined;
-  let selection: {value: S} | undefined;
+  let selection: {value: S; snapshot?: Snapshot<T>} | undefined;
 
   return () => {
-    const nextSnapshot = snapshot(proxyStore);
+    const nextSnapshot = getStoreSnapshot();
     if (previousSnapshot === nextSnapshot && selection) {
       return selection.value;
     }
 
-    const nextResult = selector(nextSnapshot);
-    const previousSelection = selection ?? committedSelectionRef.current;
+    const previousSelection = selection ?? getPreviousSelection();
+    // The same immutable input and selector can reuse the hydration result
+    // directly, including selectors that allocate an object without isEqual.
+    const nextResult =
+      !selection && previousSelection?.snapshot === nextSnapshot
+        ? previousSelection.value
+        : selector(nextSnapshot);
 
     selection =
       previousSelection &&

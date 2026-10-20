@@ -70,6 +70,8 @@ return (
 
 Ordinary `subscribe(store, listener)` callbacks still batch in a microtask. React batches renders within event handlers, while selectors can run after each mutation.
 
+For server-rendered React apps, call `prepareStoreForHydration(store)` from `@codebelt/classy-store/react` on matching server/client stores before persistence starts. Delayed Suspense boundaries then hydrate from the original data and catch up to live state. See the [SSR guide](https://codebelt.github.io/classy-store/docs/REACT_SSR).
+
 ## 📦 Installation
 
 ```bash

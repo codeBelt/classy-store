@@ -8,6 +8,7 @@ import {
 import type {UseClassyStoreOptions} from '@codebelt/classy-store/react';
 import {
   createStoreHook,
+  prepareStoreForHydration,
   useClassyStore,
   useLocalStore,
 } from '@codebelt/classy-store/react';
@@ -31,7 +32,8 @@ type Equal<Left, Right> =
 type Expect<Condition extends true> = Condition;
 
 const store = createClassyStore(new ConsumerStore());
-const useStore = createStoreHook(store);
+const prepared = prepareStoreForHydration(store);
+const useStore = createStoreHook(prepared);
 
 export function useConsumerTypeAssertions() {
   const count = useClassyStore(store, (state) => state.count);
@@ -56,7 +58,8 @@ export function useConsumerTypeAssertions() {
     Expect<Equal<typeof selected, {label: string}>>,
     Expect<Equal<typeof boundSelected, {label: string}>>,
     Expect<Equal<typeof local, ConsumerStore>>,
-  ] = [true, true, true, true, true, true, true];
+    Expect<Equal<typeof prepared, ConsumerStore>>,
+  ] = [true, true, true, true, true, true, true, true];
 
   // @ts-expect-error Snapshots cannot be assigned to.
   tracked.count = 1;
@@ -88,6 +91,10 @@ export function useConsumerTypeAssertions() {
   const wrongType: string = count;
 
   local.increment();
+  prepared.increment();
+  prepared.count = 2;
+  prepared.user.name = 'Prepared and mutable';
+  prepared.names.push('Prepared and mutable');
   store.user.name = 'Mutable';
   store.names.push('Mutable');
   const frozen = snapshot(store);

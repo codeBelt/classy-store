@@ -180,6 +180,23 @@ React subscriptions always notify synchronously, including selector, auto-tracke
 
 Migration: remove `{sync: true}` or `{sync: false}` from React hook calls and remove imports of `UseClassyStoreOptions`. Selector options still support `isEqual`. Synchronous notification does not make a method transactional: selectors can observe each write, while React batches rendering within event handlers.
 
+### `prepareStoreForHydration(store)`
+
+Captures the initial snapshot for server rendering and client hydration, returning the same mutable store proxy:
+
+```ts
+import {createClassyStore} from '@codebelt/classy-store';
+import {prepareStoreForHydration} from '@codebelt/classy-store/react';
+
+const store = prepareStoreForHydration(
+  createClassyStore(new ProfileStore(initialData)),
+);
+```
+
+Call on each request's store and its client counterpart using matching initial data, before rendering or starting persistence. Direct and bound hooks hydrate from the captured snapshot even if persistence updates the live store before a Suspense boundary hydrates. After hydration they read current state normally.
+
+Preparation is idempotent, retains the first snapshot for the store's lifetime, and applies to the exact proxy passed in. Client-only apps need no preparation. See [React SSR and hydration](./REACT_SSR.md) for streaming, request isolation, nested proxies, and snapshot leaf semantics.
+
 ### `useLocalStore(factory)`
 
 Creates a component-scoped reactive store. Each component instance gets its own isolated store, garbage collected on unmount.

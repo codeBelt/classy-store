@@ -8,7 +8,7 @@ const load =
 const {createClassyStore, snapshot, subscribe} = await load(
   '@codebelt/classy-store',
 );
-const {createStoreHook, useClassyStore} = await load(
+const {createStoreHook, prepareStoreForHydration, useClassyStore} = await load(
   '@codebelt/classy-store/react',
 );
 const {withHistory} = await load('@codebelt/classy-store/utils');
@@ -47,4 +47,29 @@ history.undo();
 store.nested.label = 'editable';
 assert.equal(store.nested.label, 'editable');
 history.dispose();
+
+// Capture before the first hook read: later live writes must not change the
+// initial snapshot used by either React entry point during server rendering.
+const preparedStore = createClassyStore({
+  count: 4,
+  nested: {label: 'prepared'},
+});
+assert.equal(prepareStoreForHydration(preparedStore), preparedStore);
+const usePreparedStore = createStoreHook(preparedStore);
+preparedStore.count = 7;
+preparedStore.nested.label = 'live';
+assert.equal(prepareStoreForHydration(preparedStore), preparedStore);
+
+function PreparedServerConsumer() {
+  const label = useClassyStore(preparedStore, (state) => state.nested.label);
+  const tracked = usePreparedStore();
+  return React.createElement('span', null, `${label}:${tracked.count}`);
+}
+
+assert.equal(
+  renderToString(React.createElement(PreparedServerConsumer)),
+  '<span>prepared:4</span>',
+);
+assert.equal(snapshot(preparedStore).count, 7);
+assert.equal(preparedStore.nested.label, 'live');
 console.log(`Node ${mode} exports and SSR passed with React ${React.version}`);

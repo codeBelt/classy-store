@@ -42,6 +42,18 @@ function run(command, argumentsList, cwd, captureOutput = false) {
   return result.stdout;
 }
 
+function rewritePackedImports(source) {
+  return source
+    .replace('import {act, ', "import {act} from './reactAct';\nimport {")
+    .replaceAll("'../../core/core'", "'@codebelt/classy-store'")
+    .replaceAll("'../../snapshot/snapshot'", "'@codebelt/classy-store'")
+    .replaceAll(
+      "'../../utils/persist/persist'",
+      "'@codebelt/classy-store/utils'",
+    )
+    .replaceAll("'./react'", "'@codebelt/classy-store/react'");
+}
+
 try {
   const packed = JSON.parse(
     run(
@@ -97,22 +109,40 @@ try {
       join(fixturesDirectory, 'consumer.fixture.tsx'),
       join(consumerDirectory, 'consumer.test.tsx'),
     );
-    const ssrTests = readFileSync(
-      join(packageDirectory, 'src/frameworks/react/react.ssr.test.tsx'),
-      'utf8',
-    )
-      .replace(
-        "import {act, useEffect} from 'react';",
-        "import {useEffect} from 'react';\nimport {act} from './reactAct';",
-      )
-      .replaceAll("'../../core/core'", "'@codebelt/classy-store'")
-      .replaceAll("'../../snapshot/snapshot'", "'@codebelt/classy-store'")
-      .replaceAll(
-        "'../../utils/persist/persist'",
-        "'@codebelt/classy-store/utils'",
-      )
-      .replaceAll("'./react'", "'@codebelt/classy-store/react'");
+    const ssrTests = rewritePackedImports(
+      readFileSync(
+        join(packageDirectory, 'src/frameworks/react/react.ssr.test.tsx'),
+        'utf8',
+      ),
+    );
     writeFileSync(join(consumerDirectory, 'ssr.test.tsx'), ssrTests);
+    const sourceHydrationTests = readFileSync(
+      join(packageDirectory, 'src/frameworks/react/react.hydration.test.tsx'),
+      'utf8',
+    );
+    // Internal listener counts remain covered in source tests. Installed-package
+    // tests retain the public unmount, no-more-commits, and storage cleanup checks.
+    const internalAssertions =
+      /^\s*expect\(getInternal\(clientStore\)\.(?:syncListeners|batchedListeners)\.size\)\.toBe\([01]\);\n/gm;
+    if ([...sourceHydrationTests.matchAll(internalAssertions)].length !== 4) {
+      throw new Error(
+        'Expected four source-only hydration listener assertions',
+      );
+    }
+    const hydrationTests = rewritePackedImports(
+      sourceHydrationTests
+        .replace('{createClassyStore, getInternal}', '{createClassyStore}')
+        .replace(internalAssertions, ''),
+    );
+    writeFileSync(
+      join(consumerDirectory, 'hydration.test.tsx'),
+      hydrationTests,
+    );
+    cpSync(
+      join(packageDirectory, 'src/frameworks/react/testHelpers'),
+      join(consumerDirectory, 'testHelpers'),
+      {recursive: true},
+    );
     for (const extension of ['mts', 'cts']) {
       cpSync(
         join(fixturesDirectory, 'consumer.types.fixture.ts'),
@@ -147,6 +177,7 @@ try {
         './happydom.ts',
         './consumer.test.tsx',
         './ssr.test.tsx',
+        './hydration.test.tsx',
       ],
       consumerDirectory,
     );
