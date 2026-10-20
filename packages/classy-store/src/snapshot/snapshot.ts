@@ -1,3 +1,4 @@
+import {markToTrack} from 'proxy-compare';
 import {getInternal} from '../core/core';
 import type {Snapshot, StoreInternal} from '../types';
 import {canProxy, findGetterDescriptor} from '../utils/internal/internal';
@@ -25,6 +26,14 @@ const snapshotGetterCache = new WeakMap<
   object,
   Map<string | symbol, unknown>
 >();
+
+// Restoration must distinguish generated memoization getters from user accessors.
+const memoizedSnapshotGetters = new WeakSet<() => unknown>();
+
+/** Internal helper for restoring live prototype getters from a snapshot. */
+export function isMemoizedSnapshotGetter(getter: (() => unknown) | undefined) {
+  return getter !== undefined && memoizedSnapshotGetters.has(getter);
+}
 
 // ── Cross-snapshot getter memoization ─────────────────────────────────────────
 
@@ -157,6 +166,22 @@ function evaluateSnapshotGetter(
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
+function markSnapshotForTracking(value: object): void {
+  // proxy-compare 3 copies frozen string descriptors, but leaves symbol
+  // descriptors frozen. Wrapping an object-valued symbol then violates Proxy
+  // invariants. Compare those nodes as a whole until that dependency is fixed.
+  const hasObjectSymbol = Object.getOwnPropertySymbols(value).some((key) => {
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    return (
+      descriptor &&
+      'value' in descriptor &&
+      typeof descriptor.value === 'object' &&
+      descriptor.value !== null
+    );
+  });
+  markToTrack(value, !hasObjectSymbol);
+}
+
 /**
  * Resolve a single property value into its snapshot equivalent.
  *
@@ -220,6 +245,9 @@ function deepFreezeClone(value: object, inProgress: WeakSet<object>): object {
     }
   }
 
+  // Class and null-prototype snapshots need an explicit opt-in for read tracking.
+  // Only cloned state is marked; opaque leaves retain their existing behavior.
+  markSnapshotForTracking(clone);
   Object.freeze(clone);
   untrackedCache.set(value, clone);
   inProgress.delete(value);
@@ -271,10 +299,12 @@ function installMemoizedGetters(
 ): void {
   const getters = collectGetters(target);
   for (const [key, getterFn] of getters) {
+    function memoizedGetter(this: object) {
+      return evaluateSnapshotGetter(this, target, key, getterFn);
+    }
+    memoizedSnapshotGetters.add(memoizedGetter);
     Object.defineProperty(snap, key, {
-      get() {
-        return evaluateSnapshotGetter(this as object, target, key, getterFn);
-      },
+      get: memoizedGetter,
       enumerable: true,
       configurable: true, // required so Object.freeze can make it non-configurable
     });
@@ -345,6 +375,7 @@ function createSnapshotRecursive<T extends object>(
     installMemoizedGetters(snap as Record<string | symbol, unknown>, target);
   }
 
+  markSnapshotForTracking(snap);
   Object.freeze(snap);
   // Cache AFTER populating + freezing. The reference is stable.
   snapshotCache.set(target, [internal.version, snap]);

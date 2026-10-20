@@ -12,6 +12,8 @@
     "build": "bun run --filter @codebelt/classy-store build",
     "---------- Test --------------------------------------------------------": "",
     "test": "bun run --filter @codebelt/classy-store test",
+    "test:browser": "bun run --filter @codebelt/classy-store test:browser",
+    "test:react:compatibility": "bun run build && node packages/classy-store/tests/compatibility/runCompatibility.mjs",
     "---------- Lint --------------------------------------------------------": "",
     "lint": "biome check",
     "lint:fix": "biome check --write",

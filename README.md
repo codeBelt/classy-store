@@ -55,10 +55,10 @@ function AddButton() {
 }
 ```
 
-For React controlled inputs, opt the field subscription into synchronous timing so React can preserve caret position and IME composition:
+React subscriptions notify synchronously, so controlled inputs preserve caret position without extra options:
 
 ```tsx
-const name = useClassyStore(formStore, (state) => state.name, {sync: true});
+const name = useClassyStore(formStore, (state) => state.name);
 
 return (
   <input
@@ -67,6 +67,8 @@ return (
   />
 );
 ```
+
+Ordinary `subscribe(store, listener)` callbacks still batch in a microtask. React batches renders within event handlers, while selectors can run after each mutation.
 
 ## 📦 Installation
 

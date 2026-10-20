@@ -1,5 +1,6 @@
 import {subscribe} from '../../core/core';
 import {snapshot} from '../../snapshot/snapshot';
+import {cloneSnapshotValue} from '../cloneSnapshot/cloneSnapshot';
 import {findGetterDescriptor} from '../internal/internal';
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -421,10 +422,16 @@ export function persist<T extends object>(
       merged = {...currentState, ...state};
     }
 
+    // Merged defaults may still reference frozen snapshot branches. Restore
+    // mutable copies without changing snapshots retained by callers or merges.
+    const clones = new WeakMap<object, object>();
     // Apply to store proxy (goes through SET traps → reactivity).
     for (const key of propKeys) {
       if (key in merged) {
-        (proxyStore as Record<string, unknown>)[key] = merged[key];
+        (proxyStore as Record<string, unknown>)[key] = cloneSnapshotValue(
+          merged[key],
+          clones,
+        );
       }
     }
   }

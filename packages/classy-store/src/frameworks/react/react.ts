@@ -1,5 +1,12 @@
 import {createProxy, isChanged} from 'proxy-compare';
-import {useCallback, useRef, useState, useSyncExternalStore} from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 import {
   subscribe as coreSubscribe,
   createClassyStore,
@@ -10,11 +17,7 @@ import type {Snapshot} from '../../types';
 
 type EqualityFn<T> = (a: T, b: T) => boolean;
 
-export type UseClassyStoreOptions = {
-  sync?: boolean;
-};
-
-export type UseClassyStoreSelectorOptions<S> = UseClassyStoreOptions & {
+export type UseClassyStoreSelectorOptions<S> = {
   isEqual?: EqualityFn<S>;
 };
 
@@ -28,7 +31,7 @@ export type UseClassyStoreSelectorOptions<S> = UseClassyStoreOptions & {
  *
  * @param proxyStore - A reactive proxy created by `createClassyStore()`.
  * @param selector  - Picks data from the immutable snapshot.
- * @param options   - Controls equality and subscriber notification timing.
+ * @param options   - Controls selected-value equality.
  */
 export function useClassyStore<T extends object, S>(
   proxyStore: T,
@@ -43,166 +46,116 @@ export function useClassyStore<T extends object, S>(
  * The component only re-renders when a property it actually read changes.
  *
  * @param proxyStore - A reactive proxy created by `createClassyStore()`.
- * @param options - Controls subscriber notification timing.
  */
-export function useClassyStore<T extends object>(
-  proxyStore: T,
-  options?: UseClassyStoreOptions,
-): Snapshot<T>;
+export function useClassyStore<T extends object>(proxyStore: T): Snapshot<T>;
 
 // ── Implementation ────────────────────────────────────────────────────────────
 
 export function useClassyStore<T extends object, S>(
   proxyStore: T,
-  selectorOrOptions?: ((snap: Snapshot<T>) => S) | UseClassyStoreOptions,
+  selector?: (snap: Snapshot<T>) => S,
   selectorOptions?: UseClassyStoreSelectorOptions<S>,
 ): Snapshot<T> | S {
   // Validate that the argument is actually a store proxy (throws if not).
   getInternal(proxyStore);
 
-  const selector =
-    typeof selectorOrOptions === 'function' ? selectorOrOptions : undefined;
-  const options:
-    | UseClassyStoreOptions
-    | UseClassyStoreSelectorOptions<S>
-    | undefined =
-    typeof selectorOrOptions === 'function'
-      ? selectorOptions
-      : selectorOrOptions;
-  const sync = options?.sync === true;
   const isEqual = selectorOptions?.isEqual;
 
-  // Stable subscribe function (internal identity never changes for a given store).
+  // React must observe mutations during the event that changes a controlled
+  // input. Ordinary core subscriptions retain their default microtask batching.
   const subscribe = useCallback(
     (onStoreChange: () => void) =>
-      coreSubscribe(proxyStore, onStoreChange, sync ? {sync: true} : undefined),
-    [proxyStore, sync],
+      coreSubscribe(proxyStore, onStoreChange, {sync: true}),
+    [proxyStore],
   );
 
   // ── Refs used by both modes (always allocated to satisfy Rules of Hooks) ──
 
-  // Selector mode refs
-  const snapRef = useRef<Snapshot<T> | undefined>(undefined);
-  const resultRef = useRef<S | undefined>(undefined);
-  // Tracks whether `resultRef` holds a real prior result (so a selector that
-  // legitimately returns `undefined` still benefits from the fast path).
-  const hasResultRef = useRef(false);
+  // Keep only committed selections shared between selector instances.
+  // Each selector gets its own snapshot cache so concurrent renders do not
+  // overwrite one another's cached snapshot or selected result.
+  const committedSelectionRef = useRef<{value: S} | undefined>(undefined);
+  const getSelectedSnapshot = useMemo(
+    () =>
+      selector
+        ? createSelectorSnapshotGetter(
+            proxyStore,
+            selector,
+            committedSelectionRef,
+            isEqual,
+          )
+        : undefined,
+    [proxyStore, selector, isEqual],
+  );
 
-  // Auto-track mode refs
-  const affected = useRef(new WeakMap<object, unknown>()).current;
+  // Each render owns its read set. A suspended or abandoned render cannot
+  // overwrite the committed getter's tracked properties. Proxy identity is
+  // cached across renders so unchanged values remain safe effect dependencies.
+  const affected = new WeakMap<object, unknown>();
   const proxyCache = useRef(new WeakMap<object, unknown>()).current;
-  const prevSnapRef = useRef<Snapshot<T> | undefined>(undefined);
-  const wrappedRef = useRef<Snapshot<T> | undefined>(undefined);
+  let previousAutoSnapshot: Snapshot<T> | undefined;
+  const getSnapshot = (): Snapshot<T> | S => {
+    if (getSelectedSnapshot) return getSelectedSnapshot();
+    const nextSnapshot = snapshot(proxyStore);
+    if (
+      previousAutoSnapshot &&
+      !isChanged(previousAutoSnapshot, nextSnapshot, affected)
+    ) {
+      return previousAutoSnapshot;
+    }
+    previousAutoSnapshot = nextSnapshot;
+    return nextSnapshot;
+  };
 
-  // ── Single getSnapshot for useSyncExternalStore ───────────────────────────
+  const result = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 
-  const getSnapshot = (): Snapshot<T> | S =>
-    selector
-      ? getSelectorSnapshot(
-          proxyStore,
-          snapRef,
-          resultRef,
-          hasResultRef,
-          selector,
-          isEqual,
-        )
-      : getAutoTrackSnapshot(
-          proxyStore,
-          affected,
-          proxyCache,
-          prevSnapRef,
-          wrappedRef,
-        );
+  useEffect(() => {
+    committedSelectionRef.current = selector ? {value: result as S} : undefined;
+  }, [result, selector]);
 
-  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+  return selector
+    ? result
+    : (createProxy(result as Snapshot<T>, affected, proxyCache) as Snapshot<T>);
 }
 
 // ── Selector mode logic (pure function, no hooks) ─────────────────────────────
 
 /**
- * `getSnapshot` implementation for selector mode.
+ * Create a cached `getSnapshot` for one store, selector, and equality function.
  *
- * Fast-paths when the snapshot reference hasn't changed (O(1)). Otherwise
- * runs the selector against the new snapshot and compares the result to the
- * previous one via `Object.is` (or `options.isEqual`). Returns the previous
- * result reference when equal, preventing unnecessary React re-renders.
- *
- * Pure function -- no hooks, safe to call from `useSyncExternalStore`.
+ * Re-evaluates when any of those inputs change, even if the store did not.
+ * Repeated reads of the same snapshot return the cached result, including
+ * `undefined`. Equal selections retain their reference across selector changes.
  */
-function getSelectorSnapshot<T extends object, S>(
+function createSelectorSnapshotGetter<T extends object, S>(
   proxyStore: T,
-  snapRef: React.RefObject<Snapshot<T> | undefined>,
-  resultRef: React.RefObject<S | undefined>,
-  hasResultRef: React.RefObject<boolean>,
   selector: (snap: Snapshot<T>) => S,
+  committedSelectionRef: React.RefObject<{value: S} | undefined>,
   isEqual?: EqualityFn<S>,
-): S {
-  const nextSnap = snapshot(proxyStore);
+): () => S {
+  let previousSnapshot: Snapshot<T> | undefined;
+  let selection: {value: S} | undefined;
 
-  // Fast path: same snapshot reference → same result.
-  if (snapRef.current === nextSnap && hasResultRef.current) {
-    return resultRef.current as S;
-  }
+  return () => {
+    const nextSnapshot = snapshot(proxyStore);
+    if (previousSnapshot === nextSnapshot && selection) {
+      return selection.value;
+    }
 
-  const nextResult = selector(nextSnap);
-  snapRef.current = nextSnap;
+    const nextResult = selector(nextSnapshot);
+    const previousSelection = selection ?? committedSelectionRef.current;
 
-  // Check equality with previous result.
-  if (
-    hasResultRef.current &&
-    (isEqual
-      ? isEqual(resultRef.current as S, nextResult)
-      : Object.is(resultRef.current as S, nextResult))
-  ) {
-    return resultRef.current as S;
-  }
+    selection =
+      previousSelection &&
+      (isEqual
+        ? isEqual(previousSelection.value, nextResult)
+        : Object.is(previousSelection.value, nextResult))
+        ? previousSelection
+        : {value: nextResult};
+    previousSnapshot = nextSnapshot;
 
-  resultRef.current = nextResult;
-  hasResultRef.current = true;
-  return nextResult;
-}
-
-// ── Auto-tracked (selectorless) mode logic (pure function, no hooks) ──────────
-
-/**
- * `getSnapshot` implementation for auto-tracked (selectorless) mode.
- *
- * Uses `proxy-compare` to diff only the properties the component actually read.
- * If the snapshot reference is the same, returns the cached tracking proxy.
- * If the snapshot changed but no tracked property differs (`isChanged` returns
- * false), also returns the cached proxy -- avoiding re-render. Only when a
- * relevant property changed does it create a new `createProxy` wrapper.
- *
- * Pure function -- no hooks, safe to call from `useSyncExternalStore`.
- */
-function getAutoTrackSnapshot<T extends object>(
-  proxyStore: T,
-  affected: WeakMap<object, unknown>,
-  proxyCache: WeakMap<object, unknown>,
-  prevSnapRef: React.RefObject<Snapshot<T> | undefined>,
-  wrappedRef: React.RefObject<Snapshot<T> | undefined>,
-): Snapshot<T> {
-  const nextSnap = snapshot(proxyStore);
-
-  // If the raw snapshot is the same reference, nothing changed.
-  if (prevSnapRef.current === nextSnap) {
-    return wrappedRef.current as Snapshot<T>;
-  }
-
-  // Check if any property the component actually read has changed.
-  if (
-    prevSnapRef.current !== undefined &&
-    !isChanged(prevSnapRef.current, nextSnap, affected)
-  ) {
-    // No property the component cares about changed → return same wrapped proxy.
-    return wrappedRef.current as Snapshot<T>;
-  }
-
-  // Something relevant changed — create a new tracking proxy.
-  prevSnapRef.current = nextSnap;
-  const wrapped = createProxy(nextSnap, affected, proxyCache) as Snapshot<T>;
-  wrappedRef.current = wrapped;
-  return wrapped;
+    return selection.value;
+  };
 }
 
 // ── Bound store hook factory ─────────────────────────────────────────────────
@@ -234,18 +187,18 @@ export function createStoreHook<T extends object>(proxyStore: T) {
   // Fail fast at creation time rather than on first render.
   getInternal(proxyStore);
 
-  function useStore(options?: UseClassyStoreOptions): Snapshot<T>;
+  function useStore(): Snapshot<T>;
   function useStore<S>(
     selector: (snap: Snapshot<T>) => S,
     options?: UseClassyStoreSelectorOptions<S>,
   ): S;
   function useStore<S>(
-    selectorOrOptions?: ((snap: Snapshot<T>) => S) | UseClassyStoreOptions,
+    selector?: (snap: Snapshot<T>) => S,
     options?: UseClassyStoreSelectorOptions<S>,
   ): Snapshot<T> | S {
     return useClassyStore(
       proxyStore,
-      selectorOrOptions as (snap: Snapshot<T>) => S,
+      selector as (snap: Snapshot<T>) => S,
       options,
     );
   }
@@ -259,14 +212,15 @@ export function createStoreHook<T extends object>(proxyStore: T) {
  * component. When the component unmounts, the store becomes unreferenced and is
  * garbage collected (all internal bookkeeping uses `WeakMap`).
  *
- * The factory function runs **once** per mount (via `useState` initializer).
+ * The factory is a `useState` initializer and must be pure. React StrictMode
+ * may invoke it more than once in development.
  * Each component instance gets its own isolated store.
  *
  * Use the returned proxy with `useClassyStore()` to read state in the same component
  * or pass it down via props/context to share within a subtree.
  *
  * @param factory - A function that returns a class instance (or plain object).
- *                  Called once per component mount.
+ *                  Used as the component state initializer.
  * @returns A reactive store proxy scoped to the component's lifetime.
  *
  * @example

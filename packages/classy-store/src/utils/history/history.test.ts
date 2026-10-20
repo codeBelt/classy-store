@@ -1,5 +1,7 @@
 import {describe, expect, it} from 'bun:test';
+import {reactiveMap, reactiveSet} from '../../collections/collections';
 import {createClassyStore} from '../../core/core';
+import {snapshot} from '../../snapshot/snapshot';
 import {withHistory} from './history';
 
 /** Flush the queueMicrotask-based batching. */
@@ -8,6 +10,103 @@ const tick = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 // ── Tests ────────────────────────────────────────────────────────────────────
 
 describe('withHistory', () => {
+  it.each([
+    {description: 'undo', operation: 'undo' as const},
+    {description: 'redo', operation: 'redo' as const},
+  ])('keeps nested state editable after $description without changing history', async ({
+    operation,
+  }) => {
+    const store = createClassyStore({
+      items: [{name: 'initial'}],
+      details: {nested: {count: 0}},
+    });
+    const history = withHistory(store);
+
+    try {
+      store.items[0].name = 'recorded';
+      store.details.nested.count = 1;
+      await tick();
+
+      history.undo();
+      await tick();
+      if (operation === 'redo') {
+        history.redo();
+        await tick();
+      }
+      const restored = snapshot(store);
+      const restoredName = operation === 'undo' ? 'initial' : 'recorded';
+      const restoredCount = operation === 'undo' ? 0 : 1;
+
+      store.items.push({name: 'added'});
+      store.items[0].name = 'edited';
+      store.details.nested.count = 2;
+      await tick();
+
+      expect(snapshot(store).items).toEqual([
+        {name: 'edited'},
+        {name: 'added'},
+      ]);
+      expect(store.details.nested.count).toBe(2);
+      expect(restored.items).toEqual([{name: restoredName}]);
+      expect(restored.details.nested.count).toBe(restoredCount);
+      expect(history.canRedo).toBe(false);
+
+      history.undo();
+      await tick();
+      expect(snapshot(store).items).toEqual([{name: restoredName}]);
+      expect(store.details.nested.count).toBe(restoredCount);
+
+      history.redo();
+      await tick();
+      expect(snapshot(store).items).toEqual([
+        {name: 'edited'},
+        {name: 'added'},
+      ]);
+      expect(store.details.nested.count).toBe(2);
+    } finally {
+      history.dispose();
+    }
+  });
+
+  it('preserves reactive collection methods and getters after restoration', async () => {
+    const date = new Date('2026-01-01');
+    const store = createClassyStore({
+      users: reactiveMap([['alice', {name: 'Alice', date}]]),
+      tags: reactiveSet(['initial']),
+    });
+    const history = withHistory(store);
+
+    try {
+      store.users.set('bob', {name: 'Bob', date});
+      store.tags.add('recorded');
+      await tick();
+
+      history.undo();
+      await tick();
+
+      store.users.set('carol', {name: 'Carol', date});
+      store.tags.add('edited');
+      const alice = store.users.get('alice');
+      if (!alice) throw new Error('Expected the restored user');
+      alice.name = 'Alicia';
+      await tick();
+
+      expect(store.users.size).toBe(2);
+      expect(store.tags.size).toBe(2);
+      expect(store.users.get('alice')?.name).toBe('Alicia');
+      expect(store.users.get('alice')?.date).toBe(date);
+      expect(Array.from(store.tags)).toEqual(['initial', 'edited']);
+
+      history.undo();
+      await tick();
+      expect(store.users.size).toBe(1);
+      expect(store.users.get('alice')?.name).toBe('Alice');
+      expect(Array.from(store.tags)).toEqual(['initial']);
+    } finally {
+      history.dispose();
+    }
+  });
+
   it('captures initial state as history[0]', () => {
     class Store {
       count = 0;

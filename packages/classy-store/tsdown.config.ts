@@ -16,12 +16,14 @@ export default defineConfig({
   sourcemap: true,
   clean: true,
   treeshake: true,
-  external: [
-    'react',
-    'react-dom',
-    'vue',
-    'svelte',
-    '@angular/core',
-    'solid-js',
-  ],
+  deps: {
+    neverBundle: [
+      'react',
+      'react-dom',
+      'vue',
+      'svelte',
+      '@angular/core',
+      'solid-js',
+    ],
+  },
 });

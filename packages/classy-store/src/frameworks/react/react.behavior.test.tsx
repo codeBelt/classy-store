@@ -1,5 +1,5 @@
 import {afterEach, describe, expect, it, mock} from 'bun:test';
-import {act, type ReactNode} from 'react';
+import {act, type ReactNode, useLayoutEffect} from 'react';
 import {createRoot, type Root} from 'react-dom/client';
 import {createClassyStore} from '../../core/core';
 import {shallowEqual} from '../../utils/equality/equality';
@@ -10,7 +10,16 @@ import {useClassyStore} from './react';
 /** Flush queueMicrotask batching. */
 const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 
+function createGate() {
+  let resolve: () => void = () => {};
+  const promise = new Promise<void>((resolvePromise) => {
+    resolve = resolvePromise;
+  });
+  return {promise, resolve};
+}
+
 let container: HTMLDivElement;
+const roots = new Set<Root>();
 
 function setup(): void {
   container = document.createElement('div');
@@ -18,12 +27,17 @@ function setup(): void {
 }
 
 function teardown(): void {
-  document.body.removeChild(container);
+  act(() => {
+    for (const root of roots) root.unmount();
+  });
+  roots.clear();
+  container.remove();
 }
 
 /** Render a component and return the Root (for unmount tests). */
 function render(element: ReactNode): Root {
   const root = createRoot(container);
+  roots.add(root);
   act(() => {
     root.render(element);
   });
@@ -49,17 +63,17 @@ class TestStore {
     this.name = name;
   }
 
-  async asyncIncrement() {
+  async asyncIncrement(pause: Promise<void>) {
     this.count++;
-    await Promise.resolve();
+    await pause;
     this.count++;
   }
 
-  async asyncMultiAwait() {
+  async asyncMultiAwait(firstPause: Promise<void>, secondPause: Promise<void>) {
     this.count++;
-    await Promise.resolve();
+    await firstPause;
     this.count++;
-    await Promise.resolve();
+    await secondPause;
     this.count++;
   }
 
@@ -236,18 +250,22 @@ describe('Batching — rapid mutations in a loop', () => {
   });
 });
 
-// ── Block 3: Set-then-revert — no re-render ─────────────────────────────────
+// ── Block 3: Set-then-revert — committed output ─────────────────────────────────
 
-describe('Set-then-revert — no re-render when value returns to original', () => {
+describe('Set-then-revert — commits the restored value', () => {
   afterEach(teardown);
 
   it('primitive revert (selector mode)', async () => {
     const s = createClassyStore(new TestStore());
     const renderCount = mock(() => {});
+    const committedValues: number[] = [];
 
     function Display() {
       const count = useClassyStore(s, (state) => state.count);
       renderCount();
+      useLayoutEffect(() => {
+        committedValues.push(count);
+      });
       return <div>{count}</div>;
     }
 
@@ -262,19 +280,21 @@ describe('Set-then-revert — no re-render when value returns to original', () =
     });
 
     expect(container.textContent).toBe('0');
-    expect(renderCount).toHaveBeenCalledTimes(1);
+    expect(committedValues.length).toBeGreaterThan(0);
+    expect(committedValues.every((value) => value === 0)).toBe(true);
   });
 
-  it('primitive revert (auto-tracked mode) — re-renders because snapshot ref changes', async () => {
-    // Unlike selector mode (which compares the extracted value), auto-tracked mode
-    // detects that the snapshot *object* is a new reference (version was bumped),
-    // so `getAutoTrackSnapshot` builds a new tracking proxy → re-render.
+  it('primitive revert (auto-tracked mode)', async () => {
     const s = createClassyStore(new TestStore());
     const renderCount = mock(() => {});
+    const committedValues: number[] = [];
 
     function Display() {
       const snap = useClassyStore(s);
       renderCount();
+      useLayoutEffect(() => {
+        committedValues.push(snap.count);
+      });
       return <div>{snap.count}</div>;
     }
 
@@ -289,16 +309,21 @@ describe('Set-then-revert — no re-render when value returns to original', () =
     });
 
     expect(container.textContent).toBe('0');
-    expect(renderCount).toHaveBeenCalledTimes(2);
+    expect(committedValues.length).toBeGreaterThan(0);
+    expect(committedValues.every((value) => value === 0)).toBe(true);
   });
 
   it('nested object prop revert (selector on user.name)', async () => {
     const s = createClassyStore(new TestStore());
     const renderCount = mock(() => {});
+    const committedValues: string[] = [];
 
     function Display() {
       const name = useClassyStore(s, (state) => state.user.name);
       renderCount();
+      useLayoutEffect(() => {
+        committedValues.push(name);
+      });
       return <div>{name}</div>;
     }
 
@@ -314,7 +339,8 @@ describe('Set-then-revert — no re-render when value returns to original', () =
     });
 
     expect(container.textContent).toBe('Alice');
-    expect(renderCount).toHaveBeenCalledTimes(1);
+    expect(committedValues.length).toBeGreaterThan(0);
+    expect(committedValues.every((value) => value === 'Alice')).toBe(true);
   });
 
   it('unrelated prop revert — structural sharing preserves reference', async () => {
@@ -349,8 +375,6 @@ describe('Async methods — re-renders split across await boundaries', () => {
   afterEach(teardown);
 
   it('1 await, mutations before + after (selector)', async () => {
-    // React batches both microtask notifications within act() into a single
-    // commit, so we see 1 re-render (not 2) for mutations on both sides of an await.
     const s = createClassyStore(new TestStore());
     const renderCount = mock(() => {});
 
@@ -364,18 +388,21 @@ describe('Async methods — re-renders split across await boundaries', () => {
     render(<Display />);
     expect(renderCount).toHaveBeenCalledTimes(1);
 
-    await act(async () => {
-      await s.asyncIncrement();
-      await flush();
+    const gate = createGate();
+    let completion: Promise<void> | undefined;
+    act(() => {
+      completion = s.asyncIncrement(gate.promise);
     });
+    expect(container.textContent).toBe('1');
 
+    await act(async () => {
+      gate.resolve();
+      await completion;
+    });
     expect(container.textContent).toBe('2');
-    expect(renderCount).toHaveBeenCalledTimes(2); // 1 initial + 1 re-render (batched)
   });
 
   it('2 awaits, mutations between each (selector)', async () => {
-    // 3 mutations across 3 turns — React batches some of the microtask
-    // notifications, resulting in 2 re-renders rather than 3.
     const s = createClassyStore(new TestStore());
     const renderCount = mock(() => {});
 
@@ -389,13 +416,22 @@ describe('Async methods — re-renders split across await boundaries', () => {
     render(<Display />);
     expect(renderCount).toHaveBeenCalledTimes(1);
 
-    await act(async () => {
-      await s.asyncMultiAwait();
-      await flush();
+    const firstGate = createGate();
+    const secondGate = createGate();
+    let completion: Promise<void> | undefined;
+    act(() => {
+      completion = s.asyncMultiAwait(firstGate.promise, secondGate.promise);
     });
+    expect(container.textContent).toBe('1');
 
+    await act(async () => firstGate.resolve());
+    expect(container.textContent).toBe('2');
+
+    await act(async () => {
+      secondGate.resolve();
+      await completion;
+    });
     expect(container.textContent).toBe('3');
-    expect(renderCount).toHaveBeenCalledTimes(3); // 1 initial + 2 re-renders (partially batched)
   });
 
   it('mutations only before await (selector)', async () => {
@@ -458,13 +494,18 @@ describe('Async methods — re-renders split across await boundaries', () => {
     render(<Display />);
     expect(renderCount).toHaveBeenCalledTimes(1);
 
-    await act(async () => {
-      await s.asyncIncrement();
-      await flush();
+    const gate = createGate();
+    let completion: Promise<void> | undefined;
+    act(() => {
+      completion = s.asyncIncrement(gate.promise);
     });
+    expect(container.textContent).toBe('1');
 
+    await act(async () => {
+      gate.resolve();
+      await completion;
+    });
     expect(container.textContent).toBe('2');
-    expect(renderCount).toHaveBeenCalledTimes(2); // 1 initial + 1 re-render (batched)
   });
 });
 
@@ -545,10 +586,7 @@ describe('Multiple components sharing the same store', () => {
     expect(renderCountB).toHaveBeenCalledTimes(2);
   });
 
-  it('auto-tracked, both re-render when store notifies', async () => {
-    // In auto-tracked mode, when the store notifies all subscribers, each
-    // component's getSnapshot produces a new snapshot ref — both components
-    // re-render, unlike selector mode which compares extracted values.
+  it('auto-tracked components update only for properties they read', async () => {
     const s = createClassyStore(new TestStore());
     const renderCountA = mock(() => {});
     const renderCountB = mock(() => {});
@@ -581,7 +619,7 @@ describe('Multiple components sharing the same store', () => {
     });
 
     expect(renderCountA).toHaveBeenCalledTimes(2);
-    expect(renderCountB).toHaveBeenCalledTimes(2);
+    expect(renderCountB).toHaveBeenCalledTimes(1);
   });
 
   it('batched multi-prop, both affected', async () => {
@@ -639,13 +677,13 @@ describe('Unmount safety', () => {
     expect(container.textContent).toBe('0');
 
     await act(async () => {
-      s.increment(); // schedules microtask notification
-      root.unmount(); // unsubscribes synchronously
-      await flush(); // microtask fires with no listeners
+      s.increment();
+      root.unmount();
+      roots.delete(root);
+      await flush();
     });
 
-    // If we reach here without throwing, the test passes.
-    expect(true).toBe(true);
+    expect(container.textContent).toBe('');
   });
 
   it('unmount and remount with same store shows latest state', async () => {
@@ -663,6 +701,7 @@ describe('Unmount safety', () => {
     // Unmount
     act(() => {
       root.unmount();
+      roots.delete(root);
     });
 
     // Mutate while no component is mounted

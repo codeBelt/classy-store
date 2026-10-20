@@ -13,7 +13,7 @@ Class-based reactive state management for React, Vue, Svelte, Solid, and Angular
 - **Fine-grained reactivity** — components only re-render when properties they read change
 - **Immutable snapshots** — structural sharing keeps unchanged sub-trees reference-equal
 - **Memoized computed values** — class getters are automatically cached, recompute only when deps change
-- **Batched updates** — multiple synchronous mutations coalesce into one re-render
+- **Batched subscriptions** — ordinary listeners coalesce mutations in a microtask; React receives updates synchronously
 - **Type-safe** — full TypeScript inference from your class definitions
 - **Framework bindings** — first-class integrations for React, Vue, Svelte, Solid, and Angular
 - **Two hook modes** — explicit selector or automatic property tracking (React)
@@ -111,7 +111,7 @@ function AddButton() {
 
 ### `createClassyStore(instance)`
 
-Wraps a class instance in a reactive Proxy. Mutations are intercepted, batched via `queueMicrotask`, and subscribers are notified.
+Wraps a class instance in a reactive Proxy. Mutations notify React immediately; ordinary subscribers are batched via `queueMicrotask`.
 
 ```typescript
 const myStore = createClassyStore(new MyClass());
@@ -126,11 +126,7 @@ const myStore = createClassyStore(new MyClass());
 React hook that subscribes to store changes via `useSyncExternalStore`.
 
 ```typescript
-type UseClassyStoreOptions = {
-  sync?: boolean;
-};
-
-type UseClassyStoreSelectorOptions<S> = UseClassyStoreOptions & {
+type UseClassyStoreSelectorOptions<S> = {
   isEqual?: (previous: S, next: S) => boolean;
 };
 ```
@@ -153,7 +149,7 @@ const snap = useClassyStore(myStore);
 // Only re-renders when accessed properties change
 ```
 
-Returns a tracking proxy. Properties your component reads are automatically tracked — changes to unread properties won't cause re-renders.
+Returns a tracking proxy. Properties your component reads are automatically tracked — changes to unread properties won't cause re-renders. Tracking belongs to each render, so conditional and abandoned renders do not retain obsolete reads. Unchanged snapshots and nested tracked values retain their references across parent re-renders.
 
 **Custom equality:**
 
@@ -170,7 +166,7 @@ const userData = useClassyStore(myStore, (state) => ({
 **Controlled input timing:**
 
 ```tsx
-const name = useClassyStore(formStore, (state) => state.name, {sync: true});
+const name = useClassyStore(formStore, (state) => state.name);
 
 return (
   <input
@@ -180,7 +176,9 @@ return (
 );
 ```
 
-The default subscription is batched in a microtask. Use `sync: true` for controlled form fields so React receives the external-store update during the input event turn and can preserve caret position and IME composition.
+React subscriptions always notify synchronously, including selector, auto-tracked, and bound hooks. There is no React `sync` option. This lets React observe controlled-field changes during the input event and preserve caret position. Ordinary `subscribe()` callbacks remain batched.
+
+Migration: remove `{sync: true}` or `{sync: false}` from React hook calls and remove imports of `UseClassyStoreOptions`. Selector options still support `isEqual`. Synchronous notification does not make a method transactional: selectors can observe each write, while React batches rendering within event handlers.
 
 ### `useLocalStore(factory)`
 
@@ -202,7 +200,7 @@ function Counter() {
 }
 ```
 
-The factory runs once per mount. Subsequent re-renders reuse the same store instance.
+Subsequent re-renders reuse the same store instance. Keep the factory pure: React StrictMode can invoke the initializer more than once in development.
 
 > See the [Local Stores](./TUTORIAL.md#local-stores) section in the Tutorial for persistence patterns and more examples.
 
@@ -528,14 +526,14 @@ function PushToggle() {
 
 ### Array operations
 
-Arrays support all standard operations — `push`, `splice`, `pop`, `shift`, index assignment, etc. They're batched into a single notification:
+Arrays support all standard operations — `push`, `splice`, `pop`, `shift`, index assignment, etc. Ordinary subscribers receive one microtask notification for consecutive mutations:
 
 ```typescript
 class ListStore {
   items: string[] = [];
 
   addMany(newItems: string[]) {
-    // Multiple pushes = one notification = one re-render
+    // Multiple pushes = one ordinary subscription notification
     for (const item of newItems) {
       this.items.push(item);
     }
@@ -608,7 +606,7 @@ For `Map` and `Set` semantics, use [`reactiveMap()`](#reactivemapk-vinitial) and
 | `useClassyStore(store, selector)` | Derived values, primitives, specific slices | Selector runs on snapshot, compared with `Object.is` |
 | `useClassyStore(store)` | Components reading many props, rapid prototyping | `proxy-compare` tracks reads automatically |
 | `useClassyStore(store, selector, {isEqual: shallowEqual})` | Selectors returning new objects/arrays | Shallow comparison prevents unnecessary re-renders |
-| `useClassyStore(store, selector, {sync: true})` | Controlled form fields | Notifies React during the input event turn |
+| `useClassyStore(store, selector)` | Controlled form fields | Always notifies React during the input event turn |
 
 ## Comparison with other libraries
 

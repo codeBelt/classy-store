@@ -8,7 +8,7 @@ export function ReactivityPage() {
       <header className="mb-6">
         <h1 className="text-2xl font-bold text-zinc-100">Reactivity</h1>
         <p className="text-sm text-zinc-400 mt-1">
-          Selectors, microtask batching, and async data fetching — watch the
+          Selectors, React render batching, and async data fetching — watch the
           render badges to see exactly which components re-render.
         </p>
       </header>

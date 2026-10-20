@@ -9,6 +9,7 @@ const sidebars: SidebarsConfig = {
       collapsed: false,
       items: [
         'TUTORIAL',
+        'REACT_SSR',
         'PERSIST_TUTORIAL',
         'DEVTOOLS_TUTORIAL',
         'SUBSCRIBE_KEY_TUTORIAL',
