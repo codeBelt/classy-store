@@ -14,6 +14,7 @@ import {
 } from '../../core/core';
 import {snapshot} from '../../snapshot/snapshot';
 import type {Snapshot} from '../../types';
+import {TrackingReadMap} from './utils/trackingReadMap/trackingReadMap';
 
 type EqualityFn<T> = (a: T, b: T) => boolean;
 
@@ -135,10 +136,11 @@ export function useClassyStore<T extends object, S>(
     };
   }, [proxyStore, selector, isEqual, initialSnapshot]);
 
-  // Each render owns its read set. A suspended or abandoned render cannot
-  // overwrite the committed getter's tracked properties. Proxy identity is
-  // cached across renders so unchanged values remain safe effect dependencies.
-  const affected = new WeakMap<object, unknown>();
+  // Each render owns its read set, seeded from committed reads of the same
+  // immutable objects. Memoization can skip those reads on subsequent renders.
+  // Weak keys release old dependencies as their snapshots become unreachable.
+  const committedReads = useRef(new WeakMap<object, unknown>()).current;
+  const affected = new TrackingReadMap(committedReads);
   const proxyCache = useRef(new WeakMap<object, unknown>()).current;
   let previousAutoSnapshot: Snapshot<T> | undefined;
   const getSnapshot = (): Snapshot<T> | S => {
@@ -172,7 +174,8 @@ export function useClassyStore<T extends object, S>(
 
   useEffect(() => {
     committedSelectionRef.current = selector ? {value: result as S} : undefined;
-  }, [result, selector]);
+    affected.commit();
+  }, [result, selector, affected]);
 
   return selector
     ? result
