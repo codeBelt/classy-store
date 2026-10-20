@@ -22,3 +22,9 @@ jobs:
       - run: bunx playwright install --with-deps chromium firefox webkit
         working-directory: packages/classy-store
       - run: bun run test:browser
+      - name: React scale commit budgets (production, Compiler off/on)
+        run: bun packages/classy-store/tests/performance/runPerformance.ts
+        env:
+          BENCHMARK_SAMPLES: '1'
+          BENCHMARK_ITERATIONS: '3'
+          BENCHMARK_LABEL: ci-smoke

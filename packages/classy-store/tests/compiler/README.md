@@ -32,6 +32,14 @@ Independent QA fixtures under `fixtures/` are compiled by the same pipeline and
 run alongside the main regressions. Browser fixtures reuse `compileConsumer`
 for controlled inputs and actual browser scheduling.
 
+The scale regressions run against the same installed package both before and
+after the Compiler transform. They mount 256 controlled fields and 512 list rows
+with selectors and auto-tracking, then assert exact committed-render counts for
+relevant, unrelated, no-op, and multi-property updates. Parent/local renders
+exercise memoized dependency retention; removing and remounting rows verifies
+that later updates stay isolated. These tests use layout-effect commit counters,
+not render-time side effects or wall-clock thresholds.
+
 Set `KEEP_COMPILER_TEMP=1` to retain the installed consumers, transformed source,
 and compilation records. Set `BUN_EXECUTABLE` when testing with a specific Bun
 installation. The matrix needs npm registry access for its isolated consumers.

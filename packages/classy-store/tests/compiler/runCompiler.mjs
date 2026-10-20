@@ -68,6 +68,7 @@ try {
     cpSync(fixturesDirectory, consumerDirectory, {recursive: true});
     const target = reactVersion.startsWith('18.') ? '18' : '19';
     const compilation = [];
+    const compiledSources = [];
     for (const directory of ['components', 'fixtures']) {
       const componentDirectory = join(fixturesDirectory, directory);
       if (!existsSync(componentDirectory)) continue;
@@ -79,10 +80,13 @@ try {
           sourcePath,
           target,
         );
-        writeFileSync(
-          join(consumerDirectory, relative(fixturesDirectory, sourcePath)),
+        compiledSources.push({
+          path: join(
+            consumerDirectory,
+            relative(fixturesDirectory, sourcePath),
+          ),
           code,
-        );
+        });
         compilation.push(...compiledFunctions);
       }
     }
@@ -118,9 +122,6 @@ try {
       join(fixturesDirectory, 'consumer.fixture.tsx'),
       join(consumerDirectory, 'consumer.test.tsx'),
     );
-    console.log(
-      `\nChecking ${compilation.length} memoized components against packed React ${reactVersion} (compiler target ${target})`,
-    );
     run(
       'npm',
       [
@@ -132,10 +133,25 @@ try {
       ],
       consumerDirectory,
     );
+    console.log(
+      `\nChecking scale regressions without Compiler on React ${reactVersion}`,
+    );
+    run(
+      bunExecutable,
+      ['test', '--preload', './happydom.ts', './compiler.scale.test.tsx'],
+      consumerDirectory,
+    );
+    for (const {path, code} of compiledSources) {
+      writeFileSync(path, code);
+    }
+    console.log(
+      `\nChecking ${compilation.length} memoized components against packed React ${reactVersion} (compiler target ${target})`,
+    );
     const testFiles = ['consumer.test.tsx'];
     if (existsSync(join(consumerDirectory, 'compiler.qa.test.tsx'))) {
       testFiles.push('compiler.qa.test.tsx');
     }
+    testFiles.push('compiler.scale.test.tsx');
     run(
       bunExecutable,
       [

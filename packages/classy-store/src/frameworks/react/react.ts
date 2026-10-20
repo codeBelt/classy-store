@@ -14,6 +14,7 @@ import {
 } from '../../core/core';
 import {snapshot} from '../../snapshot/snapshot';
 import type {Snapshot} from '../../types';
+import {SnapshotTargetCache} from './utils/snapshotTargetCache/snapshotTargetCache';
 import {TrackingReadMap} from './utils/trackingReadMap/trackingReadMap';
 
 type EqualityFn<T> = (a: T, b: T) => boolean;
@@ -25,6 +26,10 @@ export type UseClassyStoreSelectorOptions<S> = {
 // A late Suspense boundary may still need the initial data after earlier
 // consumers have hydrated and changed the live store.
 const hydrationSnapshots = new WeakMap<object, object>();
+
+// A frozen snapshot's backing copy is identical for every consumer. Without
+// this cache, each row rescans and copies the entire containing list on access.
+const snapshotTargets = new SnapshotTargetCache();
 
 /**
  * Capture the initial snapshot used for server rendering and client hydration.
@@ -179,7 +184,12 @@ export function useClassyStore<T extends object, S>(
 
   return selector
     ? result
-    : (createProxy(result as Snapshot<T>, affected, proxyCache) as Snapshot<T>);
+    : (createProxy(
+        result as Snapshot<T>,
+        affected,
+        proxyCache,
+        snapshotTargets,
+      ) as Snapshot<T>);
 }
 
 // ── Selector mode logic (pure function, no hooks) ─────────────────────────────

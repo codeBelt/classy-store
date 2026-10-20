@@ -120,3 +120,5 @@ This library wouldn't exist without the ideas pioneered by these projects. Each 
 ## 🤝 Contributing
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md) for details on how to contribute and the release workflow.
+
+Run `bun run benchmark:react` to compare large forms and lists with selectors, auto-tracking, and React Compiler. See the [benchmark methodology](./packages/classy-store/tests/performance/README.md) for measurements and reproduction settings.
