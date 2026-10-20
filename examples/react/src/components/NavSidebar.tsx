@@ -19,6 +19,11 @@ const navGroups = [
         label: 'useLocalStore',
         route: '/use-local-store',
       },
+      {
+        href: '#/scoped-stores',
+        label: 'Scoped stores',
+        route: '/scoped-stores',
+      },
     ],
   },
   {

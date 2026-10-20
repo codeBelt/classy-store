@@ -2,6 +2,7 @@ import {spawnSync} from 'node:child_process';
 import {
   cpSync,
   mkdtempSync,
+  readdirSync,
   readFileSync,
   rmSync,
   writeFileSync,
@@ -12,6 +13,14 @@ import {fileURLToPath} from 'node:url';
 
 const fixturesDirectory = dirname(fileURLToPath(import.meta.url));
 const packageDirectory = resolve(fixturesDirectory, '../..');
+const scopingFixturesDirectory = resolve(fixturesDirectory, '../scoping');
+const scopedExampleDirectory = resolve(
+  packageDirectory,
+  '../../examples/react/src/demos/scoped-store/store',
+);
+const scopingTestFiles = readdirSync(scopingFixturesDirectory)
+  .filter((filename) => filename.endsWith('.test.tsx'))
+  .sort();
 const packageManifest = JSON.parse(
   readFileSync(join(packageDirectory, 'package.json'), 'utf8'),
 );
@@ -74,6 +83,13 @@ try {
   for (const reactVersion of reactVersions) {
     const consumerDirectory = join(temporaryDirectory, `react-${reactVersion}`);
     cpSync(fixturesDirectory, consumerDirectory, {recursive: true});
+    // Exercise the actual application example against the installed package.
+    // Keeping this a copy, rather than a rewritten fixture, catches drift in
+    // provider ownership, context types, and effect cleanup.
+    cpSync(scopingFixturesDirectory, consumerDirectory, {recursive: true});
+    cpSync(scopedExampleDirectory, join(consumerDirectory, 'example'), {
+      recursive: true,
+    });
     const reactTypesVersion = reactVersion.startsWith('18.')
       ? '18.3.27'
       : packageManifest.devDependencies['@types/react'];
@@ -91,6 +107,7 @@ try {
           'react-dom': reactVersion,
           '@types/react': reactTypesVersion,
           '@types/react-dom': reactDomTypesVersion,
+          '@types/bun': packageManifest.devDependencies['@types/bun'],
           '@happy-dom/global-registrator':
             packageManifest.devDependencies['@happy-dom/global-registrator'],
           typescript: packageManifest.devDependencies.typescript,
@@ -178,6 +195,7 @@ try {
         './consumer.test.tsx',
         './ssr.test.tsx',
         './hydration.test.tsx',
+        ...scopingTestFiles.map((filename) => `./${filename}`),
       ],
       consumerDirectory,
     );
@@ -195,6 +213,27 @@ try {
         'NodeNext',
         'consumer.mts',
         'consumer.cts',
+      ],
+      consumerDirectory,
+    );
+    run(
+      join(consumerDirectory, 'node_modules/.bin/tsc'),
+      [
+        '--noEmit',
+        '--strict',
+        '--skipLibCheck',
+        '--target',
+        'ES2022',
+        '--jsx',
+        'react-jsx',
+        '--module',
+        'ESNext',
+        '--moduleResolution',
+        'Bundler',
+        '--types',
+        'bun',
+        'scoping.types.fixture.tsx',
+        ...scopingTestFiles,
       ],
       consumerDirectory,
     );

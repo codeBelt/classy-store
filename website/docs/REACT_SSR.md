@@ -2,6 +2,8 @@
 
 Create one store for each server request and reconstruct a client store from the same initial data. Pass the store through props or React context. A module-level store on the server shares mutable state across requests and can expose one user's data to another.
 
+The [typed context example](./REACT_SCOPING.md) provides a complete provider pattern with independent instances, nested scopes, keyed resets, and persistence cleanup.
+
 Call `prepareStoreForHydration(store)` after initializing the store with the data used to render the page, on both the server and client. It captures that initial snapshot before persistence or other live updates begin. All direct and bound hooks use the captured data during server rendering and client hydration, then read the current live store. React requires the initial server and client data to match; see [React's external-store SSR guidance](https://react.dev/reference/react/useSyncExternalStore#adding-support-for-server-rendering).
 
 ## Initialize from request data

@@ -1327,6 +1327,93 @@ describe('persist()', () => {
     });
   });
 
+  describe('pending hydration cleanup', () => {
+    it.each([
+      false,
+      true,
+    ])('ignores a pending read after unsubscribe (skipHydration=%s)', async (skipHydration) => {
+      let resolveRead!: (value: string | null) => void;
+      const pendingRead = new Promise<string | null>((resolve) => {
+        resolveRead = resolve;
+      });
+      const storage = {
+        getItem: () => pendingRead,
+        setItem: mock(() => {}),
+        removeItem: mock(() => {}),
+      };
+      const store = createClassyStore({title: 'Current'});
+      const handle = persist(store, {name: 'editor', storage, skipHydration});
+      const completion = skipHydration ? handle.rehydrate() : handle.hydrated;
+      handle.unsubscribe();
+      resolveRead(JSON.stringify({version: 0, state: {title: 'Retired'}}));
+      await completion;
+      await handle.hydrated;
+
+      expect(store.title).toBe('Current');
+      expect(storage.setItem).not.toHaveBeenCalled();
+      expect(storage.removeItem).not.toHaveBeenCalled();
+      expect(handle.isHydrated).toBe(true);
+    });
+
+    it.each([
+      false,
+      true,
+    ])('settles a failed pending read without callbacks after unsubscribe (skipHydration=%s)', async (skipHydration) => {
+      let rejectRead!: (error: Error) => void;
+      const pendingRead = new Promise<string | null>((_resolve, reject) => {
+        rejectRead = reject;
+      });
+      const onError = mock(() => {});
+      const storage = {
+        getItem: () => pendingRead,
+        setItem: mock(() => {}),
+        removeItem: mock(() => {}),
+      };
+      const store = createClassyStore({title: 'Current'});
+      const handle = persist(store, {
+        name: 'editor',
+        storage,
+        skipHydration,
+        onError,
+      });
+      const completion = skipHydration ? handle.rehydrate() : handle.hydrated;
+      handle.unsubscribe();
+      rejectRead(new Error('Late storage failure'));
+      await completion;
+      await handle.hydrated;
+
+      expect(onError).not.toHaveBeenCalled();
+      expect(store.title).toBe('Current');
+      expect(handle.isHydrated).toBe(true);
+    });
+
+    it('does not clear storage from an expired read that finishes after cleanup', async () => {
+      let resolveRead!: (value: string) => void;
+      const storage = {
+        getItem: () =>
+          new Promise<string>((resolve) => {
+            resolveRead = resolve;
+          }),
+        setItem: mock(() => {}),
+        removeItem: mock(() => {}),
+      };
+      const store = createClassyStore({title: 'Current'});
+      const handle = persist(store, {
+        name: 'editor',
+        storage,
+        clearOnExpire: true,
+      });
+      handle.unsubscribe();
+      resolveRead(
+        JSON.stringify({version: 0, expiresAt: 0, state: {title: 'Expired'}}),
+      );
+      await handle.hydrated;
+
+      expect(storage.removeItem).not.toHaveBeenCalled();
+      expect(handle.isExpired).toBe(false);
+    });
+  });
+
   // ── onError callback ────────────────────────────────────────────────────
 
   describe('onError callback', () => {

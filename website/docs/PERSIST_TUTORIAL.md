@@ -530,6 +530,8 @@ handle.unsubscribe();
 todoStore.addTodo('This is not persisted');
 ```
 
+Pending storage reads that finish after unsubscribe no longer apply state, clear expired entries, or invoke read-error callbacks. Hydration promises still settle when the read finishes. This prevents a retired React effect from overwriting a newer scope during Strict Mode replay, resets, or storage configuration changes. Already-issued adapter I/O is not cancelled; cleanup cannot undo a write already sent to storage. See the [typed context lifecycle example](./REACT_SCOPING.md).
+
 ---
 
 ## Multiple Persistence Targets

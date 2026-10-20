@@ -18,7 +18,7 @@
     "---------- Lint --------------------------------------------------------": "",
     "lint": "biome check",
     "lint:fix": "biome check --write",
-    "typecheck": "bun run --filter @codebelt/classy-store typecheck",
+    "typecheck": "bun run --filter @codebelt/classy-store typecheck && bun run --filter @codebelt/classy-store typecheck:scoping",
     "---------- Release (Changesets) ----------------------------------------": "",
     "changeset": "changeset",
     "changeset:add": "changeset add",

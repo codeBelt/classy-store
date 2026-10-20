@@ -10,6 +10,7 @@ const sidebars: SidebarsConfig = {
       items: [
         'TUTORIAL',
         'REACT_SSR',
+        'REACT_SCOPING',
         'PERSIST_TUTORIAL',
         'DEVTOOLS_TUTORIAL',
         'SUBSCRIBE_KEY_TUTORIAL',

@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "paths": {
+      "@codebelt/classy-store": ["../../packages/classy-store/src/index.ts"],
+      "@codebelt/classy-store/react": [
+        "../../packages/classy-store/src/frameworks/react/react.ts"
+      ],
+      "@codebelt/classy-store/utils": [
+        "../../packages/classy-store/src/utils/index.ts"
+      ]
+    }
+  },
+  "include": [
+    "src/demos/scoped-store/**/*.ts",
+    "src/demos/scoped-store/**/*.tsx",
+    "src/pages/scopedStores/**/*.tsx"
+  ]
+}

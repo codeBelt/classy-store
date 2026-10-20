@@ -152,7 +152,11 @@ export type PersistOperation = 'write' | 'read' | 'remove' | 'parse';
  * Handle returned by `persist()`. Provides control over the persist lifecycle.
  */
 export type PersistHandle = {
-  /** Stop persisting and clean up (unsubscribe + cancel pending debounce + remove storage event listener). */
+  /**
+   * Stop persisting, cancel pending debounce, and remove the storage listener.
+   * Pending read results/errors are ignored; their promises still settle.
+   * Already-issued adapter I/O is not cancelled.
+   */
   unsubscribe: () => void;
 
   /** Promise that resolves when initial hydration from storage is complete. */
@@ -442,9 +446,12 @@ export function persist<T extends object>(
     try {
       raw = await storage.getItem(name);
     } catch (error) {
-      reportError(error, 'read');
+      if (!disposed) reportError(error, 'read');
       return;
     }
+    // Effect cleanup can dispose this handle while storage is still reading.
+    // A retired scope must not apply data or clear a newer scope's storage.
+    if (disposed) return;
     if (raw !== null) {
       // A debounced local write may be pending from a mutation issued before
       // we got around to hydrating; the freshly-loaded state would be

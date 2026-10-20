@@ -74,6 +74,8 @@ For server-rendered React apps, call `prepareStoreForHydration(store)` from `@co
 
 Selector and auto-tracked hooks are tested in React Compiler consumers on React 18 and 19. Auto-tracking preserves reads used by memoized calculations and children; no compiler opt-out is required. See [compiler compatibility](https://codebelt.github.io/classy-store/docs/#react-compiler-compatibility) for scope and render-filtering behavior.
 
+For independent forms, nested editors, and request-scoped state, see the [typed context example](https://codebelt.github.io/classy-store/docs/REACT_SCOPING). Providers own their store instances and effects; React keys control intentional resets.
+
 ## 📦 Installation
 
 ```bash

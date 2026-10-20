@@ -278,8 +278,9 @@ export function createStoreHook<T extends object>(proxyStore: T) {
 
 /**
  * Create a component-scoped reactive store that lives for the lifetime of the
- * component. When the component unmounts, the store becomes unreferenced and is
- * garbage collected (all internal bookkeeping uses `WeakMap`).
+ * component. Unmounting releases React's reference; the store can be collected
+ * when no external references remain. Clean up application subscriptions and
+ * other effects separately; this hook does not call a store's dispose method.
  *
  * The factory is a `useState` initializer and must be pure. React StrictMode
  * may invoke it more than once in development.
