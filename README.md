@@ -72,6 +72,8 @@ Ordinary `subscribe(store, listener)` callbacks still batch in a microtask. Reac
 
 For server-rendered React apps, call `prepareStoreForHydration(store)` from `@codebelt/classy-store/react` on matching server/client stores before persistence starts. Delayed Suspense boundaries then hydrate from the original data and catch up to live state. See the [SSR guide](https://codebelt.github.io/classy-store/docs/REACT_SSR).
 
+For Next.js App Router, construct stores inside Client Providers from serializable initial data. Use `@codebelt/classy-store/react/server` when preparing a store in server-only code. See the [App Router guide](https://codebelt.github.io/classy-store/docs/REACT_NEXT) for package boundaries, streaming, and navigation.
+
 Selector and auto-tracked hooks are tested in React Compiler consumers on React 18 and 19. Auto-tracking preserves reads used by memoized calculations and children; no compiler opt-out is required. See [compiler compatibility](https://codebelt.github.io/classy-store/docs/#react-compiler-compatibility) for scope and render-filtering behavior.
 
 Auto-tracked React subscriptions require native `WeakRef` support (ES2021) so tracking dependencies do not keep obsolete snapshots alive.
@@ -126,3 +128,5 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for details on how to contribute and th
 Run `bun run benchmark:react` to compare large forms and lists with selectors, auto-tracking, and React Compiler. See the [benchmark methodology](./packages/classy-store/tests/performance/README.md) for measurements and reproduction settings.
 
 Run `bun run test:react:memory` to capture and compare Chromium heap snapshots across repeated mounts, resets, and collection changes. See the [memory regression methodology](./packages/classy-store/tests/memory/README.md) and [before/after results](./packages/classy-store/tests/memory/RESULTS.md).
+
+Run `bun run test:react:next` for packed-package production Next.js builds and browser regressions with Compiler off/on. See the [integration methodology](./packages/classy-store/tests/next/README.md).

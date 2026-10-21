@@ -5,6 +5,7 @@ export default defineConfig({
     'src/index.ts',
     'src/collections/index.ts',
     'src/frameworks/react/react.ts',
+    'src/frameworks/react/server.ts',
     'src/frameworks/vue/vue.ts',
     'src/frameworks/svelte/svelte.ts',
     'src/frameworks/angular/angular.ts',

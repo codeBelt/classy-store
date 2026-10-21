@@ -56,6 +56,16 @@
         "default": "./dist/frameworks/react/react.cjs"
       }
     },
+    "./react/server": {
+      "import": {
+        "types": "./dist/frameworks/react/server.d.mts",
+        "default": "./dist/frameworks/react/server.mjs"
+      },
+      "require": {
+        "types": "./dist/frameworks/react/server.d.cts",
+        "default": "./dist/frameworks/react/server.cjs"
+      }
+    },
     "./vue": {
       "import": {
         "types": "./dist/frameworks/vue/vue.d.mts",
@@ -110,7 +120,7 @@
     "test": "bun test src tests/memory/heapSnapshot.test.ts",
     "test:browser": "playwright test --config tests/browser/playwright.config.ts",
     "---------- Lint --------------------------------------------------------": "",
-    "typecheck": "tsc --noEmit && tsc --project tests/browser/tsconfig.json --noEmit && tsc --project tests/compiler/tsconfig.json --noEmit && tsc --project tests/performance/tsconfig.json --noEmit && tsc --project tests/memory/tsconfig.json --noEmit",
+    "typecheck": "tsc --noEmit && tsc --project tests/browser/tsconfig.json --noEmit && tsc --project tests/compiler/tsconfig.json --noEmit && tsc --project tests/performance/tsconfig.json --noEmit && tsc --project tests/memory/tsconfig.json --noEmit && tsc --project tests/next/tsconfig.json --noEmit",
     "typecheck:scoping": "tsc --project ../../examples/react/tsconfig.scoping.json --noEmit",
     "prepublishOnly": "cp ../../README.md .",
     "-----------------------------------------------------------------------": ""

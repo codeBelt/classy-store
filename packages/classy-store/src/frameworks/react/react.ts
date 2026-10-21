@@ -1,3 +1,5 @@
+'use client';
+
 import {createProxy, isChanged} from 'proxy-compare';
 import {
   useEffect,
@@ -13,8 +15,11 @@ import {
 } from '../../core/core';
 import {snapshot} from '../../snapshot/snapshot';
 import type {Snapshot} from '../../types';
+import {hydrationSnapshots} from './utils/hydrationSnapshots/hydrationSnapshots';
 import {SnapshotTargetCache} from './utils/snapshotTargetCache/snapshotTargetCache';
 import {TrackingReadMap} from './utils/trackingReadMap/trackingReadMap';
+
+export {prepareStoreForHydration} from './server';
 
 type EqualityFn<T> = (a: T, b: T) => boolean;
 
@@ -22,32 +27,9 @@ export type UseClassyStoreSelectorOptions<S> = {
   isEqual?: EqualityFn<S>;
 };
 
-// A late Suspense boundary may still need the initial data after earlier
-// consumers have hydrated and changed the live store.
-const hydrationSnapshots = new WeakMap<object, object>();
-
 // A frozen snapshot's backing copy is identical for every consumer. Without
 // this cache, each row rescans and copies the entire containing list on access.
 const snapshotTargets = new SnapshotTargetCache();
-
-/**
- * Capture the initial snapshot used for server rendering and client hydration.
- *
- * Call on each request's store and on its client counterpart, initialized with
- * the same data, before rendering or starting persistence. Repeated calls keep
- * the first snapshot. The returned proxy is unchanged and remains mutable.
- * Client-only stores do not need preparation.
- *
- * Prepare the exact proxy passed to the hooks. Opaque snapshot leaves such as
- * Date and Map retain their identity; replace them instead of mutating in place.
- */
-export function prepareStoreForHydration<T extends object>(proxyStore: T): T {
-  getInternal(proxyStore);
-  if (!hydrationSnapshots.has(proxyStore)) {
-    hydrationSnapshots.set(proxyStore, snapshot(proxyStore));
-  }
-  return proxyStore;
-}
 
 // ── Overloads ─────────────────────────────────────────────────────────────────
 

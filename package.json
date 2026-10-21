@@ -16,6 +16,7 @@
     "test:react:compatibility": "bun run build && node packages/classy-store/tests/compatibility/runCompatibility.mjs",
     "test:react:compiler": "bun run build && node packages/classy-store/tests/compiler/runCompiler.mjs",
     "test:react:memory": "bun run build && bun packages/classy-store/tests/memory/runMemory.ts",
+    "test:react:next": "bun run build && node packages/classy-store/tests/next/runNext.mjs",
     "benchmark:react": "bun run build && bun packages/classy-store/tests/performance/runPerformance.ts",
     "---------- Lint --------------------------------------------------------": "",
     "lint": "biome check",

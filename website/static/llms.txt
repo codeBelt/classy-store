@@ -37,6 +37,7 @@
 ## Optional: Full Documentation
 
 - [React SSR](https://codebelt.github.io/classy-store/docs/REACT_SSR): `prepareStoreForHydration`, request-scoped stores, and persistence-safe streamed/selective hydration
+- [Next.js App Router](https://codebelt.github.io/classy-store/docs/REACT_NEXT): Server-safe package entries, Client Providers, streaming hydration, navigation, and packed production integration tests
 - [React store scoping](https://codebelt.github.io/classy-store/docs/REACT_SCOPING): Typed context providers, independent and nested instances, keyed resets, persistence cleanup, and SSR
 
 - [llms-full.txt](https://codebelt.github.io/classy-store/llms-full.txt): All documentation

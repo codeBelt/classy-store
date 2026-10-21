@@ -199,6 +199,8 @@ Call on each request's store and its client counterpart using matching initial d
 
 Preparation is idempotent, retains the first snapshot for the store's lifetime, and applies to the exact proxy passed in. Client-only apps need no preparation. See [React SSR and hydration](./REACT_SSR.md) for streaming, request isolation, nested proxies, and snapshot leaf semantics.
 
+The same preparation helper is available from `@codebelt/classy-store/react/server` without importing hooks. Use that entry in React Server Components; the `/react` entry is marked `use client`. See [Next.js App Router](./REACT_NEXT.md) for production package boundaries and navigation patterns.
+
 ### `useLocalStore(factory)`
 
 Creates a component-scoped reactive store. Each component instance gets its own isolated store, garbage collected on unmount.

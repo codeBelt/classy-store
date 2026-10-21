@@ -4,6 +4,8 @@ Create one store for each server request and reconstruct a client store from the
 
 The [typed context example](./REACT_SCOPING.md) provides a complete provider pattern with independent instances, nested scopes, keyed resets, and persistence cleanup.
 
+For React Server Components, use the server-safe `@codebelt/classy-store/react/server` preparation entry. The `@codebelt/classy-store/react` hooks entry is marked `use client`; its preparation export remains available inside client modules and ordinary SSR. The [Next.js App Router guide](./REACT_NEXT.md) explains where to construct stores and how to cross that boundary with initial data.
+
 Call `prepareStoreForHydration(store)` after initializing the store with the data used to render the page, on both the server and client. It captures that initial snapshot before persistence or other live updates begin. All direct and bound hooks use the captured data during server rendering and client hydration, then read the current live store. React requires the initial server and client data to match; see [React's external-store SSR guidance](https://react.dev/reference/react/useSyncExternalStore#adding-support-for-server-rendering).
 
 ## Initialize from request data
@@ -13,7 +15,7 @@ Keep the serialized payload limited to the data the client needs. Reconstruct th
 ```ts
 // profileStore.ts
 import {createClassyStore} from '@codebelt/classy-store';
-import {prepareStoreForHydration} from '@codebelt/classy-store/react';
+import {prepareStoreForHydration} from '@codebelt/classy-store/react/server';
 
 export type ProfileData = {
   name: string;

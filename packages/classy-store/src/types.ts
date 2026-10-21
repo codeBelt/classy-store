@@ -9,7 +9,9 @@ type Primitive = string | number | boolean | null | undefined | symbol | bigint;
  * Functions are treated as snapshot leaves -- they pass through unchanged
  * because freezing or cloning them would break callable references.
  */
-type AnyFunction = (...args: unknown[]) => unknown;
+// This classifies functions without invoking them. `unknown[]` would reject
+// typed parameters under strictFunctionTypes and map their signatures to {}.
+type AnyFunction = (...args: never[]) => unknown;
 
 /**
  * Types that `snapshot()` returns as-is (no deep clone or freeze).
