@@ -134,11 +134,17 @@ try {
       consumerDirectory,
     );
     console.log(
-      `\nChecking scale regressions without Compiler on React ${reactVersion}`,
+      `\nChecking scale and lifecycle regressions without Compiler on React ${reactVersion}`,
     );
     run(
       bunExecutable,
-      ['test', '--preload', './happydom.ts', './compiler.scale.test.tsx'],
+      [
+        'test',
+        '--preload',
+        './happydom.ts',
+        './compiler.scale.test.tsx',
+        './compiler.memory.test.tsx',
+      ],
       consumerDirectory,
     );
     for (const {path, code} of compiledSources) {
@@ -152,6 +158,7 @@ try {
       testFiles.push('compiler.qa.test.tsx');
     }
     testFiles.push('compiler.scale.test.tsx');
+    testFiles.push('compiler.memory.test.tsx');
     run(
       bunExecutable,
       [

@@ -1,6 +1,5 @@
 import {createProxy, isChanged} from 'proxy-compare';
 import {
-  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -92,11 +91,7 @@ export function useClassyStore<T extends object, S>(
 
   // React must observe mutations during the event that changes a controlled
   // input. Ordinary core subscriptions retain their default microtask batching.
-  const subscribe = useCallback(
-    (onStoreChange: () => void) =>
-      coreSubscribe(proxyStore, onStoreChange, {sync: true}),
-    [proxyStore],
-  );
+  const subscribe = useMemo(() => createSubscription(proxyStore), [proxyStore]);
 
   // ── Refs used by both modes (always allocated to satisfy Rules of Hooks) ──
 
@@ -107,39 +102,17 @@ export function useClassyStore<T extends object, S>(
   const initialSnapshot = hydrationSnapshots.get(proxyStore) as
     | Snapshot<T>
     | undefined;
-  const {getSelectedSnapshot, getServerSnapshot} = useMemo(() => {
-    let hydrationSelection: {value: S; snapshot: Snapshot<T>} | undefined;
-    const readServerSelection =
-      initialSnapshot && selector
-        ? createSelectorSnapshotGetter(
-            () => initialSnapshot,
-            selector,
-            () => undefined,
-            isEqual,
-          )
-        : undefined;
-
-    return {
-      getSelectedSnapshot: selector
-        ? createSelectorSnapshotGetter(
-            () => snapshot(proxyStore),
-            selector,
-            () => hydrationSelection ?? committedSelectionRef.current,
-            isEqual,
-          )
-        : undefined,
-      getServerSnapshot: initialSnapshot
-        ? () => {
-            if (!readServerSelection) return initialSnapshot;
-            const value = readServerSelection();
-            // Seed only this selector's live cache, and only when React actually
-            // hydrates. Never overwrite committed data from an abandoned render.
-            hydrationSelection = {value, snapshot: initialSnapshot};
-            return value;
-          }
-        : undefined,
-    };
-  }, [proxyStore, selector, isEqual, initialSnapshot]);
+  const {getSelectedSnapshot, getServerSnapshot} = useMemo(
+    () =>
+      createSnapshotGetters(
+        proxyStore,
+        selector,
+        isEqual,
+        committedSelectionRef,
+        initialSnapshot,
+      ),
+    [proxyStore, selector, isEqual, initialSnapshot],
+  );
 
   // Each render owns its read set, seeded from committed reads of the same
   // immutable objects. Memoization can skip those reads on subsequent renders.
@@ -193,6 +166,54 @@ export function useClassyStore<T extends object, S>(
 }
 
 // ── Selector mode logic (pure function, no hooks) ─────────────────────────────
+
+// Construct stable callbacks outside the hook's lexical scope. Engines can
+// share a closure context with render-local values, otherwise keeping the first
+// result and auto-tracked snapshot alive for the entire mounted subscription.
+function createSubscription<T extends object>(proxyStore: T) {
+  return (onStoreChange: () => void) =>
+    coreSubscribe(proxyStore, onStoreChange, {sync: true});
+}
+
+function createSnapshotGetters<T extends object, S>(
+  proxyStore: T,
+  selector: ((snap: Snapshot<T>) => S) | undefined,
+  isEqual: EqualityFn<S> | undefined,
+  committedSelectionRef: {current: {value: S} | undefined},
+  initialSnapshot: Snapshot<T> | undefined,
+) {
+  let hydrationSelection: {value: S; snapshot: Snapshot<T>} | undefined;
+  const readServerSelection =
+    initialSnapshot && selector
+      ? createSelectorSnapshotGetter(
+          () => initialSnapshot,
+          selector,
+          () => undefined,
+          isEqual,
+        )
+      : undefined;
+
+  return {
+    getSelectedSnapshot: selector
+      ? createSelectorSnapshotGetter(
+          () => snapshot(proxyStore),
+          selector,
+          () => hydrationSelection ?? committedSelectionRef.current,
+          isEqual,
+        )
+      : undefined,
+    getServerSnapshot: initialSnapshot
+      ? () => {
+          if (!readServerSelection) return initialSnapshot;
+          const value = readServerSelection();
+          // Seed only this selector's live cache, and only when React actually
+          // hydrates. Never overwrite committed data from an abandoned render.
+          hydrationSelection = {value, snapshot: initialSnapshot};
+          return value;
+        }
+      : undefined,
+  };
+}
 
 /**
  * Create a cached `getSnapshot` for one store, selector, and equality function.

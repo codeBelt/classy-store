@@ -107,10 +107,10 @@
     "---------- Build ------------------------------------------------------": "",
     "build": "tsdown",
     "---------- Test --------------------------------------------------------": "",
-    "test": "bun test src",
+    "test": "bun test src tests/memory/heapSnapshot.test.ts",
     "test:browser": "playwright test --config tests/browser/playwright.config.ts",
     "---------- Lint --------------------------------------------------------": "",
-    "typecheck": "tsc --noEmit && tsc --project tests/browser/tsconfig.json --noEmit && tsc --project tests/compiler/tsconfig.json --noEmit && tsc --project tests/performance/tsconfig.json --noEmit",
+    "typecheck": "tsc --noEmit && tsc --project tests/browser/tsconfig.json --noEmit && tsc --project tests/compiler/tsconfig.json --noEmit && tsc --project tests/performance/tsconfig.json --noEmit && tsc --project tests/memory/tsconfig.json --noEmit",
     "typecheck:scoping": "tsc --project ../../examples/react/tsconfig.scoping.json --noEmit",
     "prepublishOnly": "cp ../../README.md .",
     "-----------------------------------------------------------------------": ""

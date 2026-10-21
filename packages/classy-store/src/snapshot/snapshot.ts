@@ -328,6 +328,9 @@ function createSnapshotRecursive<T extends object>(
   internal: StoreInternal,
   inProgress: WeakSet<object> = new WeakSet(),
 ): T {
+  // Lazy proxy creation promotes previously untracked data to versioned caching.
+  // Its obsolete deep clone must not retain removed data for the live target.
+  untrackedCache.delete(target);
   // Cache hit: version unchanged → return the same frozen snapshot reference.
   const cached = snapshotCache.get(target);
   if (cached && cached[0] === internal.version) {

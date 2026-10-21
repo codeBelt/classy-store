@@ -5,7 +5,9 @@
  * Keep those dependencies while the same snapshot object is reused, including
  * structurally shared children. Only committed renders publish their reads.
  */
-export class TrackingReadMap extends Map<object, unknown> {
+export class TrackingReadMap extends WeakMap<object, unknown> {
+  private pending: WeakRef<object>[] = [];
+
   constructor(private readonly committed: WeakMap<object, unknown>) {
     super();
   }
@@ -24,15 +26,27 @@ export class TrackingReadMap extends Map<object, unknown> {
           const value = copy[key];
           if (value instanceof Set) copy[key] = new Set(value);
         }
-        super.set(target, copy);
+        this.set(target, copy);
       }
     }
     return super.get(target);
   }
 
+  override set(target: object, reads: unknown): this {
+    if (!super.has(target)) this.pending.push(new WeakRef(target));
+    return super.set(target, reads);
+  }
+
   commit(): void {
-    for (const [target, reads] of this) {
-      this.committed.set(target, reads);
+    // A shared child proxy can keep this render's map reachable after newer
+    // snapshots replace its root. Neither the read map nor the commit queue may
+    // strongly retain those roots, including when this render is abandoned.
+    for (const reference of this.pending) {
+      const target = reference.deref();
+      if (target && super.has(target)) {
+        this.committed.set(target, super.get(target));
+      }
     }
+    this.pending = [];
   }
 }

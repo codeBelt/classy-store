@@ -215,6 +215,34 @@ function getRoot(internal: StoreInternal): StoreInternal {
   return current;
 }
 
+/** Release a removed subtree's link to its former owner. */
+function detachChild(internal: StoreInternal, prop: string | symbol): void {
+  const child = internal.childInternals.get(prop);
+  if (!child) return;
+  child.parent = null;
+  internal.childProxies.delete(prop);
+  internal.childInternals.delete(prop);
+}
+
+/** Native array length writes remove indices without invoking DELETE traps. */
+function detachTruncatedChildren(
+  internal: StoreInternal,
+  length: number,
+): void {
+  for (const prop of internal.childInternals.keys()) {
+    if (typeof prop !== 'string') continue;
+    const index = Number(prop);
+    if (
+      Number.isInteger(index) &&
+      index >= length &&
+      index < 2 ** 32 - 1 &&
+      String(index) === prop
+    ) {
+      detachChild(internal, prop);
+    }
+  }
+}
+
 // ── Create proxy (recursive) ──────────────────────────────────────────────────
 
 /**
@@ -256,18 +284,28 @@ function createStoreProxy<T extends object>(
       const oldValue = Reflect.get(_target, prop);
       if (Object.is(oldValue, value)) return true; // noop — same value
 
-      // If the new value replaces a child proxy, clean it up.
-      if (internal.childProxies.has(prop)) {
-        internal.childProxies.delete(prop);
-        internal.childInternals.delete(prop);
+      const oldLength =
+        Array.isArray(_target) && prop === 'length'
+          ? _target.length
+          : undefined;
+      const written = Reflect.set(_target, prop, value);
+      const truncated =
+        oldLength !== undefined && (_target as unknown[]).length < oldLength;
+      // A non-configurable array index can reject the requested length after
+      // higher indices were already removed. Clean up the actual truncation.
+      if (truncated) {
+        detachTruncatedChildren(internal, (_target as unknown[]).length);
       }
+      if (!written && !truncated) return false;
+
+      // Keep the old child connected when a property rejects the write.
+      if (written) detachChild(internal, prop);
 
       // Drop any cached bound method — the previous binding is dead now.
       boundMethods.delete(prop);
 
-      Reflect.set(_target, prop, value);
       notifyMutation(internal);
-      return true;
+      return written;
     },
 
     get(_target, prop, receiver) {
@@ -322,13 +360,10 @@ function createStoreProxy<T extends object>(
     },
 
     deleteProperty(_target, prop) {
-      if (internal.childProxies.has(prop)) {
-        internal.childProxies.delete(prop);
-        internal.childInternals.delete(prop);
-      }
-      boundMethods.delete(prop);
       const deleted = Reflect.deleteProperty(_target, prop);
       if (deleted) {
+        detachChild(internal, prop);
+        boundMethods.delete(prop);
         notifyMutation(internal);
       }
       return deleted;

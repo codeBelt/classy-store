@@ -28,3 +28,9 @@ jobs:
           BENCHMARK_SAMPLES: '1'
           BENCHMARK_ITERATIONS: '3'
           BENCHMARK_LABEL: ci-smoke
+      - name: React memory retention (production, Compiler off/on)
+        run: bun packages/classy-store/tests/memory/runMemory.ts
+        env:
+          MEMORY_CYCLES: '6'
+          MEMORY_SIZE: '24'
+          MEMORY_LABEL: ci-smoke

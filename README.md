@@ -74,6 +74,8 @@ For server-rendered React apps, call `prepareStoreForHydration(store)` from `@co
 
 Selector and auto-tracked hooks are tested in React Compiler consumers on React 18 and 19. Auto-tracking preserves reads used by memoized calculations and children; no compiler opt-out is required. See [compiler compatibility](https://codebelt.github.io/classy-store/docs/#react-compiler-compatibility) for scope and render-filtering behavior.
 
+Auto-tracked React subscriptions require native `WeakRef` support (ES2021) so tracking dependencies do not keep obsolete snapshots alive.
+
 For independent forms, nested editors, and request-scoped state, see the [typed context example](https://codebelt.github.io/classy-store/docs/REACT_SCOPING). Providers own their store instances and effects; React keys control intentional resets.
 
 ## 📦 Installation
@@ -122,3 +124,5 @@ This library wouldn't exist without the ideas pioneered by these projects. Each 
 See [CONTRIBUTING.md](./CONTRIBUTING.md) for details on how to contribute and the release workflow.
 
 Run `bun run benchmark:react` to compare large forms and lists with selectors, auto-tracking, and React Compiler. See the [benchmark methodology](./packages/classy-store/tests/performance/README.md) for measurements and reproduction settings.
+
+Run `bun run test:react:memory` to capture and compare Chromium heap snapshots across repeated mounts, resets, and collection changes. See the [memory regression methodology](./packages/classy-store/tests/memory/README.md) and [before/after results](./packages/classy-store/tests/memory/RESULTS.md).

@@ -40,6 +40,15 @@ exercise memoized dependency retention; removing and remounting rows verifies
 that later updates stay isolated. These tests use layout-effect commit counters,
 not render-time side effects or wall-clock thresholds.
 
+The lifecycle regressions also run before and after the Compiler transform.
+They repeat StrictMode mounts, keyed `useLocalStore` resets, store-prop swaps,
+collection replacements, and truncation/refill for both selectors and auto-tracking. Getter-read
+counters detect callbacks left on retired stores even when React would ignore
+the resulting update. Mutating retained rows from replaced collections must
+leave the live root's version and subscription counters unchanged. These are
+deterministic cleanup checks; browser heap comparisons separately test whether
+unreferenced objects are collected.
+
 Set `KEEP_COMPILER_TEMP=1` to retain the installed consumers, transformed source,
 and compilation records. Set `BUN_EXECUTABLE` when testing with a specific Bun
 installation. The matrix needs npm registry access for its isolated consumers.
