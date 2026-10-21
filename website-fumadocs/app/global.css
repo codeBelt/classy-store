@@ -1,0 +1,17 @@
+@import "tailwindcss";
+@import "fumadocs-ui/css/neutral.css";
+@import "fumadocs-ui/css/preset.css";
+
+html {
+  scrollbar-gutter: stable;
+  font-family:
+    ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+}
+
+html > body[data-scroll-locked] {
+  /* biome-ignore lint/complexity/noImportantStyles: Reset scroll-lock compensation while scrollbar-gutter reserves the space. */
+  margin-right: 0px !important;
+  /* biome-ignore lint/complexity/noImportantStyles: Reset the matching scroll-lock compensation value. */
+  --removed-body-scroll-bar-size: 0px !important;
+}
