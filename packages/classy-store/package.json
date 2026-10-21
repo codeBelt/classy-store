@@ -1,6 +1,6 @@
 {
   "name": "@codebelt/classy-store",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Class-based reactive state management — ES6 Proxy + immutable snapshots",
   "repository": {
     "type": "git",
@@ -56,6 +56,16 @@
         "default": "./dist/frameworks/react/react.cjs"
       }
     },
+    "./react/server": {
+      "import": {
+        "types": "./dist/frameworks/react/server.d.mts",
+        "default": "./dist/frameworks/react/server.mjs"
+      },
+      "require": {
+        "types": "./dist/frameworks/react/server.d.cts",
+        "default": "./dist/frameworks/react/server.cjs"
+      }
+    },
     "./vue": {
       "import": {
         "types": "./dist/frameworks/vue/vue.d.mts",
@@ -107,10 +117,11 @@
     "---------- Build ------------------------------------------------------": "",
     "build": "tsdown",
     "---------- Test --------------------------------------------------------": "",
-    "test": "bun test src",
+    "test": "bun test src tests/memory/heapSnapshot.test.ts",
     "test:browser": "playwright test --config tests/browser/playwright.config.ts",
     "---------- Lint --------------------------------------------------------": "",
-    "typecheck": "tsc --noEmit && tsc --project tests/browser/tsconfig.json --noEmit",
+    "typecheck": "tsc --noEmit && tsc --project tests/browser/tsconfig.json --noEmit && tsc --project tests/compiler/tsconfig.json --noEmit && tsc --project tests/performance/tsconfig.json --noEmit && tsc --project tests/memory/tsconfig.json --noEmit && tsc --project tests/next/tsconfig.json --noEmit",
+    "typecheck:scoping": "tsc --project ../../examples/react/tsconfig.scoping.json --noEmit",
     "prepublishOnly": "cp ../../README.md .",
     "-----------------------------------------------------------------------": ""
   },
@@ -143,12 +154,15 @@
   },
   "devDependencies": {
     "@angular/core": "22.2.3",
+    "@babel/core": "7.29.7",
     "@happy-dom/global-registrator": "21.0.4",
     "@playwright/test": "1.64.1",
     "@types/bun": "1.4.3",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
+    "babel-plugin-react-compiler": "1.0.0",
     "react": "19.3.1",
+    "react-compiler-runtime": "1.0.0",
     "react-dom": "19.3.1",
     "solid-js": "1.9.17",
     "tsdown": "0.23.1",

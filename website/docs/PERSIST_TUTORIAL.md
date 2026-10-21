@@ -161,7 +161,7 @@ On restore, `deserialize` converts the ISO string back into a `Date` object befo
 
 ### `storage`
 
-`persist()` handles different storage adapters transparently. The default is `localStorage`. Any object with `getItem`, `setItem`, and `removeItem` (sync or async) works.
+`persist()` requires a storage adapter. Any object with `getItem`, `setItem`, and `removeItem` (sync or async) works, including `localStorage`.
 
 **sessionStorage (Tab-Scoped)**
 
@@ -224,6 +224,31 @@ persist(uiStore, {
 ```
 
 Cross-tab sync only works with `localStorage`. It does not fire for `sessionStorage`, `AsyncStorage`, or custom adapters.
+
+An event whose value has already been replaced in its storage area is ignored.
+This prevents a delayed event from rolling a newer local save back in the UI.
+Accepted remote updates cancel pending debounced auto-saves and do not write
+the restored state back to storage.
+
+### Overlapping async operations
+
+Each persistence handle orders its writes and removals. A slow earlier save
+cannot finish after a later save and overwrite it. `save()` captures the current
+state when requested and resolves after that write completes; a failed write
+reports through `onError` and does not block later writes.
+
+`rehydrate()` waits for writes/removals already requested through that handle.
+If another read, save, clear, accepted storage event, or local mutation supersedes
+an in-flight read, its result is ignored. In particular, typing while initial
+async hydration is pending keeps the newer local state. An ignored read still
+settles its promise; hydration completion does not guarantee that stored data won.
+
+`clear()` cancels pending auto-saves and removes stored data after earlier issued
+writes finish. Later edits can persist again. `unsubscribe()` skips queued writes
+that have not started; it cannot cancel adapter I/O already in progress.
+
+Ordering is per handle. Separate handles sharing an async storage key still
+need coordination at the application or adapter level.
 
 ### `expireIn` & `clearOnExpire` (Expiration / TTL)
 
@@ -514,7 +539,10 @@ window.addEventListener('beforeunload', () => {
 });
 ```
 
-`save()` cancels the pending debounce timer and writes the current state immediately.
+`save()` cancels the pending debounce timer and requests a write of the current
+state immediately. With async storage it waits behind earlier writes. Await the
+returned promise when completion matters; an async write is not guaranteed to
+finish during page unload.
 
 ### `unsubscribe()` (Stop persisting)
 
@@ -529,6 +557,8 @@ handle.unsubscribe();
 // Pending debounce timer is cancelled.
 todoStore.addTodo('This is not persisted');
 ```
+
+Pending storage reads that finish after unsubscribe no longer apply state, clear expired entries, or invoke read-error callbacks. Hydration promises still settle when the read finishes. This prevents a retired React effect from overwriting a newer scope during Strict Mode replay, resets, or storage configuration changes. Already-issued adapter I/O is not cancelled; cleanup cannot undo a write already sent to storage. See the [typed context lifecycle example](./REACT_SCOPING.md).
 
 ---
 

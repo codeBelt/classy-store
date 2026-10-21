@@ -345,6 +345,14 @@ flowchart TD
 
 `useClassyStore` uses `useSyncExternalStore` for tear-free React integration. React subscriptions always notify synchronously, allowing controlled inputs to observe updates during their event. The React API has no timing option; ordinary core subscriptions remain batched. It supports two modes:
 
+### Server rendering and hydration
+
+`prepareStoreForHydration(store)` captures an immutable snapshot in a WeakMap keyed by the exact store proxy. It returns the same mutable proxy and preserves the first capture on repeated calls. Capturing is explicit at bootstrap, before rendering or persistence, because a delayed Suspense boundary may not call its hook until after the live store changes.
+
+Prepared stores supply that snapshot through `getServerSnapshot`; ordinary `getSnapshot` still reads live state. Each selector has separate server and live caches. When React reads the hydration result, it can seed the live cache with that result so unchanged inputs and equal selections retain their references without overwriting committed selections during rendering. Client-only mounts never evaluate the server selector.
+
+The capture stays available for the store's lifetime, including later boundaries or roots. It is never cleared when the first consumer mounts. Unprepared stores keep the existing current-snapshot behavior. Core mutation timing, ordinary subscriptions, and `snapshot(store)` are unchanged.
+
 ### Mode 1: Selector
 
 ```typescript
@@ -395,12 +403,14 @@ const snap = useClassyStore(myStore);
 
 Each render creates its own `affected` map and raw-snapshot getter; the hook retains a proxy cache across renders. `useSyncExternalStore` receives a cached raw snapshot: unchanged tracked values return the previous snapshot for that render. After reading it, the hook wraps the snapshot with `createProxy` to record the component's property reads.
 
-A parent re-render starts from current store data and a fresh read set. Suspended and abandoned renders cannot change the committed getter's read set. Proxy handlers record subsequent reads into the active render's map, while unchanged snapshot and nested proxy identities remain stable across parent re-renders.
+A parent re-render starts from current store data and a render-local `TrackingReadMap`. It lazily copies committed operation records for reused immutable snapshot objects, including structurally shared children. This retains reads skipped by React Compiler or manual memoization. Sets are copied before recording new reads, so suspended and abandoned renders cannot change committed dependencies. An effect publishes only committed reads into a WeakMap; old snapshot objects can be collected without retaining a chain of prior render maps.
+
+The adapter follows the operation-record/Set layout of the pinned `proxy-compare` 3 dependency without hardcoding its private field names. Compiled regressions cover value reads, `in`, `Object.hasOwn`, and key enumeration. Reused snapshot objects conservatively retain prior committed dependencies, so changing a conditional branch may cause an extra render before that object's identity changes. Explicit selectors provide selected-value equality when stricter filtering is needed.
 
 Snapshot creation marks only library-created snapshot nodes with `markToTrack`, including class and null-prototype objects. This enables field tracking without altering opaque leaves such as native maps and dates. Nodes containing object-valued symbol fields use whole-node comparison to avoid a frozen-symbol limitation in `proxy-compare` 3; updates remain reactive with coarser render filtering.
 
 **How `proxy-compare` works:**
-- `createProxy(snapshot, affected)` records properties read into the render's `affected` WeakMap.
+- `createProxy(snapshot, affected)` records properties read into the render's map; committed records are retained separately with weak snapshot keys.
 - `isChanged(previousSnapshot, nextSnapshot, affected)` checks whether a tracked property differs.
 - Unchanged tracked properties suppress subscription-driven renders; `snapshot()` retains its existing identity cache and structural sharing.
 

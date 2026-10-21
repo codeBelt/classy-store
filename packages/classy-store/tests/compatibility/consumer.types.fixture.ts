@@ -4,13 +4,27 @@ import {
   snapshot,
   subscribe,
 } from '@codebelt/classy-store';
+import {
+  type ReactiveMap,
+  type ReactiveSet,
+  reactiveMap,
+  reactiveSet,
+} from '@codebelt/classy-store/collections';
 // @ts-expect-error Auto-tracked hooks no longer expose notification options.
 import type {UseClassyStoreOptions} from '@codebelt/classy-store/react';
 import {
   createStoreHook,
+  prepareStoreForHydration,
   useClassyStore,
   useLocalStore,
 } from '@codebelt/classy-store/react';
+import {
+  type PersistHandle,
+  type PersistOptions,
+  persist,
+  type StorageAdapter,
+  subscribeKey,
+} from '@codebelt/classy-store/utils';
 
 class ConsumerStore {
   count = 0;
@@ -31,7 +45,8 @@ type Equal<Left, Right> =
 type Expect<Condition extends true> = Condition;
 
 const store = createClassyStore(new ConsumerStore());
-const useStore = createStoreHook(store);
+const prepared = prepareStoreForHydration(store);
+const useStore = createStoreHook(prepared);
 
 export function useConsumerTypeAssertions() {
   const count = useClassyStore(store, (state) => state.count);
@@ -56,7 +71,8 @@ export function useConsumerTypeAssertions() {
     Expect<Equal<typeof selected, {label: string}>>,
     Expect<Equal<typeof boundSelected, {label: string}>>,
     Expect<Equal<typeof local, ConsumerStore>>,
-  ] = [true, true, true, true, true, true, true];
+    Expect<Equal<typeof prepared, ConsumerStore>>,
+  ] = [true, true, true, true, true, true, true, true];
 
   // @ts-expect-error Snapshots cannot be assigned to.
   tracked.count = 1;
@@ -88,6 +104,10 @@ export function useConsumerTypeAssertions() {
   const wrongType: string = count;
 
   local.increment();
+  prepared.increment();
+  prepared.count = 2;
+  prepared.user.name = 'Prepared and mutable';
+  prepared.names.push('Prepared and mutable');
   store.user.name = 'Mutable';
   store.names.push('Mutable');
   const frozen = snapshot(store);
@@ -96,4 +116,45 @@ export function useConsumerTypeAssertions() {
   subscribe(store, () => {}, {sync: true})();
 
   return {assertions, wrongType, removedOptions: null as UseClassyStoreOptions};
+}
+
+// Compiled through the packed ESM and CommonJS declarations by the existing
+// compatibility runner; this function is a type fixture and is never invoked.
+export function utilityTypeAssertions(storage: StorageAdapter) {
+  const draft = createClassyStore({title: 'Draft', count: 0});
+  const options: PersistOptions<typeof draft> = {
+    name: 'draft',
+    storage,
+    properties: [
+      'title',
+      {
+        key: 'count',
+        serialize: (value) => {
+          const inferred: Expect<Equal<typeof value, string | number>> = true;
+          void inferred;
+          return String(value);
+        },
+        deserialize: (stored) => Number(stored),
+      },
+    ],
+  };
+  const persistence = persist(draft, options);
+  const unsubscribe = subscribeKey(draft, 'count', (value, previous) => {
+    const inferred: [
+      Expect<Equal<typeof value, number>>,
+      Expect<Equal<typeof previous, number>>,
+    ] = [true, true];
+    return {inferred, value, previous};
+  });
+  const users = reactiveMap<string, {name: string}>([['ada', {name: 'Ada'}]]);
+  const user = users.get('ada');
+  const tags = reactiveSet<string>(['saved']);
+  const assertions: [
+    Expect<Equal<typeof persistence, PersistHandle>>,
+    Expect<Equal<typeof unsubscribe, () => void>>,
+    Expect<Equal<typeof users, ReactiveMap<string, {name: string}>>>,
+    Expect<Equal<typeof user, {name: string} | undefined>>,
+    Expect<Equal<typeof tags, ReactiveSet<string>>>,
+  ] = [true, true, true, true, true];
+  return {assertions, persistence, unsubscribe};
 }

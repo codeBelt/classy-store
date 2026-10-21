@@ -2,6 +2,7 @@ import {spawnSync} from 'node:child_process';
 import {
   cpSync,
   mkdtempSync,
+  readdirSync,
   readFileSync,
   rmSync,
   writeFileSync,
@@ -12,6 +13,14 @@ import {fileURLToPath} from 'node:url';
 
 const fixturesDirectory = dirname(fileURLToPath(import.meta.url));
 const packageDirectory = resolve(fixturesDirectory, '../..');
+const scopingFixturesDirectory = resolve(fixturesDirectory, '../scoping');
+const scopedExampleDirectory = resolve(
+  packageDirectory,
+  '../../examples/react/src/demos/scoped-store/store',
+);
+const scopingTestFiles = readdirSync(scopingFixturesDirectory)
+  .filter((filename) => filename.endsWith('.test.tsx'))
+  .sort();
 const packageManifest = JSON.parse(
   readFileSync(join(packageDirectory, 'package.json'), 'utf8'),
 );
@@ -42,6 +51,18 @@ function run(command, argumentsList, cwd, captureOutput = false) {
   return result.stdout;
 }
 
+function rewritePackedImports(source) {
+  return source
+    .replace('import {act, ', "import {act} from './reactAct';\nimport {")
+    .replaceAll("'../../core/core'", "'@codebelt/classy-store'")
+    .replaceAll("'../../snapshot/snapshot'", "'@codebelt/classy-store'")
+    .replaceAll(
+      "'../../utils/persist/persist'",
+      "'@codebelt/classy-store/utils'",
+    )
+    .replaceAll("'./react'", "'@codebelt/classy-store/react'");
+}
+
 try {
   const packed = JSON.parse(
     run(
@@ -62,6 +83,13 @@ try {
   for (const reactVersion of reactVersions) {
     const consumerDirectory = join(temporaryDirectory, `react-${reactVersion}`);
     cpSync(fixturesDirectory, consumerDirectory, {recursive: true});
+    // Exercise the actual application example against the installed package.
+    // Keeping this a copy, rather than a rewritten fixture, catches drift in
+    // provider ownership, context types, and effect cleanup.
+    cpSync(scopingFixturesDirectory, consumerDirectory, {recursive: true});
+    cpSync(scopedExampleDirectory, join(consumerDirectory, 'example'), {
+      recursive: true,
+    });
     const reactTypesVersion = reactVersion.startsWith('18.')
       ? '18.3.27'
       : packageManifest.devDependencies['@types/react'];
@@ -79,6 +107,7 @@ try {
           'react-dom': reactVersion,
           '@types/react': reactTypesVersion,
           '@types/react-dom': reactDomTypesVersion,
+          '@types/bun': packageManifest.devDependencies['@types/bun'],
           '@happy-dom/global-registrator':
             packageManifest.devDependencies['@happy-dom/global-registrator'],
           typescript: packageManifest.devDependencies.typescript,
@@ -97,22 +126,40 @@ try {
       join(fixturesDirectory, 'consumer.fixture.tsx'),
       join(consumerDirectory, 'consumer.test.tsx'),
     );
-    const ssrTests = readFileSync(
-      join(packageDirectory, 'src/frameworks/react/react.ssr.test.tsx'),
-      'utf8',
-    )
-      .replace(
-        "import {act, useEffect} from 'react';",
-        "import {useEffect} from 'react';\nimport {act} from './reactAct';",
-      )
-      .replaceAll("'../../core/core'", "'@codebelt/classy-store'")
-      .replaceAll("'../../snapshot/snapshot'", "'@codebelt/classy-store'")
-      .replaceAll(
-        "'../../utils/persist/persist'",
-        "'@codebelt/classy-store/utils'",
-      )
-      .replaceAll("'./react'", "'@codebelt/classy-store/react'");
+    const ssrTests = rewritePackedImports(
+      readFileSync(
+        join(packageDirectory, 'src/frameworks/react/react.ssr.test.tsx'),
+        'utf8',
+      ),
+    );
     writeFileSync(join(consumerDirectory, 'ssr.test.tsx'), ssrTests);
+    const sourceHydrationTests = readFileSync(
+      join(packageDirectory, 'src/frameworks/react/react.hydration.test.tsx'),
+      'utf8',
+    );
+    // Internal listener counts remain covered in source tests. Installed-package
+    // tests retain the public unmount, no-more-commits, and storage cleanup checks.
+    const internalAssertions =
+      /^\s*expect\(getInternal\(clientStore\)\.(?:syncListeners|batchedListeners)\.size\)\.toBe\([01]\);\n/gm;
+    if ([...sourceHydrationTests.matchAll(internalAssertions)].length !== 4) {
+      throw new Error(
+        'Expected four source-only hydration listener assertions',
+      );
+    }
+    const hydrationTests = rewritePackedImports(
+      sourceHydrationTests
+        .replace('{createClassyStore, getInternal}', '{createClassyStore}')
+        .replace(internalAssertions, ''),
+    );
+    writeFileSync(
+      join(consumerDirectory, 'hydration.test.tsx'),
+      hydrationTests,
+    );
+    cpSync(
+      join(packageDirectory, 'src/frameworks/react/testHelpers'),
+      join(consumerDirectory, 'testHelpers'),
+      {recursive: true},
+    );
     for (const extension of ['mts', 'cts']) {
       cpSync(
         join(fixturesDirectory, 'consumer.types.fixture.ts'),
@@ -147,6 +194,8 @@ try {
         './happydom.ts',
         './consumer.test.tsx',
         './ssr.test.tsx',
+        './hydration.test.tsx',
+        ...scopingTestFiles.map((filename) => `./${filename}`),
       ],
       consumerDirectory,
     );
@@ -164,6 +213,27 @@ try {
         'NodeNext',
         'consumer.mts',
         'consumer.cts',
+      ],
+      consumerDirectory,
+    );
+    run(
+      join(consumerDirectory, 'node_modules/.bin/tsc'),
+      [
+        '--noEmit',
+        '--strict',
+        '--skipLibCheck',
+        '--target',
+        'ES2022',
+        '--jsx',
+        'react-jsx',
+        '--module',
+        'ESNext',
+        '--moduleResolution',
+        'Bundler',
+        '--types',
+        'bun',
+        'scoping.types.fixture.tsx',
+        ...scopingTestFiles,
       ],
       consumerDirectory,
     );

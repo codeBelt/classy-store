@@ -25,6 +25,8 @@ Class-based reactive state management for React, Vue, Svelte, Solid, and Angular
 
 ## Installation
 
+Upgrading from 0.6.x? Read the [0.7.0 upgrade guide and release notes](./UPGRADING_0_7.md) for the React API changes and runtime requirements.
+
 ```bash
 bun add @codebelt/classy-store
 ```
@@ -149,7 +151,9 @@ const snap = useClassyStore(myStore);
 // Only re-renders when accessed properties change
 ```
 
-Returns a tracking proxy. Properties your component reads are automatically tracked — changes to unread properties won't cause re-renders. Tracking belongs to each render, so conditional and abandoned renders do not retain obsolete reads. Unchanged snapshots and nested tracked values retain their references across parent re-renders.
+Returns a tracking proxy. Properties your component reads are automatically tracked. Committed reads remain associated with each reused immutable snapshot object, so memoized calculations and children stay reactive even when they skip property reads on a later render. Abandoned renders do not publish their reads. Unchanged snapshots and nested tracked values retain their references across parent re-renders.
+
+Auto-tracking requires native `WeakRef` support (ES2021). Tracking dependencies use weak references so cached child proxies do not keep obsolete collection snapshots alive. Applications still own references they explicitly retain, and stores prepared for hydration deliberately retain their initial snapshot while that store remains reachable.
 
 **Custom equality:**
 
@@ -180,6 +184,25 @@ React subscriptions always notify synchronously, including selector, auto-tracke
 
 Migration: remove `{sync: true}` or `{sync: false}` from React hook calls and remove imports of `UseClassyStoreOptions`. Selector options still support `isEqual`. Synchronous notification does not make a method transactional: selectors can observe each write, while React batches rendering within event handlers.
 
+### `prepareStoreForHydration(store)`
+
+Captures the initial snapshot for server rendering and client hydration, returning the same mutable store proxy:
+
+```ts
+import {createClassyStore} from '@codebelt/classy-store';
+import {prepareStoreForHydration} from '@codebelt/classy-store/react';
+
+const store = prepareStoreForHydration(
+  createClassyStore(new ProfileStore(initialData)),
+);
+```
+
+Call on each request's store and its client counterpart using matching initial data, before rendering or starting persistence. Direct and bound hooks hydrate from the captured snapshot even if persistence updates the live store before a Suspense boundary hydrates. After hydration they read current state normally.
+
+Preparation is idempotent, retains the first snapshot for the store's lifetime, and applies to the exact proxy passed in. Client-only apps need no preparation. See [React SSR and hydration](./REACT_SSR.md) for streaming, request isolation, nested proxies, and snapshot leaf semantics.
+
+The same preparation helper is available from `@codebelt/classy-store/react/server` without importing hooks. Use that entry in React Server Components; the `/react` entry is marked `use client`. See [Next.js App Router](./REACT_NEXT.md) for production package boundaries and navigation patterns.
+
 ### `useLocalStore(factory)`
 
 Creates a component-scoped reactive store. Each component instance gets its own isolated store, garbage collected on unmount.
@@ -201,6 +224,8 @@ function Counter() {
 ```
 
 Subsequent re-renders reuse the same store instance. Keep the factory pure: React StrictMode can invoke the initializer more than once in development.
+
+For a shared subtree, use the [typed context and lifecycle example](./REACT_SCOPING.md). It covers independent and nested instances, explicit resets with React keys, effect cleanup, persistence, and SSR. `useLocalStore` owns the instance reference; application side effects still need cleanup in their effects.
 
 > See the [Local Stores](./TUTORIAL.md#local-stores) section in the Tutorial for persistence patterns and more examples.
 
@@ -598,6 +623,16 @@ class Store {
 ```
 
 For `Map` and `Set` semantics, use [`reactiveMap()`](#reactivemapk-vinitial) and [`reactiveSet()`](#reactivesettinitial) instead of native `Map`/`Set`.
+
+## React Compiler compatibility
+
+Direct and bound hooks work in compiled consumers with either selectors or auto-tracking. The regression matrix compiles consumer components with React Compiler 1.0 using default inference, then runs them against the packed library on React 18.0, 18.3, and 19.3. Fixtures must report successful compilation with memo slots; silently skipped components fail the checks. The library does not require a `"use no memo"` directive or custom compiler configuration.
+
+Auto-tracking retains earlier committed reads while an immutable snapshot object is reused, including structurally shared children. This protects dependencies inside cached helpers, array calculations, and memoized children. After a conditional branch changes, an earlier read can still trigger an extra render until that snapshot object's identity changes. Use an explicit selector when exact selected-value equality matters.
+
+Read render data through `useClassyStore` or a bound hook. The original store proxy remains mutable and is intended for actions; reading it directly during render does not subscribe the component. Configure the compiler target for your React version; React 18 apps need the compiler runtime described in [React's target documentation](https://react.dev/reference/react-compiler/target).
+
+Run `bun run test:react:compiler` for the installed-package matrix and `bun run test:browser` for compiled controlled inputs and memoized children in Chromium, Firefox, and WebKit.
 
 ## When to use each mode
 
