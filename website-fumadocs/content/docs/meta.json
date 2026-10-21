@@ -1,0 +1,18 @@
+{
+  "title": "Classy Store",
+  "pages": [
+    "index",
+    "---Learn---",
+    "TUTORIAL",
+    "REACT_SSR",
+    "REACTIVE_COLLECTIONS_TUTORIAL",
+    "---Utilities---",
+    "PERSIST_TUTORIAL",
+    "DEVTOOLS_TUTORIAL",
+    "SUBSCRIBE_KEY_TUTORIAL",
+    "HISTORY_TUTORIAL",
+    "---Architecture---",
+    "ARCHITECTURE",
+    "PERSIST_ARCHITECTURE"
+  ]
+}
