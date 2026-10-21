@@ -120,7 +120,7 @@ PERSIST_ARCHITECTURE.md            # Persist utility internals
 
 ### Overview
 
-The `createClassyStore()` function wraps a class instance in an ES6 Proxy. All mutations — property writes, array operations, nested object changes — are intercepted. Subscribers are batched by default into a single notification per microtask, with an opt-in synchronous path for controlled React inputs and other code that must observe each mutation immediately.
+The `createClassyStore()` function wraps a class instance in an ES6 Proxy. All mutations — property writes, array operations, nested object changes — are intercepted. Subscribers are batched by default into a single notification per microtask, while React always uses the synchronous path. Other code can opt into that path when it must observe each mutation immediately.
 
 ### Data Flow: Mutation → Notification
 
@@ -186,7 +186,7 @@ type StoreInternal = {
 
 ### Batching via `queueMicrotask`
 
-Array operations like `push()` trigger multiple SET traps (element + length). Rather than notifying per-trap, a dirty flag + `queueMicrotask` coalesces all synchronous mutations into one notification:
+Array operations like `push()` trigger multiple SET traps (element + length). For ordinary listeners, a dirty flag + `queueMicrotask` coalesces these mutations into one notification:
 
 ```
 store.items.push('a')
@@ -195,7 +195,7 @@ store.items.push('a')
   → microtask fires → notifies listeners ONCE
 ```
 
-Subscribers opt into immediate timing with `{sync: true}`. Sync subscribers run after version propagation and before the batched microtask. They are intentionally not deduped: two writes mean two sync notifications. React controlled inputs use this timing so `useSyncExternalStore` can observe the new external-store value during the input event turn, preserving caret position and IME composition.
+Subscribers opt into immediate timing with `{sync: true}`. Sync subscribers run after version propagation and before the batched microtask. They are intentionally not deduped: two writes mean two sync notifications. Every React hook uses this timing so `useSyncExternalStore` observes the new value during the input event, preserving controlled-input caret position. Selectors can run after each write; React batches rendering within event handlers.
 
 ### Version Propagation
 
@@ -343,7 +343,15 @@ flowchart TD
 
 ### Overview
 
-`useClassyStore` uses `useSyncExternalStore` for tear-free React integration. Subscriptions are batched by default, and can opt into synchronous notification with `{sync: true}` for controlled inputs that need React to observe the store update during the input event turn. It supports two modes:
+`useClassyStore` uses `useSyncExternalStore` for tear-free React integration. React subscriptions always notify synchronously, allowing controlled inputs to observe updates during their event. The React API has no timing option; ordinary core subscriptions remain batched. It supports two modes:
+
+### Server rendering and hydration
+
+`prepareStoreForHydration(store)` captures an immutable snapshot in a WeakMap keyed by the exact store proxy. It returns the same mutable proxy and preserves the first capture on repeated calls. Capturing is explicit at bootstrap, before rendering or persistence, because a delayed Suspense boundary may not call its hook until after the live store changes.
+
+Prepared stores supply that snapshot through `getServerSnapshot`; ordinary `getSnapshot` still reads live state. Each selector has separate server and live caches. When React reads the hydration result, it can seed the live cache with that result so unchanged inputs and equal selections retain their references without overwriting committed selections during rendering. Client-only mounts never evaluate the server selector.
+
+The capture stays available for the store's lifetime, including later boundaries or roots. It is never cleared when the first consumer mounts. Unprepared stores keep the existing current-snapshot behavior. Core mutation timing, ordinary subscriptions, and `snapshot(store)` are unchanged.
 
 ### Mode 1: Selector
 
@@ -373,17 +381,17 @@ sequenceDiagram
 ```
 
 **Equality chain:**
-1. Same snapshot reference? → skip selector entirely (O(1))
+1. Same store, selector, equality function, and snapshot reference? → reuse the cached result (O(1))
 2. Run selector → compare result with `Object.is` (or `options.isEqual`)
 3. Same result → return previous reference (no re-render)
 
 **Controlled input timing:**
 
 ```typescript
-const name = useClassyStore(formStore, (state) => state.name, {sync: true});
+const name = useClassyStore(formStore, (state) => state.name);
 ```
 
-The core store still batches subscribers by default with `queueMicrotask`. A controlled input subscription can opt into sync timing so the `useSyncExternalStore` callback runs in the same mutation turn as the input event, preserving caret position and IME composition.
+The hook always calls the core `subscribe()` with `{sync: true}`. Ordinary listeners still batch with `queueMicrotask`. This timing is independent of React's own render scheduling and does not provide atomic transactions across several writes.
 
 ### Mode 2: Auto-tracked (selectorless)
 
@@ -393,39 +401,18 @@ const snap = useClassyStore(myStore);
 // snap.user.name — tracked
 ```
 
-```mermaid
-sequenceDiagram
-  participant React as React (useSyncExternalStore)
-  participant Hook as useClassyStore
-  participant Snap as snapshot()
-  participant PC as proxy-compare
+Each render creates its own `affected` map and raw-snapshot getter; the hook retains a proxy cache across renders. `useSyncExternalStore` receives a cached raw snapshot: unchanged tracked values return the previous snapshot for that render. After reading it, the hook wraps the snapshot with `createProxy` to record the component's property reads.
 
-  React->>Hook: getSnapshot()
-  Hook->>Snap: snapshot(proxy)
-  Snap-->>Hook: frozen snapshot
+A parent re-render starts from current store data and a render-local `TrackingReadMap`. It lazily copies committed operation records for reused immutable snapshot objects, including structurally shared children. This retains reads skipped by React Compiler or manual memoization. Sets are copied before recording new reads, so suspended and abandoned renders cannot change committed dependencies. An effect publishes only committed reads into a WeakMap; old snapshot objects can be collected without retaining a chain of prior render maps.
 
-  alt Same snapshot ref
-    Hook-->>React: return cached tracking proxy
-  else Different snapshot
-    Hook->>PC: isChanged(prevSnap, nextSnap, affected)
-    alt No tracked prop changed
-      Hook-->>React: return cached tracking proxy (no re-render)
-    else Tracked prop changed
-      Hook->>PC: createProxy(nextSnap, affected)
-      PC-->>Hook: new tracking proxy
-      Hook-->>React: return new tracking proxy (re-render)
-    end
-  end
+The adapter follows the operation-record/Set layout of the pinned `proxy-compare` 3 dependency without hardcoding its private field names. Compiled regressions cover value reads, `in`, `Object.hasOwn`, and key enumeration. Reused snapshot objects conservatively retain prior committed dependencies, so changing a conditional branch may cause an extra render before that object's identity changes. Explicit selectors provide selected-value equality when stricter filtering is needed.
 
-  Note over React: Component renders, reads snap.X
-  React->>PC: snap.X (GET intercepted)
-  PC->>PC: Record 'X' in affected WeakMap
-```
+Snapshot creation marks only library-created snapshot nodes with `markToTrack`, including class and null-prototype objects. This enables field tracking without altering opaque leaves such as native maps and dates. Nodes containing object-valued symbol fields use whole-node comparison to avoid a frozen-symbol limitation in `proxy-compare` 3; updates remain reactive with coarser render filtering.
 
 **How `proxy-compare` works:**
-- `createProxy(snapshot, affected)` wraps the frozen snapshot in a Proxy that records which properties are read into the `affected` WeakMap
-- `isChanged(prevSnap, nextSnap, affected)` checks if any tracked property differs between two snapshots
-- Only structural changes to accessed properties cause re-renders
+- `createProxy(snapshot, affected)` records properties read into the render's map; committed records are retained separately with weak snapshot keys.
+- `isChanged(previousSnapshot, nextSnapshot, affected)` checks whether a tracked property differs.
+- Unchanged tracked properties suppress subscription-driven renders; `snapshot()` retains its existing identity cache and structural sharing.
 
 ## Dependency Graph
 
@@ -471,7 +458,7 @@ ES6 Proxy supports intercepting property creation, deletion, and arbitrary key a
 
 ### Why `queueMicrotask` for batching?
 
-`queueMicrotask` runs after the current synchronous code but before the next paint/timer. This means:
+`queueMicrotask` runs after the current synchronous code but before the next paint/timer. For ordinary subscribers, this means:
 - Multiple mutations in the same event handler → 1 notification
 - Array `push` (which triggers multiple SET traps) → 1 notification
 - No risk of missing updates (unlike `requestAnimationFrame`)
@@ -517,7 +504,7 @@ No special handling is needed — three mechanisms in the existing design make i
 |-----------|-----------|-------|
 | Property read | O(1) | Direct Proxy GET trap |
 | Property write | O(depth) | Versions bump from node to root |
-| Notification | O(listeners) | Once per microtask batch |
+| Notification | O(listeners) | Ordinary listeners once per microtask; React listeners per mutation |
 | Getter (cache hit) | O(deps) | Check deps validity, return cached |
 | Getter (cache miss) | O(getter body) | Re-evaluates with dep tracking |
 | Snapshot (cache hit) | O(1) | Version check only |

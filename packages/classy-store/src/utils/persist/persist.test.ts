@@ -1,7 +1,9 @@
 import {describe, expect, it, mock} from 'bun:test';
 import type {ReactiveMap} from '../../collections/collections';
-import {reactiveMap} from '../../collections/collections';
+import {reactiveMap, reactiveSet} from '../../collections/collections';
 import {createClassyStore} from '../../core/core';
+import {snapshot} from '../../snapshot/snapshot';
+import {PROXYABLE} from '../internal/internal';
 import type {StorageAdapter} from './persist';
 import {persist} from './persist';
 
@@ -413,6 +415,166 @@ describe('persist()', () => {
   // ── Merge strategies ────────────────────────────────────────────────────
 
   describe('merge strategies', () => {
+    it.each([
+      {description: 'shallow initial hydration', manual: false, custom: false},
+      {description: 'shallow rehydration', manual: true, custom: false},
+      {description: 'custom initial hydration', manual: false, custom: true},
+      {description: 'custom rehydration', manual: true, custom: true},
+    ])('keeps omitted nested defaults editable after $description', async ({
+      manual,
+      custom,
+    }) => {
+      const storage = createMockStorage();
+      storage.data.set(
+        'test',
+        JSON.stringify({version: 0, state: {theme: 'dark'}}),
+      );
+      const setItem = mock(storage.setItem.bind(storage));
+      storage.setItem = setItem;
+      const store = createClassyStore({
+        theme: 'light',
+        items: [{name: 'initial'}],
+        preferences: {display: {compact: false}},
+      });
+      const beforeHydration = snapshot(store);
+      const handle = persist(store, {
+        name: 'test',
+        storage,
+        skipHydration: manual,
+        merge: custom
+          ? (persisted, current) => ({
+              theme: persisted.theme,
+              items: [...(current.items as unknown[])],
+              preferences: {...(current.preferences as object)},
+            })
+          : 'shallow',
+      });
+
+      try {
+        if (manual) await handle.rehydrate();
+        await handle.hydrated;
+        const restored = snapshot(store);
+
+        store.items.push({name: 'added'});
+        store.items[0].name = 'edited';
+        store.preferences.display.compact = true;
+
+        expect(setItem).not.toHaveBeenCalled();
+        await tick();
+        expect(setItem).toHaveBeenCalledTimes(1);
+        expect(parseStored(storage, 'test')?.state).toEqual({
+          theme: 'dark',
+          items: [{name: 'edited'}, {name: 'added'}],
+          preferences: {display: {compact: true}},
+        });
+        expect(beforeHydration.theme).toBe('light');
+        expect(restored.theme).toBe('dark');
+        for (const previous of [beforeHydration, restored]) {
+          expect(previous.items).toEqual([{name: 'initial'}]);
+          expect(previous.preferences.display.compact).toBe(false);
+        }
+      } finally {
+        handle.unsubscribe();
+      }
+    });
+
+    it('preserves reactive defaults and opaque leaves during partial hydration', async () => {
+      class Profile {
+        static [PROXYABLE] = true;
+        name = 'Alice';
+
+        get greeting() {
+          return `Hello, ${this.name}`;
+        }
+
+        rename(name: string) {
+          this.name = name;
+        }
+      }
+
+      const storage = createMockStorage();
+      storage.data.set(
+        'test',
+        JSON.stringify({version: 0, state: {theme: 'dark'}}),
+      );
+      const date = new Date('2026-01-01');
+      const opaque = new Map([['original', 1]]);
+      const store = createClassyStore({
+        theme: 'light',
+        profile: new Profile(),
+        users: reactiveMap([['alice', {name: 'Alice', date}]]),
+        tags: reactiveSet(['initial']),
+        opaque,
+      });
+      const beforeHydration = snapshot(store);
+      const handle = persist(store, {name: 'test', storage});
+
+      try {
+        await handle.hydrated;
+        expect(store.profile).toBeInstanceOf(Profile);
+        expect(store.profile.greeting).toBe('Hello, Alice');
+        expect(store.users.size).toBe(1);
+        expect(store.tags.size).toBe(1);
+
+        store.profile.rename('Alicia');
+        store.users.set('bob', {name: 'Bob', date});
+        store.tags.add('added');
+        const alice = store.users.get('alice');
+        if (!alice) throw new Error('Expected the restored user');
+        alice.name = 'Alicia';
+
+        expect(store.profile.greeting).toBe('Hello, Alicia');
+        expect(store.users.size).toBe(2);
+        expect(store.tags.size).toBe(2);
+        expect(alice.date).toBe(date);
+        expect(store.opaque).toBe(opaque);
+        expect(beforeHydration.profile.greeting).toBe('Hello, Alice');
+        expect(beforeHydration.users._entries).toEqual([
+          ['alice', {name: 'Alice', date}],
+        ]);
+        expect(beforeHydration.users.size).toBe(1);
+        expect(beforeHydration.tags.size).toBe(1);
+      } finally {
+        handle.unsubscribe();
+      }
+    });
+
+    it('preserves own accessors returned by a custom merge', async () => {
+      function createProfile(name: string) {
+        return {
+          name,
+          get greeting() {
+            return `Hello, ${this.name}`;
+          },
+        };
+      }
+
+      const storage = createMockStorage();
+      storage.data.set(
+        'test',
+        JSON.stringify({version: 0, state: {profile: {name: 'Alice'}}}),
+      );
+      const store = createClassyStore({
+        profile: createProfile('default'),
+      });
+      const handle = persist(store, {
+        name: 'test',
+        storage,
+        merge: (persisted) => ({
+          profile: createProfile((persisted.profile as {name: string}).name),
+        }),
+      });
+
+      try {
+        await handle.hydrated;
+        expect(store.profile.greeting).toBe('Hello, Alice');
+        store.profile.name = 'Alicia';
+        expect(store.profile.greeting).toBe('Hello, Alicia');
+      } finally {
+        handle.unsubscribe();
+      }
+    });
+
     it('shallow merge (default): preserves new properties not in storage', async () => {
       const storage = createMockStorage();
       storage.data.set(
@@ -1162,6 +1324,93 @@ describe('persist()', () => {
       expect(stored1?.state).not.toHaveProperty('name');
       expect(stored2?.state.name).toBe('world');
       expect(stored2?.state).not.toHaveProperty('count');
+    });
+  });
+
+  describe('pending hydration cleanup', () => {
+    it.each([
+      false,
+      true,
+    ])('ignores a pending read after unsubscribe (skipHydration=%s)', async (skipHydration) => {
+      let resolveRead!: (value: string | null) => void;
+      const pendingRead = new Promise<string | null>((resolve) => {
+        resolveRead = resolve;
+      });
+      const storage = {
+        getItem: () => pendingRead,
+        setItem: mock(() => {}),
+        removeItem: mock(() => {}),
+      };
+      const store = createClassyStore({title: 'Current'});
+      const handle = persist(store, {name: 'editor', storage, skipHydration});
+      const completion = skipHydration ? handle.rehydrate() : handle.hydrated;
+      handle.unsubscribe();
+      resolveRead(JSON.stringify({version: 0, state: {title: 'Retired'}}));
+      await completion;
+      await handle.hydrated;
+
+      expect(store.title).toBe('Current');
+      expect(storage.setItem).not.toHaveBeenCalled();
+      expect(storage.removeItem).not.toHaveBeenCalled();
+      expect(handle.isHydrated).toBe(true);
+    });
+
+    it.each([
+      false,
+      true,
+    ])('settles a failed pending read without callbacks after unsubscribe (skipHydration=%s)', async (skipHydration) => {
+      let rejectRead!: (error: Error) => void;
+      const pendingRead = new Promise<string | null>((_resolve, reject) => {
+        rejectRead = reject;
+      });
+      const onError = mock(() => {});
+      const storage = {
+        getItem: () => pendingRead,
+        setItem: mock(() => {}),
+        removeItem: mock(() => {}),
+      };
+      const store = createClassyStore({title: 'Current'});
+      const handle = persist(store, {
+        name: 'editor',
+        storage,
+        skipHydration,
+        onError,
+      });
+      const completion = skipHydration ? handle.rehydrate() : handle.hydrated;
+      handle.unsubscribe();
+      rejectRead(new Error('Late storage failure'));
+      await completion;
+      await handle.hydrated;
+
+      expect(onError).not.toHaveBeenCalled();
+      expect(store.title).toBe('Current');
+      expect(handle.isHydrated).toBe(true);
+    });
+
+    it('does not clear storage from an expired read that finishes after cleanup', async () => {
+      let resolveRead!: (value: string) => void;
+      const storage = {
+        getItem: () =>
+          new Promise<string>((resolve) => {
+            resolveRead = resolve;
+          }),
+        setItem: mock(() => {}),
+        removeItem: mock(() => {}),
+      };
+      const store = createClassyStore({title: 'Current'});
+      const handle = persist(store, {
+        name: 'editor',
+        storage,
+        clearOnExpire: true,
+      });
+      handle.unsubscribe();
+      resolveRead(
+        JSON.stringify({version: 0, expiresAt: 0, state: {title: 'Expired'}}),
+      );
+      await handle.hydrated;
+
+      expect(storage.removeItem).not.toHaveBeenCalled();
+      expect(handle.isExpired).toBe(false);
     });
   });
 

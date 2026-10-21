@@ -1,6 +1,6 @@
 # Classy Store Tutorial
 
-`Classy Store` is a reactive state library for React, Vue, Svelte, Solid, and Angular built on ES proxies. You define state as plain classes, wrap them with `createClassyStore()`, and read them with the binding for your framework. There are no Providers, no observers, no reducers, and no extra TypeScript interfaces to define your state shape — just classes and a hook. The library is ~3.5 KB gzipped, batches synchronous mutations into a single re-render, and uses structural sharing for efficient change detection.
+`Classy Store` is a reactive state library for React, Vue, Svelte, Solid, and Angular built on ES proxies. You define state as plain classes, wrap them with `createClassyStore()`, and read them with the binding for your framework. There are no Providers, no observers, no reducers, and no extra TypeScript interfaces to define your state shape — just classes and a hook. The library is ~3.5 KB gzipped, batches ordinary subscriptions while notifying React synchronously, and uses structural sharing for efficient change detection.
 
 ## Quick Start
 
@@ -162,13 +162,9 @@ const remaining = useClassyStore(todoStore, (state) => state.remaining);
 - **Use auto-tracked mode** when you'd need 3+ selectors in one component or when you're exploring the API.
 - **Add `shallowEqual`** when your selector returns objects/arrays and you're seeing unnecessary re-renders.
 
-### Controlled inputs with `sync`
+### Controlled inputs
 
-Classy Store batches subscriber notifications by default. That is the right default for most UI because multiple synchronous mutations collapse into one settled update.
-
-Controlled React inputs are the important exception. React needs the latest external-store value during the input event turn so it can preserve the DOM value, caret position, and IME composition state. If the store waits until the next microtask to notify React, typing in the middle of a controlled input can move the caret or interrupt composition for languages such as Korean, Japanese, and Chinese.
-
-Use `{sync: true}` for the specific store reads that control form fields:
+React subscriptions always notify synchronously. React sees a field's updated value during the input event, so typing in the middle of a controlled input preserves its caret. Selector, auto-tracked, and bound hooks all use the same timing without configuration:
 
 ```tsx
 class ProfileFormStore {
@@ -182,9 +178,7 @@ class ProfileFormStore {
 const profileFormStore = createClassyStore(new ProfileFormStore());
 
 function NameInput() {
-  const name = useClassyStore(profileFormStore, (state) => state.name, {
-    sync: true,
-  });
+  const name = useClassyStore(profileFormStore, (state) => state.name);
 
   return (
     <input
@@ -195,11 +189,11 @@ function NameInput() {
 }
 ```
 
-Use `sync` narrowly for controlled `<input>`, `<textarea>`, checkbox, radio, and similar field bindings. Keep the default batched subscription for broad dashboards, persistence, devtools, history, and views that only need the final settled state.
+When upgrading, remove the React `sync` option and `UseClassyStoreOptions` imports. Keep `isEqual` options if you use custom selector equality. The low-level `subscribe()` API retains its existing batching and optional `sync` setting.
 
 ## Batching
 
-All synchronous mutations are batched into a single notification — and therefore a single React re-render. The library queues a microtask on the first mutation; every subsequent mutation before that microtask fires is included in the same batch.
+Ordinary `subscribe()` callbacks batch notifications in a microtask. React subscriptions instead notify after each mutation. React batches the resulting renders within an event handler, so a method that updates several fields can commit their final state together. This is not a transaction: selectors and getters may run between writes.
 
 ```ts
 class FormStore {
@@ -209,22 +203,22 @@ class FormStore {
   count = 0;
 
   submit(name: string, email: string) {
-    this.name = name;       // batched
-    this.email = email;     // batched
-    this.submitted = true;  // batched → one re-render total
+    this.name = name;       // immediately notifies React
+    this.email = email;     // immediately notifies React
+    this.submitted = true;  // React batches renders in an event handler
   }
 
   incrementMany(n: number) {
     for (let i = 0; i < n; i++) {
-      this.count++;         // all 100 writes batched → one re-render
+      this.count++;         // each write notifies React
     }
   }
 }
 ```
 
-This includes loops — `incrementMany(100)` produces one notification, not 100.
+For ordinary subscribers, `incrementMany(100)` produces one notification. React may check its selected value on every write; use efficient selectors and avoid depending on an exact render count outside an event handler.
 
-Mutations separated by an `await` land in different microtasks and trigger separate notifications. This is usually what you want — see [Async Patterns](#async-patterns) below.
+Mutations separated by `await` can commit separately, allowing loading and result states to appear — see [Async Patterns](#async-patterns) below.
 
 ## Snapshots
 
@@ -328,11 +322,11 @@ import {createClassyStore} from '@codebelt/classy-store';
 class BaseStore {
   loading = false;
   error: string | null = null;
-  
+
   get hasError() {
     return this.error !== null;
   }
-    
+
   setLoading(value: boolean) {
     this.loading = value;
   }
@@ -377,7 +371,7 @@ How it works:
 
 ## Async Patterns
 
-Async methods work naturally. Mutations before `await` and after `await` land in separate microtasks, producing separate notifications — which means React sees the loading state immediately.
+Async methods work naturally. React is notified as each field changes, and pending asynchronous work lets it commit the loading state before the result arrives.
 
 ```ts
 class PostStore {
@@ -386,22 +380,22 @@ class PostStore {
   error: string | null = null;
 
   async fetchPosts() {
-    this.loading = true;   // notification 1: shows spinner
+    this.loading = true;   // notify React that loading started
     this.error = null;
     try {
       const res = await fetch('/api/posts');
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      this.posts = await res.json(); // no notification yet — batched with finally
+      this.posts = await res.json(); // notify React that data arrived
     } catch (error) {
       this.error = error instanceof Error ? error.message : 'Unknown error';
     } finally {
-      this.loading = false; // notification 2: hides spinner, shows data or error
+      this.loading = false; // notify React that loading ended
     }
   }
 }
 ```
 
-This means a component using `useClassyStore(postStore, (state) => state.loading)` will re-render twice: once when loading starts, once when it ends. That's the correct behavior.
+A component selecting `loading` can show a spinner while the request is pending and remove it when the request finishes. React controls the exact render scheduling.
 
 ## Local Stores
 
@@ -428,7 +422,7 @@ function Counter() {
 }
 ```
 
-The factory function (`() => new CounterStore()`) runs once per mount. Subsequent re-renders reuse the same store instance.
+The factory initializes component state. Subsequent re-renders reuse the same store instance; keep the initializer pure because React StrictMode can invoke it more than once in development.
 
 ### Persisting a local store
 
@@ -567,44 +561,15 @@ counterStore.count;
 
 Native `Date`, `RegExp`, `Map`, and `Set` use internal slots that proxies can't intercept. For `Map` and `Set`, use `reactiveMap()` and `reactiveSet()`. For `Date`, store timestamps as numbers and construct `Date` objects in getters or at render time.
 
-### Set-then-revert is free (in selector mode)
+### Set-then-revert and loop updates
 
-If you write `store.count = 5` then immediately `store.count = 0` (back to the original value) in the same synchronous block, **selector mode** will not re-render because the selector extracts the same value before and after.
+React checks subscriptions after each write. Setting a field and reverting it in one event can still schedule rendering, even though the final displayed value is unchanged. Neither selector mode nor auto-tracked mode promises to avoid this work.
 
-**Auto-tracked mode** will still re-render in this case, because the store's version was bumped (any mutation bumps the version), so the snapshot is a new object reference. The `proxy-compare` diff sees a new snapshot and creates a new tracking proxy, triggering a re-render -- even though the values are identical.
+Likewise, a loop with a thousand writes sends a thousand synchronous React notifications. React can batch their renders within an event handler, but selectors may still run on each mutation. Ordinary `subscribe()` callbacks receive one microtask notification for that loop. For large updates, calculate the final value first when intermediate writes serve no purpose.
 
-```ts
-class Counter {
-  count = 0;
+### Auto-tracked references
 
-  reset() {
-    this.count = 5;  // changed
-    this.count = 0;  // back to original → no re-render
-  }
-}
-
-// ✅ Selector mode: no re-render (Object.is sees same count value)
-const count = useClassyStore(counterStore, (state) => state.count);
-
-// ⚠️ Auto-tracked mode: re-renders (snapshot reference changed)
-const snap = useClassyStore(counterStore);
-```
-
-### Loop batching
-
-Calling `this.count++` a thousand times in a `for` loop produces one notification, not a thousand. All synchronous mutations share a single microtask batch.
-
-```ts
-class Counter {
-  count = 0;
-
-  incrementMany(n: number) {
-    for (let i = 0; i < n; i++) {
-      this.count++;  // 1000 writes → one notification
-    }
-  }
-}
-```
+Each render gets its own read set. This keeps a suspended or abandoned render from changing the committed component's dependencies, and allows conditional reads to start from current store state. A shared proxy cache preserves unchanged tracked references across parent re-renders. Raw `snapshot(store)` caching and structural sharing are unchanged.
 
 ### Snapshot caching
 

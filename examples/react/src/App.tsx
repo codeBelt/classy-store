@@ -12,6 +12,7 @@ import {ReactivityPage} from './pages/ReactivityPage';
 import {ShallowEqualPage} from './pages/ShallowEqualPage';
 import {SnapshotsPage} from './pages/SnapshotsPage';
 import {SubscribeKeyPage} from './pages/SubscribeKeyPage';
+import {ScopedStoresPage} from './pages/scopedStores/ScopedStoresPage';
 import {UseLocalStorePage} from './pages/UseLocalStorePage';
 
 const routes: Record<string, React.ComponentType> = {
@@ -20,6 +21,7 @@ const routes: Record<string, React.ComponentType> = {
   '/collections': CollectionsPage,
   '/snapshots': SnapshotsPage,
   '/use-local-store': UseLocalStorePage,
+  '/scoped-stores': ScopedStoresPage,
   '/persist': PersistPage,
   '/history': HistoryPage,
   '/devtools': DevtoolsPage,

@@ -55,13 +55,13 @@ function NameCard() {
 }
 
 function BatchCard() {
-  // 1000 mutations → 1 render (microtask batching)
+  // 1000 mutations → 1 render in this event (React batching)
   const count = useClassyStore(batchStore, (state) => state.count);
   return <div>{count}</div>;
 }
 
 function NameInput() {
-  const name = useClassyStore(formStore, (state) => state.name, { sync: true });
+  const name = useClassyStore(formStore, (state) => state.name);
 
   return (
     <input
@@ -126,7 +126,7 @@ function BatchCard() {
 }
 
 function NameInputCard() {
-  const name = useClassyStore(formStore, (state) => state.name, {sync: true});
+  const name = useClassyStore(formStore, (state) => state.name);
   const renders = useRenderCount();
 
   return (
@@ -152,7 +152,7 @@ export function ReactiveFundamentalsDemo() {
   return (
     <DemoContainer
       title="Reactive Fundamentals"
-      description="Render isolation via selectors + controlled inputs + microtask batching + mutable deep updates — all in one store."
+      description="Render isolation via selectors + controlled inputs + React render batching + mutable deep updates — all in one store."
       codeTabs={[
         {label: 'Store', code: STORE_CODE, language: 'typescript'},
         {label: 'Component', code: COMPONENT_CODE},

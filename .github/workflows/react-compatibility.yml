@@ -1,0 +1,25 @@
+name: React compatibility
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  react-compatibility:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        react: ['18.0.0', '18.3.1', '19.3.1']
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.4.3'
+      - run: bun install --frozen-lockfile
+      - run: bun run build
+      - run: node packages/classy-store/tests/compatibility/runCompatibility.mjs "${{ matrix.react }}"
+      - run: node packages/classy-store/tests/compiler/runCompiler.mjs "${{ matrix.react }}"

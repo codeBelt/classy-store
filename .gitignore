@@ -41,3 +41,7 @@ website/build
 website/.docusaurus
 website/.cache-loader
 website/static/demos
+
+# Browser test artifacts
+playwright-report
+test-results

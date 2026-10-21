@@ -4,7 +4,7 @@ Internal design documentation for the `persist()` utility in `@codebelt/classy-s
 
 ## Design Principles
 
-1. **Standalone utility, not middleware.** `persist` is a plain function that consumes two existing public APIs (`subscribe` and `snapshot`) and nothing else. No changes to `core.ts`, `snapshot.ts`, or `useClassyStore` were needed.
+1. **Standalone utility, not middleware.** `persist` consumes the existing `subscribe`, `snapshot`, and `getVersion` APIs. No changes to core reactivity or React hooks are needed.
 
 2. **Tree-shakeable.** `persist` lives in a separate entry point (`@codebelt/classy-store/utils`). Applications that don't use persistence pay zero cost -- the code is never bundled.
 
@@ -65,7 +65,10 @@ Each `persist()` call creates a closure with the following internal state:
 | Variable | Type | Purpose |
 |---|---|---|
 | `disposed` | `boolean` | Guards against writes after `unsubscribe()` |
-| `debounceTimer` | `ReturnType<typeof setTimeout> \| null` | Active debounce timer (cancelled on save/unsubscribe) |
+| `debounceTimer` | `ReturnType<typeof setTimeout> \| null` | Active debounce timer (cancelled on save/clear/unsubscribe or accepted hydration) |
+| `storageQueue` | `Promise<void> \| undefined` | Orders this handle's writes/removals and lets reads wait for prior operations |
+| `hydrationRequest` | `number` | Rejects read results superseded by newer requests or storage events |
+| `clearedVersion` | `number \| undefined` | Suppresses a pre-clear mutation's pending batched auto-save |
 | `hydratedFlag` | `boolean` | Synchronous hydration status |
 | `expiredFlag` | `boolean` | Set to `true` when hydration encounters expired data |
 | `resolveHydrated` | `() => void` | Resolves the `hydrated` promise |
@@ -82,7 +85,7 @@ Triggered by `subscribe(proxy, callback)` firing after each batched mutation:
 
 ```
 1. subscribe callback fires
-2. if disposed → return (guard)
+2. if disposed, applying hydration, or this version was cleared → return
 3. if debounce > 0:
      cancel existing timer
      schedule new timer → goto step 4 after delay
@@ -96,8 +99,14 @@ Triggered by `subscribe(proxy, callback)` firing after each batched mutation:
 6. wrap in envelope: { version, state }
 7. if expireIn is set → stamp expiresAt = Date.now() + expireIn
 8. JSON.stringify(envelope)
-9. await storage.setItem(name, json)
+9. enqueue storage.setItem(name, json) behind prior writes/removals
 ```
+
+The serialized value is captured when requested. The first queued operation
+starts immediately, so synchronous adapters keep their normal timing. Each
+operation catches adapter errors and reports them through `onError`; a rejected
+write does not prevent the next operation from starting. Cleanup skips operations
+that have not started. This queue belongs to one handle, not the storage key globally.
 
 ### Property Resolution
 
@@ -136,6 +145,13 @@ Triggered in three scenarios:
 
 All three call the same `applyPersistedState(raw)` function:
 
+Async reads first wait for prior writes/removals. They capture a request number
+and the store version, and only apply their result if both are still current and
+the handle remains active. A newer read/save/clear/storage event changes the
+request number; a local edit changes the store version. Obsolete results and
+read errors are ignored. Applying hydration suppresses echo writes until the
+batched subscription notification has run, with cleanup in `finally`.
+
 ```
 1. JSON.parse(raw) → envelope
 2. Validate envelope shape (object with .state)
@@ -171,7 +187,7 @@ Both `'shallow'` and `'replace'` produce the same result for flat stores. The di
 
 - **Corrupted JSON** in storage (`JSON.parse` throws): caught silently, hydration completes with no state changes.
 - **Invalid envelope** (missing `.state` or not an object): detected by shape check, skipped silently.
-- **Async errors** during `storage.getItem()`: caught, hydrated promise rejects, `hydratedFlag` still set to `true`.
+- **Adapter read errors** during `storage.getItem()`: reported through `onError` when the request is current; hydration completes. Exceptions from custom migration/merge/transform callbacks can reject hydration.
 
 ## Cross-Tab Sync
 
@@ -189,20 +205,17 @@ sequenceDiagram
   Event->>TabB: onStorageEvent fires
   TabB->>TabB: if key !== name → ignore
   TabB->>TabB: if newValue is null → ignore (cleared)
+  TabB->>TabB: if storageArea now contains another value → ignore (obsolete)
   TabB->>TabB: applyPersistedState(newValue)
   Note over TabB: proxy[key] = value → SET trap → reactivity
 ```
 
 Key properties of `window.storage`:
-- Fires in **other** same-origin tabs only (not the tab that wrote). This prevents infinite loops.
+- For `localStorage`, fires in **other** same-origin tabs (not the tab that wrote). The hydration guard prevents echo writes and loops.
 - Only works with `localStorage` -- not `sessionStorage`, not async adapters.
 - The event payload includes `key`, `oldValue`, `newValue`, and `storageArea`.
 
-### Auto-detection
-
-If `syncTabs` is not explicitly set:
-- `true` when the storage adapter is literally `globalThis.localStorage` (checked via identity comparison).
-- `false` for everything else (`sessionStorage`, `AsyncStorage`, custom adapters).
+`syncTabs` defaults to `false`; enable it explicitly for localStorage-backed state.
 
 ## Cleanup
 
@@ -218,19 +231,20 @@ If `syncTabs` is not explicitly set:
 After `unsubscribe()`:
 - Store mutations no longer trigger writes to storage.
 - Cross-tab changes to the storage key are ignored.
-- `save()` becomes a no-op.
-- `clear()` and `rehydrate()` still work (they operate on storage directly, not on subscriptions).
+- `save()`, `clear()`, and `rehydrate()` become no-ops.
+- Queued writes/removals that have not started are skipped. Already-issued adapter I/O can still finish.
+- Pending read results/errors are ignored, and their promises settle when the reads finish.
 
 ## PersistHandle API
 
 | Method/Property | Behavior |
 |---|---|
 | `unsubscribe()` | Full cleanup: unsubscribe + cancel debounce + remove storage listener. Idempotent. |
-| `hydrated` | Promise that resolves when initial hydration completes. Rejects on async storage errors. |
+| `hydrated` | Promise that resolves when initial hydration completes or is superseded. Custom hydration callback exceptions can reject it. |
 | `isHydrated` | Getter returning `boolean`. Becomes `true` after hydration resolves or rejects. |
 | `isExpired` | Getter returning `boolean`. `true` when the last hydration found expired data (requires `expireIn`). Re-evaluated on every `rehydrate()` call. |
-| `save()` | Cancel pending debounce, write current state immediately. No-op if disposed. |
-| `clear()` | Call `storage.removeItem(name)`. Works even after unsubscribe. |
+| `save()` | Cancel pending debounce, capture current state, and enqueue its write. No-op if disposed. |
+| `clear()` | Cancel pending auto-saves and enqueue `storage.removeItem(name)` after earlier writes. No-op if disposed. |
 | `rehydrate()` | Re-read from storage, apply to store. Also resolves `hydrated` if not yet resolved (for `skipHydration` flows). |
 
 ## Dependency Graph

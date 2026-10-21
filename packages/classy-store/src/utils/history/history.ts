@@ -1,6 +1,7 @@
 import {subscribe} from '../../core/core';
 import {snapshot} from '../../snapshot/snapshot';
 import type {Snapshot} from '../../types';
+import {cloneSnapshotValue} from '../cloneSnapshot/cloneSnapshot';
 import {findGetterDescriptor} from '../internal/internal';
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -57,6 +58,7 @@ export function withHistory<T extends object>(
    */
   function applySnapshot(snap: Snapshot<T>): void {
     const snapRecord = snap as Record<string, unknown>;
+    const clones = new WeakMap<object, object>();
 
     for (const key of Object.keys(snapRecord)) {
       // Skip getters
@@ -65,7 +67,10 @@ export function withHistory<T extends object>(
       if (typeof (proxyStore as Record<string, unknown>)[key] === 'function') {
         continue;
       }
-      (proxyStore as Record<string, unknown>)[key] = snapRecord[key];
+      (proxyStore as Record<string, unknown>)[key] = cloneSnapshotValue(
+        snapRecord[key],
+        clones,
+      );
     }
   }
 

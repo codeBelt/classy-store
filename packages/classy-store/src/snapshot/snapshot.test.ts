@@ -1,11 +1,89 @@
 import {describe, expect, it} from 'bun:test';
+import {createProxy, isChanged} from 'proxy-compare';
 import {createClassyStore} from '../core/core';
+import {PROXYABLE} from '../utils/internal/internal';
 import {snapshot} from './snapshot';
 
 /** Helper: flush the queueMicrotask-based batching. */
 const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 
 describe('snapshot()', () => {
+  describe('property read tracking', () => {
+    it('tracks class-root properties without subscribing to unrelated fields', () => {
+      class Store {
+        count = 0;
+        other = 0;
+      }
+      const store = createClassyStore(new Store());
+      const previous = snapshot(store);
+      const affected = new WeakMap<object, unknown>();
+      const tracked = createProxy(previous, affected);
+      expect(tracked.count).toBe(0);
+
+      store.other++;
+      expect(isChanged(previous, snapshot(store), affected)).toBe(false);
+      store.count++;
+      expect(isChanged(previous, snapshot(store), affected)).toBe(true);
+    });
+
+    it.each([
+      {description: 'previously accessed', accessBeforeSnapshot: true},
+      {description: 'previously unaccessed', accessBeforeSnapshot: false},
+    ])('tracks $description nested opted-in classes', ({
+      accessBeforeSnapshot,
+    }) => {
+      class Child {
+        static [PROXYABLE] = true;
+        count = 0;
+        other = 0;
+      }
+      const store = createClassyStore({child: new Child()});
+      if (accessBeforeSnapshot) expect(store.child.count).toBe(0);
+      const previous = snapshot(store);
+      const affected = new WeakMap<object, unknown>();
+      const tracked = createProxy(previous, affected);
+      expect(tracked.child.count).toBe(0);
+
+      store.child.other++;
+      expect(isChanged(previous, snapshot(store), affected)).toBe(false);
+      store.child.count++;
+      expect(isChanged(previous, snapshot(store), affected)).toBe(true);
+    });
+
+    it('tracks null-prototype store properties', () => {
+      const store = createClassyStore(
+        Object.assign(Object.create(null), {count: 0, other: 0}) as {
+          count: number;
+          other: number;
+        },
+      );
+      const previous = snapshot(store);
+      const affected = new WeakMap<object, unknown>();
+      expect(createProxy(previous, affected).count).toBe(0);
+      store.other++;
+      expect(isChanged(previous, snapshot(store), affected)).toBe(false);
+      store.count++;
+      expect(isChanged(previous, snapshot(store), affected)).toBe(true);
+    });
+
+    it('leaves frozen opaque values unwrapped and usable', () => {
+      class OpaqueValue {
+        value = 3;
+      }
+      const date = Object.freeze(new Date('2026-01-01'));
+      const map = Object.freeze(new Map([['count', 2]]));
+      const opaque = Object.freeze(new OpaqueValue());
+      const store = createClassyStore({date, map, opaque});
+      const tracked = createProxy(snapshot(store), new WeakMap());
+
+      expect(tracked.date).toBe(date);
+      expect(tracked.date.getTime()).toBe(date.getTime());
+      expect(tracked.map).toBe(map);
+      expect(tracked.map.get('count')).toBe(2);
+      expect(tracked.opaque).toBe(opaque);
+    });
+  });
+
   // ── Freezing ──────────────────────────────────────────────────────────────
 
   describe('freezing', () => {

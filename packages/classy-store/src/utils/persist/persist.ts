@@ -1,5 +1,6 @@
-import {subscribe} from '../../core/core';
+import {getVersion, subscribe} from '../../core/core';
 import {snapshot} from '../../snapshot/snapshot';
+import {cloneSnapshotValue} from '../cloneSnapshot/cloneSnapshot';
 import {findGetterDescriptor} from '../internal/internal';
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -151,7 +152,11 @@ export type PersistOperation = 'write' | 'read' | 'remove' | 'parse';
  * Handle returned by `persist()`. Provides control over the persist lifecycle.
  */
 export type PersistHandle = {
-  /** Stop persisting and clean up (unsubscribe + cancel pending debounce + remove storage event listener). */
+  /**
+   * Stop persisting, cancel pending debounce, and remove the storage listener.
+   * Pending read results/errors and unstarted queued writes are ignored.
+   * Their promises still settle; already-issued adapter I/O is not cancelled.
+   */
   unsubscribe: () => void;
 
   /** Promise that resolves when initial hydration from storage is complete. */
@@ -160,13 +165,13 @@ export type PersistHandle = {
   /** Whether hydration from storage has completed. */
   isHydrated: boolean;
 
-  /** Manually trigger a write to storage (bypasses debounce). */
+  /** Save current state, bypassing debounce and waiting behind earlier writes. */
   save: () => Promise<void>;
 
-  /** Clear this store's persisted data from storage. */
+  /** Cancel pending auto-saves and remove persisted data after earlier writes. */
   clear: () => Promise<void>;
 
-  /** Manually re-hydrate the store from storage. */
+  /** Re-read after prior writes; ignore the result if a newer read/edit supersedes it. */
   rehydrate: () => Promise<void>;
 
   /** True if the last hydration found expired data (requires `expireIn`). */
@@ -280,6 +285,9 @@ export function persist<T extends object>(
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
   let hydratedFlag = false;
   let expiredFlag = false;
+  let hydrationRequest = 0;
+  let storageQueue: Promise<void> | undefined;
+  let clearedVersion: number | undefined;
 
   // Hydration promise + resolver.
   let resolveHydrated!: () => void;
@@ -298,6 +306,28 @@ export function persist<T extends object>(
     }
   }
   const propKeys = resolvedProps.map((p) => p.key);
+
+  /** Keep this handle's writes/removals in order, even with an async adapter. */
+  function enqueueStorageMutation(
+    operation: () => void | Promise<void>,
+    kind: 'write' | 'remove',
+  ): Promise<void> {
+    const execute = async () => {
+      if (disposed) return;
+      try {
+        await operation();
+      } catch (error) {
+        reportError(error, kind);
+      }
+    };
+    // Start the first operation immediately for synchronous storage adapters.
+    const pending = storageQueue ? storageQueue.then(execute) : execute();
+    const completion = pending.finally(() => {
+      if (storageQueue === completion) storageQueue = undefined;
+    });
+    storageQueue = completion;
+    return completion;
+  }
 
   // ── Save logic ─────────────────────────────────────────────────────────
 
@@ -325,9 +355,11 @@ export function persist<T extends object>(
   /** Write the current state to storage. */
   async function writeToStorage(): Promise<void> {
     if (disposed) return;
+    hydrationRequest++;
     try {
+      // Capture now; a queued save must represent the state requested by its caller.
       const json = serializeState();
-      await storage.setItem(name, json);
+      await enqueueStorageMutation(() => storage.setItem(name, json), 'write');
     } catch (error) {
       reportError(error, 'write');
     }
@@ -336,6 +368,8 @@ export function persist<T extends object>(
   /** Schedule a debounced write (or write immediately if debounce is 0). */
   function scheduleWrite(): void {
     if (disposed || hydrating) return;
+    // clear() can run before a mutation's batched notification is delivered.
+    if (getVersion(proxyStore) === clearedVersion) return;
 
     if (debounceMs <= 0) {
       void writeToStorage();
@@ -382,9 +416,7 @@ export function persist<T extends object>(
     ) {
       expiredFlag = true;
       if (clearOnExpire) {
-        void Promise.resolve(storage.removeItem(name)).catch((error) => {
-          reportError(error, 'remove');
-        });
+        void enqueueStorageMutation(() => storage.removeItem(name), 'remove');
       }
       return;
     }
@@ -421,23 +453,41 @@ export function persist<T extends object>(
       merged = {...currentState, ...state};
     }
 
+    // Merged defaults may still reference frozen snapshot branches. Restore
+    // mutable copies without changing snapshots retained by callers or merges.
+    const clones = new WeakMap<object, object>();
     // Apply to store proxy (goes through SET traps → reactivity).
     for (const key of propKeys) {
       if (key in merged) {
-        (proxyStore as Record<string, unknown>)[key] = merged[key];
+        (proxyStore as Record<string, unknown>)[key] = cloneSnapshotValue(
+          merged[key],
+          clones,
+        );
       }
     }
   }
 
   /** Read from storage and apply to the store. */
   async function hydrateFromStorage(): Promise<void> {
+    const request = ++hydrationRequest;
+    const storeVersion = getVersion(proxyStore);
+    const isCurrent = () =>
+      !disposed &&
+      request === hydrationRequest &&
+      storeVersion === getVersion(proxyStore);
     let raw: string | null;
     try {
+      // A read requested after save()/clear() observes those operations' results.
+      if (storageQueue) await storageQueue;
+      if (!isCurrent()) return;
       raw = await storage.getItem(name);
     } catch (error) {
-      reportError(error, 'read');
+      if (isCurrent()) reportError(error, 'read');
       return;
     }
+    // Cleanup, a newer request, or a local edit can supersede an in-flight read.
+    // Obsolete data must not replace current state or clear newer stored data.
+    if (!isCurrent()) return;
     if (raw !== null) {
       // A debounced local write may be pending from a mutation issued before
       // we got around to hydrating; the freshly-loaded state would be
@@ -447,11 +497,13 @@ export function persist<T extends object>(
         debounceTimer = null;
       }
       hydrating = true;
-      applyPersistedState(raw);
-      // Reset after microtask so the batched subscription callback
-      // (which fires via queueMicrotask) still sees the flag as true.
-      await new Promise<void>((r) => queueMicrotask(r));
-      hydrating = false;
+      try {
+        applyPersistedState(raw);
+      } finally {
+        // Keep the batched notification from writing restored state back.
+        await new Promise<void>((resolve) => queueMicrotask(resolve));
+        hydrating = false;
+      }
     }
   }
 
@@ -462,6 +514,11 @@ export function persist<T extends object>(
     if (disposed) return;
     if (event.key !== name) return;
     if (event.newValue === null) return; // cleared
+    // Delivery is asynchronous: another tab or a local save may have already
+    // replaced this event's value. Do not roll the UI back to an obsolete value.
+    if (event.storageArea && event.storageArea.getItem(name) !== event.newValue)
+      return;
+    hydrationRequest++;
     // A pending local debounced write would otherwise overwrite the remote
     // state once its timer fires.
     if (debounceTimer !== null) {
@@ -546,11 +603,13 @@ export function persist<T extends object>(
 
     async clear() {
       if (disposed) return;
-      try {
-        await storage.removeItem(name);
-      } catch (error) {
-        reportError(error, 'remove');
+      hydrationRequest++;
+      clearedVersion = getVersion(proxyStore);
+      if (debounceTimer !== null) {
+        clearTimeout(debounceTimer);
+        debounceTimer = null;
       }
+      await enqueueStorageMutation(() => storage.removeItem(name), 'remove');
     },
 
     async rehydrate() {

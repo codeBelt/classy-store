@@ -1,6 +1,6 @@
 import {afterEach, describe, expect, it, mock} from 'bun:test';
 import {act, type ReactNode} from 'react';
-import {createRoot} from 'react-dom/client';
+import {createRoot, type Root} from 'react-dom/client';
 import {createClassyStore} from '../../core/core';
 import {createStoreHook, useClassyStore, useLocalStore} from './react';
 
@@ -10,6 +10,7 @@ import {createStoreHook, useClassyStore, useLocalStore} from './react';
 const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 
 let container: HTMLDivElement;
+const mountedRoots = new Set<Root>();
 
 function setup(): void {
   container = document.createElement('div');
@@ -17,12 +18,15 @@ function setup(): void {
 }
 
 function teardown(): void {
-  document.body.removeChild(container);
+  for (const root of mountedRoots) act(() => root.unmount());
+  mountedRoots.clear();
+  container.remove();
 }
 
 /** Render a component and return a helper to update. */
 function render(element: ReactNode): void {
   const root = createRoot(container);
+  mountedRoots.add(root);
   act(() => {
     root.render(element);
   });
@@ -79,7 +83,7 @@ describe('useClassyStore — selector mode', () => {
     expect(renderCount).toHaveBeenCalledTimes(2);
   });
 
-  it('supports sync selector subscriptions', () => {
+  it('uses synchronous selector subscriptions by default', () => {
     class Counter {
       count = 0;
       increment() {
@@ -90,9 +94,7 @@ describe('useClassyStore — selector mode', () => {
     const renderCount = mock(() => {});
 
     function Display() {
-      const count = useClassyStore(store, (state) => state.count, {
-        sync: true,
-      });
+      const count = useClassyStore(store, (state) => state.count);
       renderCount();
       return <div>{count}</div>;
     }
@@ -291,12 +293,12 @@ describe('useClassyStore — auto-tracked mode', () => {
     expect(renderCount).toHaveBeenCalledTimes(2);
   });
 
-  it('supports sync auto-tracked subscriptions', () => {
+  it('uses synchronous auto-tracked subscriptions by default', () => {
     const store = createClassyStore({count: 0, name: 'hello'});
     const renderCount = mock(() => {});
 
     function Display() {
-      const snap = useClassyStore(store, {sync: true});
+      const snap = useClassyStore(store);
       renderCount();
       return <div>{snap.count}</div>;
     }
@@ -565,15 +567,13 @@ describe('useLocalStore', () => {
     expect(container.textContent).toBe('world');
     expect(renderCount).toHaveBeenCalledTimes(2);
 
-    // Change count — NOT accessed by component, but auto-tracked mode
-    // re-renders because the snapshot reference changes on any mutation.
-    // (Documented behavior — see "Set-then-revert" in TUTORIAL.md.)
+    // Change count — not read during render, so no update is needed.
     await act(async () => {
       storeRef.count = 99;
       await flush();
     });
 
-    expect(renderCount).toHaveBeenCalledTimes(3);
+    expect(renderCount).toHaveBeenCalledTimes(2);
   });
 });
 
@@ -665,6 +665,111 @@ describe('useClassyStore — multiple stores', () => {
 describe('useClassyStore — selector edge cases', () => {
   afterEach(teardown);
 
+  it.each([
+    {description: 'direct hook', bound: false},
+    {description: 'bound hook', bound: true},
+  ])('updates prop-dependent selectors without a store mutation ($description)', async ({
+    bound,
+  }) => {
+    const store = createClassyStore({names: ['Alice', 'Bob']});
+    const useStore = createStoreHook(store);
+
+    function DirectDisplay({index}: {index: number}) {
+      const name = useClassyStore(store, (state) => state.names[index]);
+      return <div>{name}</div>;
+    }
+
+    function BoundDisplay({index}: {index: number}) {
+      const name = useStore((state) => state.names[index]);
+      return <div>{name}</div>;
+    }
+
+    const Display = bound ? BoundDisplay : DirectDisplay;
+    setup();
+    const root = createRoot(container);
+
+    try {
+      act(() => root.render(<Display index={0} />));
+      expect(container.textContent).toBe('Alice');
+
+      act(() => root.render(<Display index={1} />));
+      expect(container.textContent).toBe('Bob');
+
+      await act(async () => {
+        store.names[1] = 'Bobby';
+        await flush();
+      });
+      expect(container.textContent).toBe('Bobby');
+
+      act(() => root.render(<Display index={0} />));
+      expect(container.textContent).toBe('Alice');
+    } finally {
+      act(() => root.unmount());
+    }
+  });
+
+  it('reevaluates the selection when the equality function changes', async () => {
+    const store = createClassyStore({count: 0});
+    const selector = (state: {readonly count: number}) => state.count;
+    const ignoreChanges = () => true;
+
+    function Display({ignore}: {ignore: boolean}) {
+      const count = useClassyStore(store, selector, {
+        isEqual: ignore ? ignoreChanges : Object.is,
+      });
+      return <div>{count}</div>;
+    }
+
+    setup();
+    const root = createRoot(container);
+
+    try {
+      act(() => root.render(<Display ignore={true} />));
+      await act(async () => {
+        store.count = 1;
+        await flush();
+      });
+      expect(container.textContent).toBe('0');
+
+      act(() => root.render(<Display ignore={false} />));
+      expect(container.textContent).toBe('1');
+    } finally {
+      act(() => root.unmount());
+    }
+  });
+
+  it('preserves equal selection references when the selector changes', () => {
+    const store = createClassyStore({names: ['Alice', 'Alice', 'Bob']});
+    const selections: {name: string}[] = [];
+
+    function Display({index}: {index: number}) {
+      const selected = useClassyStore(
+        store,
+        (state) => ({name: state.names[index]}),
+        {isEqual: (previous, next) => previous.name === next.name},
+      );
+      selections.push(selected);
+      return <div>{selected.name}</div>;
+    }
+
+    setup();
+    const root = createRoot(container);
+
+    try {
+      act(() => root.render(<Display index={0} />));
+      const initialSelection = selections.at(-1);
+
+      act(() => root.render(<Display index={1} />));
+      expect(selections.at(-1)).toBe(initialSelection);
+
+      act(() => root.render(<Display index={2} />));
+      expect(container.textContent).toBe('Bob');
+      expect(selections.at(-1)).not.toBe(initialSelection);
+    } finally {
+      act(() => root.unmount());
+    }
+  });
+
   it('handles selector returning undefined', () => {
     const s = createClassyStore({data: null as string | null});
 
@@ -741,7 +846,7 @@ describe('useClassyStore — selector edge cases', () => {
   it('selector returning undefined twice in a row does not over-invoke selector', async () => {
     // Pre-fix, the fast path used `resultRef.current !== undefined` which
     // skipped memoization whenever the selector legitimately returned
-    // `undefined`. With `hasResultRef` the fast path engages.
+    // `undefined`. A cached selection must distinguish it from a cache miss.
     const s = createClassyStore({maybe: undefined as string | undefined});
     const renderCount = mock(() => {});
     const selector = mock((state: {maybe: string | undefined}) => state.maybe);
@@ -849,7 +954,7 @@ describe('createStoreHook', () => {
     expect(container.textContent).toBe('1');
   });
 
-  it('supports sync selector options', () => {
+  it('uses synchronous selector subscriptions by default', () => {
     class Counter {
       count = 0;
       increment() {
@@ -860,7 +965,7 @@ describe('createStoreHook', () => {
     const useCounter = createStoreHook(store);
 
     function Display() {
-      const count = useCounter((state) => state.count, {sync: true});
+      const count = useCounter((state) => state.count);
       return <div>{count}</div>;
     }
 
@@ -900,12 +1005,12 @@ describe('createStoreHook', () => {
     expect(renderCount).toHaveBeenCalledTimes(2);
   });
 
-  it('supports sync auto-tracked options', () => {
+  it('uses synchronous auto-tracked subscriptions by default', () => {
     const store = createClassyStore({count: 0, name: 'hello'});
     const useStore = createStoreHook(store);
 
     function Display() {
-      const snap = useStore({sync: true});
+      const snap = useStore();
       return <div>{snap.count}</div>;
     }
 

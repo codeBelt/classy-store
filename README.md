@@ -12,6 +12,12 @@
 
 Visit the **[Documentation Website](https://codebelt.github.io/classy-store/)** for tutorials, API reference, and examples.
 
+## Upgrading to 0.7.0
+
+React subscriptions now notify synchronously. Remove the React hooks' `sync` option and any `UseClassyStoreOptions` imports. Auto-tracked hooks now require native `WeakRef` support (ES2021). Selector equality options remain available, and ordinary core subscriptions still batch by default.
+
+See the [0.7.0 upgrade guide and release notes](https://codebelt.github.io/classy-store/docs/UPGRADING_0_7) for before/after examples, SSR and Next.js setup, and persistence changes.
+
 ## 🚀 Features
 
 - **Class-Based**: Define state and logic using standard ES6 classes.
@@ -55,10 +61,10 @@ function AddButton() {
 }
 ```
 
-For React controlled inputs, opt the field subscription into synchronous timing so React can preserve caret position and IME composition:
+React subscriptions notify synchronously, so controlled inputs preserve caret position without extra options:
 
 ```tsx
-const name = useClassyStore(formStore, (state) => state.name, {sync: true});
+const name = useClassyStore(formStore, (state) => state.name);
 
 return (
   <input
@@ -67,6 +73,18 @@ return (
   />
 );
 ```
+
+Ordinary `subscribe(store, listener)` callbacks still batch in a microtask. React batches renders within event handlers, while selectors can run after each mutation.
+
+For server-rendered React apps, call `prepareStoreForHydration(store)` from `@codebelt/classy-store/react` on matching server/client stores before persistence starts. Delayed Suspense boundaries then hydrate from the original data and catch up to live state. See the [SSR guide](https://codebelt.github.io/classy-store/docs/REACT_SSR).
+
+For Next.js App Router, construct stores inside Client Providers from serializable initial data. Use `@codebelt/classy-store/react/server` when preparing a store in server-only code. See the [App Router guide](https://codebelt.github.io/classy-store/docs/REACT_NEXT) for package boundaries, streaming, and navigation.
+
+Selector and auto-tracked hooks are tested in React Compiler consumers on React 18 and 19. Auto-tracking preserves reads used by memoized calculations and children; no compiler opt-out is required. See [compiler compatibility](https://codebelt.github.io/classy-store/docs/#react-compiler-compatibility) for scope and render-filtering behavior.
+
+Auto-tracked React subscriptions require native `WeakRef` support (ES2021) so tracking dependencies do not keep obsolete snapshots alive.
+
+For independent forms, nested editors, and request-scoped state, see the [typed context example](https://codebelt.github.io/classy-store/docs/REACT_SCOPING). Providers own their store instances and effects; React keys control intentional resets.
 
 ## 📦 Installation
 
@@ -112,3 +130,9 @@ This library wouldn't exist without the ideas pioneered by these projects. Each 
 ## 🤝 Contributing
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md) for details on how to contribute and the release workflow.
+
+Run `bun run benchmark:react` to compare large forms and lists with selectors, auto-tracking, and React Compiler. See the [benchmark methodology](./packages/classy-store/tests/performance/README.md) for measurements and reproduction settings.
+
+Run `bun run test:react:memory` to capture and compare Chromium heap snapshots across repeated mounts, resets, and collection changes. See the [memory regression methodology](./packages/classy-store/tests/memory/README.md) and [before/after results](./packages/classy-store/tests/memory/RESULTS.md).
+
+Run `bun run test:react:next` for packed-package production Next.js builds and browser regressions with Compiler off/on. See the [integration methodology](./packages/classy-store/tests/next/README.md).
