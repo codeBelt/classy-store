@@ -17,8 +17,9 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun run lint
       - run: bun run test
-      - run: bun run typecheck
+      # Packed-consumer typechecks resolve the package's generated declarations.
       - run: bun run build
+      - run: bun run typecheck
       - run: bunx playwright install --with-deps chromium firefox webkit
         working-directory: packages/classy-store
       - run: bun run test:browser

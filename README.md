@@ -12,6 +12,12 @@
 
 Visit the **[Documentation Website](https://codebelt.github.io/classy-store/)** for tutorials, API reference, and examples.
 
+## Upgrading to 0.7.0
+
+React subscriptions now notify synchronously. Remove the React hooks' `sync` option and any `UseClassyStoreOptions` imports. Auto-tracked hooks now require native `WeakRef` support (ES2021). Selector equality options remain available, and ordinary core subscriptions still batch by default.
+
+See the [0.7.0 upgrade guide and release notes](https://codebelt.github.io/classy-store/docs/UPGRADING_0_7) for before/after examples, SSR and Next.js setup, and persistence changes.
+
 ## 🚀 Features
 
 - **Class-Based**: Define state and logic using standard ES6 classes.

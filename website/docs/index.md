@@ -25,6 +25,8 @@ Class-based reactive state management for React, Vue, Svelte, Solid, and Angular
 
 ## Installation
 
+Upgrading from 0.6.x? Read the [0.7.0 upgrade guide and release notes](./UPGRADING_0_7.md) for the React API changes and runtime requirements.
+
 ```bash
 bun add @codebelt/classy-store
 ```

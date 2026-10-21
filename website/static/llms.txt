@@ -6,6 +6,7 @@
 
 ## Getting Started
 
+- [Upgrading to 0.7.0](https://codebelt.github.io/classy-store/docs/UPGRADING_0_7): Removed React timing options, native WeakRef requirement, SSR and Next.js setup, persistence changes, and release notes
 - [Introduction & API Reference](https://codebelt.github.io/classy-store/docs/): Full API
   covering `createClassyStore`, `useClassyStore`, `createStoreHook`, `snapshot`, `subscribe`,
   `shallowEqual`, synchronous React subscriptions, React Compiler compatibility, `reactiveMap`, `reactiveSet`
