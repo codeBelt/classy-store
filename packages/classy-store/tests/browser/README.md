@@ -13,6 +13,15 @@ CI also installs the Linux system dependencies with `playwright install --with-d
 
 Every test fails on browser console errors or uncaught page errors. Native clipboard replacement and subsequent caret behavior are tested in Chromium; Firefox and WebKit explicitly skip those cases because they do not expose the same clipboard permissions API.
 
+The `/persistence` fixture opens two pages in one browser context and uses real
+`localStorage` events. It verifies bidirectional input updates for selectors and
+auto-tracking, no echo writes, reload restoration, unsubscribe, remote updates
+cancelling pending debounces, and a newer local save winning over an older queued
+storage event. The conflict case uses a capture listener to make the ordering
+deterministic; the event itself is browser-generated and must be trusted. Errors
+are collected from both tabs. These cases run in the existing three-browser CI
+matrix.
+
 The four hook forms (selector, auto-tracked, bound selector, and bound auto-tracked) cover middle insertion, selection replacement, deletion, multiline and Unicode input, checkbox changes, composition event sequences, and multi-property/array updates. The latter asserts one React commit in the event handler and one ordinary subscription callback after the microtask flush.
 
 Composition tests combine synthetic boundaries with browser text insertion. They do not automate a native operating-system IME candidate picker; that still needs a manual smoke test. Firefox emits additional composition boundaries during text insertion, so the suite checks balanced boundaries and the final value/caret rather than a browser-specific event count.

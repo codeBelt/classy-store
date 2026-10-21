@@ -1723,11 +1723,15 @@ persist(todoStore, {
 ```ts
 persist(authStore, {
   name: 'auth',
-  // syncTabs: true -- default for localStorage
+  storage: localStorage,
+  syncTabs: true,
 });
 ```
 
-State syncs automatically across browser tabs when using `localStorage`. Disable with `syncTabs: false`.
+Opt in with `syncTabs: true` for localStorage-backed state. It defaults to false.
+Accepted remote updates cancel pending debounced writes without echoing the
+restored state back. An event whose value has already been replaced in its
+storage area is ignored, so delayed events cannot roll back a newer local save.
 
 ## Expiration / TTL
 
@@ -1782,9 +1786,6 @@ await handle.hydrated;
 ## Cleanup
 
 ```ts
-// Stop persisting
-handle.unsubscribe();
-
 // Clear stored data
 await handle.clear();
 
@@ -1793,7 +1794,25 @@ handle.save();
 
 // Re-read from storage
 await handle.rehydrate();
+
+// Stop persisting; later handle operations become no-ops
+handle.unsubscribe();
 ```
+
+## Overlapping async operations
+
+Each handle orders its writes/removals. `save()` captures current state when
+requested and waits behind earlier writes; a failed write reports through
+`onError` without blocking the queue. `rehydrate()` waits for prior requested
+writes/removals, then ignores results superseded by a newer read, save, clear,
+accepted storage event, or local edit. Typing during initial async hydration
+keeps newer local state. Ignored reads still settle their promises.
+
+`clear()` cancels pending auto-saves and removes stored data after earlier issued
+writes finish; later edits can persist again. Cleanup skips queued operations
+that have not started, but cannot cancel already-issued adapter I/O. Ordering
+is per handle; separate handles sharing an async key need application/adapter
+coordination. Async saves are not guaranteed to finish during page unload.
 
 ## Quick Reference
 
@@ -1806,7 +1825,7 @@ await handle.rehydrate();
 | Debounce writes | `debounce: 500` |
 | Migrate schema changes | `version: 2, migrate: (state, old) => { ... }` |
 | SSR support | `skipHydration: true` + `handle.rehydrate()` in `useEffect` |
-| Cross-tab sync | Enabled by default with `localStorage` |
+| Cross-tab sync | `storage: localStorage, syncTabs: true` |
 | Disable cross-tab sync | `syncTabs: false` |
 | Use sessionStorage | `storage: sessionStorage` |
 | Use AsyncStorage | `storage: AsyncStorage, syncTabs: false` |
@@ -2724,7 +2743,7 @@ Internal design documentation for the `persist()` utility in `@codebelt/classy-s
 
 ## Design Principles
 
-1. **Standalone utility, not middleware.** `persist` is a plain function that consumes two existing public APIs (`subscribe` and `snapshot`) and nothing else.
+1. **Standalone utility, not middleware.** `persist` consumes the existing `subscribe`, `snapshot`, and `getVersion` APIs.
 2. **Tree-shakeable.** Lives in `@codebelt/classy-store/utils`. Applications that don't use persistence pay zero cost.
 3. **Storage-agnostic.** The `StorageAdapter` interface accepts sync (`localStorage`, `sessionStorage`) and async (`AsyncStorage`, `localForage`) implementations.
 4. **Class-aware.** Getters and methods are automatically excluded from persistence. Only source-of-truth data properties are saved.
@@ -2761,21 +2780,21 @@ The `version` field is always present (default `0`). The `expiresAt` field is a 
 
 ## Cross-Tab Sync
 
-When `syncTabs` is enabled (default for `localStorage`), the utility listens for the `window.storage` event. The event fires in **other** same-origin tabs only — not the tab that wrote — preventing infinite loops.
-
-Auto-detection: `syncTabs` defaults to `true` when the storage adapter is literally `globalThis.localStorage` (checked via identity comparison), `false` for everything else.
+`syncTabs` defaults to false. When enabled for localStorage-backed state, the
+utility listens for storage events from other same-origin tabs. It ignores
+obsolete event values and suppresses echo writes while applying accepted updates.
 
 ## PersistHandle API
 
 | Method/Property | Behavior |
 |---|---|
-| `unsubscribe()` | Unsubscribe, cancel debounce, remove the storage listener, and ignore pending read results/errors. Already-issued adapter I/O is not cancelled. Idempotent. |
+| `unsubscribe()` | Cancel debounce/listeners, ignore pending read results/errors, and skip queued operations not yet started. Already-issued adapter I/O is not cancelled. Idempotent. |
 | `hydrated` | Promise that resolves when initial hydration completes. |
 | `isHydrated` | `boolean`. Becomes `true` after hydration. |
 | `isExpired` | `boolean`. `true` when the last hydration found expired data. |
-| `save()` | Cancel pending debounce, write current state immediately. |
-| `clear()` | Call `storage.removeItem(name)`. |
-| `rehydrate()` | Re-read from storage, apply to store. |
+| `save()` | Cancel debounce, capture current state, and enqueue its write. |
+| `clear()` | Cancel pending auto-saves and enqueue removal after prior writes. |
+| `rehydrate()` | Wait for prior writes, read storage, and apply only if the request and store version remain current. |
 
 ## Property Resolution
 

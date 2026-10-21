@@ -6,6 +6,7 @@ import {
   renderStreamingHydrationPage,
 } from './hydration/renderHydrationPage';
 import page from './index.html';
+import persistencePage from './persistence/index.html';
 
 const hydrationBundle = await Bun.build({
   entrypoints: [
@@ -64,6 +65,7 @@ Bun.serve({
   port: 4179,
   routes: {
     '/': page,
+    '/persistence': persistencePage,
     '/compiler': () =>
       new Response(
         '<!doctype html><html><head><meta charset="utf-8"><title>Compiled consumer</title></head><body><div id="compiler-root"></div><script src="/compiler/client.js"></script></body></html>',
