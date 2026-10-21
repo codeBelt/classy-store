@@ -1,5 +1,55 @@
 # @codebelt/classy-store
 
+## 0.7.0
+
+### Minor Changes
+
+- [#31](https://github.com/codeBelt/classy-store/pull/31) [`1848a2d`](https://github.com/codeBelt/classy-store/commit/1848a2d4d02151fcf86c6103bd624151aa599b85) Thanks [@codeBelt](https://github.com/codeBelt)! - Add a server-safe `@codebelt/classy-store/react/server` entry for `prepareStoreForHydration`, and mark the published React hooks entry with `use client`. The existing preparation export remains available from `/react`; both use the same capture cache within a module graph.
+
+  Fix `Snapshot<T>` function classification so methods with typed parameters retain their callable signatures under strict TypeScript, including reactive collection queries, overloads, and generic functions.
+
+  Add packed-package production Next.js App Router tests with React Compiler off/on for package boundaries, request isolation, controlled inputs, streaming hydration, navigation, refresh, and cleanup, plus CI coverage and integration documentation.
+
+- [#31](https://github.com/codeBelt/classy-store/pull/31) [`1848a2d`](https://github.com/codeBelt/classy-store/commit/1848a2d4d02151fcf86c6103bd624151aa599b85) Thanks [@codeBelt](https://github.com/codeBelt)! - Add `prepareStoreForHydration(store)` to the React entry point. Call it on server and client stores initialized with matching data, before rendering or persistence, to retain the initial snapshot for server rendering and delayed Suspense hydration. Hooks then catch up to the live store without replacing server DOM, even if persistence changes state before their first read.
+
+  Preparation returns the original mutable proxy, preserves the first capture on repeated calls, and keeps current client subscriptions and core snapshots unchanged. Equal selector results retain their identity when hydration switches to live state. Add delayed and streamed hydration regressions, React 18/19 package coverage, and usage documentation.
+
+- [#31](https://github.com/codeBelt/classy-store/pull/31) [`1848a2d`](https://github.com/codeBelt/classy-store/commit/1848a2d4d02151fcf86c6103bd624151aa599b85) Thanks [@codeBelt](https://github.com/codeBelt)! - **Upgrade required for React consumers using timing options.** React subscriptions now always notify synchronously, fixing controlled-input caret jumps without configuration. Remove the `sync` option from `useClassyStore` and hooks returned by `createStoreHook`, and remove imports of `UseClassyStoreOptions`. Remove the entire options argument in auto-tracked mode, including an empty `{}`. Selector options still accept `isEqual`. Ordinary `subscribe()` callbacks remain microtask-batched and retain their existing `sync` option.
+
+  See the [0.7.0 upgrade guide](https://codebelt.github.io/classy-store/docs/UPGRADING_0_7) for before/after examples, the new native `WeakRef` requirement for auto-tracking, and SSR, Next.js, and persistence guidance.
+
+  React selectors may run after each mutation; several writes are not an atomic transaction. React can batch the resulting renders within an event handler. Auto-tracked reads are isolated per render so conditional and abandoned renders do not retain stale dependencies, including for class and null-prototype snapshots. Unchanged tracked references remain stable across parent renders.
+
+  Persistence hydration restores mutable nested defaults and custom merged values while preserving prototypes and user accessors. Add real-browser input regressions, lifecycle and SSR coverage, and packed-package checks for React 18 and 19.
+
+### Patch Changes
+
+- [#31](https://github.com/codeBelt/classy-store/pull/31) [`1848a2d`](https://github.com/codeBelt/classy-store/commit/1848a2d4d02151fcf86c6103bd624151aa599b85) Thanks [@codeBelt](https://github.com/codeBelt)! - Restore mutable nested state after undo/redo while preserving reactive collection methods and keeping recorded snapshots unchanged. Refresh React selections when selectors or equality functions change, even when the store has not mutated. Update the library's development dependencies and add regression coverage for both fixes.
+
+- [#31](https://github.com/codeBelt/classy-store/pull/31) [`1848a2d`](https://github.com/codeBelt/classy-store/commit/1848a2d4d02151fcf86c6103bd624151aa599b85) Thanks [@codeBelt](https://github.com/codeBelt)! - Keep asynchronous persistence writes and removals in request order. Reads wait for prior writes and ignore results superseded by a newer read, save, clear, or local edit. Clearing storage cancels pending auto-saves, and cleanup skips queued operations that have not started.
+
+  Ignore outdated browser storage events so two-tab synchronization cannot overwrite a newer local save with an older event. Add deterministic async regressions and real two-tab React tests in Chromium, Firefox, and WebKit.
+
+- [#31](https://github.com/codeBelt/classy-store/pull/31) [`1848a2d`](https://github.com/codeBelt/classy-store/commit/1848a2d4d02151fcf86c6103bd624151aa599b85) Thanks [@codeBelt](https://github.com/codeBelt)! - Fix stale auto-tracked React views when React Compiler or manual memoization reuses a derived value or child without repeating its property reads. Preserve committed dependencies for each reused immutable snapshot object, including structurally shared children, while isolating reads from suspended or abandoned renders.
+
+  Add compiled-consumer package tests for React 18 and 19, browser input and memoized-child regressions, and independent concurrency, hydration, and property-operation coverage. Selector APIs and synchronous React notification behavior are unchanged. Auto-tracking can conservatively retain earlier reads until a snapshot object's identity changes.
+
+- [#31](https://github.com/codeBelt/classy-store/pull/31) [`1848a2d`](https://github.com/codeBelt/classy-store/commit/1848a2d4d02151fcf86c6103bd624151aa599b85) Thanks [@codeBelt](https://github.com/codeBelt)! - Reuse guarded backing copies of frozen snapshots across React auto-tracked consumers. Large forms and lists avoid repeatedly scanning and copying the same snapshot array while each hook retains its own tracked reads. Reflective mutations of tracking targets are rejected, and mutable computed values remain uncached.
+
+- [#31](https://github.com/codeBelt/classy-store/pull/31) [`1848a2d`](https://github.com/codeBelt/classy-store/commit/1848a2d4d02151fcf86c6103bd624151aa599b85) Thanks [@codeBelt](https://github.com/codeBelt)! - **Runtime requirement:** auto-tracked React hooks now require native `WeakRef` support (ES2021). Selector hooks do not require `WeakRef`. See the [0.7.0 upgrade guide](https://codebelt.github.io/classy-store/docs/UPGRADING_0_7).
+
+  Release removed child proxies from their former parents, including children removed by native array-length truncation. Failed writes and deletes preserve the existing child connection; partial array truncations invalidate only the removed entries.
+
+  Discard obsolete untracked snapshot clones when a nested object starts using versioned tracking. This releases initial collection data and prevents fresh stores over the same raw object from receiving the stale cached clone.
+
+  Use weak render-read keys and a weak commit queue to prevent auto-tracked React consumers from retaining obsolete collection snapshots through shared child proxies. Isolate stable subscription and selector callbacks from render-local closure contexts so they do not retain initial results for the lifetime of a mount.
+
+  Add deterministic lifecycle and Compiler regressions plus production Chromium heap-snapshot checks for mounts, resets, rolling replacements, truncation, and intentionally retained detached children with Compiler off and on.
+
+- [#31](https://github.com/codeBelt/classy-store/pull/31) [`1848a2d`](https://github.com/codeBelt/classy-store/commit/1848a2d4d02151fcf86c6103bd624151aa599b85) Thanks [@codeBelt](https://github.com/codeBelt)! - Ignore pending persistence read results and read-error callbacks after unsubscribe. Retired handles no longer overwrite a current React scope or clear storage when an expired read completes after effect cleanup. Pending hydration promises still settle when storage completes.
+
+  Add a typed context example with independent and nested store instances, keyed resets, effect-owned persistence, and SSR hydration preparation. Test the actual example against packed React 18/19 consumers, including Strict Mode, storage configuration changes, asynchronous cleanup, and delayed Suspense hydration.
+
 ## 0.6.0
 
 ### Minor Changes
