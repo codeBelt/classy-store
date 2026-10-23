@@ -138,7 +138,7 @@ root. This guide and the utility architecture guides live in `website/docs`.
 
 ### Overview
 
-The `createClassyStore()` function wraps a class instance in an ES6 Proxy. Assignments and deletions through that proxy, including array operations and supported nested state, are intercepted. Raw-object writes and descriptor changes bypass these traps. Subscribers are batched by default into one microtask notification, while React uses the synchronous path.
+The `createClassyStore()` function wraps a class instance in an ES6 Proxy. Assignments and deletions through that proxy, including array operations and supported nested state, are intercepted. Raw-object writes and descriptor changes bypass these traps. Subscribers are batched by default into one microtask notification, while React and Svelte use the synchronous path.
 
 ### Data Flow: Mutation → Notification
 
@@ -214,6 +214,12 @@ store.items.push('a')
 ```
 
 Subscribers opt into immediate timing with `{sync: true}`. Sync subscribers run after version propagation and before the batched microtask. They are intentionally not deduped: two writes mean two sync notifications. Every React hook uses this timing so `useSyncExternalStore` observes the new value during the input event, preserving controlled-input caret position. Selectors can run after each write; React batches rendering within event handlers.
+
+The Svelte adapter also uses synchronous notifications to satisfy the readable
+store contract. It subscribes before delivering the initial snapshot so mutations
+inside that first callback are observed, and removes the subscription if the
+initial callback throws. Normal unsubscription stops delivery even if another
+subscriber removes it during an in-progress notification.
 
 ### Version Propagation
 

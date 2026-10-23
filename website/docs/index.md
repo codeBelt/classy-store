@@ -154,17 +154,25 @@ Import from the entry that owns the API. Core, collections, and utilities do not
 factory functions. The React entry carries `use client`. Import hydration
 preparation from `/react/server` in both server code and client modules.
 
-The other adapters publish whole snapshots using ordinary batched subscriptions:
-Vue returns a `ShallowRef` and uses the current effect scope for cleanup; Svelte
-returns a readable-store interface; Solid returns a signal accessor and uses its
+The other adapters publish whole snapshots. Vue returns a `ShallowRef` and uses
+the current effect scope for cleanup; Svelte returns a readable-store interface;
+Solid returns a signal accessor and uses its
 owner's cleanup; Angular returns a readonly signal and requires an injection
 context. React's selector and auto-tracking modes are specific to `/react`.
+
+Svelte's `toSvelteStore(store)` delivers the initial snapshot immediately and
+notifies subscribers synchronously after each mutation. `$store` subscriptions
+are cleaned up automatically when the component is destroyed; manual subscribers
+must call the returned unsubscribe function. Snapshots are readonly: update the
+original store or call its actions from input handlers instead of using
+`bind:value` on snapshot fields. Vue, Solid, Angular, and ordinary core
+subscriptions use microtask batching.
 
 ## API Reference
 
 ### `createClassyStore(instance)`
 
-Wraps a class instance in a reactive Proxy. Mutations notify React immediately; ordinary subscribers are batched via `queueMicrotask`.
+Wraps a class instance in a reactive Proxy. Mutations notify React and Svelte immediately; ordinary subscribers are batched via `queueMicrotask`.
 
 ```typescript
 const myStore = createClassyStore(new MyClass());
