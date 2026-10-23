@@ -1,5 +1,5 @@
-import {useClassyStore} from '@codebelt/classy-store/react';
-import {useEffect, useState} from 'react';
+import {useClassyStore, usePersistStatus} from '@codebelt/classy-store/react';
+import {useState} from 'react';
 import {Button} from '../../components/Button';
 import {DemoContainer} from '../../components/DemoContainer';
 import {RenderBadge} from '../../components/RenderBadge';
@@ -43,12 +43,7 @@ persist(store, {
 });`;
 
 function HydrationBadge() {
-  const [hydrated, setHydrated] = useState(kitchenSinkHandle.isHydrated);
-
-  useEffect(() => {
-    if (hydrated) return;
-    kitchenSinkHandle.hydrated.then(() => setHydrated(true));
-  }, [hydrated]);
+  const {isHydrated: hydrated} = usePersistStatus(kitchenSinkHandle);
 
   return (
     <span
@@ -360,8 +355,14 @@ function ControlPanel() {
         <Button
           size="sm"
           onClick={async () => {
-            await kitchenSinkHandle.save();
-            showStatus('Saved!');
+            try {
+              await kitchenSinkHandle.save();
+              showStatus('Saved!');
+            } catch (error) {
+              showStatus(
+                error instanceof Error ? error.message : String(error),
+              );
+            }
           }}
           className="!bg-teal-600 hover:!bg-teal-500"
         >
@@ -370,8 +371,14 @@ function ControlPanel() {
         <Button
           size="sm"
           onClick={async () => {
-            await kitchenSinkHandle.clear();
-            showStatus('Storage cleared');
+            try {
+              await kitchenSinkHandle.clear();
+              showStatus('Storage cleared');
+            } catch (error) {
+              showStatus(
+                error instanceof Error ? error.message : String(error),
+              );
+            }
           }}
           className="!bg-amber-600 hover:!bg-amber-500"
         >
@@ -381,17 +388,23 @@ function ControlPanel() {
           size="sm"
           variant="danger"
           onClick={() => {
-            kitchenSinkHandle.unsubscribe();
-            showStatus('Unsubscribed - mutations no longer persisted');
+            kitchenSinkHandle.dispose();
+            showStatus('Persistence stopped');
           }}
         >
-          Unsubscribe
+          Stop Persisting
         </Button>
         <Button
           size="sm"
           onClick={async () => {
-            await kitchenSinkHandle.rehydrate();
-            showStatus('Rehydrated from storage');
+            try {
+              await kitchenSinkHandle.rehydrate();
+              showStatus('Rehydrated from storage');
+            } catch (error) {
+              showStatus(
+                error instanceof Error ? error.message : String(error),
+              );
+            }
           }}
         >
           Rehydrate
@@ -400,10 +413,16 @@ function ControlPanel() {
           size="sm"
           variant="secondary"
           onClick={async () => {
-            kitchenSinkStore.reset();
-            await kitchenSinkHandle.clear();
-            await kitchenSinkHandle.save();
-            showStatus('Reset to defaults');
+            try {
+              kitchenSinkStore.reset();
+              await kitchenSinkHandle.clear();
+              await kitchenSinkHandle.save();
+              showStatus('Reset to defaults');
+            } catch (error) {
+              showStatus(
+                error instanceof Error ? error.message : String(error),
+              );
+            }
           }}
         >
           Full Reset

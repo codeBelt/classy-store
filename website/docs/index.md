@@ -25,7 +25,7 @@ Class-based reactive state management for React, Vue, Svelte, Solid, and Angular
 
 ## Installation
 
-Upgrading from 0.6.x? Read the [0.7.0 upgrade guide and release notes](./UPGRADING_0_7.md) for the React API changes and runtime requirements.
+Upgrading from 0.7.x? Read the [0.8.0 upgrade guide](./UPGRADING_0_8.md) for public API changes and persistence error handling. From 0.6.x or earlier, also follow the [0.7.0 upgrade guide](./UPGRADING_0_7.md).
 
 ```bash
 bun add @codebelt/classy-store
@@ -184,13 +184,52 @@ React subscriptions always notify synchronously, including selector, auto-tracke
 
 Migration: remove `{sync: true}` or `{sync: false}` from React hook calls and remove imports of `UseClassyStoreOptions`. Selector options still support `isEqual`. Synchronous notification does not make a method transactional: selectors can observe each write, while React batches rendering within event handlers.
 
+### `useHistoryStatus(history)`
+
+Use `useClassyStore(store)` for application data. Use `useHistoryStatus(history)` when a component renders undo/redo availability, recording state, or history disposal:
+
+```tsx
+import {useHistoryStatus} from '@codebelt/classy-store/react';
+import type {HistoryHandle} from '@codebelt/classy-store/utils';
+
+function UndoButton({history}: {history: HistoryHandle}) {
+  const {canUndo} = useHistoryStatus(history);
+  return <button disabled={!canUndo} onClick={history.undo}>Undo</button>;
+}
+```
+
+The hook accepts the `HistoryHandle` returned by `withHistory(store)` and returns `HistoryStatus`: `canUndo`, `canRedo`, `isPaused`, and `isDisposed`. It updates even when store data stays unchanged, such as when recording is paused. Creating or using history does not require the hook.
+
+### `usePersistStatus(handle)`
+
+Use `usePersistStatus(handle)` when a component renders persistence hydration, expiry, disposal, or errors:
+
+```tsx
+import {usePersistStatus} from '@codebelt/classy-store/react';
+import type {PersistHandle} from '@codebelt/classy-store/utils';
+
+function PersistenceBadge({handle}: {handle: PersistHandle}) {
+  const {isHydrated, lastError} = usePersistStatus(handle);
+  if (lastError) return <span>Persistence failed: {lastError.operation}</span>;
+  return <span>{isHydrated ? 'Ready' : 'Restoring…'}</span>;
+}
+```
+
+The hook accepts the `PersistHandle` returned by `persist(store, options)` and returns `PersistStatus`: `isHydrated`, `isExpired`, `isDisposed`, and `lastError` (`{error, operation}` or `null`). `isHydrated` means a hydration attempt settled; inspect `lastError` for a reported failure. Configuring persistence and calling its methods do not require the hook.
+
+Both hooks return readonly status snapshots whose identity stays stable until a status field changes. They share an internal subscription implementation. Status listeners run synchronously when status changes; ordinary store subscriptions, including history recording, remain batched. Unmounting a status consumer removes its listener without disposing the handle.
+
+Outside React, both handles provide framework-neutral status methods: `getSnapshot()`, `getServerSnapshot()`, and `subscribe(listener)`, which returns listener cleanup.
+
+For SSR, handles expose their initial status through `getServerSnapshot()` and React catches up with live status after hydration. Construct request-scoped handles and matching client handles with the same initial status; keep persistence side effects in the provider lifecycle described in [React store scoping](./REACT_SCOPING.md).
+
 ### `prepareStoreForHydration(store)`
 
 Captures the initial snapshot for server rendering and client hydration, returning the same mutable store proxy:
 
 ```ts
 import {createClassyStore} from '@codebelt/classy-store';
-import {prepareStoreForHydration} from '@codebelt/classy-store/react';
+import {prepareStoreForHydration} from '@codebelt/classy-store/react/server';
 
 const store = prepareStoreForHydration(
   createClassyStore(new ProfileStore(initialData)),
@@ -201,7 +240,7 @@ Call on each request's store and its client counterpart using matching initial d
 
 Preparation is idempotent, retains the first snapshot for the store's lifetime, and applies to the exact proxy passed in. Client-only apps need no preparation. See [React SSR and hydration](./REACT_SSR.md) for streaming, request isolation, nested proxies, and snapshot leaf semantics.
 
-The same preparation helper is available from `@codebelt/classy-store/react/server` without importing hooks. Use that entry in React Server Components; the `/react` entry is marked `use client`. See [Next.js App Router](./REACT_NEXT.md) for production package boundaries and navigation patterns.
+Import the preparation helper from `@codebelt/classy-store/react/server` on both the server and client. It does not import React hooks; the separate `/react` hooks entry is marked `use client`. See [Next.js App Router](./REACT_NEXT.md) for production package boundaries and navigation patterns.
 
 ### `useLocalStore(factory)`
 
@@ -311,20 +350,6 @@ const unsubSync = subscribe(
 );
 
 // Later: unsub();
-```
-
-### `getVersion(store)`
-
-Returns the current version number of a store proxy. Versions are monotonically increasing and bump on any mutation in the store's subtree (child mutations propagate up to the root). Useful for debugging, testing whether a store has changed, or custom cache invalidation.
-
-```typescript
-import {getVersion} from '@codebelt/classy-store';
-
-const v1 = getVersion(myStore);
-myStore.count++;
-// After microtask:
-const v2 = getVersion(myStore);
-// v2 > v1
 ```
 
 ### `shallowEqual(a, b)`

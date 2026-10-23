@@ -6,9 +6,10 @@
 
 ## Getting Started
 
+- [Upgrading to 0.8.0](https://codebelt.github.io/classy-store/docs/UPGRADING_0_8): Public API removals, persistence disposal and explicit errors, and React utility status hooks
 - [Upgrading to 0.7.0](https://codebelt.github.io/classy-store/docs/UPGRADING_0_7): Removed React timing options, native WeakRef requirement, SSR and Next.js setup, persistence changes, and release notes
 - [Introduction & API Reference](https://codebelt.github.io/classy-store/docs/): Full API
-  covering `createClassyStore`, `useClassyStore`, `createStoreHook`, `snapshot`, `subscribe`,
+  covering `createClassyStore`, `useClassyStore`, `useHistoryStatus`, `usePersistStatus`, `createStoreHook`, `snapshot`, `subscribe`,
   `shallowEqual`, synchronous React subscriptions, React Compiler compatibility, `reactiveMap`, `reactiveSet`
   (collections entry), and all patterns
 - [Tutorial](https://codebelt.github.io/classy-store/docs/TUTORIAL): Step-by-step guide —
@@ -19,13 +20,13 @@
 
 - [Persistence (`persist`)](https://codebelt.github.io/classy-store/docs/PERSIST_TUTORIAL):
   Save state to localStorage/sessionStorage/AsyncStorage with transforms, versioning,
-  migration, debounce, cross-tab sync, TTL, and SSR support
+  migration, debounce, cross-tab sync, TTL, SSR support, typed transforms, observable status, and rejected promises for explicit failures
 - [DevTools (`devtools`)](https://codebelt.github.io/classy-store/docs/DEVTOOLS_TUTORIAL):
   Connect to Redux DevTools for state inspection and time-travel debugging
 - [Property Subscriptions (`subscribeKey`)](https://codebelt.github.io/classy-store/docs/SUBSCRIBE_KEY_TUTORIAL):
   Watch a single property with previous/current values
 - [Undo/Redo (`withHistory`)](https://codebelt.github.io/classy-store/docs/HISTORY_TUTORIAL):
-  Snapshot-based undo/redo with pause/resume and configurable limits
+  Snapshot-based undo/redo with pause/resume, configurable limits, and observable status
 
 ## Architecture
 

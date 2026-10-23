@@ -16,7 +16,7 @@ React defines the supported [serializable prop types](https://react.dev/referenc
 | `@codebelt/classy-store` | Core store creation and snapshots in server or client modules. |
 | `@codebelt/classy-store/collections` | Reactive collections in server or client modules. |
 | `@codebelt/classy-store/utils` | Server-safe imports; configure browser storage and effects inside Client Components. |
-| `@codebelt/classy-store/react` | Client hooks and the compatible `prepareStoreForHydration` export. The published ESM and CommonJS entries carry `use client`. |
+| `@codebelt/classy-store/react` | Client hooks. The published ESM and CommonJS entries carry `use client`. |
 | `@codebelt/classy-store/react/server` | `prepareStoreForHydration` without importing React hooks; safe in Server Components and ordinary SSR code. |
 
 Components that use hooks still need their own client boundary. Do not call
@@ -54,11 +54,8 @@ Construct and prepare it inside the Client Component:
 // components/profileEditor/ProfileEditor.tsx
 'use client';
 
-import {
-  prepareStoreForHydration,
-  useClassyStore,
-  useLocalStore,
-} from '@codebelt/classy-store/react';
+import {useClassyStore, useLocalStore} from '@codebelt/classy-store/react';
+import {prepareStoreForHydration} from '@codebelt/classy-store/react/server';
 import {type ProfileData, ProfileStore} from '../../stores/profile/profile.store';
 
 export function ProfileEditor({initialData}: {initialData: ProfileData}) {
@@ -103,7 +100,7 @@ module-level server stores; construct request state inside the request instead.
 ## Streaming, persistence, and navigation
 
 Attach persistence in an effect after preparation, call `rehydrate()` there,
-and return `unsubscribe()` from cleanup. The [SSR guide](./REACT_SSR.md) shows
+and call `handle.dispose()` during cleanup. The [SSR guide](./REACT_SSR.md) shows
 this pattern. If persistence restores before a streamed boundary hydrates,
 the boundary first reads the prepared server data, then catches up to live
 state. Keep the initial server and browser payloads identical.

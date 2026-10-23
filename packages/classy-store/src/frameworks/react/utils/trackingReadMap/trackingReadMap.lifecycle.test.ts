@@ -2,7 +2,7 @@ import {describe, expect, test} from 'bun:test';
 import {createProxy, isChanged} from 'proxy-compare';
 import {TrackingReadMap} from './trackingReadMap';
 
-describe('TrackingReadMap lifecycle QA', () => {
+describe('TrackingReadMap lifecycle', () => {
   test('isolates nested reads from an abandoned render after another render commits', () => {
     const committed = new WeakMap<object, unknown>();
     const nested = Object.freeze({first: 1, second: 2, third: 3});

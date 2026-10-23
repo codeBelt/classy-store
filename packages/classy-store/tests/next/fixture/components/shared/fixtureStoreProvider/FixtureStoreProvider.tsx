@@ -1,9 +1,7 @@
 'use client';
 
-import {
-  prepareStoreForHydration,
-  useLocalStore,
-} from '@codebelt/classy-store/react';
+import {useLocalStore} from '@codebelt/classy-store/react';
+import {prepareStoreForHydration} from '@codebelt/classy-store/react/server';
 import {persist} from '@codebelt/classy-store/utils';
 import {type ReactNode, useEffect, version} from 'react';
 import {FixtureStore} from '../../../stores/fixtureStore/fixtureStore.store';
@@ -64,7 +62,7 @@ export function FixtureStoreProvider({initialData, scope, children}: Props) {
     }
     return () => {
       active = false;
-      handle.unsubscribe();
+      handle.dispose();
       rememberDisposedStore(scope, store);
       diagnostics[`${scope}Disposes`]++;
       diagnostics.activePersistence--;

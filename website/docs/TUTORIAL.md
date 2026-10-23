@@ -426,7 +426,7 @@ The factory initializes component state. Subsequent re-renders reuse the same st
 
 ### Persisting a local store
 
-`persist()` subscribes to the store, which keeps a reference alive. You must call `handle.unsubscribe()` on unmount to allow garbage collection.
+`persist()` subscribes to the store, which keeps a reference alive. You must call `handle.dispose()` on unmount to allow garbage collection.
 
 ```tsx
 import {useEffect} from 'react';
@@ -447,7 +447,7 @@ function EditProfile() {
 
   useEffect(() => {
     const handle = persist(store, { name: 'edit-profile-draft' });
-    return () => handle.unsubscribe();
+    return () => handle.dispose();
   }, [store]);
 
   return (

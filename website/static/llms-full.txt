@@ -5,6 +5,86 @@ single file for LLM context windows. Generated from the source docs at:
 https://codebelt.github.io/classy-store/docs/
 
 ---
+SOURCE: https://codebelt.github.io/classy-store/docs/UPGRADING_0_8
+---
+
+# Upgrading to 0.8.0
+
+Version 0.8.0 adds observable history and persistence status and simplifies the public API. This pre-1.0 release includes breaking changes for consumers of 0.7.x.
+
+## Required updates
+
+| Previous usage | Use in 0.8.0 |
+| --- | --- |
+| `persistence.unsubscribe()` | `persistence.dispose()` |
+| Import `prepareStoreForHydration` from `/react` | Import it from `@codebelt/classy-store/react/server`, on both server and client |
+| Import `getVersion` from the root entry | Use `subscribe()` for notifications or compare `snapshot()` references |
+| Assume explicit persistence calls always resolve | Handle rejected promises from `save()`, `clear()`, and `rehydrate()` |
+| Transform a property's value as a union of all store properties | Match `serialize` and `deserialize` to the property selected by `key` |
+
+## Dispose persistence handles
+
+Update effect cleanups and other teardown calls:
+
+```ts
+// Before
+return () => persistence.unsubscribe();
+
+// After
+return () => persistence.dispose();
+```
+
+Disposal is idempotent. It stops subscriptions and timers, ignores pending read results, and cancels writes that have not started. Already-issued storage I/O cannot be cancelled. Explicit queued operations cancelled by disposal reject, as do explicit operations called after disposal.
+
+## Handle explicit persistence failures
+
+`save()`, `clear()`, and `rehydrate()` take no options. They report storage failures through `onError` and `lastError`, and reject their promises. Handle the promise even when an `onError` callback is configured:
+
+```ts
+try {
+  await persistence.save();
+  showSavedMessage();
+} catch (error) {
+  showSaveError(error);
+}
+```
+
+Automatic writes and initial hydration handle reported failures internally. `hydrated` resolves when the initial attempt settles; `isHydrated` also means an attempt settled, including failure or a superseded read. Check `persistence.getSnapshot().lastError` when the result matters. A failed operation does not prevent later queued writes from running.
+
+## Subscribe to utility status in React
+
+Use `useClassyStore(store)` for store data. Use the new hooks when rendering utility metadata that can change independently of that data:
+
+```tsx
+import {useHistoryStatus, usePersistStatus} from '@codebelt/classy-store/react';
+
+const {canUndo, canRedo, isPaused} = useHistoryStatus(history);
+const {isHydrated, isExpired, lastError} = usePersistStatus(persistence);
+```
+
+Call these hooks inside a component or custom hook, with stable handles. Both status snapshots include `isDisposed`. History pause state now stays consistent when undo/redo finishes.
+
+Outside React, handles expose `getSnapshot()`, `getServerSnapshot()`, and `subscribe(listener)`. The function returned by `subscribe` removes that status listener; `dispose()` tears down the utility handle itself. The shared status source implementation is internal. Consumer types are `HistoryHandle`, `HistoryStatus`, `PersistHandle`, and `PersistStatus`, exported from `@codebelt/classy-store/utils`.
+
+During SSR and hydration, status hooks use the handle's initial status snapshot. Construct server and client handles with matching initial status.
+
+## Use the hydration entry on server and client
+
+```ts
+import {prepareStoreForHydration} from '@codebelt/classy-store/react/server';
+```
+
+The `/react` entry exports React hooks and `createStoreHook`. Hydration preparation is exported only from `/react/server`; its captured-snapshot behavior is unchanged.
+
+## Match persistence transforms to their property
+
+Transform serializers receive the selected property's readonly snapshot value. Deserializers receive `unknown` and must return that property's mutable value. Validate stored values before returning them. Transforms that mutate their snapshot input or return another property's type now fail TypeScript checks.
+
+Persistence status flags are readonly, matching their runtime getters. `PersistOperation` is exported from the utilities entry for typed error handlers.
+
+If upgrading from 0.6.x or earlier, also follow the [0.7.0 upgrade guide](https://codebelt.github.io/classy-store/docs/UPGRADING_0_7) for React timing options and the native `WeakRef` requirement.
+
+---
 SOURCE: https://codebelt.github.io/classy-store/docs/UPGRADING_0_7
 ---
 
@@ -302,13 +382,31 @@ React subscriptions always notify synchronously, including selector, auto-tracke
 
 Migration: remove `{sync: true}` or `{sync: false}` from React hook calls and remove imports of `UseClassyStoreOptions`. Selector options still support `isEqual`. Synchronous notification does not make a method transactional: selectors can observe each write, while React batches rendering within event handlers.
 
+### `useHistoryStatus(history)`
+
+Import from `@codebelt/classy-store/react` to observe a `HistoryHandle` returned by `withHistory(store)`. `const {canUndo, canRedo, isPaused} = useHistoryStatus(history)` updates undo controls and recording status even when store data is unchanged. The returned readonly `HistoryStatus` also contains `isDisposed`.
+
+### `usePersistStatus(handle)`
+
+Import from `@codebelt/classy-store/react` to observe a `PersistHandle` returned by `persist(store, options)`. `const {isHydrated, isExpired, lastError} = usePersistStatus(handle)` updates hydration, expiry, and error UI without requiring a store data mutation. The readonly `PersistStatus` also contains `isDisposed`. `lastError` is `{error, operation}` or `null`.
+
+Most components only need `useClassyStore(store)` for application data. Use the two status hooks only when rendering their matching feature's status; configuring history or persistence does not require them. The shared subscription implementation is internal.
+
+Both handles provide framework-neutral status methods: `getSnapshot()` returns cached readonly status; `getServerSnapshot()` returns initial status for SSR/hydration; `subscribe(listener)` returns listener cleanup. Status notifications are synchronous, while normal store subscriptions and history recording remain batched. Server and client handles must start with matching initial status. Disposal publishes its final status and clears listeners. Unsubscribing a status listener does not dispose the utility.
+
+Persistence `save`, `clear`, and `rehydrate` reject on failure after updating status and calling `onError`. Automatic writes and initial hydration catch reported errors without producing unhandled rejections. Failed operations do not block later queued writes. Decoding, transform, migration, and merge failures use the `parse` operation. `lastError` clears after the next successful operation. `rehydrate` waits for expired-data removal when enabled. Superseded reads are still ignored. Disposed calls and explicit queued writes cancelled by disposal reject; disposal errors do not publish status or call `onError`.
+
+`dispose()` stops persistence and releases its subscriptions and timers; it is safe to call repeatedly. `isHydrated` and `isExpired` are readonly. `hydrated` and `isHydrated` indicate that a hydration attempt settled, not that data was applied successfully. Pending hydration may settle after disposal and update readable flags without notifying disposed listeners. Exported types include `PersistOperation`, `PersistStatus`, and `HistoryStatus`.
+
+Persistence transforms now infer `serialize` and `deserialize` types from `key`: serializers receive `Snapshot<T[K]>`, and deserializers return `T[K]`. Stored input remains `unknown`. Optional properties preserve `undefined`. Standalone transforms can use `PropertyTransform<Store, 'key'>`. Existing transforms that mutate snapshots or deserialize to another property's type must be corrected.
+
 ### `prepareStoreForHydration(store)`
 
 Captures the initial snapshot for server rendering and client hydration, returning the same mutable store proxy:
 
 ```ts
 import {createClassyStore} from '@codebelt/classy-store';
-import {prepareStoreForHydration} from '@codebelt/classy-store/react';
+import {prepareStoreForHydration} from '@codebelt/classy-store/react/server';
 
 const store = prepareStoreForHydration(
   createClassyStore(new ProfileStore(initialData)),
@@ -319,7 +417,7 @@ Call on each request's store and its client counterpart using matching initial d
 
 Preparation is idempotent, retains the first snapshot for the store's lifetime, and applies to the exact proxy passed in. Client-only apps need no preparation. See [React SSR and hydration](./REACT_SSR.md) for streaming, request isolation, nested proxies, and snapshot leaf semantics.
 
-The same preparation helper is available from `@codebelt/classy-store/react/server` without importing hooks. Use that entry in React Server Components; the `/react` entry is marked `use client`. See [Next.js App Router](./REACT_NEXT.md) for production package boundaries and navigation patterns.
+Import the preparation helper from `@codebelt/classy-store/react/server` on both the server and client. It does not import React hooks; the separate `/react` hooks entry is marked `use client`. See [Next.js App Router](./REACT_NEXT.md) for production package boundaries and navigation patterns.
 
 ### `useLocalStore(factory)`
 
@@ -429,20 +527,6 @@ const unsubSync = subscribe(
 );
 
 // Later: unsub();
-```
-
-### `getVersion(store)`
-
-Returns the current version number of a store proxy. Versions are monotonically increasing and bump on any mutation in the store's subtree (child mutations propagate up to the root). Useful for debugging, testing whether a store has changed, or custom cache invalidation.
-
-```typescript
-import {getVersion} from '@codebelt/classy-store';
-
-const v1 = getVersion(myStore);
-myStore.count++;
-// After microtask:
-const v2 = getVersion(myStore);
-// v2 > v1
 ```
 
 ### `shallowEqual(a, b)`
@@ -1237,7 +1321,7 @@ The factory initializes component state. Subsequent re-renders reuse the same st
 
 ### Persisting a local store
 
-`persist()` subscribes to the store, which keeps a reference alive. You must call `handle.unsubscribe()` on unmount to allow garbage collection.
+`persist()` subscribes to the store, which keeps a reference alive. You must call `handle.dispose()` on unmount to allow garbage collection.
 
 ```tsx
 import {useEffect} from 'react';
@@ -1258,7 +1342,7 @@ function EditProfile() {
 
   useEffect(() => {
     const handle = persist(store, { name: 'edit-profile-draft' });
-    return () => handle.unsubscribe();
+    return () => handle.dispose();
   }, [store]);
 
   return (
@@ -1430,7 +1514,7 @@ Create one store for each server request and reconstruct a client store from the
 
 The [typed context example](./REACT_SCOPING.md) provides a complete provider pattern with independent instances, nested scopes, keyed resets, and persistence cleanup.
 
-For React Server Components, use the server-safe `@codebelt/classy-store/react/server` preparation entry. The `@codebelt/classy-store/react` hooks entry is marked `use client`; its preparation export remains available inside client modules and ordinary SSR. The [Next.js App Router guide](./REACT_NEXT.md) explains where to construct stores and how to cross that boundary with initial data.
+Import hydration preparation from `@codebelt/classy-store/react/server` in server code and client modules. This entry does not import React hooks. The separate `@codebelt/classy-store/react` hooks entry is marked `use client`. The [Next.js App Router guide](./REACT_NEXT.md) explains where to construct stores and how to cross that boundary with initial data.
 
 Call `prepareStoreForHydration(store)` after initializing the store with the data used to render the page, on both the server and client. It captures that initial snapshot before persistence or other live updates begin. All direct and bound hooks use the captured data during server rendering and client hydration, then read the current live store. React requires the initial server and client data to match; see [React's external-store SSR guidance](https://react.dev/reference/react/useSyncExternalStore#adding-support-for-server-rendering).
 
@@ -1490,12 +1574,13 @@ For a store owned by a component, `prepareStoreForHydration(useLocalStore(() => 
 
 ## Restore persistence while other boundaries hydrate
 
-Browser storage may contain values different from the server-rendered payload. Prepare the store before starting persistence, attach persistence in an effect, and unsubscribe when the component unmounts. The effect can restore storage even while a Suspense boundary is still waiting to hydrate:
+Browser storage may contain values different from the server-rendered payload. Prepare the store before starting persistence, attach persistence in an effect, and dispose it when the component unmounts. The effect can restore storage even while a Suspense boundary is still waiting to hydrate:
 
 ```tsx
 // PersistedProfile.tsx
 import {useEffect} from 'react';
-import {prepareStoreForHydration, useLocalStore} from '@codebelt/classy-store/react';
+import {useLocalStore} from '@codebelt/classy-store/react';
+import {prepareStoreForHydration} from '@codebelt/classy-store/react/server';
 import {persist} from '@codebelt/classy-store/utils';
 import {Profile} from './Profile';
 import {type ProfileData, ProfileStore} from './profileStore';
@@ -1511,8 +1596,8 @@ export function PersistedProfile({initialData}: {initialData: ProfileData}) {
       storage: localStorage,
       skipHydration: true,
     });
-    void persistence.rehydrate();
-    return () => persistence.unsubscribe();
+    void persistence.rehydrate().catch((error) => console.error('Could not restore persisted state', error));
+    return () => persistence.dispose();
   }, [store]);
 
   return <Profile store={store} />;
@@ -1595,7 +1680,8 @@ The example provider initializes once per mount and captures the initial hydrati
 
 ```tsx
 // components/editorStoreProvider/EditorStoreProvider.tsx
-import {prepareStoreForHydration, useLocalStore} from '@codebelt/classy-store/react';
+import {useLocalStore} from '@codebelt/classy-store/react';
+import {prepareStoreForHydration} from '@codebelt/classy-store/react/server';
 import {persist, type StorageAdapter} from '@codebelt/classy-store/utils';
 import {type ReactNode, useEffect} from 'react';
 import {type EditorData, EditorStore} from '../../editorStore';
@@ -1622,8 +1708,8 @@ export function EditorStoreProvider({initialData, children, persistence}: Props)
       properties: ['title', 'body'],
       skipHydration: true,
     });
-    void handle.rehydrate();
-    return () => handle.unsubscribe();
+    void handle.rehydrate().catch((error) => console.error('Could not restore persisted state', error));
+    return () => handle.dispose();
   }, [store, name, storage]);
 
   return (
@@ -1678,7 +1764,7 @@ Change `documentId` when moving to a different document; increment `revision` fo
 
 A reset does **not** clear saved data. If the new provider uses the same persistence key, it restores that saved draft. To reset saved data as well, first unmount or disable the old persistence owner, await `storage.removeItem(name)`, then remount. Use distinct storage keys for independent documents or users. Different React providers using the same storage key still share that storage namespace.
 
-Cleanup prevents pending storage reads from applying after unsubscribe, including the discarded first effect in Strict Mode. Such reads still finish and their promises settle; the adapter's I/O is not cancelled. Already-issued writes cannot be undone by cleanup. External code retaining a store can still mutate it after unmount, but its disposed persistence owner and unmounted consumers no longer react. `useLocalStore` does not automatically call application-specific `dispose()` methods.
+Cleanup prevents pending storage reads from applying after disposal, including the discarded first effect in Strict Mode. Such reads still finish and their promises settle; the adapter's I/O is not cancelled. Already-issued writes cannot be undone by cleanup. External code retaining a store can still mutate it after unmount, but its disposed persistence owner and unmounted consumers no longer react. `useLocalStore` does not automatically call application-specific `dispose()` methods.
 
 ## Server rendering and hydration
 
@@ -1742,11 +1828,11 @@ That's it. On every mutation, `todos` and `filter` are saved to `localStorage`. 
 ```ts
 // Async -- await the promise
 await handle.hydrated;
-console.log('Restored:', todoStore.todos);
+console.log('Hydration status:', handle.getSnapshot());
 
 // Sync check
 if (handle.isHydrated) {
-  // safe to read persisted state
+  // The attempt settled; inspect lastError for a reported failure.
 }
 ```
 
@@ -1825,7 +1911,6 @@ persist(todoStore, {
 ## Merge Strategies
 
 - **`'shallow'` (default):** Persisted values overwrite store values one key at a time. Properties not in storage keep their class defaults.
-- **`'replace'`:** Same as shallow for flat stores.
 - **Custom merge function:** `merge: (persisted, current) => { ... }`
 
 ## Cross-Tab Synchronization
@@ -1872,7 +1957,7 @@ Then hydrate manually in a `useEffect`:
 ```tsx
 function App() {
   useEffect(() => {
-    handle.rehydrate();
+    void handle.rehydrate().catch((error) => console.error('Could not restore persisted state', error));
   }, []);
 
   return <TodoList />;
@@ -1899,14 +1984,14 @@ await handle.hydrated;
 // Clear stored data
 await handle.clear();
 
-// Manual save (bypass debounce)
-handle.save();
+// Manual save (bypass debounce; rejects on failure)
+await handle.save();
 
 // Re-read from storage
 await handle.rehydrate();
 
-// Stop persisting; later handle operations become no-ops
-handle.unsubscribe();
+// Stop persisting; later save/clear/rehydrate calls reject
+handle.dispose();
 ```
 
 ## Overlapping async operations
@@ -1944,7 +2029,7 @@ coordination. Async saves are not guaranteed to finish during page unload.
 | Check if data expired | `handle.isExpired` |
 | Force immediate save | `handle.save()` |
 | Clear stored data | `handle.clear()` |
-| Stop persisting | `handle.unsubscribe()` |
+| Stop persisting | `handle.dispose()` |
 | Wait for hydration | `await handle.hydrated` |
 | Check hydration | `handle.isHydrated` |
 
@@ -2225,12 +2310,12 @@ history.canRedo; // true if there's a next state
 
 ```tsx
 function UndoRedoButtons() {
-  const snap = useClassyStore(drawingStore);
+  const {canUndo, canRedo} = useHistoryStatus(history);
 
   return (
     <div>
-      <button onClick={history.undo} disabled={!history.canUndo}>Undo</button>
-      <button onClick={history.redo} disabled={!history.canRedo}>Redo</button>
+      <button onClick={history.undo} disabled={!canUndo}>Undo</button>
+      <button onClick={history.redo} disabled={!canRedo}>Redo</button>
     </div>
   );
 }
@@ -2277,17 +2362,15 @@ document.addEventListener('keydown', (e) => {
 });
 ```
 
-### Batch operations with pause/resume
+### Batched edits and pause/resume
+
+Synchronous edits in one turn already share a history entry. `pause()` skips notifications delivered while paused; `resume()` enables recording without creating an entry or grouping asynchronous edits into a transaction.
 
 ```ts
 function pasteBlock(data: Record<string, string>) {
-  history.pause();
-
   for (const [id, value] of Object.entries(data)) {
     spreadsheetStore.setCell(id, value);
   }
-
-  history.resume();
 }
 ```
 
@@ -2359,7 +2442,7 @@ flowchart TB
     GetterEval["Getters: memoized per-snapshot + cross-snapshot caching"]
   end
 
-  subgraph layer3 ["Layer 3: React Hook (react.ts)"]
+  subgraph layer3 ["Layer 3: React Hook (useClassyStore.ts)"]
     UseStore["useClassyStore(store, selector?)"]
     UseLocalStore["useLocalStore(factory)"]
     USES["useSyncExternalStore"]
@@ -2394,56 +2477,74 @@ flowchart TB
 
 ## File Map
 
+The library lives in `packages/classy-store`. Public entry points expose the API;
+implementation files and types live with the feature that owns them.
+
+```text
+packages/classy-store/
+├── src/
+│   ├── index.ts                         # Core public entry; no React dependency
+│   ├── types.ts                         # Public Snapshot<T> and SubscribeOptions
+│   ├── core/
+│   │   ├── core.ts                      # Write proxies, subscriptions, computed getters
+│   │   ├── core.types.ts                # Internal dependency and store bookkeeping types
+│   │   ├── core.computed.test.ts        # Write-proxy getter memoization
+│   │   └── core.ownership.test.ts       # Child ownership and subscription cleanup
+│   ├── snapshot/
+│   │   ├── snapshot.ts                  # Immutable snapshots and structural sharing
+│   │   └── snapshot.computed.test.ts    # Snapshot getter memoization
+│   ├── collections/
+│   │   ├── index.ts                     # Public collections entry
+│   │   └── collections.ts               # ReactiveMap and ReactiveSet
+│   ├── frameworks/
+│   │   └── react/
+│   │       ├── react.ts                 # Public client entry; exports hooks and factory
+│   │       ├── server.ts                # Server-safe prepareStoreForHydration entry
+│   │       ├── hooks/
+│   │       │   ├── useClassyStore/      # Selector and auto-tracked subscriptions; hook types
+│   │       │   ├── useLocalStore/       # Component-scoped store creation
+│   │       │   ├── useHistoryStatus/    # Public history status hook
+│   │       │   ├── usePersistStatus/    # Public persistence status hook
+│   │       │   └── useUtilityStatus/    # Internal shared status subscription hook
+│   │       ├── utils/
+│   │       │   ├── createStoreHook/     # Bound store hook factory
+│   │       │   ├── hydrationSnapshots/  # Shared captured snapshots, held by weak keys
+│   │       │   ├── snapshotTargetCache/ # Shared tracking targets
+│   │       │   └── trackingReadMap/     # Render-local and committed dependency reads
+│   │       ├── testHelpers/            # React fixtures
+│   │       └── react.*.test.tsx         # Integration tests grouped by behavior
+│   └── utils/
+│       ├── index.ts                     # Public utility functions and types
+│       ├── persist/
+│       │   ├── persist.ts               # Storage queue, hydration, transforms, tab sync
+│       │   ├── persist.types.ts         # Public persistence options, status, and handle
+│       │   └── persist.*.test.ts        # API, concurrency, and error regressions
+│       ├── history/                     # Undo/redo and status
+│       ├── devtools/                    # Redux DevTools integration
+│       ├── subscribe-key/               # Single-property subscriptions
+│       ├── equality/                    # shallowEqual
+│       ├── utilityStatus/               # Internal framework-neutral status source
+│       ├── cloneSnapshot/               # Internal snapshot cloning
+│       └── internal/                    # Proxy and property helpers
+├── tests/
+│   ├── browser/                         # Real input, hydration, and persistence tests
+│   ├── compatibility/                   # Packed-library React version matrix
+│   ├── compiler/                        # Compiled consumer fixtures and regressions
+│   ├── scoping/                         # Provider isolation, lifecycle, and SSR
+│   ├── next/                            # Packed Next.js boundaries and navigation
+│   ├── memory/                          # Heap snapshots and retention checks
+│   └── performance/                     # Form and list benchmarks
+├── tsdown.config.ts                     # Published entry points and bundle settings
+└── bunfig.toml                          # happy-dom setup for source tests
 ```
-src/
-├── index.ts                       # Barrel export: createClassyStore, snapshot, subscribe, getVersion, shallowEqual, Snapshot
-├── collections/
-│   ├── collections.ts             # ReactiveMap and ReactiveSet implementations
-│   ├── index.ts                   # Collections barrel: reactiveMap, reactiveSet, ReactiveMap, ReactiveSet
-│   └── collections.test.ts        # tests: ReactiveMap, ReactiveSet, class store integration
-├── core/
-│   ├── core.ts                    # Layer 1: Write Proxy — createClassyStore(), subscribe(), getVersion()
-│   ├── core.test.ts               # tests: mutations, batching, methods, getters, arrays
-│   └── computed.test.tsx           # tests: write proxy + snapshot memoization, useClassyStore integration
-├── react/
-│   ├── react.ts                   # Layer 3: React Hook — useClassyStore(), useLocalStore()
-│   ├── react.test.tsx             # tests: selector mode, auto-tracked mode, re-render control
-│   └── react.behavior.test.tsx    # tests: batching, set-then-revert, async, multi-component, unmount
-├── snapshot/
-│   ├── snapshot.ts                # Layer 2: Immutable Snapshots — snapshot()
-│   └── snapshot.test.ts           # tests: freezing, caching, structural sharing, getters
-├── utils/
-│   ├── index.ts                   # Barrel export for @codebelt/classy-store/utils: persist, devtools, subscribeKey, withHistory
-│   ├── devtools/
-│   │   ├── devtools.ts            # devtools() utility: Redux DevTools integration, time-travel debugging
-│   │   └── devtools.test.ts       # tests: connect, disconnect, state sync, time-travel
-│   ├── equality/
-│   │   ├── equality.ts            # shallowEqual
-│   │   └── equality.test.ts       # tests for shallowEqual
-│   ├── history/
-│   │   ├── history.ts             # withHistory() utility: undo/redo via snapshot stack, pause/resume, configurable limits
-│   │   └── history.test.ts        # tests: undo, redo, limits, pause/resume
-│   ├── internal/
-│   │   ├── internal.ts            # Internal helpers: isPlainObject, canProxy, findGetterDescriptor, PROXYABLE
-│   │   └── internal.test.ts       # tests for internal helpers
-│   ├── persist/
-│   │   ├── persist.ts             # persist() utility: storage, transforms, versioning, cross-tab sync
-│   │   └── persist.test.ts        # tests: round-trip, transforms, debounce, migration, merge, SSR, cross-tab
-│   ├── subscribe-key/
-│   │   ├── subscribe-key.ts       # subscribeKey() utility: single-property subscription with prev/current values
-│   │   └── subscribe-key.test.ts  # tests: single key changes, prev/current values
-├── types.ts                       # Shared types: Snapshot<T>, StoreInternal, DepEntry, ComputedEntry
-package.json
-tsconfig.json
-tsdown.config.ts
-bunfig.toml                        # Preload happy-dom for React hook tests
-happydom.ts                        # happy-dom global registrator
-README.md                          # Usage guide
-ARCHITECTURE.md                    # This file
-TUTORIAL.md                        # Step-by-step tutorial
-PERSIST_TUTORIAL.md                # Persist utility tutorial
-PERSIST_ARCHITECTURE.md            # Persist utility internals
-```
+
+Tests for core behavior stay beside their implementation. React integration tests
+exercise the public client entry, including computed getter behavior. Consumer
+fixtures under `tests/` verify the packed library and framework build boundaries.
+The other framework adapters remain under `src/frameworks/`.
+
+Runnable examples live in `examples/react` and `examples/nextjs` at the repository
+root. This guide and the utility architecture guides live in `website/docs`.
 
 ## Layer 1: Write Proxy (`core.ts`)
 
@@ -2668,7 +2769,7 @@ flowchart TD
 - **Selector mode:** `useClassyStore(store, (state) => state.filtered)` gets a stable reference from the memoized snapshot getter. `Object.is` correctly detects "no change" without `shallowEqual`.
 - **Auto-tracked mode:** `proxy-compare`'s `isChanged` gets stable references from snapshot getters, reducing false positives.
 
-## Layer 3: React Hook (`react.ts`)
+## Layer 3: React Hook (`hooks/useClassyStore/useClassyStore.ts`)
 
 ### Overview
 
@@ -2747,18 +2848,29 @@ Snapshot creation marks only library-created snapshot nodes with `markToTrack`, 
 
 ```mermaid
 graph LR
-  react["react.ts"] --> core["core.ts"]
-  react --> snapshot["snapshot.ts"]
-  react --> proxyCompare["proxy-compare"]
+  reactEntry["/react client entry"] --> hook["useClassyStore.ts"]
+  reactEntry --> localHook["useLocalStore.ts"]
+  reactEntry --> factory["createStoreHook.ts"]
+  factory --> hook
+  factory --> core["core.ts"]
+  localHook --> core
+  hook --> core
+  hook --> snapshot["snapshot.ts"]
+  hook --> proxyCompare["proxy-compare"]
+  hook --> hydration["hydrationSnapshots.ts"]
+  serverEntry["/react/server entry"] --> hydration
+  serverEntry --> snapshot
+  serverEntry --> core
   snapshot --> core
-  snapshot --> types["types.ts"]
+  snapshot --> types["types.ts: public types"]
+  snapshot --> coreTypes["core.types.ts: internal types"]
   snapshot --> internal["utils/internal/internal.ts"]
   core --> types
+  core --> coreTypes
   core --> internal
-  index["index.ts"] --> core
+  index["Core entry: index.ts"] --> core
   index --> snapshot
-  index --> react
-  index --> internal
+  index --> equality["equality.ts"]
   index --> types
 
   subgraph utilities ["Utilities (utils/)"]
@@ -2766,18 +2878,30 @@ graph LR
     devtools["devtools.ts"]
     subscribeKey["subscribe-key.ts"]
     withHistory["history.ts"]
+    status["utilityStatus.ts"]
   end
 
   persist --> core
   persist --> snapshot
   persist --> internal
+  persist --> status
   devtools --> core
   devtools --> snapshot
   subscribeKey --> core
   subscribeKey --> snapshot
   withHistory --> core
   withHistory --> snapshot
+  withHistory --> status
+  reactEntry --> statusHooks["useHistoryStatus / usePersistStatus"]
+  statusHooks --> sharedHook["useUtilityStatus.ts"]
 ```
+
+The client entry owns the React boundary. Core, snapshots, collections, and
+utilities remain framework-neutral. React status hooks share an internal hook;
+the status source itself lives with the utilities and has no React dependency.
+`types.ts` contains public core types, while `core.types.ts` describes private
+bookkeeping. Persistence contracts live in `persist.types.ts` and are exported
+through the public utilities entry.
 
 ## Key Design Decisions
 
@@ -2853,7 +2977,7 @@ Internal design documentation for the `persist()` utility in `@codebelt/classy-s
 
 ## Design Principles
 
-1. **Standalone utility, not middleware.** `persist` consumes the existing `subscribe`, `snapshot`, and `getVersion` APIs.
+1. **Standalone utility, not middleware.** `persist` uses `subscribe` and `snapshot`, plus an internal version helper for stale-read protection.
 2. **Tree-shakeable.** Lives in `@codebelt/classy-store/utils`. Applications that don't use persistence pay zero cost.
 3. **Storage-agnostic.** The `StorageAdapter` interface accepts sync (`localStorage`, `sessionStorage`) and async (`AsyncStorage`, `localForage`) implementations.
 4. **Class-aware.** Getters and methods are automatically excluded from persistence. Only source-of-truth data properties are saved.
@@ -2898,13 +3022,15 @@ obsolete event values and suppresses echo writes while applying accepted updates
 
 | Method/Property | Behavior |
 |---|---|
-| `unsubscribe()` | Cancel debounce/listeners, ignore pending read results/errors, and skip queued operations not yet started. Already-issued adapter I/O is not cancelled. Idempotent. |
-| `hydrated` | Promise that resolves when initial hydration completes. |
-| `isHydrated` | `boolean`. Becomes `true` after hydration. |
-| `isExpired` | `boolean`. `true` when the last hydration found expired data. |
+| `dispose()` | Cancel debounce/listeners, ignore pending reads, and skip queued operations not yet started. Already-issued adapter I/O is not cancelled. Idempotent. |
+| `hydrated` | Resolves when a hydration attempt settles, including failure or a superseded read. |
+| `isHydrated` | Readonly boolean indicating a settled hydration attempt. |
+| `isExpired` | Readonly boolean; true when hydration found expired data. |
 | `save()` | Cancel debounce, capture current state, and enqueue its write. |
 | `clear()` | Cancel pending auto-saves and enqueue removal after prior writes. |
-| `rehydrate()` | Wait for prior writes, read storage, and apply only if the request and store version remain current. |
+| `rehydrate()` | Wait for prior writes, apply only if the read remains current, and await expired-data removal when enabled. |
+| `getSnapshot()` / `getServerSnapshot()` | Cached current / initial readonly status. |
+| `subscribe(listener)` | Observe status; returns listener cleanup. |
 
 ## Property Resolution
 
@@ -3311,7 +3437,7 @@ React defines the supported [serializable prop types](https://react.dev/referenc
 | `@codebelt/classy-store` | Core store creation and snapshots in server or client modules. |
 | `@codebelt/classy-store/collections` | Reactive collections in server or client modules. |
 | `@codebelt/classy-store/utils` | Server-safe imports; configure browser storage and effects inside Client Components. |
-| `@codebelt/classy-store/react` | Client hooks and the compatible `prepareStoreForHydration` export. The published ESM and CommonJS entries carry `use client`. |
+| `@codebelt/classy-store/react` | Client hooks. The published ESM and CommonJS entries carry `use client`. |
 | `@codebelt/classy-store/react/server` | `prepareStoreForHydration` without importing React hooks; safe in Server Components and ordinary SSR code. |
 
 Components that use hooks still need their own client boundary. Do not call
@@ -3349,11 +3475,8 @@ Construct and prepare it inside the Client Component:
 // components/profileEditor/ProfileEditor.tsx
 'use client';
 
-import {
-  prepareStoreForHydration,
-  useClassyStore,
-  useLocalStore,
-} from '@codebelt/classy-store/react';
+import {useClassyStore, useLocalStore} from '@codebelt/classy-store/react';
+import {prepareStoreForHydration} from '@codebelt/classy-store/react/server';
 import {type ProfileData, ProfileStore} from '../../stores/profile/profile.store';
 
 export function ProfileEditor({initialData}: {initialData: ProfileData}) {
@@ -3398,7 +3521,7 @@ module-level server stores; construct request state inside the request instead.
 ## Streaming, persistence, and navigation
 
 Attach persistence in an effect after preparation, call `rehydrate()` there,
-and return `unsubscribe()` from cleanup. The [SSR guide](./REACT_SSR.md) shows
+and call `handle.dispose()` during cleanup. The [SSR guide](./REACT_SSR.md) shows
 this pattern. If persistence restores before a streamed boundary hydrates,
 the boundary first reads the prepared server data, then catches up to live
 state. Keep the initial server and browser payloads identical.

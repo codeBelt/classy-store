@@ -12,11 +12,11 @@
 
 Visit the **[Documentation Website](https://codebelt.github.io/classy-store/)** for tutorials, API reference, and examples.
 
-## Upgrading to 0.7.0
+## Upgrading to 0.8.0
 
-React subscriptions now notify synchronously. Remove the React hooks' `sync` option and any `UseClassyStoreOptions` imports. Auto-tracked hooks now require native `WeakRef` support (ES2021). Selector equality options remain available, and ordinary core subscriptions still batch by default.
+Replace persistence `unsubscribe()` with `dispose()`, handle rejected promises from explicit persistence operations, and import hydration preparation from `@codebelt/classy-store/react/server`. The public `getVersion` export has been removed. New `useHistoryStatus` and `usePersistStatus` hooks keep utility metadata reactive in React.
 
-See the [0.7.0 upgrade guide and release notes](https://codebelt.github.io/classy-store/docs/UPGRADING_0_7) for before/after examples, SSR and Next.js setup, and persistence changes.
+See the [0.8.0 upgrade guide](https://codebelt.github.io/classy-store/docs/UPGRADING_0_8) for required changes and examples. If upgrading from 0.6.x or earlier, also read the [0.7.0 upgrade guide](https://codebelt.github.io/classy-store/docs/UPGRADING_0_7).
 
 ## 🚀 Features
 
@@ -76,7 +76,7 @@ return (
 
 Ordinary `subscribe(store, listener)` callbacks still batch in a microtask. React batches renders within event handlers, while selectors can run after each mutation.
 
-For server-rendered React apps, call `prepareStoreForHydration(store)` from `@codebelt/classy-store/react` on matching server/client stores before persistence starts. Delayed Suspense boundaries then hydrate from the original data and catch up to live state. See the [SSR guide](https://codebelt.github.io/classy-store/docs/REACT_SSR).
+For server-rendered React apps, call `prepareStoreForHydration(store)` from `@codebelt/classy-store/react/server` on matching server/client stores before persistence starts. Delayed Suspense boundaries then hydrate from the original data and catch up to live state. See the [SSR guide](https://codebelt.github.io/classy-store/docs/REACT_SSR).
 
 For Next.js App Router, construct stores inside Client Providers from serializable initial data. Use `@codebelt/classy-store/react/server` when preparing a store in server-only code. See the [App Router guide](https://codebelt.github.io/classy-store/docs/REACT_NEXT) for package boundaries, streaming, and navigation.
 
@@ -85,6 +85,8 @@ Selector and auto-tracked hooks are tested in React Compiler consumers on React 
 Auto-tracked React subscriptions require native `WeakRef` support (ES2021) so tracking dependencies do not keep obsolete snapshots alive.
 
 For independent forms, nested editors, and request-scoped state, see the [typed context example](https://codebelt.github.io/classy-store/docs/REACT_SCOPING). Providers own their store instances and effects; React keys control intentional resets.
+
+Most components only need `useClassyStore(store)` to render application data. Use [`useHistoryStatus(history)`](https://codebelt.github.io/classy-store/docs/#usehistorystatushistory) for undo/redo controls and recording status, or [`usePersistStatus(handle)`](https://codebelt.github.io/classy-store/docs/#usepersiststatushandle) for hydration, expiry, and persistence errors. Both hooks come from `@codebelt/classy-store/react` and update even when store data is unchanged. Manual `save()`, `clear()`, and `rehydrate()` calls reject on failure after reporting through status and `onError`. Handle these promises in event handlers; automatic persistence reports failures without producing unhandled rejections.
 
 ## 📦 Installation
 

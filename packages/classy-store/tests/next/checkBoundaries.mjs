@@ -112,13 +112,12 @@ function runProbe(mode, serverCondition) {
         serverCondition
           ? ''
           : `
-      assert.equal(server.prepareStoreForHydration, client.prepareStoreForHydration);
-      for (const prepare of [server.prepareStoreForHydration, client.prepareStoreForHydration]) {
+      assert.equal('prepareStoreForHydration' in client, false);
         for (const tracked of [false, true]) {
           const store = core.createClassyStore({count: 7});
-          prepare(store);
+          server.prepareStoreForHydration(store);
           store.count = 9;
-          prepare(store);
+          server.prepareStoreForHydration(store);
           function Probe() {
             const value = tracked
               ? client.useClassyStore(store).count
@@ -127,7 +126,6 @@ function runProbe(mode, serverCondition) {
           }
           assert.equal(ReactDOMServer.renderToString(React.createElement(Probe)), '<output>7</output>');
         }
-      }
       `
       }
     }

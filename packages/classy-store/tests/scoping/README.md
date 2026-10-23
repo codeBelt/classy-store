@@ -22,7 +22,7 @@ See `../compatibility/README.md` for selected versions and retained consumers.
   matching hydration, and persistence updates before a suspended consumer's
   first hook read. Selector and auto-tracked consumers must retain the server
   DOM and then catch up to the persisted state.
-- `scoping.qa.test.tsx` independently checks pending persistence reads during
+- `scoping.isolation.test.tsx` independently checks pending persistence reads during
   Strict Mode replay, provider replacement, keyed resets, and unmount, as well
   as abandoned renders and memoized consumers.
 - `scoping.types.fixture.tsx` checks the copied example's inferred store,

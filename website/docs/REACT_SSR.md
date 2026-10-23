@@ -4,7 +4,7 @@ Create one store for each server request and reconstruct a client store from the
 
 The [typed context example](./REACT_SCOPING.md) provides a complete provider pattern with independent instances, nested scopes, keyed resets, and persistence cleanup.
 
-For React Server Components, use the server-safe `@codebelt/classy-store/react/server` preparation entry. The `@codebelt/classy-store/react` hooks entry is marked `use client`; its preparation export remains available inside client modules and ordinary SSR. The [Next.js App Router guide](./REACT_NEXT.md) explains where to construct stores and how to cross that boundary with initial data.
+Import hydration preparation from `@codebelt/classy-store/react/server` in server code and client modules. This entry does not import React hooks. The separate `@codebelt/classy-store/react` hooks entry is marked `use client`. The [Next.js App Router guide](./REACT_NEXT.md) explains where to construct stores and how to cross that boundary with initial data.
 
 Call `prepareStoreForHydration(store)` after initializing the store with the data used to render the page, on both the server and client. It captures that initial snapshot before persistence or other live updates begin. All direct and bound hooks use the captured data during server rendering and client hydration, then read the current live store. React requires the initial server and client data to match; see [React's external-store SSR guidance](https://react.dev/reference/react/useSyncExternalStore#adding-support-for-server-rendering).
 
@@ -64,12 +64,13 @@ For a store owned by a component, `prepareStoreForHydration(useLocalStore(() => 
 
 ## Restore persistence while other boundaries hydrate
 
-Browser storage may contain values different from the server-rendered payload. Prepare the store before starting persistence, attach persistence in an effect, and unsubscribe when the component unmounts. The effect can restore storage even while a Suspense boundary is still waiting to hydrate:
+Browser storage may contain values different from the server-rendered payload. Prepare the store before starting persistence, attach persistence in an effect, and dispose it when the component unmounts. The effect can restore storage even while a Suspense boundary is still waiting to hydrate:
 
 ```tsx
 // PersistedProfile.tsx
 import {useEffect} from 'react';
-import {prepareStoreForHydration, useLocalStore} from '@codebelt/classy-store/react';
+import {useLocalStore} from '@codebelt/classy-store/react';
+import {prepareStoreForHydration} from '@codebelt/classy-store/react/server';
 import {persist} from '@codebelt/classy-store/utils';
 import {Profile} from './Profile';
 import {type ProfileData, ProfileStore} from './profileStore';
@@ -85,8 +86,8 @@ export function PersistedProfile({initialData}: {initialData: ProfileData}) {
       storage: localStorage,
       skipHydration: true,
     });
-    void persistence.rehydrate();
-    return () => persistence.unsubscribe();
+    void persistence.rehydrate().catch((error) => console.error('Could not restore persisted state', error));
+    return () => persistence.dispose();
   }, [store]);
 
   return <Profile store={store} />;

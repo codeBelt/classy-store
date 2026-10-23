@@ -71,15 +71,17 @@ history.canRedo; // true if there's a next state (after an undo)
 Use these to enable/disable undo/redo buttons:
 
 ```tsx
+import {useHistoryStatus} from '@codebelt/classy-store/react';
+
 function UndoRedoButtons() {
-  const snap = useClassyStore(drawingStore);
+  const {canUndo, canRedo} = useHistoryStatus(history);
 
   return (
     <div>
-      <button onClick={history.undo} disabled={!history.canUndo}>
+      <button onClick={history.undo} disabled={!canUndo}>
         Undo
       </button>
-      <button onClick={history.redo} disabled={!history.canRedo}>
+      <button onClick={history.redo} disabled={!canRedo}>
         Redo
       </button>
     </div>
@@ -94,6 +96,18 @@ history.dispose();
 ```
 
 After disposing, mutations are no longer recorded and the snapshot stack is cleared.
+
+### Observe status outside React
+
+```ts
+const stopListening = history.subscribe(() => {
+  console.log(history.getSnapshot());
+  // {canUndo, canRedo, isPaused, isDisposed}
+});
+stopListening(); // Only removes this listener; history keeps recording.
+```
+
+Snapshots are readonly and cached until a status field changes. `pause()` and `resume()` notify status subscribers even when store data is unchanged. `dispose()` publishes the final disposed status, clears listeners, and makes subsequent history operations no-ops. `getServerSnapshot()` always returns initial status for SSR and hydration. The public `HistoryStatus` type is exported from `@codebelt/classy-store/utils`.
 
 ## Signature
 
@@ -121,16 +135,19 @@ function withHistory<T extends object>(
 | `pause()` | `() => void` | Stop recording history entries |
 | `resume()` | `() => void` | Resume recording history entries |
 | `dispose()` | `() => void` | Unsubscribe and clean up |
+| `getSnapshot()` | `() => HistoryStatus` | Cached current status |
+| `getServerSnapshot()` | `() => HistoryStatus` | Initial status for SSR/hydration |
+| `subscribe(listener)` | `(listener: () => void) => () => void` | Observe status changes; returns listener cleanup |
 
 ## How It Works
 
 1. **Init:** captures an initial snapshot as `history[0]` and sets `pointer = 0`.
 2. **Record:** on each `subscribe()` callback (when not paused), captures a new snapshot, truncates any redo entries after the current pointer, pushes the snapshot, and enforces the limit by shifting from the front.
-3. **Undo:** decrements the pointer, pauses recording, applies `history[pointer]` back to the store proxy (skipping getters and methods), and resumes recording.
-4. **Redo:** increments the pointer, pauses recording, applies `history[pointer]`, and resumes.
+3. **Undo:** decrements the pointer, suppresses recording during restoration, and applies `history[pointer]` back to the store proxy (skipping getters and methods).
+4. **Redo:** increments the pointer and restores `history[pointer]` with the same recording suppression.
 5. **State restoration:** iterates own enumerable keys of the snapshot, skips keys with getter descriptors on the prototype chain, and assigns values to the proxy. This triggers SET traps and reactivity — your components update automatically.
 
-Undo and redo themselves do **not** create new history entries because recording is paused during the restore operation.
+Undo and redo themselves do **not** create new history entries. Restoration does not change the explicit `isPaused` status set by `pause()` and `resume()`.
 
 ## Use Cases
 
@@ -205,9 +222,9 @@ while (history.canUndo) {
 // All fields are back to their initial values
 ```
 
-### Batch operations with pause/resume
+### Batched edits and pause/resume
 
-When performing multiple related mutations that should count as a single history entry, use `pause()` and `resume()`:
+Synchronous mutations in one turn already share a history entry because ordinary store subscriptions are batched:
 
 ```ts
 class SpreadsheetStore {
@@ -223,19 +240,13 @@ const history = withHistory(spreadsheetStore);
 
 // Paste a block of cells — should be a single undo step
 function pasteBlock(data: Record<string, string>) {
-  history.pause();
-
   for (const [id, value] of Object.entries(data)) {
     spreadsheetStore.setCell(id, value);
   }
-
-  history.resume();
-
-  // Manually trigger a snapshot capture by making a final
-  // mutation after resume, or just let the next user action
-  // create the history entry.
 }
 ```
+
+`pause()` skips history recording for notifications delivered while paused. `resume()` enables recording again; it does not capture an entry itself or group asynchronous edits into a transaction. `useHistoryStatus(history).isPaused` exposes this recording state. Undo/redo restoration preserves an explicit pause.
 
 ### Canvas with limited history
 

@@ -3,6 +3,7 @@ import type {SidebarsConfig} from '@docusaurus/plugin-content-docs';
 const sidebars: SidebarsConfig = {
   tutorialSidebar: [
     'index',
+    'UPGRADING_0_8',
     'UPGRADING_0_7',
     {
       type: 'category',

@@ -105,7 +105,7 @@ await handle.hydrated;         // Promise that resolves when initial hydration i
 await handle.save();           // Manually write to storage (bypasses debounce)
 await handle.clear();          // Remove this store's persisted data from storage
 await handle.rehydrate();      // Manually re-hydrate the store from storage
-handle.unsubscribe();          // Stop persisting: unsubscribe + cancel debounce + remove storage listener
+handle.dispose();          // Stop persisting: unsubscribe + cancel debounce + remove storage listener
 ```
 
 ---
@@ -115,6 +115,8 @@ handle.unsubscribe();          // Stop persisting: unsubscribe + cancel debounce
 ### `properties` (Per-Property Transforms)
 
 Some values aren't JSON-safe. `Date` objects become strings, and custom classes vanish entirely after `JSON.stringify` + `JSON.parse`. Transforms handle the round-trip through the `properties` option.
+
+The transform's `key` selects its TypeScript types: `serialize` receives that property's readonly snapshot value, and `deserialize` must return that property's mutable value. Stored input remains `unknown`, so validate it before restoring. Optional properties retain `undefined` in their value type. Standalone descriptors can use `PropertyTransform<YourStore, 'propertyName'>`, exported from `@codebelt/classy-store/utils`.
 
 ```ts
 class UserStore {
@@ -132,6 +134,7 @@ const userStore = createClassyStore(new UserStore());
 
 persist(userStore, {
   name: 'user-store',
+  storage: localStorage,
   properties: [
     'name',  // plain key -- string, no transform needed
     {
@@ -244,7 +247,7 @@ async hydration is pending keeps the newer local state. An ignored read still
 settles its promise; hydration completion does not guarantee that stored data won.
 
 `clear()` cancels pending auto-saves and removes stored data after earlier issued
-writes finish. Later edits can persist again. `unsubscribe()` skips queued writes
+writes finish. Later edits can persist again. `dispose()` skips queued writes
 that have not started; it cannot cancel adapter I/O already in progress.
 
 Ordering is per handle. Separate handles sharing an async storage key still
@@ -325,7 +328,7 @@ import {handle} from './store';
 
 function App() {
   useEffect(() => {
-    handle.rehydrate();
+    void handle.rehydrate().catch((error) => console.error('Could not restore persisted state', error));
   }, []);
 
   return <TodoList />;
@@ -357,9 +360,12 @@ export function StoreHydrator({children}: {children: ReactNode}) {
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    Promise.all(persists.map((p) => p.rehydrate())).then(() =>
-      setHydrated(true),
-    );
+    void Promise.allSettled(persists.map((handle) => handle.rehydrate())).then((results) => {
+      for (const result of results) {
+        if (result.status === 'rejected') console.error('Could not restore persisted state', result.reason);
+      }
+      setHydrated(true);
+    });
   }, []);
 
   if (!hydrated) {
@@ -370,7 +376,7 @@ export function StoreHydrator({children}: {children: ReactNode}) {
 }
 ```
 
-Wrap your app layout with `StoreHydrator` so nothing renders until `localStorage` values have been applied:
+Wrap your app layout with `StoreHydrator` so its children wait for all restoration attempts to settle:
 
 ```tsx
 // layout.tsx (Next.js App Router)
@@ -392,10 +398,10 @@ export default function RootLayout({children}: {children: React.ReactNode}) {
 
 **How it works:**
 
-1. The server renders the page using each store's class defaults — no `localStorage` access.
+1. The server and initial client render show the loading placeholder without accessing `localStorage`.
 2. On the client, `StoreHydrator` mounts and calls `rehydrate()` on every persist handle.
-3. Until all handles resolve, `StoreHydrator` renders `null` (or a loading indicator), preventing any child component from reading stale default values.
-4. Once hydration completes, children render with the correct `localStorage`-restored state — no mismatch.
+3. Until all attempts settle, `StoreHydrator` renders `null` (or a loading indicator). Failures are logged, and do not leave the UI stuck loading.
+4. Children then render with restored values, or current defaults for failed attempts. To server-render the children themselves, use the [prepared-snapshot SSR pattern](./REACT_SSR.md).
 
 ### `debounce` (Debouncing Writes)
 
@@ -496,22 +502,64 @@ persist(todoStore, {
 
 ## The Handle
 
+### Observable status
+
+```tsx
+import {usePersistStatus} from '@codebelt/classy-store/react';
+import type {PersistHandle} from '@codebelt/classy-store/utils';
+
+function PersistenceStatus({handle}: {handle: PersistHandle}) {
+  const {isHydrated, isExpired, lastError} = usePersistStatus(handle);
+  if (lastError) return <span>Persistence failed: {lastError.operation}</span>;
+  if (!isHydrated) return <span>Restoring…</span>;
+  return <span>{isExpired ? 'Stored data expired' : 'Ready'}</span>;
+}
+```
+
+`PersistStatus` contains readonly `isHydrated`, `isExpired`, `isDisposed`, and `lastError` fields. `lastError` is `null` or `{error, operation}`; the next successful operation clears it. Hydration, expiry, and errors notify status consumers even when store data stays unchanged.
+
+Outside React, use `handle.subscribe(() => handle.getSnapshot())`. The callback takes no arguments; read the current snapshot inside it. `subscribe` returns listener cleanup and does not control persistence itself. `getSnapshot()` returns the same frozen object until status changes. `getServerSnapshot()` returns initial status for SSR/hydration; server and client handles must start with matching status. See [`usePersistStatus`](./index.md#usepersiststatushandle).
+
+Public types `PersistStatus` and `PersistOperation` are exported from `@codebelt/classy-store/utils`.
+
 ### `isHydrated` & `hydrated`
 
-If you need to know when the stored data has been applied to the store:
+These indicate that a hydration attempt has settled, including failures and obsolete reads that were skipped. They do not guarantee that stored data was applied:
 
 ```ts
 // Async -- await the promise
 await handle.hydrated;
-console.log('Restored:', todoStore.todos);
+console.log('Hydration status:', handle.getSnapshot());
 
 // Sync check
 if (handle.isHydrated) {
-  // safe to read persisted state
+  // The attempt has settled; inspect lastError for a reported failure.
 }
 ```
 
 For `localStorage` (synchronous), hydration resolves almost immediately. For async storage adapters like `AsyncStorage`, the promise resolves after the async read completes.
+
+### Handle operation failures
+
+Explicit `save()`, `clear()`, and `rehydrate()` calls reject on failure after reporting through `onError` and `lastError`. Automatic writes and initial hydration report failures without producing unhandled rejections. Handle errors around manual operations:
+
+```ts
+try {
+  await handle.save();
+  console.log('Saved');
+} catch (error) {
+  console.error('Could not save', error);
+}
+
+await handle.clear();
+await handle.rehydrate();
+```
+
+Each failing operation still calls `onError` once and updates status before rejecting with the original error. `PersistOperation` is `'read' | 'write' | 'remove' | 'parse'`; decoding, transforms, migrations, and merge failures use `'parse'`. A failed operation does not block later queued saves. `rehydrate` also waits for expired-data removal when `clearOnExpire` is enabled and rejects if that removal fails.
+
+An obsolete read superseded by a local edit or newer request is still ignored. Calls on a disposed handle reject; explicit queued writes cancelled by disposal also reject without invoking the adapter. Disposal errors do not invoke `onError` or publish more status.
+
+Handle rejected promises in DOM event handlers, for example `onClick={() => { void handle.save().catch(showError); }}`. Use `try`/`catch` inside an async handler when the UI also needs to show success.
 
 ### `clear()` (Clear stored data)
 
@@ -530,12 +578,13 @@ When you need to save immediately (e.g., before the user navigates away):
 ```ts
 const handle = persist(formStore, {
   name: 'form-draft',
+  storage: localStorage,
   debounce: 1000,
 });
 
 // Force save before page unload
 window.addEventListener('beforeunload', () => {
-  handle.save();
+  void handle.save().catch((error) => console.error('Could not save', error));
 });
 ```
 
@@ -544,13 +593,13 @@ state immediately. With async storage it waits behind earlier writes. Await the
 returned promise when completion matters; an async write is not guaranteed to
 finish during page unload.
 
-### `unsubscribe()` (Stop persisting)
+### `dispose()` (Stop persisting)
 
 ```ts
-const handle = persist(todoStore, {name: 'todo-store'});
+const handle = persist(todoStore, {name: 'todo-store', storage: localStorage});
 
 // Later: stop all persistence (e.g., on logout)
-handle.unsubscribe();
+handle.dispose();
 
 // Mutations after this point are NOT written to storage.
 // Cross-tab sync listener is also removed.
@@ -558,7 +607,9 @@ handle.unsubscribe();
 todoStore.addTodo('This is not persisted');
 ```
 
-Pending storage reads that finish after unsubscribe no longer apply state, clear expired entries, or invoke read-error callbacks. Hydration promises still settle when the read finishes. This prevents a retired React effect from overwriting a newer scope during Strict Mode replay, resets, or storage configuration changes. Already-issued adapter I/O is not cancelled; cleanup cannot undo a write already sent to storage. See the [typed context lifecycle example](./REACT_SCOPING.md).
+Pending storage reads that finish after disposal no longer apply state, clear expired entries, or invoke read-error callbacks. Hydration promises still settle when the read finishes. This prevents a retired React effect from overwriting a newer scope during Strict Mode replay, resets, or storage configuration changes. Already-issued adapter I/O is not cancelled; cleanup cannot undo a write already sent to storage. See the [typed context lifecycle example](./REACT_SCOPING.md).
+
+`dispose()` is safe to call repeatedly. Disposal publishes `isDisposed: true` and clears status listeners; no later callbacks run. A pending hydration may still settle afterward and update the readable `isHydrated` flag without notifying disposed listeners. The public `isHydrated` and `isExpired` properties are readonly, matching their runtime getters.
 
 ---
 
@@ -654,5 +705,5 @@ console.log(`Welcome back! Theme: ${appStore.theme}`);
 | **Clear stored data** | `await handle.clear()` |
 | **Force immediate save** | `await handle.save()` |
 | **Re-hydrate manually** | `await handle.rehydrate()` |
-| **Stop persisting** | `handle.unsubscribe()` |
+| **Stop persisting** | `handle.dispose()` |
 | **Check if data expired** | `handle.isExpired` |

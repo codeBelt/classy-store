@@ -55,12 +55,14 @@ function rewritePackedImports(source) {
   return source
     .replace('import {act, ', "import {act} from './reactAct';\nimport {")
     .replaceAll("'../../core/core'", "'@codebelt/classy-store'")
+    .replaceAll("'../../utils/index'", "'@codebelt/classy-store/utils'")
     .replaceAll("'../../snapshot/snapshot'", "'@codebelt/classy-store'")
     .replaceAll(
       "'../../utils/persist/persist'",
       "'@codebelt/classy-store/utils'",
     )
-    .replaceAll("'./react'", "'@codebelt/classy-store/react'");
+    .replaceAll("'./react'", "'@codebelt/classy-store/react'")
+    .replaceAll("'./server'", "'@codebelt/classy-store/react/server'");
 }
 
 try {
@@ -133,6 +135,15 @@ try {
       ),
     );
     writeFileSync(join(consumerDirectory, 'ssr.test.tsx'), ssrTests);
+    writeFileSync(
+      join(consumerDirectory, 'status.test.tsx'),
+      rewritePackedImports(
+        readFileSync(
+          join(packageDirectory, 'src/frameworks/react/react.status.test.tsx'),
+          'utf8',
+        ),
+      ),
+    );
     const sourceHydrationTests = readFileSync(
       join(packageDirectory, 'src/frameworks/react/react.hydration.test.tsx'),
       'utf8',
@@ -160,6 +171,19 @@ try {
       join(consumerDirectory, 'testHelpers'),
       {recursive: true},
     );
+    for (const helper of [
+      'historyStatusView/HistoryStatusView.tsx',
+      'persistStatusView/PersistStatusView.tsx',
+    ]) {
+      const statusHelper = join(consumerDirectory, 'testHelpers', helper);
+      writeFileSync(
+        statusHelper,
+        readFileSync(statusHelper, 'utf8').replace(
+          "'../../react'",
+          "'@codebelt/classy-store/react'",
+        ),
+      );
+    }
     for (const extension of ['mts', 'cts']) {
       cpSync(
         join(fixturesDirectory, 'consumer.types.fixture.ts'),
@@ -195,6 +219,7 @@ try {
         './consumer.test.tsx',
         './ssr.test.tsx',
         './hydration.test.tsx',
+        './status.test.tsx',
         ...scopingTestFiles.map((filename) => `./${filename}`),
       ],
       consumerDirectory,

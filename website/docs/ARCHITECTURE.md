@@ -30,7 +30,7 @@ flowchart TB
     GetterEval["Getters: memoized per-snapshot + cross-snapshot caching"]
   end
 
-  subgraph layer3 ["Layer 3: React Hook (react.ts)"]
+  subgraph layer3 ["Layer 3: React Hook (useClassyStore.ts)"]
     UseStore["useClassyStore(store, selector?)"]
     UseLocalStore["useLocalStore(factory)"]
     USES["useSyncExternalStore"]
@@ -65,56 +65,74 @@ flowchart TB
 
 ## File Map
 
+The library lives in `packages/classy-store`. Public entry points expose the API;
+implementation files and types live with the feature that owns them.
+
+```text
+packages/classy-store/
+├── src/
+│   ├── index.ts                         # Core public entry; no React dependency
+│   ├── types.ts                         # Public Snapshot<T> and SubscribeOptions
+│   ├── core/
+│   │   ├── core.ts                      # Write proxies, subscriptions, computed getters
+│   │   ├── core.types.ts                # Internal dependency and store bookkeeping types
+│   │   ├── core.computed.test.ts        # Write-proxy getter memoization
+│   │   └── core.ownership.test.ts       # Child ownership and subscription cleanup
+│   ├── snapshot/
+│   │   ├── snapshot.ts                  # Immutable snapshots and structural sharing
+│   │   └── snapshot.computed.test.ts    # Snapshot getter memoization
+│   ├── collections/
+│   │   ├── index.ts                     # Public collections entry
+│   │   └── collections.ts               # ReactiveMap and ReactiveSet
+│   ├── frameworks/
+│   │   └── react/
+│   │       ├── react.ts                 # Public client entry; exports hooks and factory
+│   │       ├── server.ts                # Server-safe prepareStoreForHydration entry
+│   │       ├── hooks/
+│   │       │   ├── useClassyStore/      # Selector and auto-tracked subscriptions; hook types
+│   │       │   ├── useLocalStore/       # Component-scoped store creation
+│   │       │   ├── useHistoryStatus/    # Public history status hook
+│   │       │   ├── usePersistStatus/    # Public persistence status hook
+│   │       │   └── useUtilityStatus/    # Internal shared status subscription hook
+│   │       ├── utils/
+│   │       │   ├── createStoreHook/     # Bound store hook factory
+│   │       │   ├── hydrationSnapshots/  # Shared captured snapshots, held by weak keys
+│   │       │   ├── snapshotTargetCache/ # Shared tracking targets
+│   │       │   └── trackingReadMap/     # Render-local and committed dependency reads
+│   │       ├── testHelpers/            # React fixtures
+│   │       └── react.*.test.tsx         # Integration tests grouped by behavior
+│   └── utils/
+│       ├── index.ts                     # Public utility functions and types
+│       ├── persist/
+│       │   ├── persist.ts               # Storage queue, hydration, transforms, tab sync
+│       │   ├── persist.types.ts         # Public persistence options, status, and handle
+│       │   └── persist.*.test.ts        # API, concurrency, and error regressions
+│       ├── history/                     # Undo/redo and status
+│       ├── devtools/                    # Redux DevTools integration
+│       ├── subscribe-key/               # Single-property subscriptions
+│       ├── equality/                    # shallowEqual
+│       ├── utilityStatus/               # Internal framework-neutral status source
+│       ├── cloneSnapshot/               # Internal snapshot cloning
+│       └── internal/                    # Proxy and property helpers
+├── tests/
+│   ├── browser/                         # Real input, hydration, and persistence tests
+│   ├── compatibility/                   # Packed-library React version matrix
+│   ├── compiler/                        # Compiled consumer fixtures and regressions
+│   ├── scoping/                         # Provider isolation, lifecycle, and SSR
+│   ├── next/                            # Packed Next.js boundaries and navigation
+│   ├── memory/                          # Heap snapshots and retention checks
+│   └── performance/                     # Form and list benchmarks
+├── tsdown.config.ts                     # Published entry points and bundle settings
+└── bunfig.toml                          # happy-dom setup for source tests
 ```
-src/
-├── index.ts                       # Barrel export: createClassyStore, snapshot, subscribe, getVersion, shallowEqual, Snapshot
-├── collections/
-│   ├── collections.ts             # ReactiveMap and ReactiveSet implementations
-│   ├── index.ts                   # Collections barrel: reactiveMap, reactiveSet, ReactiveMap, ReactiveSet
-│   └── collections.test.ts        # tests: ReactiveMap, ReactiveSet, class store integration
-├── core/
-│   ├── core.ts                    # Layer 1: Write Proxy — createClassyStore(), subscribe(), getVersion()
-│   ├── core.test.ts               # tests: mutations, batching, methods, getters, arrays
-│   └── computed.test.tsx           # tests: write proxy + snapshot memoization, useClassyStore integration
-├── react/
-│   ├── react.ts                   # Layer 3: React Hook — useClassyStore(), useLocalStore()
-│   ├── react.test.tsx             # tests: selector mode, auto-tracked mode, re-render control
-│   └── react.behavior.test.tsx    # tests: batching, set-then-revert, async, multi-component, unmount
-├── snapshot/
-│   ├── snapshot.ts                # Layer 2: Immutable Snapshots — snapshot()
-│   └── snapshot.test.ts           # tests: freezing, caching, structural sharing, getters
-├── utils/
-│   ├── index.ts                   # Barrel export for @codebelt/classy-store/utils: persist, devtools, subscribeKey, withHistory
-│   ├── devtools/
-│   │   ├── devtools.ts            # devtools() utility: Redux DevTools integration, time-travel debugging
-│   │   └── devtools.test.ts       # tests: connect, disconnect, state sync, time-travel
-│   ├── equality/
-│   │   ├── equality.ts            # shallowEqual
-│   │   └── equality.test.ts       # tests for shallowEqual
-│   ├── history/
-│   │   ├── history.ts             # withHistory() utility: undo/redo via snapshot stack, pause/resume, configurable limits
-│   │   └── history.test.ts        # tests: undo, redo, limits, pause/resume
-│   ├── internal/
-│   │   ├── internal.ts            # Internal helpers: isPlainObject, canProxy, findGetterDescriptor, PROXYABLE
-│   │   └── internal.test.ts       # tests for internal helpers
-│   ├── persist/
-│   │   ├── persist.ts             # persist() utility: storage, transforms, versioning, cross-tab sync
-│   │   └── persist.test.ts        # tests: round-trip, transforms, debounce, migration, merge, SSR, cross-tab
-│   ├── subscribe-key/
-│   │   ├── subscribe-key.ts       # subscribeKey() utility: single-property subscription with prev/current values
-│   │   └── subscribe-key.test.ts  # tests: single key changes, prev/current values
-├── types.ts                       # Shared types: Snapshot<T>, StoreInternal, DepEntry, ComputedEntry
-package.json
-tsconfig.json
-tsdown.config.ts
-bunfig.toml                        # Preload happy-dom for React hook tests
-happydom.ts                        # happy-dom global registrator
-README.md                          # Usage guide
-ARCHITECTURE.md                    # This file
-TUTORIAL.md                        # Step-by-step tutorial
-PERSIST_TUTORIAL.md                # Persist utility tutorial
-PERSIST_ARCHITECTURE.md            # Persist utility internals
-```
+
+Tests for core behavior stay beside their implementation. React integration tests
+exercise the public client entry, including computed getter behavior. Consumer
+fixtures under `tests/` verify the packed library and framework build boundaries.
+The other framework adapters remain under `src/frameworks/`.
+
+Runnable examples live in `examples/react` and `examples/nextjs` at the repository
+root. This guide and the utility architecture guides live in `website/docs`.
 
 ## Layer 1: Write Proxy (`core.ts`)
 
@@ -339,7 +357,7 @@ flowchart TD
 - **Selector mode:** `useClassyStore(store, (state) => state.filtered)` gets a stable reference from the memoized snapshot getter. `Object.is` correctly detects "no change" without `shallowEqual`.
 - **Auto-tracked mode:** `proxy-compare`'s `isChanged` gets stable references from snapshot getters, reducing false positives.
 
-## Layer 3: React Hook (`react.ts`)
+## Layer 3: React Hook (`hooks/useClassyStore/useClassyStore.ts`)
 
 ### Overview
 
@@ -418,18 +436,29 @@ Snapshot creation marks only library-created snapshot nodes with `markToTrack`, 
 
 ```mermaid
 graph LR
-  react["react.ts"] --> core["core.ts"]
-  react --> snapshot["snapshot.ts"]
-  react --> proxyCompare["proxy-compare"]
+  reactEntry["/react client entry"] --> hook["useClassyStore.ts"]
+  reactEntry --> localHook["useLocalStore.ts"]
+  reactEntry --> factory["createStoreHook.ts"]
+  factory --> hook
+  factory --> core["core.ts"]
+  localHook --> core
+  hook --> core
+  hook --> snapshot["snapshot.ts"]
+  hook --> proxyCompare["proxy-compare"]
+  hook --> hydration["hydrationSnapshots.ts"]
+  serverEntry["/react/server entry"] --> hydration
+  serverEntry --> snapshot
+  serverEntry --> core
   snapshot --> core
-  snapshot --> types["types.ts"]
+  snapshot --> types["types.ts: public types"]
+  snapshot --> coreTypes["core.types.ts: internal types"]
   snapshot --> internal["utils/internal/internal.ts"]
   core --> types
+  core --> coreTypes
   core --> internal
-  index["index.ts"] --> core
+  index["Core entry: index.ts"] --> core
   index --> snapshot
-  index --> react
-  index --> internal
+  index --> equality["equality.ts"]
   index --> types
 
   subgraph utilities ["Utilities (utils/)"]
@@ -437,18 +466,30 @@ graph LR
     devtools["devtools.ts"]
     subscribeKey["subscribe-key.ts"]
     withHistory["history.ts"]
+    status["utilityStatus.ts"]
   end
 
   persist --> core
   persist --> snapshot
   persist --> internal
+  persist --> status
   devtools --> core
   devtools --> snapshot
   subscribeKey --> core
   subscribeKey --> snapshot
   withHistory --> core
   withHistory --> snapshot
+  withHistory --> status
+  reactEntry --> statusHooks["useHistoryStatus / usePersistStatus"]
+  statusHooks --> sharedHook["useUtilityStatus.ts"]
 ```
+
+The client entry owns the React boundary. Core, snapshots, collections, and
+utilities remain framework-neutral. React status hooks share an internal hook;
+the status source itself lives with the utilities and has no React dependency.
+`types.ts` contains public core types, while `core.types.ts` describes private
+bookkeeping. Persistence contracts live in `persist.types.ts` and are exported
+through the public utilities entry.
 
 ## Key Design Decisions
 

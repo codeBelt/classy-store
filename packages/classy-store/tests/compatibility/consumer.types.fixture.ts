@@ -14,16 +14,24 @@ import {
 import type {UseClassyStoreOptions} from '@codebelt/classy-store/react';
 import {
   createStoreHook,
-  prepareStoreForHydration,
   useClassyStore,
+  useHistoryStatus,
   useLocalStore,
+  usePersistStatus,
 } from '@codebelt/classy-store/react';
+import {prepareStoreForHydration} from '@codebelt/classy-store/react/server';
+import type * as UtilityTypes from '@codebelt/classy-store/utils';
 import {
+  type HistoryStatus,
   type PersistHandle,
+  type PersistOperation,
   type PersistOptions,
+  type PersistStatus,
+  type PropertyTransform,
   persist,
   type StorageAdapter,
   subscribeKey,
+  withHistory,
 } from '@codebelt/classy-store/utils';
 
 class ConsumerStore {
@@ -43,6 +51,17 @@ type Equal<Left, Right> =
     ? true
     : false;
 type Expect<Condition extends true> = Condition;
+
+type CoreExports = typeof import('@codebelt/classy-store');
+// @ts-expect-error Store version bookkeeping is internal.
+export type RemovedStoreVersion = CoreExports['getVersion'];
+// @ts-expect-error The shared utility status contract is internal.
+export type RemovedUtilityStatus = UtilityTypes.UtilityStatusSource<unknown>;
+// @ts-expect-error Explicit persistence operations have a single error policy.
+export type RemovedPersistCallOptions = UtilityTypes.PersistCallOptions;
+type ReactExports = typeof import('@codebelt/classy-store/react');
+// @ts-expect-error Hydration preparation is exported only from /react/server.
+export type RemovedClientHydration = ReactExports['prepareStoreForHydration'];
 
 const store = createClassyStore(new ConsumerStore());
 const prepared = prepareStoreForHydration(store);
@@ -130,7 +149,7 @@ export function utilityTypeAssertions(storage: StorageAdapter) {
       {
         key: 'count',
         serialize: (value) => {
-          const inferred: Expect<Equal<typeof value, string | number>> = true;
+          const inferred: Expect<Equal<typeof value, number>> = true;
           void inferred;
           return String(value);
         },
@@ -157,4 +176,112 @@ export function utilityTypeAssertions(storage: StorageAdapter) {
     Expect<Equal<typeof tags, ReactiveSet<string>>>,
   ] = [true, true, true, true, true];
   return {assertions, persistence, unsubscribe};
+}
+
+// Compile-only public API checks, exercised through both ESM and CJS declarations.
+export function useUtilityApiTypes(storage: StorageAdapter) {
+  const store = createClassyStore({
+    count: 0,
+    title: '',
+    updatedAt: new Date(),
+    nested: {labels: ['a']},
+    optional: undefined as number | undefined,
+  });
+  const handle = persist(store, {
+    name: 'typed',
+    storage,
+    properties: [
+      {
+        key: 'count',
+        serialize: (value) => value.toFixed(),
+        deserialize: Number,
+      },
+      {
+        key: 'title',
+        serialize: (value) => value.toUpperCase(),
+        deserialize: String,
+      },
+      {
+        key: 'updatedAt',
+        serialize: (value) => value.toISOString(),
+        deserialize: (value) => new Date(String(value)),
+      },
+      {
+        key: 'optional',
+        serialize: (value) => value?.toFixed(),
+        deserialize: (value) => (value === null ? undefined : Number(value)),
+      },
+      {
+        key: 'nested',
+        serialize: (value) => {
+          // @ts-expect-error Serialization reads immutable snapshot data.
+          value.labels.push('mutated');
+          return value.labels;
+        },
+        deserialize: () => ({labels: []}),
+      },
+    ],
+  });
+  const invalidTransform: PropertyTransform<typeof store, 'count'> = {
+    key: 'count',
+    serialize: (value) => value,
+    // @ts-expect-error Deserialization must restore the selected property's type.
+    deserialize: () => 'wrong',
+  };
+  const optionalOptions: PersistOptions<{count?: number}> = {
+    name: 'optional',
+    storage,
+    properties: [
+      {
+        key: 'count',
+        serialize: (value) => value?.toFixed(),
+        deserialize: () => undefined,
+      },
+    ],
+  };
+  // @ts-expect-error Getter-only handle metadata cannot be assigned.
+  handle.isHydrated = true;
+  // @ts-expect-error Getter-only handle metadata cannot be assigned.
+  handle.isExpired = true;
+  const operation: PersistOperation = 'write';
+  const saved: Promise<void> = handle.save();
+  const cleared: Promise<void> = handle.clear();
+  const rehydrated: Promise<void> = handle.rehydrate();
+  // @ts-expect-error Explicit save always rejects on failure.
+  handle.save({throwOnError: false});
+  // @ts-expect-error Explicit clear always rejects on failure.
+  handle.clear({throwOnError: false});
+  // @ts-expect-error Explicit rehydrate always rejects on failure.
+  handle.rehydrate({throwOnError: false});
+  const status = usePersistStatus(handle);
+  const history = withHistory(store);
+  const historyStatus = useHistoryStatus(history);
+  // @ts-expect-error History status requires a history handle.
+  useHistoryStatus(handle);
+  // @ts-expect-error Persistence status requires a persistence handle.
+  usePersistStatus(history);
+  // @ts-expect-error Store data is read with useClassyStore.
+  useHistoryStatus(store);
+  // @ts-expect-error Store data is read with useClassyStore.
+  usePersistStatus(store);
+  const types: [
+    Expect<Equal<typeof status, PersistStatus>>,
+    Expect<Equal<typeof historyStatus, HistoryStatus>>,
+  ] = [true, true];
+  // @ts-expect-error Status snapshots are readonly.
+  status.isHydrated = false;
+  // @ts-expect-error History snapshots are readonly.
+  historyStatus.canUndo = true;
+  // @ts-expect-error Persistence cleanup is dispose(), with no unsubscribe alias.
+  handle.unsubscribe();
+  handle.dispose();
+  return {
+    invalidTransform,
+    optionalOptions,
+    operation,
+    saved,
+    cleared,
+    rehydrated,
+    types,
+  };
 }
