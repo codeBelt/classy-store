@@ -2,7 +2,7 @@
 
 > Class-based reactive state management for React, Vue, Svelte, Solid, and Angular. Write
 > plain TypeScript classes — get fine-grained reactivity, immutable snapshots, and
-> zero-boilerplate hooks. ~2.3 KB gzipped. No Providers, no decorators, no reducers.
+> React hooks. Share stores directly or scope instances with typed context providers.
 
 ## Getting Started
 
@@ -17,6 +17,8 @@
   controlled inputs without timing options, inheritance, async patterns, local stores
 
 ## Utilities
+
+- [Reactive collections](https://codebelt.github.io/classy-store/docs/REACTIVE_COLLECTIONS_TUTORIAL): Observable Map-like and Set-like operations, with explicit persistence transforms
 
 - [Persistence (`persist`)](https://codebelt.github.io/classy-store/docs/PERSIST_TUTORIAL):
   Save state to localStorage/sessionStorage/AsyncStorage with transforms, versioning,

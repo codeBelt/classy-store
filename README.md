@@ -32,7 +32,12 @@ See the [0.8.0 upgrade guide](https://codebelt.github.io/classy-store/docs/UPGRA
 
 ## ⚡ Quick Example
 
-```ts
+This example creates a shared store for a client-rendered React app. For SSR, create one store per request or provider as shown in the [scoping guide](https://codebelt.github.io/classy-store/docs/REACT_SCOPING).
+
+```tsx
+import {createClassyStore} from '@codebelt/classy-store';
+import {useClassyStore} from '@codebelt/classy-store/react';
+
 // 1. Plain class — fields are state, getters are computed values, the class is the type
 class CartStore {
   items: { name: string; price: number; qty: number }[] = [];
@@ -60,6 +65,30 @@ function AddButton() {
   return <button onClick={() => cartStore.add('Widget', 9.99)}>Add item</button>;
 }
 ```
+
+## Choosing an API
+
+| What you need | API |
+| --- | --- |
+| Create shared state from a class or object | `createClassyStore(instance)` |
+| Render store data in React | `useClassyStore(store)` or `useClassyStore(store, selector)` |
+| Create a store owned by a component | `useLocalStore(factory)` |
+| Bind a reusable hook to an existing store | `createStoreHook(store)` |
+| Render undo/redo availability or pause state | `useHistoryStatus(history)` |
+| Render persistence hydration, expiry, or errors | `usePersistStatus(handle)` |
+| Prepare matching initial data for SSR/hydration | `prepareStoreForHydration(store)` |
+| Read state outside React or observe mutations | `snapshot(store)`, `subscribe(store, listener)`, `subscribeKey(store, key, listener)` |
+| Persist state, record history, or inspect it in DevTools | `persist(store, options)`, `withHistory(store)`, `devtools(store)` |
+| Track changes inside Map-like or Set-like collections | `reactiveMap()`, `reactiveSet()` |
+| Compare selector results one level deep | `shallowEqual(previous, next)` |
+
+`useClassyStore` is the starting point for React components. The two status hooks
+are optional: use them only when displaying metadata from an existing history or
+persistence handle. They do not create those handles or subscribe to store data.
+
+See the [API reference and import paths](https://codebelt.github.io/classy-store/docs/#package-entry-points) for signatures, public types, and lifecycle details.
+
+## React integration
 
 React subscriptions notify synchronously, so controlled inputs preserve caret position without extra options:
 
@@ -96,6 +125,8 @@ npm install @codebelt/classy-store
 bun add @codebelt/classy-store
 ```
 
+The React adapter requires React 18 or later. Install `react` and `react-dom` in your application if it does not already provide them.
+
 ## 🤖 AI / LLM Usage
 
 This library provides machine-readable documentation for LLM-powered tools:
@@ -105,13 +136,11 @@ This library provides machine-readable documentation for LLM-powered tools:
 
 These files follow the [llms.txt standard](https://llmstxt.org/).
 
-
 ## 💡 Why Another State Library
 
 - A class-based store where the class is the object and the type — no separate interface or type definition needed.
 - Getters as computed values, cached automatically and only recalculated when something changes.
 - No component wrapping — no observers, no HOCs, just a hook.
-
 
 ## 🙏 Acknowledgements
 
@@ -128,6 +157,8 @@ This library wouldn't exist without the ideas pioneered by these projects. Each 
 **[React](https://react.dev)** — React 18's `useSyncExternalStore` is the foundation of our hook layer. It provides tear-free concurrent-mode-safe integration with external stores, and it's the same API used by Zustand, Redux, and Valtio under the hood.
 
 **[Claude 4.6 Opus](https://anthropic.com)** — Let's be real: this library was designed, architected, implemented, tested, and documented almost entirely by Claude 4.6 Opus (Anthropic) via [Cursor](https://cursor.com). From the three-layer proxy architecture to the memoized computed getters with dependency tracking, the cross-snapshot caching strategy, and tests — it was all pair-programmed with an AI that never gets tired of writing Proxy traps. The human brought the vision, the taste, and the "no, make it better" energy. Claude brought the code.
+
+**[OpenAI Codex](https://openai.com/codex/)** — Contributed public API refinements, core and React regression tests, and fixes for hydration, React Compiler compatibility, Next.js integration, performance, memory retention, and persistence. Also helped review and reorganize the codebase, update examples, and improve the documentation.
 
 ## 🤝 Contributing
 

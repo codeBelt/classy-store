@@ -1,57 +1,102 @@
 # Reactive Collections
 
-Classy Store provides `ReactiveMap` and `ReactiveSet` to help with persisting `Map` and `Set` collections. Both collections are backed by plain arrays under the hood, but they expose the exact same methods and APIs as their native counterparts.
+Use `reactiveMap()` and `reactiveSet()` when mutations such as `.set()`, `.add()`,
+`.delete()`, and `.clear()` need to notify store subscribers. Put the collection
+inside a store created by `createClassyStore()` and mutate it through that store.
 
-> [!NOTE]
-> **Performance Tip:** You should use native `Map` and `Set` in the store for better performance in most cases. `ReactiveMap` and `ReactiveSet` should only be used if you explicitly need to persist a `Map` or `Set` to storage using the `persist()` utility.
+Native `Map` and `Set` are opaque leaves: replacing their property can notify
+subscribers, but mutating their contents does not. Reactive collections use
+arrays internally and expose Map-like and Set-like methods. They are not native
+`Map` or `Set` instances, and key/value lookups scan those arrays.
 
-## Why Reactive Collections?
+## Reactive updates
 
-Native `Map` and `Set` objects are not JSON-serializable by default, making them incompatible with `localStorage` and `sessionStorage`. When you `JSON.stringify` a `Map` or `Set`, it usually becomes an empty object `{}`.
+```ts
+import {createClassyStore} from '@codebelt/classy-store';
+import {reactiveMap, reactiveSet} from '@codebelt/classy-store/collections';
 
-`ReactiveMap` and `ReactiveSet` are backed by internal structures that allow them to be persisted correctly when combined with the `serialize` and `deserialize` options in the `persist` utility.
+class DirectoryStore {
+  labels = reactiveMap<string, string>();
+  selected = reactiveSet<string>();
+
+  select(id: string, label: string) {
+    this.labels.set(id, label);
+    this.selected.add(id);
+  }
+}
+
+const directoryStore = createClassyStore(new DirectoryStore());
+directoryStore.select('u1', 'Alice');
+```
+
+React components read these collections with `useClassyStore`, just like other
+store data. Select an existing snapshot property or a primitive such as `.size`;
+if a selector creates a new array, consider `shallowEqual` where its one-level
+comparison matches your needs.
+
+`ReactiveMap` and `ReactiveSet` are public types from the collections entry.
+Construct values with the factory functions.
 
 ## Persisting a ReactiveMap
 
-When persisting a `ReactiveMap`, you do not need to provide custom `serialize` or `deserialize` logic. The reactive collection is backed by an internal structure the `persist` utility can natively stringify and parse.
+JSON does not retain a collection's prototype or methods. Use a property transform
+to serialize entries and reconstruct the collection during hydration. For string
+keys and values:
 
 ```ts
 import {createClassyStore} from '@codebelt/classy-store';
 import {reactiveMap} from '@codebelt/classy-store/collections';
 import {persist} from '@codebelt/classy-store/utils';
 
-class UserStore {
-  users = reactiveMap<string, { name: string; role: string }>();
-
-  addUser(id: string, name: string, role: string) {
-    this.users.set(id, {name, role});
-  }
+class LabelStore {
+  labels = reactiveMap<string, string>();
 }
 
-const userStore = createClassyStore(new UserStore());
-
-persist(userStore, {
-  name: 'user-store',
+const labelStore = createClassyStore(new LabelStore());
+const persistence = persist(labelStore, {
+  name: 'labels',
+  storage: localStorage,
+  properties: [
+    {
+      key: 'labels',
+      serialize: (labels) => [...labels.entries()],
+      deserialize: (stored) => {
+        if (!Array.isArray(stored)) throw new Error('Expected label entries');
+        const labels = reactiveMap<string, string>();
+        for (const entry of stored) {
+          if (
+            !Array.isArray(entry) || entry.length !== 2 ||
+            typeof entry[0] !== 'string' || typeof entry[1] !== 'string'
+          ) {
+            throw new Error('Invalid label entry');
+          }
+          labels.set(entry[0], entry[1]);
+        }
+        return labels;
+      },
+    },
+  ],
 });
 ```
 
-**What gets stored in storage:**
+After saving `labelStore.labels.set('u1', 'Alice')`, the storage envelope contains:
 
 ```json
 {
   "version": 0,
   "state": {
-    "users": [
-      ["u1", { "name": "Alice", "role": "admin" }],
-      ["u2", { "name": "Bob", "role": "viewer" }]
-    ]
+    "labels": [["u1", "Alice"]]
   }
 }
 ```
 
+The restored `labels` value retains `.get()`, `.set()`, and the other collection
+methods. Validate object-valued entries according to your application's schema
+before constructing the collection.
+
 ## Persisting a ReactiveSet
 
-The same pattern works for `ReactiveSet`. You can simply stringify it by referring to the property directly.
+Serialize the values and rebuild the set after validating stored input:
 
 ```ts
 import {createClassyStore} from '@codebelt/classy-store';
@@ -60,26 +105,44 @@ import {persist} from '@codebelt/classy-store/utils';
 
 class TagStore {
   tags = reactiveSet<string>();
-
-  addTag(tag: string) {
-    this.tags.add(tag);
-  }
 }
 
 const tagStore = createClassyStore(new TagStore());
-
-persist(tagStore, {
-  name: 'tag-store',
+const persistence = persist(tagStore, {
+  name: 'tags',
+  storage: localStorage,
+  properties: [
+    {
+      key: 'tags',
+      serialize: (tags) => [...tags],
+      deserialize: (stored) => {
+        if (!Array.isArray(stored)) throw new Error('Expected tags');
+        const tags = reactiveSet<string>();
+        for (const value of stored) {
+          if (typeof value !== 'string') throw new Error('Invalid tag');
+          tags.add(value);
+        }
+        return tags;
+      },
+    },
+  ],
 });
 ```
 
-**What gets stored in storage:**
+With tags added, the stored state is an array of strings:
 
 ```json
 {
   "version": 0,
   "state": {
-    "tags": ["typescript", "javascript", "react"]
+    "tags": ["typescript", "react"]
   }
 }
 ```
+
+These are client-only setup examples. Dispose the persistence handle when its
+owner is torn down. For React and SSR, create it in an effect and call
+`persistence.dispose()` in cleanup; see [store scoping](./REACT_SCOPING.md).
+Transform failures are reported as parse errors during hydration. Explicit
+`rehydrate()` calls also reject, so handle their promises as described in the
+[persistence guide](./PERSIST_TUTORIAL.md#handle-operation-failures).

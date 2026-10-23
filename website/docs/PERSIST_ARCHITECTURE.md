@@ -168,7 +168,7 @@ batched subscription notification has run, with cleanup in `finally`.
      if transform exists → state[key] = transform.deserialize(state[key])
 6. Build currentState from snapshot (only propKeys)
 7. Apply merge strategy:
-     'shallow' / 'replace': { ...currentState, ...persistedState }
+     'shallow': { ...currentState, ...persistedState }
      custom function: merge(persistedState, currentState)
 8. for each key in propKeys:
      if key in mergedState → proxy[key] = mergedState[key]
@@ -181,10 +181,9 @@ batched subscription notification has run, with cleanup in `finally`.
 | Strategy | Behavior |
 |---|---|
 | `'shallow'` (default) | `{ ...current, ...persisted }` -- persisted keys overwrite, new keys keep defaults |
-| `'replace'` | Same as shallow at top level. Conceptually signals full replacement for nested objects. |
 | Custom `fn` | `fn(persisted, current)` -- full control. Enables deep merge or selective overrides. |
 
-Both `'shallow'` and `'replace'` produce the same result for flat stores. The distinction is semantic and affects how consumers think about nested object handling.
+The public merge option accepts `shallow` or a function. Shallow merging replaces each stored top-level property, including its nested value; use a custom function to combine nested data.
 
 ### Error Handling
 
@@ -300,7 +299,7 @@ Class getters are derived/computed values that recompute from persisted data pro
 
 ### Why a hydrated Promise instead of lifecycle hooks?
 
-Zustand uses `onRehydrateStorage` (a callback), Pinia uses `beforeHydrate`/`afterHydrate` hooks. A Promise is more composable: it works with `async`/`await`, can be passed to React Suspense boundaries, and doesn't require a registration pattern. The `isHydrated` boolean covers the synchronous check case.
+`hydrated` lets callers await settlement of the initial hydration attempt. It resolves even if the attempt fails, so inspect `lastError` for reported errors. Use `rehydrate()` when an explicit read should reject on failure. React components can observe changes with `usePersistStatus(handle)`.
 
 ### Why debounce instead of throttle?
 
@@ -313,10 +312,10 @@ Debounce waits for a quiet period after the last mutation. Throttle writes at re
 | Per-property transforms | Date round-trip, ReactiveMap round-trip |
 | Debounce | Coalescing, save bypass |
 | Version migration | Migration call, version match skip |
-| Merge strategies | Shallow, replace, custom function |
+| Merge strategies | Shallow or custom function |
 | skipHydration | No auto-hydrate, manual rehydrate, promise resolution |
 | Dispose | Stop writes, cancel debounce |
-| Flush/clear/rehydrate | Immediate write, remove data, in-memory preservation, re-read |
+| Save/clear/rehydrate | Immediate write, remove data, in-memory preservation, re-read |
 | Hydration state | Promise instance, resolution timing |
 | Async storage | Async write, async hydrate |
 | Cross-tab sync | Correct key, wrong key, post-disposal, disabled |

@@ -211,9 +211,12 @@ const history = withHistory(formStore);
 formStore.setField('name', 'Alice');
 formStore.setField('email', 'alice@example.com');
 
-// Undo last change
+// Let the batched subscription record both edits.
+await Promise.resolve();
+
+// Both writes in this turn form one undo step.
 history.undo();
-// email is back to ''
+// name and email are both back to ''.
 
 // Undo all changes
 while (history.canUndo) {
@@ -292,10 +295,14 @@ import {persist, withHistory} from '@codebelt/classy-store/utils';
 const todoStore = createClassyStore(new TodoStore());
 
 // Persist to localStorage (survives page reload)
-persist(todoStore, { name: 'todos' });
+const persistence = persist(todoStore, {name: 'todos', storage: localStorage});
 
 // Undo/redo in memory (resets on page reload)
 const history = withHistory(todoStore);
+
+// When the store's owner is torn down:
+history.dispose();
+persistence.dispose();
 ```
 
 History is in-memory only — it doesn't persist across page loads. The persisted state is always the latest state (not the undo pointer position).
@@ -326,6 +333,8 @@ const history = withHistory(store);
 | Check if undoable | `h.canUndo` |
 | Check if redoable | `h.canRedo` |
 | Limit history size | `withHistory(store, { limit: 50 })` |
-| Batch as single step | `h.pause(); /* mutations */; h.resume()` |
+| Record one undo step | Make synchronous edits in one turn; history records after the microtask flush |
+| Temporarily stop recording | `h.pause()`; keep paused until those notifications flush, then call `h.resume()` |
+| Render history status in React | `useHistoryStatus(h)` |
 | Stop tracking | `h.dispose()` |
 | Undo all | `while (h.canUndo) h.undo()` |
