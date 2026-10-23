@@ -39,7 +39,7 @@ try {
 }
 ```
 
-Automatic writes and initial hydration handle reported failures internally. `hydrated` resolves when the initial attempt settles; `isHydrated` also means an attempt settled, including failure or a superseded read. Check `persistence.getSnapshot().lastError` when the result matters. A failed operation does not prevent later queued writes from running.
+Automatic writes and initial hydration handle reported failures internally. `hydrated` resolves once an attempt settles; `isHydrated` also means an attempt settled, including failure or a superseded read. Both stay settled during later reads; await `rehydrate()` for a specific new attempt. Check `persistence.getSnapshot().lastError` when the result matters. A failed operation does not prevent later queued writes from running.
 
 ## Subscribe to utility status in React
 

@@ -9,6 +9,14 @@ subscribers, but mutating their contents does not. Reactive collections use
 arrays internally and expose Map-like and Set-like methods. They are not native
 `Map` or `Set` instances, and key/value lookups scan those arrays.
 
+## Collection behavior
+
+- Lookups and mutations scan backing arrays, so they are O(n), not native-map-style indexed lookups.
+- Prefer primitive map keys and set values. Objects read through a store can be proxied, and snapshots copy supported objects; their identity may differ from the original input object.
+- Lookup methods use `Object.is`, which distinguishes `0` and `-0`. Initial iterables are deduplicated with native `Map`/`Set` semantics, which treat those two values as equal. Avoid depending on signed-zero keys.
+- Iterators copy the entry/value list when created. Later additions and removals do not change that list; referenced objects can still change. This differs from native live iterators.
+- The public factories expose the listed Map-like/Set-like methods, not every native collection API or subclassing behavior.
+
 ## Reactive updates
 
 ```ts

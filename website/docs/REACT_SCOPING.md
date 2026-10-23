@@ -138,7 +138,7 @@ Change `documentId` when moving to a different document; increment `revision` fo
 | Persistence removed | Keep current state and stop persistence |
 | Provider unmounts | React releases its store reference and effect cleanup detaches persistence |
 
-A reset does **not** clear saved data. If the new provider uses the same persistence key, it restores that saved draft. To reset saved data as well, first unmount or disable the old persistence owner, await `storage.removeItem(name)`, then remount. Use distinct storage keys for independent documents or users. Different React providers using the same storage key still share that storage namespace.
+A reset does **not** clear saved data. If the new provider uses the same persistence key, it restores that saved draft. To clear it, stop new edits and await the active handle's `clear()` before disposing that handle and remounting. `clear()` orders removal after earlier writes and invalidates pending reads. If the provider hides its handle, expose an application reset command that performs this sequence. Disposing first and calling the adapter's `removeItem()` directly can race with an already-issued async write. Coordinate any other handles using the same key. Use distinct storage keys for independent documents or users.
 
 Cleanup prevents pending storage reads from applying after disposal, including the discarded first effect in Strict Mode. Such reads still finish and their promises settle; the adapter's I/O is not cancelled. Already-issued writes cannot be undone by cleanup. External code retaining a store can still mutate it after unmount, but its disposed persistence owner and unmounted consumers no longer react. `useLocalStore` does not automatically call application-specific `dispose()` methods.
 

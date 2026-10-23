@@ -30,7 +30,9 @@ function Counter() {
   );
 }`;
 
-const NestedCode = `// Works perfectly with nested objects - no spread operators!
+const NestedCode = `import {createClassyStore} from '@codebelt/classy-store';
+
+// Nested plain objects support direct mutation.
 class UserStore {
   profile = {
     name: 'John',
@@ -76,6 +78,14 @@ function HomepageHeader() {
               <CodeBlock language="typescript" showLineNumbers={true}>
                 {ExampleCode}
               </CodeBlock>
+              <p>
+                This shared instance is for a client-only app. For server
+                rendering, use{' '}
+                <Link to="/docs/REACT_SCOPING">
+                  a store per request or provider
+                </Link>
+                .
+              </p>
             </div>
           </div>
         </div>
@@ -93,8 +103,9 @@ function DeepReactivity() {
             <div className="padding-vert--md">
               <Heading as="h3">Deep Reactivity</Heading>
               <p>
-                Mutate nested objects directly. Our Proxy-based system
-                automatically tracks changes and triggers targeted re-renders.
+                Mutate nested objects directly. Our Proxy-based system tracks
+                assignments and deletions; React selectors and tracked reads
+                filter subscription-driven renders.
               </p>
               <p>
                 Forget <code>{'{...state, nested: {...state.nested}}'}</code>{' '}

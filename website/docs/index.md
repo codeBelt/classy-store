@@ -9,13 +9,13 @@ ES6 Proxy · useSyncExternalStore · proxy-compare
 ## Features
 
 - **Class-based stores** — plain classes with fields, methods, and getters
-- **No wrappers** — no `observer()`, no `Provider`, no HOCs, no decorators
-- **Fine-grained reactivity** — components only re-render when properties they read change
+- **No required wrappers** — shared client stores need no `observer()`, Provider, HOC, or decorator; use context to scope instances
+- **React render filtering** — selectors and tracked reads filter updates caused by store subscriptions
 - **Immutable snapshots** — structural sharing keeps unchanged sub-trees reference-equal
 - **Memoized computed values** — class getters are automatically cached, recompute only when deps change
 - **Batched subscriptions** — ordinary listeners coalesce mutations in a microtask; React receives updates synchronously
 - **Type-safe** — full TypeScript inference from your class definitions
-- **Framework bindings** — first-class integrations for React, Vue, Svelte, Solid, and Angular
+- **Framework bindings** — React hooks and adapters for Vue, Svelte, Solid, and Angular
 - **Two hook modes** — explicit selector or automatic property tracking (React)
 - **Reactive collections** — `reactiveMap()` and `reactiveSet()` for Map/Set-like state
 - **Persistence** — `persist()` utility with transforms, versioning, migration, debounce, cross-tab sync, TTL expiration, and SSR support
@@ -46,6 +46,8 @@ All framework peer dependencies are optional — install only what your project 
 ### 1. Define a store class
 
 ```typescript
+type Todo = {text: string; done: boolean};
+
 class TodoStore {
   todos: Todo[] = [];
   filter: 'all' | 'done' | 'pending' = 'all';
@@ -73,6 +75,9 @@ class TodoStore {
 ```
 
 ### 2. Create a reactive store
+
+This shared instance is for a client-only app. For SSR or independent subtrees,
+create stores per request or provider; see [store scoping](./REACT_SCOPING.md).
 
 ```typescript
 import {createClassyStore} from '@codebelt/classy-store';
@@ -140,10 +145,20 @@ Import from the entry that owns the API. Core, collections, and utilities do not
 | `@codebelt/classy-store/react/server` | `prepareStoreForHydration` | — |
 | `@codebelt/classy-store/collections` | `reactiveMap`, `reactiveSet` | `ReactiveMap`, `ReactiveSet` |
 | `@codebelt/classy-store/utils` | `persist`, `withHistory`, `subscribeKey`, `devtools` | `PersistOptions`, `PersistHandle`, `PersistStatus`, `PersistOperation`, `PropertyTransform`, `StorageAdapter`, `HistoryOptions`, `HistoryHandle`, `HistoryStatus`, `DevtoolsOptions`, `SubscribeOptions` |
+| `@codebelt/classy-store/vue` | `useClassyStore` | — |
+| `@codebelt/classy-store/svelte` | `toSvelteStore` | `ClassyReadable` |
+| `@codebelt/classy-store/solid` | `useClassyStore` | — |
+| `@codebelt/classy-store/angular` | `injectStore` | — |
 
 `ReactiveMap` and `ReactiveSet` are exported as types; construct values with the
 factory functions. The React entry carries `use client`. Import hydration
 preparation from `/react/server` in both server code and client modules.
+
+The other adapters publish whole snapshots using ordinary batched subscriptions:
+Vue returns a `ShallowRef` and uses the current effect scope for cleanup; Svelte
+returns a readable-store interface; Solid returns a signal accessor and uses its
+owner's cleanup; Angular returns a readonly signal and requires an injection
+context. React's selector and auto-tracking modes are specific to `/react`.
 
 ## API Reference
 
@@ -155,9 +170,13 @@ Wraps a class instance in a reactive Proxy. Mutations notify React immediately; 
 const myStore = createClassyStore(new MyClass());
 ```
 
-- **Methods** are automatically bound so `this` mutations go through the proxy
+- **Prototype methods** are automatically bound so `this` mutations go through the proxy; arrow-function fields cannot be rebound
 - **Getters** are automatically memoized — they only recompute when a dependency changes (like MobX `@computed`)
-- **Nested objects/arrays** are lazily deep-proxied on first access
+- **Nested plain objects, arrays, and reactive collections** are lazily deep-proxied on first access; other nested class instances remain opaque
+
+Keep the returned proxy as the mutable store. Writes to the original instance
+or raw nested objects bypass notifications and snapshot invalidation. See the
+[mutation and getter constraints](./TUTORIAL.md#tips--gotchas).
 
 ### `useClassyStore(store, selector?, options?)`
 
@@ -177,14 +196,14 @@ const user = useClassyStore(myStore, (state) => state.user);
 const items = useClassyStore(myStore, (state) => state.items);
 ```
 
-The selector receives an immutable snapshot. Re-renders only when the selected value changes via `Object.is` by default, or `options.isEqual`.
+The selector receives a readonly snapshot. Subscription-driven updates compare the selected value using `Object.is` by default, or `options.isEqual`. Parent renders, local state, context, and React's development checks can still render the component independently of this subscription.
 
 **Auto-tracked mode:**
 
 ```typescript
 const snap = useClassyStore(myStore);
 // Access snap.count, snap.user.name, etc.
-// Only re-renders when accessed properties change
+// Store updates are filtered using tracked property reads
 ```
 
 Returns a tracking proxy. Properties your component reads are automatically tracked. Committed reads remain associated with each reused immutable snapshot object, so memoized calculations and children stay reactive even when they skip property reads on a later render. Abandoned renders do not publish their reads. Unchanged snapshots and nested tracked values retain their references across parent re-renders.
@@ -356,7 +375,7 @@ Validates at creation time — throws if the argument is not a store proxy.
 
 ### `snapshot(store)`
 
-Reads a snapshot with frozen copies of store objects and arrays, cached by store version with structural sharing. Used internally by `useClassyStore` but also available directly. Opaque leaves such as native `Map`, `Set`, `Date`, and functions retain their references; do not mutate them through a snapshot.
+Reads a snapshot with frozen copies of the root state, nested plain objects, arrays, and reactive collections, cached by store version with structural sharing. Opaque leaves such as native `Map`, `Set`, `Date`, functions, and other nested class instances retain their references. New objects returned by computed getters are cached but not automatically frozen. Treat all results as readonly; see [snapshot semantics](./TUTORIAL.md#snapshots).
 
 ```typescript
 import {snapshot} from '@codebelt/classy-store';
@@ -390,7 +409,7 @@ const unsubSync = subscribe(
 
 ### `shallowEqual(a, b)`
 
-Shallow equality comparison for objects and arrays. Useful as a custom `isEqual` for selectors that return derived objects.
+Compares primitives with `Object.is`, arrays by length and elements, and other objects by their own enumerable string keys and values. Use it for selectors returning plain records or arrays when one-level equality matches the UI's needs. It does not compare prototypes, symbol keys, or native `Map`/`Set`/`Date` contents; different instances with no enumerable keys can compare equal.
 
 ### `reactiveMap<K, V>(initial?)`
 
@@ -456,11 +475,11 @@ function TagList() {
 
 Supports: `.add()`, `.has()`, `.delete()`, `.clear()`, `.size`, `.keys()`, `.values()`, `.entries()`, `.forEach()`, `for...of`.
 
-> **Note:** `reactiveMap()` and `reactiveSet()` are not real `Map`/`Set` instances — they emulate the API on top of plain arrays so the store proxy can track mutations. `instanceof Map` / `instanceof Set` will return `false`.
+> **Note:** `reactiveMap()` and `reactiveSet()` are not native `Map`/`Set` instances. Their lookups are linear, and their identity and iterator behavior differ; see [collection behavior](./REACTIVE_COLLECTIONS_TUTORIAL.md#collection-behavior). `instanceof Map` / `instanceof Set` returns `false`.
 
 ### `Snapshot<T>`
 
-TypeScript utility type that converts a store type to its deeply readonly snapshot equivalent.
+TypeScript utility type that marks object properties readonly and maps arrays to readonly arrays. Opaque leaf types and function signatures pass through unchanged. Methods remain callable in the type, so call mutating methods on the live store, not its snapshot. Runtime freezing follows the limitations described under [`snapshot`](#snapshotstore).
 
 ```typescript
 import type {Snapshot} from '@codebelt/classy-store';
@@ -487,7 +506,7 @@ import {persist, devtools, subscribeKey, withHistory} from '@codebelt/classy-sto
 
 ### `persist(store, options)`
 
-Persist store state to storage with transforms, versioning, migration, cross-tab sync, and SSR support. Getters and methods are automatically excluded.
+Persist store state to storage with transforms, versioning, migration, cross-tab sync, and SSR support. The default property selection excludes getters and methods; an explicit `properties` list should contain writable data fields.
 
 ```typescript
 import {persist} from '@codebelt/classy-store/utils';
@@ -659,13 +678,18 @@ class Store {
 }
 ```
 
-**Snapshots:** getter results are stable across snapshots when dependencies haven't changed. This means selectors that return computed values work with `Object.is` by default — no `shallowEqual` needed:
+**Snapshots:** getter results are stable across snapshots when dependencies haven't changed. Selecting those cached results works with `Object.is` by default:
 
 ```typescript
 // Stable reference across re-renders when items/filter haven't changed.
 // No shallowEqual required!
 const filtered = useClassyStore(myStore, (state) => state.filtered);
 ```
+
+When a dependency changes, a getter can produce a new object or array with equal
+contents; custom equality can still help there. Keep getters pure and based on
+explicit store property reads. Time, external variables, and property enumeration
+alone do not invalidate their dependency cache.
 
 ### Working with Date and RegExp
 
@@ -709,19 +733,14 @@ Run `bun run test:react:compiler` for the installed-package matrix and `bun run 
 
 ## Comparison with other libraries
 
-| Feature | Classy Store | Zustand | MobX | Valtio |
-|---------|-----------------|---------|------|--------|
-| Class-based stores | Yes | No | Yes | No |
-| No observer/Provider | Yes | Yes | No | Yes |
-| Auto-tracking | Yes | No | Yes (observer) | Yes |
-| Selector mode | Yes | Yes | No | Manual |
-| Memoized computed | Yes (auto-memoized) | Manual | Yes (computed) | No |
-| Immutable snapshots | Yes | No | No | Yes |
-| Structural sharing | Yes | N/A | N/A | Yes |
-| Built-in persistence | Yes (per-property transforms, versioning, cross-tab sync) | Yes (middleware) | No (separate pkg) | No (manual) |
-| DevTools integration | Yes (`devtools()`) | Yes (middleware) | Yes (separate pkg) | Yes (`devtools()`) |
-| Undo/Redo | Yes (`withHistory()`) | No (manual) | No (manual) | No (manual) |
-| Bundle size | ~2.3 KB gzip | ~1.2KB | ~16KB | ~3KB |
+Classy Store combines class methods, memoized getters, snapshots, and React hooks
+with selectors or automatic property tracking. Compare the APIs and tradeoffs in
+the official documentation for [Zustand](https://zustand.docs.pmnd.rs/),
+[MobX](https://mobx.js.org/), and [Valtio](https://valtio.dev/).
+
+Bundle size depends on the imported entry points, bundler, and compression settings.
+Measure the production bundle for your application's imports; a package tarball's
+size is not the amount of JavaScript delivered to the browser.
 
 ## Vision
 
@@ -731,7 +750,7 @@ I wanted state management that feels like writing plain TypeScript.
 - **Getters are computed values.** Write `get filtered()` and it's memoized with dependency tracking out of the box. It caches until a dependency changes.
 - **Framework bindings that feel native.** React's `useClassyStore`, Vue's `useClassyStore` (ShallowRef), Svelte's `toSvelteStore`, Solid's `useClassyStore` (signal getter), Angular's `injectStore` — each integration matches the framework's reactive idioms.
 - **Call methods directly.** `todoStore.addTodo('Buy milk')` — a real object with real methods, callable from anywhere.
-- **Observe only what matters.** Components re-render when the specific properties they read change.
+- **Filter React store updates.** Selectors and automatic tracking can skip subscription-driven renders for unchanged data.
 
 Clean, simple, and type-safe. That was the whole idea.
 
@@ -745,7 +764,7 @@ This library wouldn't exist without the ideas pioneered by these projects. Each 
 
 **[Zustand](https://github.com/pmndrs/zustand)** — Also by Daishi Kato, Zustand set the standard for minimal, hook-first state management. Its selector pattern (`useClassyStore(store, s => s.count)`) with `Object.is` equality is what we use in selector mode. Zustand proved that you don't need Providers, context wrappers, or HOCs — just a hook and a store. Its focus on tiny bundle size pushed us to keep things lean.
 
-**[proxy-compare](https://github.com/dai-shi/proxy-compare)** — The ~1KB utility (also by Dai-shi) that powers our auto-tracked mode. It wraps frozen snapshot objects in a tracking proxy, recording which properties a component reads, then efficiently diffs only those properties between snapshots. This eliminates the need for manual selectors in most cases.
+**[proxy-compare](https://github.com/dai-shi/proxy-compare)** — The property-tracking utility by Dai-shi that powers our auto-tracked mode. It wraps snapshot objects in a tracking proxy, recording which properties a component reads, then compares those reads between snapshots. This lets components subscribe without writing explicit selectors.
 
 **[React](https://react.dev)** — React 18's `useSyncExternalStore` is the foundation of our hook layer. It provides tear-free concurrent-mode-safe integration with external stores, and it's the same API used by Zustand, Redux, and Valtio under the hood.
 

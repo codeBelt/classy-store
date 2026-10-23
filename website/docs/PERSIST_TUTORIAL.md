@@ -23,7 +23,8 @@ export class TodoStore {
   }
 
   toggle(index: number) {
-    this.todos[index].done = !this.todos[index]!.done;
+    const todo = this.todos[index];
+    if (todo) todo.done = !todo.done;
   }
 }
 
@@ -66,7 +67,7 @@ Store notifications trigger writes once per mutation batch, or after the configu
 
 ### Choosing What to Persist
 
-By default, `persist()` saves all own data properties of the store -- everything that isn't a getter or a method. You can narrow this with the `properties` option:
+By default, `persist()` selects string-keyed data fields from the initial snapshot, excluding getters and functions. That list is resolved once when the handle is created; newly added top-level keys are not automatically included. Use declared fields for a stable shape, or put dynamic keys inside a declared object field. You can narrow the selection with `properties`:
 
 ```ts
 persist(todoStore, {
@@ -77,6 +78,10 @@ persist(todoStore, {
 ```
 
 Now `filter` resets to its class default (`'all'`) on every page load, while `todos` are restored from storage.
+
+An explicit list is used as supplied. Select writable data fields, not getters or
+methods. Values still need to be JSON-compatible, or have a transform: ordinary
+JSON drops `undefined` and functions, and rejects `BigInt` and cyclic structures.
 
 ### Why getters are excluded
 
@@ -91,7 +96,7 @@ import {persist} from '@codebelt/classy-store/utils';
 
 const handle = persist(todoStore, {
   name: 'TodoStore',         // Unique storage key (required)
-  properties: ['todos'],     // Omit for all own data properties; [] persists no properties
+  properties: ['todos'],     // Omit for initial data fields; [] persists no properties
   storage: localStorage,     // Required adapter with getItem/setItem/removeItem; no default
   debounce: 500,             // Coalesce rapid mutations into one write, in ms (default: 0)
   version: 0,                // Schema version number; triggers migrate when mismatched (default: 0)
@@ -105,8 +110,8 @@ const handle = persist(todoStore, {
 });
 
 handle.isHydrated;           // Whether a hydration attempt has settled, including failures
-handle.isExpired;            // Whether the last hydration found expired data
-await handle.hydrated;       // Initial attempt settled; inspect getSnapshot().lastError
+handle.isExpired;            // Expiry observed since init or the latest explicit rehydrate()
+await handle.hydrated;       // An attempt settled; inspect getSnapshot().lastError
 handle.getSnapshot();       // Current readonly status
 handle.getServerSnapshot(); // Initial status for SSR/hydration
 const stopStatus = handle.subscribe(() => console.log(handle.getSnapshot()));
@@ -138,10 +143,8 @@ class UserStore {
   name = '';
   birthdate = new Date();
 
-  get isAdult() {
-    const cutoff = new Date();
-    cutoff.setFullYear(cutoff.getFullYear() - 18);
-    return this.birthdate <= cutoff;
+  get birthYear() {
+    return this.birthdate.getUTCFullYear();
   }
 }
 
@@ -247,7 +250,15 @@ persist(uiStore, {
 });
 ```
 
-Cross-tab sync only works with `localStorage`. It does not fire for `sessionStorage`, `AsyncStorage`, or custom adapters.
+For synchronization between separate browser tabs, use `localStorage`.
+[`sessionStorage` events](https://developer.mozilla.org/en-US/docs/Web/API/Window/storage_event)
+are limited to same-tab contexts sharing that storage area; async and custom
+adapters do not emit browser storage events themselves. `syncTabs` installs a
+browser event listener, so leave it disabled in environments without that API.
+
+Storage deletion events are ignored. Calling `handle.clear()` in one tab does
+not reset another tab's in-memory state. To broadcast a reset, assign the desired
+data and save it, as the logout example does above.
 
 An event whose value has already been replaced in its storage area is ignored.
 This prevents a delayed event from rolling a newer local save back in the UI.
@@ -276,7 +287,7 @@ need coordination at the application or adapter level.
 
 ### `expireIn` & `clearOnExpire` (Expiration / TTL)
 
-Use `expireIn` to set a time-to-live (in milliseconds) on persisted data. After the TTL elapses, stored data is skipped during hydration and the store keeps its class defaults.
+Use `expireIn` to stamp a time-to-live (in milliseconds) on saved data. Hydration skips an expired payload and preserves the store's current values, which are usually its defaults during initialization. Any stored `expiresAt` timestamp is honored on read, even if the reading handle does not specify `expireIn`.
 
 ```ts
 persist(sessionStore, {
@@ -286,7 +297,7 @@ persist(sessionStore, {
 });
 ```
 
-**The TTL resets on every write.** As long as mutations keep happening (an active user session), the data stays fresh. The countdown only matters when the store is hydrated from storage after a period of inactivity (e.g., a page reload).
+**A new expiry timestamp is calculated when each save is serialized.** An async write may wait in the queue after that point. Expiry is checked during hydration or an incoming storage event; no timer expires or resets live state merely because time passes.
 
 **Checking expiration**
 
@@ -305,6 +316,10 @@ if (handle.isExpired) {
   // Stored session expired — redirect to login
 }
 ```
+
+The flag records observed expiry, not a live countdown. `rehydrate()` resets it
+before checking storage again. Saving, clearing, or receiving a fresh cross-tab
+payload does not reset a previously observed expiry flag.
 
 By default, expired data is skipped but left in storage. Set `clearOnExpire: true` to automatically remove the key:
 
@@ -378,7 +393,7 @@ For stores that mutate frequently (form inputs, drag positions, real-time data),
 persist(formStore, {
   storage: localStorage,
   name: 'form-draft',
-  debounce: 500,  // Write at most once every 500ms
+  debounce: 500,  // Wait for 500ms without a new store notification
 });
 
 // Rapid mutations:
@@ -398,21 +413,28 @@ persist(todoStore, {
   name: 'todo-store',
   version: 2,
   migrate: (state, oldVersion) => {
-    if (oldVersion === 0) {
-      // v0 stored todos as `items`
-      return {...state, todos: state.items, items: undefined};
+    if (oldVersion !== 0 && oldVersion !== 1) {
+      throw new Error(`Unsupported stored version: ${oldVersion}`);
     }
-    if (oldVersion === 1) {
-      // v1 todos were plain strings, v2 todos are objects
-      return {
-        ...state,
-        todos: (state.todos as string[]).map((text) => ({text, done: false})),
-      };
-    }
-    return state;
+
+    // v0 used `items`; v1 renamed it to `todos`. Both stored strings.
+    const storedTodos = oldVersion === 0 ? state.items : state.todos;
+    if (!Array.isArray(storedTodos)) throw new Error('Expected saved todos');
+    const todos = storedTodos.map((text) => {
+      if (typeof text !== 'string') throw new Error('Expected a todo string');
+      return {text, done: false};
+    });
+
+    const {items: _oldItems, ...remaining} = state;
+    return {...remaining, todos};
   },
 });
 ```
+
+Migration runs only when stored and configured versions differ. Without a
+`migrate` callback, a version mismatch does not reject the payload. Validate the
+versions and shapes your application accepts. Migration and hydration do not
+automatically rewrite storage; a later save writes the configured version.
 
 **Merge Strategies**
 
@@ -432,7 +454,7 @@ class TodoStore {
 // { "version": 1, "state": { "filter": "done", "todos": [{"text": "Buy milk", "done": false}] } }
 ```
 
-**`'shallow'`** (default) — persisted values overwrite current values one key at a time. Properties not in storage keep their default value:
+**`'shallow'`** (default) — persisted values overwrite current values one key at a time. Properties not in storage keep their current value, which is the class default on a fresh store:
 
 ```ts
 persist(todoStore, {
@@ -455,7 +477,7 @@ persist(todoStore, {
   name: 'todo-store',
   merge: (persisted, current) => {
     return {
-      ...current,             // start with class defaults
+      ...current,             // start with the current selected fields
       ...persisted,           // overwrite with stored values
       tags: [                 // custom: combine stored + default tags
         ...new Set([
@@ -494,7 +516,7 @@ Public types `PersistStatus` and `PersistOperation` are exported from `@codebelt
 
 ### `isHydrated` & `hydrated`
 
-These indicate that a hydration attempt has settled, including failures and obsolete reads that were skipped. They do not guarantee that stored data was applied:
+These indicate that a hydration attempt has settled, including failures and obsolete reads that were skipped. `hydrated` resolves once and remains resolved during later reads; await `rehydrate()` to wait for a specific new attempt. They do not guarantee that stored data was applied:
 
 ```ts
 // Async -- await the promise
@@ -507,7 +529,7 @@ if (handle.isHydrated) {
 }
 ```
 
-For `localStorage` (synchronous), hydration resolves almost immediately. For async storage adapters like `AsyncStorage`, the promise resolves after the async read completes.
+Hydration is asynchronous even with `localStorage`: read results are applied after an `await`, not before `persist()` returns. Async adapters can take longer, and a read waits for earlier writes. With `skipHydration: true`, `hydrated` stays pending until a manual hydration attempt settles; disposal alone does not resolve a never-started attempt. Once `isHydrated` becomes true, later reads do not reset it to false.
 
 ### Handle operation failures
 
@@ -547,7 +569,7 @@ await handle.clear();
 
 ### `save()` (Manual save)
 
-When you need to save immediately (e.g., before the user navigates away):
+Save and await completion while the page is still active, for example in an application-controlled navigation handler:
 
 ```ts
 const handle = persist(formStore, {
@@ -556,16 +578,20 @@ const handle = persist(formStore, {
   debounce: 1000,
 });
 
-// Force save before page unload
-window.addEventListener('beforeunload', () => {
-  void handle.save().catch((error) => console.error('Could not save', error));
-});
+async function saveAndContinue(continueNavigation: () => void) {
+  try {
+    await handle.save();
+    continueNavigation();
+  } catch (error) {
+    console.error('Could not save', error);
+  }
+}
 ```
 
 `save()` cancels the pending debounce timer and requests a write of the current
-state immediately. With async storage it waits behind earlier writes. Await the
-returned promise when completion matters; an async write is not guaranteed to
-finish during page unload.
+state immediately. It waits behind earlier writes, including when a synchronous
+adapter's prior operation is still settling. Browser unload handlers cannot
+guarantee that queued or async writes finish.
 
 ### `dispose()` (Stop persisting)
 

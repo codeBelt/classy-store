@@ -1,6 +1,6 @@
 # DevTools Tutorial
 
-`devtools()` connects a store proxy to the [Redux DevTools](https://github.com/reduxjs/redux-devtools) browser extension for state inspection and time-travel debugging. Every mutation sends a snapshot to the DevTools panel. You can inspect state, jump to any point in history, and the store updates in real-time.
+`devtools()` connects a store proxy to the [Redux DevTools](https://github.com/reduxjs/redux-devtools) browser extension for state inspection and time-travel debugging. It sends an initial snapshot and one update per batched store notification. Supported jump messages restore JSON data fields into the live store.
 
 ## Prerequisites
 
@@ -49,27 +49,30 @@ import {devtools} from '@codebelt/classy-store/utils';
 const disconnect = devtools(counterStore, {name: 'CounterStore'});
 ```
 
-Open the Redux DevTools panel in your browser. You'll see `CounterStore` in the instance selector with the initial state: `{ count: 0, step: 1 }`.
+Open the Redux DevTools panel in your browser. Select `CounterStore` to inspect the initial snapshot, including `count: 0`, `step: 1`, and the computed `doubled` getter.
 
 ### 3. Mutate and observe
 
 ```ts
 counterStore.increment();
-// DevTools shows: action "STORE_UPDATE", state { count: 1, step: 1 }
+await Promise.resolve();
+// STORE_UPDATE: count 1, step 1, doubled 2.
 
 counterStore.increment();
-// DevTools shows: action "STORE_UPDATE", state { count: 2, step: 1 }
+await Promise.resolve();
+// STORE_UPDATE: count 2, step 1, doubled 4.
 
 counterStore.setStep(5);
 counterStore.increment();
-// DevTools shows: action "STORE_UPDATE", state { count: 7, step: 5 }
+await Promise.resolve();
+// One STORE_UPDATE for both writes: count 7, step 5, doubled 14.
 ```
 
 Each batched mutation appears as a new entry in the DevTools timeline.
 
 ### 4. Time-travel
 
-Click any previous entry in the DevTools timeline. The store proxy updates to match that state — your React components re-render, side effects fire, everything stays in sync. Click "Jump to State" or "Jump to Action" to navigate through history.
+Use a state/action jump in the DevTools timeline. The utility assigns the parsed data fields to the store, notifying its subscribers. Other utilities, including persistence and history, can observe these mutations too.
 
 ### 5. Disconnect when done
 
@@ -97,7 +100,7 @@ function devtools<T extends object>(
 
 ### Return value
 
-A dispose function `() => void` that disconnects from DevTools and unsubscribes from the store.
+A cleanup function `() => void` that removes the store subscription and DevTools message listener. It does not call an extension-level disconnect API or clear the panel's recorded history.
 
 ## How It Works
 
@@ -105,7 +108,7 @@ A dispose function `() => void` that disconnects from DevTools and unsubscribes 
 2. **Init:** sends the initial snapshot via `connection.init(snapshot(store))`.
 3. **Subscribe:** uses `subscribe(store, ...)` to listen for mutations. On each batched mutation, sends `snapshot(store)` to DevTools via `connection.send()`.
 4. **Time-travel:** listens for `DISPATCH` messages from DevTools. When a `JUMP_TO_STATE` or `JUMP_TO_ACTION` message arrives, parses the state and applies it back to the store proxy — skipping getters and methods (same pattern as `persist()`).
-5. **Dispose:** unsubscribes from the store and disconnects from DevTools.
+5. **Dispose:** unsubscribes from the store and removes the DevTools message listener.
 
 ## Use Cases
 
@@ -139,7 +142,7 @@ devtools(counterStore, {
 });
 ```
 
-When `enabled` is `false`, `devtools()` returns a noop immediately — no DevTools connection is created, no subscriptions are added, and the function has zero runtime cost.
+When `enabled` is `false`, `devtools()` returns a noop immediately. No DevTools connection or ongoing subscription is created. `import.meta.env.DEV` is a Vite example; use your application's build-time development flag in other environments.
 
 ### Conditional connection
 
@@ -192,6 +195,13 @@ The `devtools()` utility:
 6. The SET trap fires, triggers reactivity, and your components update.
 
 During time-travel, the utility temporarily pauses sending updates to DevTools to avoid echoing the applied state back as a new action.
+
+Restoration is JSON-based. It does not run persistence transforms or reconstruct
+custom classes, dates, or reactive collection methods from parsed objects. It also
+does not delete store keys missing from the received state. Use JSON-compatible
+data for time travel, and use the persistence transform API for typed storage
+restoration. The adapter handles `JUMP_TO_STATE` and `JUMP_TO_ACTION`; other Redux
+DevTools dispatch commands are not implemented.
 
 ## Quick Reference
 

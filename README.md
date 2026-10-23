@@ -23,7 +23,7 @@ See the [0.8.0 upgrade guide](https://codebelt.github.io/classy-store/docs/UPGRA
 - **Class-Based**: Define state and logic using standard ES6 classes.
 - **Reactive**: Automatic reactivity using Proxies.
 - **Computed Getters**: Class getters are automatically memoized and only recompute when dependencies change.
-- **Framework Bindings**: First-class integrations for React, Vue, Svelte, Solid, and Angular.
+- **Framework Bindings**: React hooks and adapters for Vue, Svelte, Solid, and Angular.
 - **TypeScript**: Written in TypeScript with first-class type support.
 - **Persist**: Save and restore store state with versioning, migration, cross-tab sync, and SSR support.
 - **Undo / Redo**: Add undo/redo to any store via a snapshot stack.
@@ -65,6 +65,16 @@ function AddButton() {
   return <button onClick={() => cartStore.add('Widget', 9.99)}>Add item</button>;
 }
 ```
+
+Use prototype methods such as `add()` for actions. Arrow-function fields capture
+the original instance, so their writes can bypass reactivity. Mutate through the
+store proxy and read render data through the hook.
+
+Nested plain objects, arrays, and the library's reactive collections support deep
+updates. Native `Date`, `Map`, `Set`, and other nested class instances remain opaque:
+replace their property to notify subscribers. Snapshots freeze copied state, but
+retain opaque values by reference. Keep computed getters pure and based on store
+property reads; changes to time or external variables do not invalidate their cache.
 
 ## Choosing an API
 
@@ -134,7 +144,7 @@ This library provides machine-readable documentation for LLM-powered tools:
 - [`llms.txt`](https://codebelt.github.io/classy-store/llms.txt) — Navigation index for AI assistants
 - [`llms-full.txt`](https://codebelt.github.io/classy-store/llms-full.txt) — Complete documentation in one file
 
-These files follow the [llms.txt standard](https://llmstxt.org/).
+The navigation index uses the [llms.txt format](https://llmstxt.org/).
 
 ## 💡 Why Another State Library
 
@@ -152,7 +162,7 @@ This library wouldn't exist without the ideas pioneered by these projects. Each 
 
 **[Zustand](https://github.com/pmndrs/zustand)** — Also by Daishi Kato, Zustand set the standard for minimal, hook-first state management. Its selector pattern (`useClassyStore(store, s => s.count)`) with `Object.is` equality is what we use in selector mode. Zustand proved that you don't need Providers, context wrappers, or HOCs — just a hook and a store. Its focus on tiny bundle size pushed us to keep things lean.
 
-**[proxy-compare](https://github.com/dai-shi/proxy-compare)** — The ~1KB utility (also by Dai-shi) that powers our auto-tracked mode. It wraps frozen snapshot objects in a tracking proxy, recording which properties a component reads, then efficiently diffs only those properties between snapshots. This eliminates the need for manual selectors in most cases.
+**[proxy-compare](https://github.com/dai-shi/proxy-compare)** — The property-tracking utility by Dai-shi that powers our auto-tracked mode. It wraps snapshot objects in a tracking proxy, recording which properties a component reads, then compares those reads between snapshots. This lets components subscribe without writing explicit selectors.
 
 **[React](https://react.dev)** — React 18's `useSyncExternalStore` is the foundation of our hook layer. It provides tear-free concurrent-mode-safe integration with external stores, and it's the same API used by Zustand, Redux, and Valtio under the hood.
 
@@ -162,7 +172,7 @@ This library wouldn't exist without the ideas pioneered by these projects. Each 
 
 ## 🤝 Contributing
 
-See [CONTRIBUTING.md](./CONTRIBUTING.md) for details on how to contribute and the release workflow.
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for the contribution policy and bug reports.
 
 Run `bun run benchmark:react` to compare large forms and lists with selectors, auto-tracking, and React Compiler. See the [benchmark methodology](./packages/classy-store/tests/performance/README.md) for measurements and reproduction settings.
 

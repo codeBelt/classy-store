@@ -1,6 +1,6 @@
 # Classy Store Tutorial
 
-`Classy Store` is a reactive state library for React, Vue, Svelte, Solid, and Angular built on ES proxies. You define state as plain classes, wrap them with `createClassyStore()`, and read them with the binding for your framework. There are no Providers, no observers, no reducers, and no extra TypeScript interfaces to define your state shape — just classes and a hook. The library is ~3.5 KB gzipped, batches ordinary subscriptions while notifying React synchronously, and uses structural sharing for efficient change detection.
+`Classy Store` is a reactive state library for React, Vue, Svelte, Solid, and Angular built on ES proxies. Define state as classes, wrap them with `createClassyStore()`, and read them with the binding for your framework. Shared client stores need no Provider, observer, or reducer; context providers can scope independent instances. The library batches ordinary subscriptions while notifying React synchronously, and uses structural sharing for change detection.
 
 ## Quick Start
 
@@ -34,7 +34,7 @@ export function Counter() {
 }
 ```
 
-That's it. No Provider wrapping your app. The store is a module-level singleton — import it wherever you need it.
+This module-level instance is shared by importers in a client-only app. For SSR, create a separate instance per request or provider using the [scoping guide](./REACT_SCOPING.md).
 
 ## Defining Stores
 
@@ -76,13 +76,13 @@ export const todoStore = createClassyStore(new TodoStore());
 
 Key points:
 
-- Methods mutate state by assigning to `this`. The proxy intercepts every write.
-- `get` accessors work as computed values — they run against the proxied state, so they're always up to date.
+- Prototype methods mutate state by assigning to `this` through the proxy. Arrow-function fields cannot be rebound; see [method constraints](#dont-use-arrow-functions-for-methods).
+- `get` accessors cache derived values until their tracked store dependencies change. Keep them pure; time and external variables are not tracked dependencies.
 - Nested objects and arrays (like `items` and each item inside it) are automatically wrapped in child proxies. `item.done = true` triggers a notification just like a top-level write.
 
 ## Reading State in React
 
-`useClassyStore` has two modes. Pick the right one and your components only re-render when they need to.
+`useClassyStore` has two modes for filtering updates caused by store subscriptions. Neither prevents renders caused by a parent, local state, context, or React's development checks.
 
 ### Selector mode
 
@@ -90,18 +90,18 @@ Key points:
 const count = useClassyStore(counterStore, (state) => state.count);
 ```
 
-The selector receives an immutable snapshot and returns the slice you need. The component re-renders only when the selected value changes (compared with `Object.is`).
+The selector receives a readonly snapshot and returns the slice you need. Store updates are filtered by comparing that value with `Object.is`.
 
-> **When to use:** Default choice. Best for render performance because it's explicit about what the component depends on.
+> **When to use:** When you want explicit dependencies or selected-value equality. The cost depends on the selector and workload.
 
 ### Auto-tracked mode
 
 ```ts
 const snap = useClassyStore(counterStore);
-// just use snap.count, snap.name, etc. in your JSX
+// Read snap.count in your JSX.
 ```
 
-No selector — you get back a tracking proxy over the snapshot. The library records which properties your component reads during render and only re-renders when one of those properties changes.
+Without a selector, you get a tracking proxy over the snapshot. The library records property reads to filter store updates. It retains committed reads for reused snapshot objects to support memoized consumers, so a formerly used property can still trigger an extra update; see [Compiler compatibility](./index.md#react-compiler-compatibility).
 
 > **When to use:** When you'd need 3+ selectors in one component, when prototyping, or when the shape of data you access is dynamic.
 
@@ -117,7 +117,7 @@ const todos = useClassyStore(todoStore, (state) => state.items);
 
 The problem shows up when your selector **derives a new value** — calling `.filter()`, `.map()`, or using object spread always allocates a new array or object, even when the underlying data hasn't changed. `Object.is` sees a different reference and triggers a re-render.
 
-`shallowEqual` fixes this by comparing one level deep: for arrays it checks length + each element with `Object.is`, and for objects it checks key count + each value with `Object.is`. It only works on plain objects and arrays — not on `Map`, `Set`, or class instances.
+`shallowEqual` compares one level deep: array length and elements, or an object's own enumerable string keys and values, using `Object.is`. Use it for plain records and arrays. It does not inspect prototypes, symbol keys, or native `Map`/`Set`/`Date` contents, so it is not a general equality function for those values.
 
 Without `shallowEqual` — `.filter()` creates a new array every time the snapshot updates, even if the todo items haven't changed:
 
@@ -142,7 +142,7 @@ const active = useClassyStore(
 );
 ```
 
-**Getters do NOT need `shallowEqual`.** Class getters benefit from cross-snapshot memoization: the library tracks which `this` properties a getter reads and caches the result. On subsequent snapshots, if those properties are structurally the same (same reference via structural sharing), the cached result is returned. This means getter results are stable across snapshots -- `Object.is` works out of the box:
+**Getters often avoid the need for `shallowEqual`.** Class getters benefit from cross-snapshot memoization: the library tracks which `this` properties a getter reads and caches the result. If those properties are unchanged, the cached result is reused across snapshots:
 
 ```ts
 // ✅ No shallowEqual needed — cross-snapshot memoization keeps getter results stable
@@ -152,13 +152,13 @@ const filtered = useClassyStore(todoStore, (state) => state.filtered);
 const remaining = useClassyStore(todoStore, (state) => state.remaining);
 ```
 
-`shallowEqual` is only needed when the **selector itself** derives a new value (via `.filter()`, `.map()`, object spread, etc.) — not when selecting a getter that does the derivation internally.
+If a getter's dependency changes, it may produce a new array or object even when its contents compare equal. `shallowEqual` can help in that case too, if its one-level comparison matches what the component renders.
 
-> **When to use:** When your selector (not a getter) derives a new object or array inline. You don't need it when selecting existing properties, primitives, or class getters — structural sharing, cross-snapshot memoization, and `Object.is` already handle those.
+> **When to use:** When a selector or getter allocates new objects or arrays with equivalent contents. Selecting an unchanged stored property or primitive already works with `Object.is`.
 
 ### Decision guide
 
-- **Use selectors by default.** They're explicit and produce the fewest re-renders.
+- **Use selectors** for explicit dependencies and control over result equality.
 - **Use auto-tracked mode** when you'd need 3+ selectors in one component or when you're exploring the API.
 - **Add `shallowEqual`** when your selector returns objects/arrays and you're seeing unnecessary re-renders.
 
@@ -222,7 +222,7 @@ Mutations separated by `await` can commit separately, allowing loading and resul
 
 ## Snapshots
 
-`snapshot()` creates a deeply-frozen, immutable copy of the store's current state.
+`snapshot()` freezes copies of the root state and nested plain objects, arrays, and reactive collections. It preserves the root class prototype. Opaque values such as native `Date`, `Map`, `Set`, functions, and other nested class instances retain their references; snapshots do not make those values immutable. Newly allocated getter results are cached but are not automatically deep-frozen. Treat all snapshot values as readonly and perform actions on the live store.
 
 ```ts
 import {snapshot} from '@codebelt/classy-store';
@@ -230,10 +230,10 @@ import {counterStore} from './stores';
 
 const snap = snapshot(counterStore);
 console.log(snap.count); // read-only
-snap.count = 5;          // throws in strict mode
+// snap.count = 5;       // TypeScript rejects this; at runtime it throws in strict mode
 ```
 
-> **When to use:** Logging, debugging, serialization, passing state to non-React code (e.g., a canvas renderer, a Web Worker message). Inside React, `useClassyStore` calls `snapshot()` for you — you rarely need it directly.
+> **When to use:** Logging, debugging, or reading state outside React. For JSON or Web Worker messages, select data that the target format can serialize; a snapshot is not automatically a transport payload. Inside React, `useClassyStore` reads snapshots for you.
 
 Snapshots use structural sharing: unchanged sub-trees return the same frozen reference. If you only mutated `store.name`, then `snapshot(store).settings === previousSnapshot.settings`. This is why selectors on nested objects are efficient — if the sub-tree didn't change, `Object.is` returns `true` and the component skips the re-render.
 
@@ -308,7 +308,7 @@ class UserStore {
 export const userStore = createClassyStore(new UserStore());
 ```
 
-`ReactiveMap` and `ReactiveSet` mirror the native API (`get`, `set`, `has`, `delete`, `clear`, `forEach`, iteration) but are backed by plain arrays so the proxy can track mutations.
+`ReactiveMap` and `ReactiveSet` provide Map-like and Set-like methods backed by arrays. They are not native collections or exact substitutes for native identity and iterator semantics. See the [collection behavior](./REACTIVE_COLLECTIONS_TUTORIAL.md#collection-behavior).
 
 > **When to use:** Whenever you'd reach for `Map` or `Set` inside a store. You *can* use native `Map`/`Set`, but only the reference is reactive — mutations like `.set()` or `.add()` won't trigger updates. You'd have to replace the entire Map/Set (e.g., `this.users = new Map(this.users)`) to notify subscribers. `reactiveMap()` and `reactiveSet()` avoid that by making individual operations reactive.
 
@@ -507,7 +507,7 @@ const data = useCatalogStore(
 );
 ```
 
-`createStoreHook` validates its argument immediately — if you pass something that isn't a store proxy, it throws at module load time rather than on first render.
+`createStoreHook` validates its argument when called. It throws if the argument is not a store proxy; a module-level call therefore fails during module initialization.
 
 ## Tips & Gotchas
 
@@ -530,13 +530,17 @@ When every state change goes through a method, you can search for callers of tha
 Arrow function properties (`handler = () => {}`) are own properties whose `this` is lexically bound to the raw class instance at construction time. `.bind()` cannot override an arrow function's `this`, so when the proxy's GET trap binds it to the proxy receiver, the bind is silently ignored. Mutations inside the arrow function bypass the SET trap entirely — no notifications, no reactivity.
 
 ```ts
-class Store {
+class IncorrectStore {
   count = 0;
 
   // ❌ Arrow function — `this` is the raw object, mutations are invisible
   increment = () => {
     this.count++; // bypasses the proxy SET trap
   };
+}
+
+class CorrectStore {
+  count = 0;
 
   // ✅ Prototype method — `this` is bound to the proxy by the GET trap
   increment() {
@@ -544,6 +548,16 @@ class Store {
   }
 }
 ```
+
+The same limitation applies to methods bound to the raw instance in its constructor. JavaScript `#private` fields also cannot be accessed through a proxy receiver; use ordinary fields for reactive state.
+
+### Keep computed getters pure
+
+Compute getters from explicit store property reads. Changes to `Date.now()`, random values, or external variables do not invalidate a cached getter. In-place mutation of opaque values does not invalidate it either. If time affects a computed value, store a timestamp and update that field explicitly. Property enumeration or `in` checks alone are not tracked getter dependencies.
+
+### Keep mutations inside the proxy
+
+Create the store once for its owner and use the returned proxy. Mutating the raw instance, using `Object.defineProperty` to change state, or sharing a raw child object across independent stores bypasses the intended assignment/deletion tracking. Use ordinary fields, arrays, and separate data ownership for each store. Circular references in traversed state are rejected by `snapshot()`.
 
 ### Don't destructure the store outside `useClassyStore`
 
@@ -559,7 +573,7 @@ counterStore.count;
 
 ### Non-proxyable types
 
-Native `Date`, `RegExp`, `Map`, and `Set` use internal slots that proxies can't intercept. For `Map` and `Set`, use `reactiveMap()` and `reactiveSet()`. For `Date`, store timestamps as numbers and construct `Date` objects in getters or at render time.
+Nested native `Date`, `RegExp`, `Map`, and `Set` values, and arbitrary nested class instances, remain opaque. Replacing the field notifies subscribers; mutating the existing object does not. For observable collection operations, use `reactiveMap()` and `reactiveSet()`. For dates, a timestamp field works well. The root class passed to `createClassyStore()` is proxied; this does not make every class instance nested inside it reactive.
 
 ### Set-then-revert and loop updates
 
@@ -573,7 +587,7 @@ Each render gets its own read set. This keeps a suspended or abandoned render fr
 
 ### Snapshot caching
 
-Calling `snapshot()` multiple times without intervening mutations returns the same frozen object — an O(1) cache hit. There's no cost to calling it liberally.
+Calling `snapshot()` multiple times without intervening mutations returns the same frozen object — an O(1) cache hit. After mutations, rebuilding changed objects or arrays has a cost proportional to the properties or elements visited, even when unchanged children are shared.
 
 ```ts
 import {snapshot} from '@codebelt/classy-store';
@@ -605,6 +619,6 @@ const handle = persist(todoStore, {
 // Opt into cross-tab sync with syncTabs: true when using localStorage.
 ```
 
-The persist utility supports per-property transforms (for `Date`, `ReactiveMap`, etc.), debounced writes, schema versioning with migration, merge strategies, TTL expiration (`expireIn`), SSR-safe `skipHydration`, and cross-tab synchronization.
+The persist utility supports per-property transforms (for `Date`, `ReactiveMap`, etc.), debounced writes, schema versioning with migration, merge strategies, TTL expiration (`expireIn`), manual hydration timing, and cross-tab synchronization. `skipHydration` delays reads only; for SSR, access browser storage in an effect and prepare the initial store snapshot as described in the [SSR guide](./REACT_SSR.md).
 
 For the full walkthrough, see the **[Persist Tutorial](./PERSIST_TUTORIAL.md)**.

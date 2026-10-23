@@ -18,11 +18,13 @@ const orderedFiles = [
 ];
 const sections = orderedFiles.map((file) => {
   const route = file === 'index.md' ? '' : file.slice(0, -3);
-  const content = readFileSync(new URL(file, docsDirectory), 'utf8').replace(
-    /\]\((?:\.\/)?([\w-]+)\.md(#[^)]*)?\)/g,
-    (_, name, anchor = '') =>
-      `](${docsUrl}${name === 'index' ? '' : name}${anchor})`,
-  );
+  const content = readFileSync(new URL(file, docsDirectory), 'utf8')
+    .replace(
+      /\]\((?:\.\/)?([\w-]+)\.md(#[^)]*)?\)/g,
+      (_, name, anchor = '') =>
+        `](${docsUrl}${name === 'index' ? '' : name}${anchor})`,
+    )
+    .replace(/\]\((#[^)]*)\)/g, `](${docsUrl}${route}$1)`);
   return `---\nSOURCE: ${docsUrl}${route}\n---\n\n${content.trim()}\n`;
 });
 
