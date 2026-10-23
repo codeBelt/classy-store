@@ -19,7 +19,7 @@ export function HydrationApp({runtime}: Props) {
     void persistence.rehydrate().then(() => {
       runtime.probe.restored = true;
     });
-    return persistence.unsubscribe;
+    return persistence.dispose;
   }, [runtime]);
 
   return (

@@ -1,56 +1,51 @@
 'use client';
 
-import {getVersion, snapshot, subscribe} from '@codebelt/classy-store';
-import {useCallback, useEffect, useState} from 'react';
+import {snapshot, subscribe} from '@codebelt/classy-store';
+import {useEffect, useState} from 'react';
 import {ApiInfo} from '@/components/shared/ApiInfo';
 import {plannerStore} from '@/stores/planner-store';
 import {recipeStore} from '@/stores/recipe-store';
 import {shoppingStore} from '@/stores/shopping-store';
 
 export function StoreInspector() {
-  const [mutationCount, setMutationCount] = useState(0);
   const [lastMutated, setLastMutated] = useState<string | null>(null);
 
-  const [versions, setVersions] = useState({
+  const [updateCounts, setUpdateCounts] = useState({
     recipe: 0,
     shopping: 0,
     planner: 0,
   });
 
-  const updateVersions = useCallback(() => {
-    setVersions({
-      recipe: getVersion(recipeStore),
-      shopping: getVersion(shoppingStore),
-      planner: getVersion(plannerStore),
-    });
-  }, []);
-
   useEffect(() => {
-    updateVersions();
-    const unsubs = [
+    let highlightTimer: ReturnType<typeof setTimeout> | undefined;
+    function recordUpdate(store: keyof typeof updateCounts, label: string) {
+      setUpdateCounts((previousCounts) => ({
+        ...previousCounts,
+        [store]: previousCounts[store] + 1,
+      }));
+      setLastMutated(label);
+      clearTimeout(highlightTimer);
+      highlightTimer = setTimeout(() => setLastMutated(null), 1000);
+    }
+    const subscriptions = [
       subscribe(recipeStore, () => {
-        setMutationCount((c) => c + 1);
-        setLastMutated('Recipe Store');
-        updateVersions();
-        setTimeout(() => setLastMutated(null), 1000);
+        recordUpdate('recipe', 'Recipe Store');
       }),
       subscribe(shoppingStore, () => {
-        setMutationCount((c) => c + 1);
-        setLastMutated('Shopping Store');
-        updateVersions();
-        setTimeout(() => setLastMutated(null), 1000);
+        recordUpdate('shopping', 'Shopping Store');
       }),
       subscribe(plannerStore, () => {
-        setMutationCount((c) => c + 1);
-        setLastMutated('Planner Store');
-        updateVersions();
-        setTimeout(() => setLastMutated(null), 1000);
+        recordUpdate('planner', 'Planner Store');
       }),
     ];
     return () => {
-      for (const u of unsubs) u();
+      for (const unsubscribe of subscriptions) unsubscribe();
+      clearTimeout(highlightTimer);
     };
-  }, [updateVersions]);
+  }, []);
+
+  const totalUpdates =
+    updateCounts.recipe + updateCounts.shopping + updateCounts.planner;
 
   const recipeSnap = snapshot(recipeStore);
   const recipeKeys = Object.keys(recipeSnap);
@@ -84,11 +79,10 @@ export function StoreInspector() {
 
         <ApiInfo
           minimal={true}
-          apis={['getVersion', 'snapshot', 'subscribe']}
-          description="Manually subscribes to all stores, tracks mutation count, and displays version numbers and snapshot keys."
+          apis={['snapshot', 'subscribe']}
+          description="Subscribes to each store, counts batched updates observed since mounting, and displays snapshot keys."
           code={`subscribe(recipeStore, () => {
-  setMutationCount((c) => c + 1);
-  updateVersions();
+  setUpdateCount((previousCount) => previousCount + 1);
 });`}
         />
       </div>
@@ -98,10 +92,10 @@ export function StoreInspector() {
         <div className="flex items-center gap-4">
           <div className="flex-1 bg-black/20 rounded-lg p-3 border border-white/5 relative overflow-hidden">
             <p className="text-[10px] text-muted-foreground font-mono mb-1">
-              TOTAL MUTATIONS
+              OBSERVED UPDATES
             </p>
             <p className="text-2xl font-bold font-mono tracking-tight">
-              {mutationCount}
+              {totalUpdates}
             </p>
             {lastMutated && (
               <div className="absolute top-0 right-0 h-full w-1 bg-indigo-500 animate-pulse box-shadow-[0_0_10px_theme(colors.indigo.500)]" />
@@ -110,15 +104,19 @@ export function StoreInspector() {
 
           <div className="flex-1 space-y-2">
             {[
-              {label: 'Recipe', ver: versions.recipe, color: 'text-blue-400'},
+              {
+                label: 'Recipe',
+                count: updateCounts.recipe,
+                color: 'text-blue-400',
+              },
               {
                 label: 'Shopping',
-                ver: versions.shopping,
+                count: updateCounts.shopping,
                 color: 'text-emerald-400',
               },
               {
                 label: 'Planner',
-                ver: versions.planner,
+                count: updateCounts.planner,
                 color: 'text-orange-400',
               },
             ].map((state) => (
@@ -126,11 +124,11 @@ export function StoreInspector() {
                 key={state.label}
                 className="flex justify-between items-center text-xs"
               >
-                <span className="text-muted-foreground">{state.label} v:</span>
+                <span className="text-muted-foreground">{state.label}:</span>
                 <span
                   className={`font-mono font-medium ${state.color} bg-white/5 px-2 py-0.5 rounded`}
                 >
-                  {state.ver}
+                  {state.count}
                 </span>
               </div>
             ))}

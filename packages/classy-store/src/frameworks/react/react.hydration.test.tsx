@@ -4,11 +4,8 @@ import {hydrateRoot, type Root} from 'react-dom/client';
 import {renderToString} from 'react-dom/server';
 import {createClassyStore, getInternal} from '../../core/core';
 import {persist} from '../../utils/persist/persist';
-import {
-  createStoreHook,
-  prepareStoreForHydration,
-  useClassyStore,
-} from './react';
+import {createStoreHook, useClassyStore} from './react';
+import {prepareStoreForHydration} from './server';
 import {DelayedHydrationView} from './testHelpers/delayedHydrationView/DelayedHydrationView';
 import type {
   HydrationGate,
@@ -151,7 +148,7 @@ describe('React delayed Suspense hydration', () => {
     let rehydration: Promise<void> | undefined;
     const onMount = () => {
       rehydration = persistence.rehydrate();
-      return () => persistence.unsubscribe();
+      return () => persistence.dispose();
     };
 
     let root!: Root;

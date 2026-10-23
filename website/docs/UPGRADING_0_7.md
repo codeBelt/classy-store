@@ -1,5 +1,7 @@
 # Upgrading to 0.7.0
 
+This is the historical 0.7.0 upgrade guide. For the current API, also read [Upgrading to 0.8.0](./UPGRADING_0_8.md), which replaces persistence cleanup and removes duplicate exports.
+
 Version 0.7.0 focuses on core and React correctness, including controlled inputs, React Compiler, SSR, Next.js App Router, memory retention, and persistence. It includes React API and runtime changes that consumers upgrading from 0.6.x should review.
 
 ## Remove React timing options

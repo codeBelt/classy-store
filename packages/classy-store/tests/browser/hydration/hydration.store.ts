@@ -1,8 +1,6 @@
 import {createClassyStore} from '../../../src/core/core';
-import {
-  createStoreHook,
-  prepareStoreForHydration,
-} from '../../../src/frameworks/react/react';
+import {createStoreHook} from '../../../src/frameworks/react/react';
+import {prepareStoreForHydration} from '../../../src/frameworks/react/server';
 
 export type HydrationData = {user: {name: string}; count: number};
 

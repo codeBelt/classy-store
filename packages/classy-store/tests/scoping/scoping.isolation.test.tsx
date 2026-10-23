@@ -49,7 +49,7 @@ afterEach(() => {
   for (const root of mounted.keys()) unmount(root);
 });
 
-describe('independent scoped-store lifecycle QA', () => {
+describe('scoped-store isolation and lifecycle', () => {
   test('ignores a late hydration result from the disposed first StrictMode effect', async () => {
     const {storage, reads} = createPendingStorage();
     let currentStore!: EditorStore;

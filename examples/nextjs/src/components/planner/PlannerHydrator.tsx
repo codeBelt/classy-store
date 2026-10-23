@@ -8,7 +8,13 @@ export function PlannerHydrator() {
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    plannerPersist.rehydrate().then(() => setHydrated(true));
+    void plannerPersist.rehydrate().then(
+      () => setHydrated(true),
+      (error) => {
+        console.error('Could not restore planner data', error);
+        setHydrated(true);
+      },
+    );
   }, []);
 
   if (!hydrated) {
@@ -25,7 +31,7 @@ export function PlannerHydrator() {
       description="SSR-safe pattern: store skips auto-hydration, component calls rehydrate() in useEffect on client."
       code={`persist(plannerStore, { skipHydration: true, ... });
 // in useEffect:
-plannerPersist.rehydrate();`}
+void plannerPersist.rehydrate().catch(console.error);`}
     />
   );
 }

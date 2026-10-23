@@ -9,13 +9,19 @@
 export type {SubscribeOptions} from '../types';
 export type {DevtoolsOptions} from './devtools/devtools';
 export {devtools} from './devtools/devtools';
-export type {HistoryHandle, HistoryOptions} from './history/history';
+export type {
+  HistoryHandle,
+  HistoryOptions,
+  HistoryStatus,
+} from './history/history';
 export {withHistory} from './history/history';
+export {persist} from './persist/persist';
 export type {
   PersistHandle,
+  PersistOperation,
   PersistOptions,
+  PersistStatus,
   PropertyTransform,
   StorageAdapter,
-} from './persist/persist';
-export {persist} from './persist/persist';
+} from './persist/persist.types';
 export {subscribeKey} from './subscribe-key/subscribe-key';

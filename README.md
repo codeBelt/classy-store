@@ -12,11 +12,11 @@
 
 Visit the **[Documentation Website](https://codebelt.github.io/classy-store/)** for tutorials, API reference, and examples.
 
-## Upgrading to 0.7.0
+## Upgrading to 0.8.0
 
-React subscriptions now notify synchronously. Remove the React hooks' `sync` option and any `UseClassyStoreOptions` imports. Auto-tracked hooks now require native `WeakRef` support (ES2021). Selector equality options remain available, and ordinary core subscriptions still batch by default.
+Replace persistence `unsubscribe()` with `dispose()`, handle rejected promises from explicit persistence operations, and import hydration preparation from `@codebelt/classy-store/react/server`. The public `getVersion` export has been removed. New `useHistoryStatus` and `usePersistStatus` hooks keep utility metadata reactive in React.
 
-See the [0.7.0 upgrade guide and release notes](https://codebelt.github.io/classy-store/docs/UPGRADING_0_7) for before/after examples, SSR and Next.js setup, and persistence changes.
+See the [0.8.0 upgrade guide](https://codebelt.github.io/classy-store/docs/UPGRADING_0_8) for required changes and examples. If upgrading from 0.6.x or earlier, also read the [0.7.0 upgrade guide](https://codebelt.github.io/classy-store/docs/UPGRADING_0_7).
 
 ## 🚀 Features
 
@@ -32,7 +32,12 @@ See the [0.7.0 upgrade guide and release notes](https://codebelt.github.io/class
 
 ## ⚡ Quick Example
 
-```ts
+This example creates a shared store for a client-rendered React app. For SSR, create one store per request or provider as shown in the [scoping guide](https://codebelt.github.io/classy-store/docs/REACT_SCOPING).
+
+```tsx
+import {createClassyStore} from '@codebelt/classy-store';
+import {useClassyStore} from '@codebelt/classy-store/react';
+
 // 1. Plain class — fields are state, getters are computed values, the class is the type
 class CartStore {
   items: { name: string; price: number; qty: number }[] = [];
@@ -61,6 +66,30 @@ function AddButton() {
 }
 ```
 
+## Choosing an API
+
+| What you need | API |
+| --- | --- |
+| Create shared state from a class or object | `createClassyStore(instance)` |
+| Render store data in React | `useClassyStore(store)` or `useClassyStore(store, selector)` |
+| Create a store owned by a component | `useLocalStore(factory)` |
+| Bind a reusable hook to an existing store | `createStoreHook(store)` |
+| Render undo/redo availability or pause state | `useHistoryStatus(history)` |
+| Render persistence hydration, expiry, or errors | `usePersistStatus(handle)` |
+| Prepare matching initial data for SSR/hydration | `prepareStoreForHydration(store)` |
+| Read state outside React or observe mutations | `snapshot(store)`, `subscribe(store, listener)`, `subscribeKey(store, key, listener)` |
+| Persist state, record history, or inspect it in DevTools | `persist(store, options)`, `withHistory(store)`, `devtools(store)` |
+| Track changes inside Map-like or Set-like collections | `reactiveMap()`, `reactiveSet()` |
+| Compare selector results one level deep | `shallowEqual(previous, next)` |
+
+`useClassyStore` is the starting point for React components. The two status hooks
+are optional: use them only when displaying metadata from an existing history or
+persistence handle. They do not create those handles or subscribe to store data.
+
+See the [API reference and import paths](https://codebelt.github.io/classy-store/docs/#package-entry-points) for signatures, public types, and lifecycle details.
+
+## React integration
+
 React subscriptions notify synchronously, so controlled inputs preserve caret position without extra options:
 
 ```tsx
@@ -76,7 +105,7 @@ return (
 
 Ordinary `subscribe(store, listener)` callbacks still batch in a microtask. React batches renders within event handlers, while selectors can run after each mutation.
 
-For server-rendered React apps, call `prepareStoreForHydration(store)` from `@codebelt/classy-store/react` on matching server/client stores before persistence starts. Delayed Suspense boundaries then hydrate from the original data and catch up to live state. See the [SSR guide](https://codebelt.github.io/classy-store/docs/REACT_SSR).
+For server-rendered React apps, call `prepareStoreForHydration(store)` from `@codebelt/classy-store/react/server` on matching server/client stores before persistence starts. Delayed Suspense boundaries then hydrate from the original data and catch up to live state. See the [SSR guide](https://codebelt.github.io/classy-store/docs/REACT_SSR).
 
 For Next.js App Router, construct stores inside Client Providers from serializable initial data. Use `@codebelt/classy-store/react/server` when preparing a store in server-only code. See the [App Router guide](https://codebelt.github.io/classy-store/docs/REACT_NEXT) for package boundaries, streaming, and navigation.
 
@@ -86,6 +115,8 @@ Auto-tracked React subscriptions require native `WeakRef` support (ES2021) so tr
 
 For independent forms, nested editors, and request-scoped state, see the [typed context example](https://codebelt.github.io/classy-store/docs/REACT_SCOPING). Providers own their store instances and effects; React keys control intentional resets.
 
+Most components only need `useClassyStore(store)` to render application data. Use [`useHistoryStatus(history)`](https://codebelt.github.io/classy-store/docs/#usehistorystatushistory) for undo/redo controls and recording status, or [`usePersistStatus(handle)`](https://codebelt.github.io/classy-store/docs/#usepersiststatushandle) for hydration, expiry, and persistence errors. Both hooks come from `@codebelt/classy-store/react` and update even when store data is unchanged. Manual `save()`, `clear()`, and `rehydrate()` calls reject on failure after reporting through status and `onError`. Handle these promises in event handlers; automatic persistence reports failures without producing unhandled rejections.
+
 ## 📦 Installation
 
 ```bash
@@ -93,6 +124,8 @@ npm install @codebelt/classy-store
 # or
 bun add @codebelt/classy-store
 ```
+
+The React adapter requires React 18 or later. Install `react` and `react-dom` in your application if it does not already provide them.
 
 ## 🤖 AI / LLM Usage
 
@@ -103,13 +136,11 @@ This library provides machine-readable documentation for LLM-powered tools:
 
 These files follow the [llms.txt standard](https://llmstxt.org/).
 
-
 ## 💡 Why Another State Library
 
 - A class-based store where the class is the object and the type — no separate interface or type definition needed.
 - Getters as computed values, cached automatically and only recalculated when something changes.
 - No component wrapping — no observers, no HOCs, just a hook.
-
 
 ## 🙏 Acknowledgements
 
@@ -126,6 +157,8 @@ This library wouldn't exist without the ideas pioneered by these projects. Each 
 **[React](https://react.dev)** — React 18's `useSyncExternalStore` is the foundation of our hook layer. It provides tear-free concurrent-mode-safe integration with external stores, and it's the same API used by Zustand, Redux, and Valtio under the hood.
 
 **[Claude 4.6 Opus](https://anthropic.com)** — Let's be real: this library was designed, architected, implemented, tested, and documented almost entirely by Claude 4.6 Opus (Anthropic) via [Cursor](https://cursor.com). From the three-layer proxy architecture to the memoized computed getters with dependency tracking, the cross-snapshot caching strategy, and tests — it was all pair-programmed with an AI that never gets tired of writing Proxy traps. The human brought the vision, the taste, and the "no, make it better" energy. Claude brought the code.
+
+**[OpenAI Codex](https://openai.com/codex/)** — Contributed public API refinements, core and React regression tests, and fixes for hydration, React Compiler compatibility, Next.js integration, performance, memory retention, and persistence. Also helped review and reorganize the codebase, update examples, and improve the documentation.
 
 ## 🤝 Contributing
 

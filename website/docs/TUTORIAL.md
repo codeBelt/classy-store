@@ -399,11 +399,11 @@ A component selecting `loading` can show a spinner while the request is pending 
 
 ## Local Stores
 
-By default, stores are module-level singletons — shared across your entire app. For component-scoped state that is garbage collected on unmount, use `useLocalStore`.
+Where you create a store determines its scope. A module-level store is shared by importers; `useLocalStore` creates one instance per mounted component. For SSR, use request-scoped or provider-owned stores instead of a shared server singleton.
 
 ### Basic usage
 
-`useLocalStore` creates a reactive store scoped to the component's lifetime. Each component instance gets its own isolated store. When the component unmounts, the store is garbage collected.
+`useLocalStore` creates a reactive store scoped to the component's lifetime. Each component instance gets its own isolated store. Unmounting releases React's reference. Garbage collection can reclaim the store once no other references remain.
 
 ```tsx
 import {useLocalStore, useClassyStore} from '@codebelt/classy-store/react';
@@ -426,7 +426,7 @@ The factory initializes component state. Subsequent re-renders reuse the same st
 
 ### Persisting a local store
 
-`persist()` subscribes to the store, which keeps a reference alive. You must call `handle.unsubscribe()` on unmount to allow garbage collection.
+`persist()` owns subscriptions, timers, and optional browser listeners. Create the handle in an effect and dispose it in that effect's cleanup, including during Strict Mode replay. `useLocalStore` does not dispose application effects for you.
 
 ```tsx
 import {useEffect} from 'react';
@@ -446,8 +446,8 @@ function EditProfile() {
   const snap = useClassyStore(store);
 
   useEffect(() => {
-    const handle = persist(store, { name: 'edit-profile-draft' });
-    return () => handle.unsubscribe();
+    const handle = persist(store, { storage: localStorage, name: 'edit-profile-draft' });
+    return () => handle.dispose();
   }, [store]);
 
   return (
@@ -459,7 +459,7 @@ function EditProfile() {
 }
 ```
 
-The `useEffect` cleanup ensures the persist subscription is removed and the store can be garbage collected when the component unmounts.
+The effect cleanup stops persistence. The store can be collected once React and any other owners release it.
 
 ## Creating a Bound Hook with `createStoreHook`
 
@@ -596,12 +596,13 @@ a === c; // false — new snapshot after mutation
 import {persist} from '@codebelt/classy-store/utils';
 
 const handle = persist(todoStore, {
+  storage: localStorage,
   name: 'todo-store',
 });
 
 // State survives page refreshes.
 // Getters and methods are automatically excluded.
-// Cross-tab sync is enabled by default.
+// Opt into cross-tab sync with syncTabs: true when using localStorage.
 ```
 
 The persist utility supports per-property transforms (for `Date`, `ReactiveMap`, etc.), debounced writes, schema versioning with migration, merge strategies, TTL expiration (`expireIn`), SSR-safe `skipHydration`, and cross-tab synchronization.

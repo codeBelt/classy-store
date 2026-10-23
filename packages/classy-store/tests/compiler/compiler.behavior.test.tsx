@@ -1,6 +1,6 @@
 import {afterEach, describe, expect, mock, test} from 'bun:test';
 import {createClassyStore, type Snapshot} from '@codebelt/classy-store';
-import {prepareStoreForHydration} from '@codebelt/classy-store/react';
+import {prepareStoreForHydration} from '@codebelt/classy-store/react/server';
 import {type ReactNode, Suspense, startTransition} from 'react';
 import {createRoot, hydrateRoot, type Root} from 'react-dom/client';
 import {renderToString} from 'react-dom/server';
@@ -64,7 +64,7 @@ afterEach(async () => {
   mounted.clear();
 });
 
-describe('independent compiled-consumer QA', () => {
+describe('compiled consumer tracking and hydration', () => {
   test('retains reads inside a compiler-memoized helper after a parent-only rerender', async () => {
     const store = createQaStore();
     const {root, container} = mount(

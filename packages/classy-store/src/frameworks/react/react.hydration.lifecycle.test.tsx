@@ -4,7 +4,8 @@ import {createRoot, hydrateRoot, type Root} from 'react-dom/client';
 import {renderToString} from 'react-dom/server';
 import {createClassyStore, getInternal} from '../../core/core';
 import type {Snapshot} from '../../types';
-import {prepareStoreForHydration, useClassyStore} from './react';
+import {useClassyStore} from './react';
+import {prepareStoreForHydration} from './server';
 import {DelayedHydrationView} from './testHelpers/delayedHydrationView/DelayedHydrationView';
 import type {HydrationStore} from './testHelpers/hydration.types';
 
@@ -66,7 +67,7 @@ afterEach(async () => {
   mounted.clear();
 });
 
-describe('prepareStoreForHydration independent QA', () => {
+describe('prepareStoreForHydration lifecycle', () => {
   test('validates proxies, preserves identity, and does not subscribe', () => {
     expect(() =>
       prepareStoreForHydration(new HydrationQaStore('invalid')),

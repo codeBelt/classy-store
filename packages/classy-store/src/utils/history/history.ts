@@ -3,6 +3,10 @@ import {snapshot} from '../../snapshot/snapshot';
 import type {Snapshot} from '../../types';
 import {cloneSnapshotValue} from '../cloneSnapshot/cloneSnapshot';
 import {findGetterDescriptor} from '../internal/internal';
+import {
+  createUtilityStatus,
+  type UtilityStatusSource,
+} from '../utilityStatus/utilityStatus';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -11,7 +15,14 @@ export type HistoryOptions = {
   limit?: number;
 };
 
-export type HistoryHandle = {
+export type HistoryStatus = {
+  readonly canUndo: boolean;
+  readonly canRedo: boolean;
+  readonly isPaused: boolean;
+  readonly isDisposed: boolean;
+};
+
+export type HistoryHandle = UtilityStatusSource<HistoryStatus> & {
   /** Restore the previous state. */
   undo: () => void;
   /** Restore the next state (after an undo). */
@@ -51,6 +62,20 @@ export function withHistory<T extends object>(
   const history: Snapshot<T>[] = [snapshot(proxyStore)];
   let pointer = 0;
   let paused = false;
+  let restoring = 0;
+  let disposed = false;
+  const status = createUtilityStatus<HistoryStatus>({
+    canUndo: false,
+    canRedo: false,
+    isPaused: false,
+    isDisposed: false,
+  });
+  const readStatus = (): HistoryStatus => ({
+    canUndo: pointer > 0,
+    canRedo: pointer < history.length - 1,
+    isPaused: paused,
+    isDisposed: disposed,
+  });
 
   /**
    * Apply a snapshot's data properties back to the store proxy.
@@ -76,7 +101,7 @@ export function withHistory<T extends object>(
 
   // Subscribe to store mutations
   const unsubscribeFromStore = subscribe(proxyStore, () => {
-    if (paused) return;
+    if (paused || restoring > 0 || disposed) return;
 
     const snap = snapshot(proxyStore);
 
@@ -94,34 +119,36 @@ export function withHistory<T extends object>(
       history.shift();
       pointer = history.length - 1;
     }
+    status.update(readStatus());
   });
 
   const handle: HistoryHandle = {
+    ...status.source,
     undo() {
-      if (pointer <= 0) return;
+      if (disposed || pointer <= 0) return;
       pointer--;
-      const prevPaused = paused;
-      paused = true;
+      restoring++;
       try {
         applySnapshot(history[pointer]);
       } finally {
         queueMicrotask(() => {
-          paused = prevPaused;
+          restoring--;
         });
+        status.update(readStatus());
       }
     },
 
     redo() {
-      if (pointer >= history.length - 1) return;
+      if (disposed || pointer >= history.length - 1) return;
       pointer++;
-      const prevPaused = paused;
-      paused = true;
+      restoring++;
       try {
         applySnapshot(history[pointer]);
       } finally {
         queueMicrotask(() => {
-          paused = prevPaused;
+          restoring--;
         });
+        status.update(readStatus());
       }
     },
 
@@ -134,17 +161,24 @@ export function withHistory<T extends object>(
     },
 
     pause() {
+      if (disposed) return;
       paused = true;
+      status.update(readStatus());
     },
 
     resume() {
+      if (disposed) return;
       paused = false;
+      status.update(readStatus());
     },
 
     dispose() {
+      if (disposed) return;
+      disposed = true;
       unsubscribeFromStore();
       history.length = 0;
       pointer = 0;
+      status.dispose(readStatus());
     },
   };
 

@@ -3,7 +3,7 @@
 Class-based reactive state management for React, Vue, Svelte, Solid, and Angular. Write plain TypeScript classes — get fine-grained reactivity, immutable snapshots, and zero-boilerplate hooks.
 
 ```
-~2.3 KB gzipped · ES6 Proxy · useSyncExternalStore · proxy-compare
+ES6 Proxy · useSyncExternalStore · proxy-compare
 ```
 
 ## Features
@@ -25,7 +25,7 @@ Class-based reactive state management for React, Vue, Svelte, Solid, and Angular
 
 ## Installation
 
-Upgrading from 0.6.x? Read the [0.7.0 upgrade guide and release notes](./UPGRADING_0_7.md) for the React API changes and runtime requirements.
+Upgrading from 0.7.x? Read the [0.8.0 upgrade guide](./UPGRADING_0_8.md) for public API changes and persistence error handling. From 0.6.x or earlier, also follow the [0.7.0 upgrade guide](./UPGRADING_0_7.md).
 
 ```bash
 bun add @codebelt/classy-store
@@ -109,6 +109,42 @@ function AddButton() {
 }
 ```
 
+## Choosing an API
+
+| What you need | API |
+| --- | --- |
+| Create shared state from a class or object | `createClassyStore(instance)` |
+| Render store data in React | `useClassyStore(store)` or `useClassyStore(store, selector)` |
+| Create a store owned by a component | `useLocalStore(factory)` |
+| Bind a reusable hook to an existing store | `createStoreHook(store)` |
+| Render undo/redo availability or pause state | `useHistoryStatus(history)` |
+| Render persistence hydration, expiry, or errors | `usePersistStatus(handle)` |
+| Prepare matching initial data for SSR/hydration | `prepareStoreForHydration(store)` |
+| Read state outside React or observe mutations | `snapshot(store)`, `subscribe(store, listener)`, `subscribeKey(store, key, listener)` |
+| Persist state, record history, or inspect it in DevTools | `persist(store, options)`, `withHistory(store)`, `devtools(store)` |
+| Track changes inside Map-like or Set-like collections | `reactiveMap()`, `reactiveSet()` |
+| Compare selector results one level deep | `shallowEqual(previous, next)` |
+
+`useClassyStore` is the starting point for React components. The two status hooks
+are optional: use them only when displaying metadata from an existing history or
+persistence handle. They do not create those handles or subscribe to store data.
+
+## Package entry points
+
+Import from the entry that owns the API. Core, collections, and utilities do not depend on React.
+
+| Import path | Runtime exports | Public types |
+| --- | --- | --- |
+| `@codebelt/classy-store` | `createClassyStore`, `snapshot`, `subscribe`, `shallowEqual` | `Snapshot`, `SubscribeOptions` |
+| `@codebelt/classy-store/react` | `useClassyStore`, `useLocalStore`, `createStoreHook`, `useHistoryStatus`, `usePersistStatus` | `UseClassyStoreSelectorOptions` |
+| `@codebelt/classy-store/react/server` | `prepareStoreForHydration` | — |
+| `@codebelt/classy-store/collections` | `reactiveMap`, `reactiveSet` | `ReactiveMap`, `ReactiveSet` |
+| `@codebelt/classy-store/utils` | `persist`, `withHistory`, `subscribeKey`, `devtools` | `PersistOptions`, `PersistHandle`, `PersistStatus`, `PersistOperation`, `PropertyTransform`, `StorageAdapter`, `HistoryOptions`, `HistoryHandle`, `HistoryStatus`, `DevtoolsOptions`, `SubscribeOptions` |
+
+`ReactiveMap` and `ReactiveSet` are exported as types; construct values with the
+factory functions. The React entry carries `use client`. Import hydration
+preparation from `/react/server` in both server code and client modules.
+
 ## API Reference
 
 ### `createClassyStore(instance)`
@@ -184,13 +220,52 @@ React subscriptions always notify synchronously, including selector, auto-tracke
 
 Migration: remove `{sync: true}` or `{sync: false}` from React hook calls and remove imports of `UseClassyStoreOptions`. Selector options still support `isEqual`. Synchronous notification does not make a method transactional: selectors can observe each write, while React batches rendering within event handlers.
 
+### `useHistoryStatus(history)`
+
+Use `useClassyStore(store)` for application data. Use `useHistoryStatus(history)` when a component renders undo/redo availability, recording state, or history disposal:
+
+```tsx
+import {useHistoryStatus} from '@codebelt/classy-store/react';
+import type {HistoryHandle} from '@codebelt/classy-store/utils';
+
+function UndoButton({history}: {history: HistoryHandle}) {
+  const {canUndo} = useHistoryStatus(history);
+  return <button disabled={!canUndo} onClick={history.undo}>Undo</button>;
+}
+```
+
+The hook accepts the `HistoryHandle` returned by `withHistory(store)` and returns `HistoryStatus`: `canUndo`, `canRedo`, `isPaused`, and `isDisposed`. It updates even when store data stays unchanged, such as when recording is paused. Creating or using history does not require the hook.
+
+### `usePersistStatus(handle)`
+
+Use `usePersistStatus(handle)` when a component renders persistence hydration, expiry, disposal, or errors:
+
+```tsx
+import {usePersistStatus} from '@codebelt/classy-store/react';
+import type {PersistHandle} from '@codebelt/classy-store/utils';
+
+function PersistenceBadge({handle}: {handle: PersistHandle}) {
+  const {isHydrated, lastError} = usePersistStatus(handle);
+  if (lastError) return <span>Persistence failed: {lastError.operation}</span>;
+  return <span>{isHydrated ? 'Ready' : 'Restoring…'}</span>;
+}
+```
+
+The hook accepts the `PersistHandle` returned by `persist(store, options)` and returns `PersistStatus`: `isHydrated`, `isExpired`, `isDisposed`, and `lastError` (`{error, operation}` or `null`). `isHydrated` means a hydration attempt settled; inspect `lastError` for a reported failure. Configuring persistence and calling its methods do not require the hook.
+
+Both hooks return readonly status snapshots whose identity stays stable until a status field changes. They share an internal subscription implementation. Status listeners run synchronously when status changes; ordinary store subscriptions, including history recording, remain batched. Unmounting a status consumer removes its listener without disposing the handle.
+
+Outside React, both handles provide framework-neutral status methods: `getSnapshot()`, `getServerSnapshot()`, and `subscribe(listener)`, which returns listener cleanup.
+
+For SSR, handles expose their initial status through `getServerSnapshot()` and React catches up with live status after hydration. Construct request-scoped handles and matching client handles with the same initial status; keep persistence side effects in the provider lifecycle described in [React store scoping](./REACT_SCOPING.md).
+
 ### `prepareStoreForHydration(store)`
 
 Captures the initial snapshot for server rendering and client hydration, returning the same mutable store proxy:
 
 ```ts
 import {createClassyStore} from '@codebelt/classy-store';
-import {prepareStoreForHydration} from '@codebelt/classy-store/react';
+import {prepareStoreForHydration} from '@codebelt/classy-store/react/server';
 
 const store = prepareStoreForHydration(
   createClassyStore(new ProfileStore(initialData)),
@@ -201,11 +276,11 @@ Call on each request's store and its client counterpart using matching initial d
 
 Preparation is idempotent, retains the first snapshot for the store's lifetime, and applies to the exact proxy passed in. Client-only apps need no preparation. See [React SSR and hydration](./REACT_SSR.md) for streaming, request isolation, nested proxies, and snapshot leaf semantics.
 
-The same preparation helper is available from `@codebelt/classy-store/react/server` without importing hooks. Use that entry in React Server Components; the `/react` entry is marked `use client`. See [Next.js App Router](./REACT_NEXT.md) for production package boundaries and navigation patterns.
+Import the preparation helper from `@codebelt/classy-store/react/server` on both the server and client. It does not import React hooks; the separate `/react` hooks entry is marked `use client`. See [Next.js App Router](./REACT_NEXT.md) for production package boundaries and navigation patterns.
 
 ### `useLocalStore(factory)`
 
-Creates a component-scoped reactive store. Each component instance gets its own isolated store, garbage collected on unmount.
+Creates a component-scoped reactive store. Each component instance gets its own isolated store. Unmounting releases React's reference; the store can be garbage collected when no other references remain.
 
 ```tsx
 import {useLocalStore, useClassyStore} from '@codebelt/classy-store/react';
@@ -281,13 +356,13 @@ Validates at creation time — throws if the argument is not a store proxy.
 
 ### `snapshot(store)`
 
-Creates a deeply frozen, immutable snapshot of the current state. Used internally by `useClassyStore` but also available directly.
+Reads a snapshot with frozen copies of store objects and arrays, cached by store version with structural sharing. Used internally by `useClassyStore` but also available directly. Opaque leaves such as native `Map`, `Set`, `Date`, and functions retain their references; do not mutate them through a snapshot.
 
 ```typescript
 import {snapshot} from '@codebelt/classy-store';
 
 const snap = snapshot(myStore);
-// snap is deeply frozen — mutations throw
+// Copied objects and arrays are frozen; mutate the store, not its snapshot.
 // Structural sharing: unchanged sub-trees === previous snapshot
 ```
 
@@ -311,20 +386,6 @@ const unsubSync = subscribe(
 );
 
 // Later: unsub();
-```
-
-### `getVersion(store)`
-
-Returns the current version number of a store proxy. Versions are monotonically increasing and bump on any mutation in the store's subtree (child mutations propagate up to the root). Useful for debugging, testing whether a store has changed, or custom cache invalidation.
-
-```typescript
-import {getVersion} from '@codebelt/classy-store';
-
-const v1 = getVersion(myStore);
-myStore.count++;
-// After microtask:
-const v2 = getVersion(myStore);
-// v2 > v1
 ```
 
 ### `shallowEqual(a, b)`
@@ -431,7 +492,10 @@ Persist store state to storage with transforms, versioning, migration, cross-tab
 ```typescript
 import {persist} from '@codebelt/classy-store/utils';
 
-const handle = persist(todoStore, {name: 'todo-store'});
+const handle = persist(todoStore, {name: 'todo-store', storage: localStorage});
+
+// When this store's owner no longer needs persistence:
+handle.dispose();
 ```
 
 > See the [Persist Tutorial](./PERSIST_TUTORIAL.md) and [Persist Architecture](./PERSIST_ARCHITECTURE.md).
@@ -448,9 +512,9 @@ const disconnect = devtools(myStore, {name: 'MyStore'});
 
 > See the [DevTools Tutorial](./DEVTOOLS_TUTORIAL.md).
 
-### `subscribeKey(store, key, callback)`
+### `subscribeKey(store, key, callback, options?)`
 
-Subscribe to changes on a single property. Fires only when the watched key changes.
+Subscribe to changes on a single property, comparing snapshot values with `Object.is`. Notifications are batched by default; pass `{sync: true}` as the fourth argument to observe each change immediately. Returns listener cleanup.
 
 ```typescript
 import {subscribeKey} from '@codebelt/classy-store/utils';

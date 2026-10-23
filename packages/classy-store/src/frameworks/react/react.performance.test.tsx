@@ -50,7 +50,7 @@ afterEach(() => {
   mounted.clear();
 });
 
-describe('useClassyStore performance independent QA', () => {
+describe('useClassyStore render counts', () => {
   test('keeps shared snapshot targets independent across many consumer read sets', () => {
     const store = createStore(128);
     const {counts, states, onCommit} = createCommits();

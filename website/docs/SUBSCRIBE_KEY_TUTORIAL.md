@@ -48,10 +48,11 @@ unsub();
 ## Signature
 
 ```ts
-function subscribeKey<T extends object, K extends keyof T>(
+function subscribeKey<T extends object, K extends keyof T & keyof Snapshot<T>>(
   proxyStore: T,
   key: K,
   callback: (value: Snapshot<T>[K], previousValue: Snapshot<T>[K]) => void,
+  options?: SubscribeOptions,
 ): () => void;
 ```
 
@@ -60,14 +61,17 @@ function subscribeKey<T extends object, K extends keyof T>(
 | `proxyStore` | `T` | A reactive proxy created by `createClassyStore()` |
 | `key` | `keyof T` | The property to watch |
 | `callback` | `(value, previousValue) => void` | Called when the watched property changes |
+| `options` | `SubscribeOptions` | Optional `{sync: true}` for immediate notifications; otherwise batched |
 | **Returns** | `() => void` | Unsubscribe function |
+
+The callback is not called when you subscribe. It receives the current and previous snapshot values when the watched key changes. By default, several synchronous writes coalesce into one callback with the final value; passing `{sync: true}` as the fourth argument observes each change. Import `Snapshot` from the root entry and `SubscribeOptions` from the root or utilities entry.
 
 ## How It Works
 
 Under the hood, `subscribeKey` wraps the existing `subscribe()` + `snapshot()` APIs:
 
 1. Captures an initial snapshot and stores `snapshot[key]` as the previous value.
-2. On each store mutation, takes a new snapshot and compares `snapshot[key]` with the previous value via `Object.is()`.
+2. On each batched notification (or each mutation with `sync: true`), takes a new snapshot and compares `snapshot[key]` with the previous value via `Object.is()`.
 3. If different, fires the callback with `(currentValue, previousValue)` and updates the stored previous value.
 
 Because `snapshot()` uses structural sharing, unchanged sub-trees return the same reference. This makes the `Object.is()` comparison efficient — no deep equality checks are needed.

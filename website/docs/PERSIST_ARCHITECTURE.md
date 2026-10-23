@@ -4,7 +4,7 @@ Internal design documentation for the `persist()` utility in `@codebelt/classy-s
 
 ## Design Principles
 
-1. **Standalone utility, not middleware.** `persist` consumes the existing `subscribe`, `snapshot`, and `getVersion` APIs. No changes to core reactivity or React hooks are needed.
+1. **Standalone utility, not middleware.** `persist` uses `subscribe` and `snapshot`, plus an internal version helper for stale-read protection. No changes to core reactivity or React hooks are needed.
 
 2. **Tree-shakeable.** `persist` lives in a separate entry point (`@codebelt/classy-store/utils`). Applications that don't use persistence pay zero cost -- the code is never bundled.
 
@@ -52,8 +52,12 @@ src/
   utils/
     index.ts                    # Barrel: persist, devtools, subscribeKey, withHistory
     persist/
-      persist.ts                # persist(), types, and all logic
-      persist.test.ts           # tests with mock storage adapters
+      persist.ts                # Storage queue, hydration, and persistence logic
+      persist.types.ts          # Public options, transforms, adapter, status, and handle
+      persist.test.ts           # Tests with mock storage adapters
+      persist.api.test.ts       # Public lifecycle and status behavior
+      persist.concurrent.test.ts # Overlapping reads, writes, and disposal
+      persist.errors.test.ts    # Error reporting and rejection policy
 package.json                    # "./utils" export entry
 tsdown.config.ts                # 'src/utils/index.ts' in entry array
 ```
@@ -64,15 +68,14 @@ Each `persist()` call creates a closure with the following internal state:
 
 | Variable | Type | Purpose |
 |---|---|---|
-| `disposed` | `boolean` | Guards against writes after `unsubscribe()` |
-| `debounceTimer` | `ReturnType<typeof setTimeout> \| null` | Active debounce timer (cancelled on save/clear/unsubscribe or accepted hydration) |
+| `disposed` | `boolean` | Guards against writes after `dispose()` |
+| `debounceTimer` | `ReturnType<typeof setTimeout> \| null` | Active debounce timer (cancelled on save/clear/dispose or accepted hydration) |
 | `storageQueue` | `Promise<void> \| undefined` | Orders this handle's writes/removals and lets reads wait for prior operations |
 | `hydrationRequest` | `number` | Rejects read results superseded by newer requests or storage events |
 | `clearedVersion` | `number \| undefined` | Suppresses a pre-clear mutation's pending batched auto-save |
 | `hydratedFlag` | `boolean` | Synchronous hydration status |
 | `expiredFlag` | `boolean` | Set to `true` when hydration encounters expired data |
 | `resolveHydrated` | `() => void` | Resolves the `hydrated` promise |
-| `rejectHydrated` | `(error) => void` | Rejects the `hydrated` promise on error |
 | `resolvedProps` | `Array<{key, transform?}>` | Normalized property list with optional transforms |
 | `transformMap` | `Map<string, PropertyTransform>` | Fast lookup from key to transform |
 | `propKeys` | `string[]` | Flat list of property keys to persist |
@@ -165,7 +168,7 @@ batched subscription notification has run, with cleanup in `finally`.
      if transform exists → state[key] = transform.deserialize(state[key])
 6. Build currentState from snapshot (only propKeys)
 7. Apply merge strategy:
-     'shallow' / 'replace': { ...currentState, ...persistedState }
+     'shallow': { ...currentState, ...persistedState }
      custom function: merge(persistedState, currentState)
 8. for each key in propKeys:
      if key in mergedState → proxy[key] = mergedState[key]
@@ -178,16 +181,15 @@ batched subscription notification has run, with cleanup in `finally`.
 | Strategy | Behavior |
 |---|---|
 | `'shallow'` (default) | `{ ...current, ...persisted }` -- persisted keys overwrite, new keys keep defaults |
-| `'replace'` | Same as shallow at top level. Conceptually signals full replacement for nested objects. |
 | Custom `fn` | `fn(persisted, current)` -- full control. Enables deep merge or selective overrides. |
 
-Both `'shallow'` and `'replace'` produce the same result for flat stores. The distinction is semantic and affects how consumers think about nested object handling.
+The public merge option accepts `shallow` or a function. Shallow merging replaces each stored top-level property, including its nested value; use a custom function to combine nested data.
 
 ### Error Handling
 
-- **Corrupted JSON** in storage (`JSON.parse` throws): caught silently, hydration completes with no state changes.
+- **Corrupted JSON** in storage (`JSON.parse` throws): reported as `parse` through `onError` and status, with no state changes.
 - **Invalid envelope** (missing `.state` or not an object): detected by shape check, skipped silently.
-- **Adapter read errors** during `storage.getItem()`: reported through `onError` when the request is current; hydration completes. Exceptions from custom migration/merge/transform callbacks can reject hydration.
+- **Adapter read errors** during `storage.getItem()`: reported as `read` when the request is current. Exceptions from custom migration/merge/transform callbacks are reported as `parse`. Initial hydration settles after reporting; explicit `rehydrate()` rejects with the original error.
 
 ## Cross-Tab Sync
 
@@ -219,7 +221,7 @@ Key properties of `window.storage`:
 
 ## Cleanup
 
-`handle.unsubscribe()` performs three cleanup steps:
+`handle.dispose()` performs three cleanup steps:
 
 ```
 1. Set disposed = true (guards all future writes)
@@ -228,10 +230,10 @@ Key properties of `window.storage`:
 4. Remove window 'storage' event listener (if syncTabs was active)
 ```
 
-After `unsubscribe()`:
+After `dispose()`:
 - Store mutations no longer trigger writes to storage.
 - Cross-tab changes to the storage key are ignored.
-- `save()`, `clear()`, and `rehydrate()` become no-ops.
+- `save()`, `clear()`, and `rehydrate()` reject without starting new work.
 - Queued writes/removals that have not started are skipped. Already-issued adapter I/O can still finish.
 - Pending read results/errors are ignored, and their promises settle when the reads finish.
 
@@ -239,28 +241,35 @@ After `unsubscribe()`:
 
 | Method/Property | Behavior |
 |---|---|
-| `unsubscribe()` | Full cleanup: unsubscribe + cancel debounce + remove storage listener. Idempotent. |
-| `hydrated` | Promise that resolves when initial hydration completes or is superseded. Custom hydration callback exceptions can reject it. |
-| `isHydrated` | Getter returning `boolean`. Becomes `true` after hydration resolves or rejects. |
-| `isExpired` | Getter returning `boolean`. `true` when the last hydration found expired data (requires `expireIn`). Re-evaluated on every `rehydrate()` call. |
-| `save()` | Cancel pending debounce, capture current state, and enqueue its write. No-op if disposed. |
-| `clear()` | Cancel pending auto-saves and enqueue `storage.removeItem(name)` after earlier writes. No-op if disposed. |
-| `rehydrate()` | Re-read from storage, apply to store. Also resolves `hydrated` if not yet resolved (for `skipHydration` flows). |
+| `dispose()` | Idempotent cleanup: cancel debounce and listeners, publish disposed status, ignore pending reads and skip unstarted writes. |
+| `hydrated` | Resolves when a hydration attempt settles, including failure or a superseded read. Inspect `lastError` for reported failures. |
+| `isHydrated` | Readonly getter; true after a hydration attempt settles. |
+| `isExpired` | Readonly getter; true when hydration found expired data. Re-evaluated by `rehydrate()`. |
+| `save()` | Cancel debounce, capture current state, and enqueue its write. |
+| `clear()` | Cancel pending auto-saves and enqueue removal after earlier writes. |
+| `rehydrate()` | Read after prior writes, apply if still current, and await expired-data removal when enabled. |
+| `getSnapshot()` | Cached readonly `PersistStatus`: hydration, expiry, disposal, and latest error. |
+| `getServerSnapshot()` | Initial status for server rendering and hydration. |
+| `subscribe(listener)` | Synchronous status subscription; returns listener cleanup. |
+
+Explicit operations reject with the original failure after reporting it through `onError` and status. Automatic operations catch reported failures at their background entry points. Decoding, transform, migration, and merge errors use the `parse` operation. The internal queue absorbs rejections so later writes still run. Calls on disposed handles reject; explicit queued operations cancelled by disposal also reject without invoking the adapter.
 
 ## Dependency Graph
 
 ```mermaid
 graph LR
-  persist["utils/persist.ts"] --> subscribe["core.ts: subscribe()"]
+  persist["utils/persist/persist.ts"] --> subscribe["core.ts: subscribe()"]
   persist --> snapshot["snapshot.ts: snapshot()"]
   persist --> findGetter["utils.ts: findGetterDescriptor()"]
   utilsIndex["utils/index.ts"] --> persist
 ```
 
-`persist` has **no dependency** on `useClassyStore`, `types.ts`, or `collections.ts`. It only uses:
+`persist` has no React runtime dependency. Its public contracts live in `persist.types.ts` and are exported by `utils/index.ts`. Transform types use `Snapshot` from the public core `types.ts`. Runtime helpers include:
 - `subscribe()` -- to listen for store mutations
 - `snapshot()` -- to create an immutable copy for serialization
 - `findGetterDescriptor()` -- to detect class getters during property resolution
+- `createUtilityStatus()` -- to cache and publish utility status
+- `cloneSnapshotValue()` -- to restore mutable values from snapshots
 
 ## Performance Characteristics
 
@@ -272,7 +281,7 @@ graph LR
 | Hydration | O(propKeys) | JSON.parse + deserialize + merge + assign |
 | Cross-tab sync | O(propKeys) | Same as hydration, triggered by storage event |
 | `save()` | O(propKeys) | Same as auto-save, synchronous trigger |
-| `unsubscribe()` | O(1) | Flag + timer cancel + listener removal |
+| `dispose()` | O(1) | Flag + timer cancel + listener removal |
 
 ## Design Decisions
 
@@ -290,7 +299,7 @@ Class getters are derived/computed values that recompute from persisted data pro
 
 ### Why a hydrated Promise instead of lifecycle hooks?
 
-Zustand uses `onRehydrateStorage` (a callback), Pinia uses `beforeHydrate`/`afterHydrate` hooks. A Promise is more composable: it works with `async`/`await`, can be passed to React Suspense boundaries, and doesn't require a registration pattern. The `isHydrated` boolean covers the synchronous check case.
+`hydrated` lets callers await settlement of the initial hydration attempt. It resolves even if the attempt fails, so inspect `lastError` for reported errors. Use `rehydrate()` when an explicit read should reject on failure. React components can observe changes with `usePersistStatus(handle)`.
 
 ### Why debounce instead of throttle?
 
@@ -303,12 +312,12 @@ Debounce waits for a quiet period after the last mutation. Throttle writes at re
 | Per-property transforms | Date round-trip, ReactiveMap round-trip |
 | Debounce | Coalescing, save bypass |
 | Version migration | Migration call, version match skip |
-| Merge strategies | Shallow, replace, custom function |
+| Merge strategies | Shallow or custom function |
 | skipHydration | No auto-hydrate, manual rehydrate, promise resolution |
-| Unsubscribe | Stop writes, cancel debounce |
-| Flush/clear/rehydrate | Immediate write, remove data, in-memory preservation, re-read |
+| Dispose | Stop writes, cancel debounce |
+| Save/clear/rehydrate | Immediate write, remove data, in-memory preservation, re-read |
 | Hydration state | Promise instance, resolution timing |
 | Async storage | Async write, async hydrate |
-| Cross-tab sync | Correct key, wrong key, post-unsubscribe, disabled |
+| Cross-tab sync | Correct key, wrong key, post-disposal, disabled |
 | expireIn / TTL | Normal hydration, expired skip, clearOnExpire, default leave-in-storage, cross-tab reject, no-expiresAt envelope, TTL reset on write, rehydrate re-check |
 | Edge cases | Empty storage, corrupted JSON, invalid envelope, no-storage error, multiple persists |
