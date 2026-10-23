@@ -22,6 +22,12 @@ jobs:
         with:
           bun-version: '1.4.3'
       - run: bun install --frozen-lockfile
+      - name: Use Ubuntu archive mirror for browser dependencies
+        run: |
+          # Avoid slow Azure mirror downloads on hosted runners.
+          if [ -f /etc/apt/apt-mirrors.txt ]; then
+            sudo sed -i 's|http://azure.archive.ubuntu.com/ubuntu|https://archive.ubuntu.com/ubuntu|g' /etc/apt/apt-mirrors.txt
+          fi
       - run: bunx playwright install --with-deps chromium
         working-directory: packages/classy-store
       - name: Packed production Next.js consumer (Compiler ${{ matrix.compiler }})

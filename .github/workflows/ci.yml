@@ -20,6 +20,12 @@ jobs:
       # Packed-consumer typechecks resolve the package's generated declarations.
       - run: bun run build
       - run: bun run typecheck
+      - name: Use Ubuntu archive mirror for browser dependencies
+        run: |
+          # Avoid slow Azure mirror downloads on hosted runners.
+          if [ -f /etc/apt/apt-mirrors.txt ]; then
+            sudo sed -i 's|http://azure.archive.ubuntu.com/ubuntu|https://archive.ubuntu.com/ubuntu|g' /etc/apt/apt-mirrors.txt
+          fi
       - run: bunx playwright install --with-deps chromium firefox webkit
         working-directory: packages/classy-store
       - run: bun run test:browser

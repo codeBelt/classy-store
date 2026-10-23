@@ -1,5 +1,15 @@
 # @codebelt/classy-store
 
+## 0.8.1
+
+### Patch Changes
+
+- [#36](https://github.com/codeBelt/classy-store/pull/36) [`4d4e800`](https://github.com/codeBelt/classy-store/commit/4d4e80006483fa104f0cb934f8f00e122220f540) Thanks [@codeBelt](https://github.com/codeBelt)! - Fix Svelte readable-store subscriptions to deliver mutations synchronously,
+  including mutations made by the initial callback. Prevent callbacks after
+  unsubscription and clean up if the initial callback throws. Ordinary core
+  subscriptions remain batched. Add regressions for Svelte 5 input editing,
+  computed values, list updates, and component cleanup.
+
 ## 0.8.0
 
 ### Minor Changes
