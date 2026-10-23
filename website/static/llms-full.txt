@@ -163,17 +163,25 @@ Import from the entry that owns the API. Core, collections, and utilities do not
 factory functions. The React entry carries `use client`. Import hydration
 preparation from `/react/server` in both server code and client modules.
 
-The other adapters publish whole snapshots using ordinary batched subscriptions:
-Vue returns a `ShallowRef` and uses the current effect scope for cleanup; Svelte
-returns a readable-store interface; Solid returns a signal accessor and uses its
+The other adapters publish whole snapshots. Vue returns a `ShallowRef` and uses
+the current effect scope for cleanup; Svelte returns a readable-store interface;
+Solid returns a signal accessor and uses its
 owner's cleanup; Angular returns a readonly signal and requires an injection
 context. React's selector and auto-tracking modes are specific to `/react`.
+
+Svelte's `toSvelteStore(store)` delivers the initial snapshot immediately and
+notifies subscribers synchronously after each mutation. `$store` subscriptions
+are cleaned up automatically when the component is destroyed; manual subscribers
+must call the returned unsubscribe function. Snapshots are readonly: update the
+original store or call its actions from input handlers instead of using
+`bind:value` on snapshot fields. Vue, Solid, Angular, and ordinary core
+subscriptions use microtask batching.
 
 ## API Reference
 
 ### `createClassyStore(instance)`
 
-Wraps a class instance in a reactive Proxy. Mutations notify React immediately; ordinary subscribers are batched via `queueMicrotask`.
+Wraps a class instance in a reactive Proxy. Mutations notify React and Svelte immediately; ordinary subscribers are batched via `queueMicrotask`.
 
 ```typescript
 const myStore = createClassyStore(new MyClass());
@@ -977,7 +985,7 @@ SOURCE: https://codebelt.github.io/classy-store/docs/TUTORIAL
 
 # Classy Store Tutorial
 
-`Classy Store` is a reactive state library for React, Vue, Svelte, Solid, and Angular built on ES proxies. Define state as classes, wrap them with `createClassyStore()`, and read them with the binding for your framework. Shared client stores need no Provider, observer, or reducer; context providers can scope independent instances. The library batches ordinary subscriptions while notifying React synchronously, and uses structural sharing for change detection.
+`Classy Store` is a reactive state library for React, Vue, Svelte, Solid, and Angular built on ES proxies. Define state as classes, wrap them with `createClassyStore()`, and read them with the binding for your framework. Shared client stores need no Provider, observer, or reducer; context providers can scope independent instances. The library batches ordinary subscriptions while notifying React and Svelte synchronously, and uses structural sharing for change detection.
 
 ## Quick Start
 
@@ -1744,7 +1752,7 @@ root. This guide and the utility architecture guides live in `website/docs`.
 
 ### Overview
 
-The `createClassyStore()` function wraps a class instance in an ES6 Proxy. Assignments and deletions through that proxy, including array operations and supported nested state, are intercepted. Raw-object writes and descriptor changes bypass these traps. Subscribers are batched by default into one microtask notification, while React uses the synchronous path.
+The `createClassyStore()` function wraps a class instance in an ES6 Proxy. Assignments and deletions through that proxy, including array operations and supported nested state, are intercepted. Raw-object writes and descriptor changes bypass these traps. Subscribers are batched by default into one microtask notification, while React and Svelte use the synchronous path.
 
 ### Data Flow: Mutation → Notification
 
@@ -1820,6 +1828,12 @@ store.items.push('a')
 ```
 
 Subscribers opt into immediate timing with `{sync: true}`. Sync subscribers run after version propagation and before the batched microtask. They are intentionally not deduped: two writes mean two sync notifications. Every React hook uses this timing so `useSyncExternalStore` observes the new value during the input event, preserving controlled-input caret position. Selectors can run after each write; React batches rendering within event handlers.
+
+The Svelte adapter also uses synchronous notifications to satisfy the readable
+store contract. It subscribes before delivering the initial snapshot so mutations
+inside that first callback are observed, and removes the subscription if the
+initial callback throws. Normal unsubscription stops delivery even if another
+subscriber removes it during an in-progress notification.
 
 ### Version Propagation
 

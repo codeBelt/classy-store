@@ -1,42 +1,128 @@
 import {describe, expect, it, mock} from 'bun:test';
-import {createClassyStore} from '../../core/core';
+import {createClassyStore, getInternal, subscribe} from '../../core/core';
 import {toSvelteStore} from './svelte';
-
-const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 
 describe('toSvelteStore', () => {
   it('throws when given a non-store object', () => {
     expect(() => toSvelteStore({count: 0})).toThrow(/not a store proxy/);
   });
 
-  it('calls the run callback immediately with the current snapshot', () => {
-    const s = createClassyStore({count: 7});
-    const store = toSvelteStore(s);
-    const run = mock((_v: unknown) => {});
-    store.subscribe(run);
+  it('immediately delivers the current immutable snapshot to each subscriber', () => {
+    const store = createClassyStore({count: 7});
+    const readable = toSvelteStore(store);
+    const run = mock((value: {readonly count: number}) => {
+      expect(Object.isFrozen(value)).toBe(true);
+    });
+    const unsubscribe = readable.subscribe(run);
     expect(run).toHaveBeenCalledTimes(1);
-    expect(run.mock.calls[0][0]).toEqual({count: 7});
-  });
+    expect(run).toHaveBeenLastCalledWith({count: 7});
+    unsubscribe();
 
-  it('calls run again with a new snapshot when the store mutates', async () => {
-    const s = createClassyStore({count: 0});
-    const store = toSvelteStore(s);
-    const run = mock((_v: unknown) => {});
-    store.subscribe(run);
-    s.count = 1;
-    await flush();
+    store.count = 8;
+    const unsubscribeAgain = readable.subscribe(run);
     expect(run).toHaveBeenCalledTimes(2);
-    expect(run.mock.calls[1][0]).toEqual({count: 1});
+    expect(run).toHaveBeenLastCalledWith({count: 8});
+    unsubscribeAgain();
   });
 
-  it('returns an unsubscribe function that stops further calls', async () => {
-    const s = createClassyStore({count: 0});
-    const store = toSvelteStore(s);
-    const run = mock((_v: unknown) => {});
-    const unsub = store.subscribe(run);
-    unsub();
-    s.count = 99;
-    await flush();
-    expect(run).toHaveBeenCalledTimes(1); // only the initial sync call
+  it('delivers each mutation synchronously while ordinary subscriptions stay batched', async () => {
+    const store = createClassyStore({count: 0});
+    const values: number[] = [];
+    const batched = mock(() => {});
+    const unsubscribeCore = subscribe(store, batched);
+    const unsubscribe = toSvelteStore(store).subscribe((value) => {
+      values.push(value.count);
+    });
+
+    try {
+      store.count = 1;
+      expect(values).toEqual([0, 1]);
+      store.count = 2;
+      expect(values).toEqual([0, 1, 2]);
+      expect(batched).not.toHaveBeenCalled();
+      await Promise.resolve();
+      expect(batched).toHaveBeenCalledTimes(1);
+      expect(values).toEqual([0, 1, 2]);
+    } finally {
+      unsubscribe();
+      unsubscribeCore();
+    }
+  });
+
+  it('observes a mutation made by the initial subscription callback', () => {
+    const store = createClassyStore({count: 0});
+    const values: number[] = [];
+    const unsubscribe = toSvelteStore(store).subscribe((value) => {
+      values.push(value.count);
+      if (value.count === 0) store.count = 1;
+    });
+
+    try {
+      expect(values).toEqual([0, 1]);
+    } finally {
+      unsubscribe();
+    }
+  });
+
+  it('removes the listener if the initial callback throws', () => {
+    const store = createClassyStore({count: 0});
+    const internal = getInternal(store);
+    const run = mock(() => {
+      throw new Error('Initial subscriber failed');
+    });
+
+    expect(() => toSvelteStore(store).subscribe(run)).toThrow(
+      'Initial subscriber failed',
+    );
+    expect(internal.syncListeners.size).toBe(0);
+    expect(internal.batchedListeners.size).toBe(0);
+    store.count = 1;
+    expect(run).toHaveBeenCalledTimes(1);
+  });
+
+  it('cleans up independently and tolerates repeated unsubscription', async () => {
+    const store = createClassyStore({count: 0});
+    const readable = toSvelteStore(store);
+    const firstValues: number[] = [];
+    const secondValues: number[] = [];
+    const unsubscribeFirst = readable.subscribe((value) => {
+      firstValues.push(value.count);
+    });
+    const unsubscribeSecond = readable.subscribe((value) => {
+      secondValues.push(value.count);
+    });
+
+    store.count = 1;
+    unsubscribeFirst();
+    unsubscribeFirst();
+    store.count = 2;
+    unsubscribeSecond();
+    store.count = 3;
+    await Promise.resolve();
+
+    expect(firstValues).toEqual([0, 1]);
+    expect(secondValues).toEqual([0, 1, 2]);
+    expect(getInternal(store).syncListeners.size).toBe(0);
+    expect(getInternal(store).batchedListeners.size).toBe(0);
+  });
+
+  it('does not call a subscriber removed during the same notification', async () => {
+    const store = createClassyStore({count: 0});
+    const readable = toSvelteStore(store);
+    let unsubscribeSecond = () => {};
+    const unsubscribeFirst = readable.subscribe((value) => {
+      if (value.count > 0) unsubscribeSecond();
+    });
+    const second = mock(() => {});
+    unsubscribeSecond = readable.subscribe(second);
+
+    try {
+      store.count = 1;
+      await Promise.resolve();
+      expect(second).toHaveBeenCalledTimes(1);
+    } finally {
+      unsubscribeFirst();
+      unsubscribeSecond();
+    }
   });
 });

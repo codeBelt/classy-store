@@ -1,4 +1,4 @@
-# React browser regressions
+# Browser regressions
 
 From the repository root:
 
@@ -9,7 +9,20 @@ bunx playwright install chromium firefox webkit
 bun run test:browser
 ```
 
-CI also installs the Linux system dependencies with `playwright install --with-deps`. The suite starts an isolated local Bun server and tests the source React binding in Chromium, Firefox, and WebKit. Package exports and React version compatibility are tested separately in `tests/compatibility`.
+CI also installs the Linux system dependencies with `playwright install --with-deps`. The suite starts an isolated local Bun server and tests the source React and Svelte bindings in Chromium, Firefox, and WebKit. Package exports and React version compatibility are tested separately in `tests/compatibility`.
+
+The `/svelte` fixture compiles a Svelte 5 component using real `$store`
+subscriptions and `$derived` values. Four cases cover input caret behavior,
+same-event snapshot reads and class getters, keyed list changes, and automatic
+subscription cleanup across three mount/unmount cycles. The timing case also
+checks that ordinary core subscriptions still batch. Run just these cases with
+`bun run test:browser svelte.spec.ts`. Before the adapter fix, the event handler
+read the old snapshot after updating two properties.
+
+Root `bun run typecheck` checks the fixture through the Svelte example's
+`check:integration` script. This reuses its TypeScript 5 installation because
+the current `svelte-check` requires the JavaScript TypeScript compiler API;
+the library's TypeScript 7 installation supplies the native compiler instead.
 
 Every test fails on browser console errors or uncaught page errors. Native clipboard replacement and subsequent caret behavior are tested in Chromium; Firefox and WebKit explicitly skip those cases because they do not expose the same clipboard permissions API.
 
