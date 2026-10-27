@@ -1,63 +1,144 @@
-import {describe, expect, it} from 'bun:test';
-import {effectScope} from 'vue';
-import {createClassyStore} from '../../core/core';
+import {describe, expect, it, mock} from 'bun:test';
+import {computed, effectScope, isShallow, nextTick, watch} from 'vue';
+import {createClassyStore, getInternal, subscribe} from '../../core/core';
+import {snapshot} from '../../snapshot/snapshot';
 import {useClassyStore} from './vue';
-
-const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 
 describe('vue useClassyStore', () => {
   it('throws when given a non-store object', () => {
     const scope = effectScope();
     try {
-      scope.run(() => {
-        expect(() => useClassyStore({count: 0})).toThrow(/not a store proxy/);
-      });
+      scope.run(() =>
+        expect(() => useClassyStore({count: 0})).toThrow(/not a store proxy/),
+      );
     } finally {
       scope.stop();
     }
   });
 
-  it('returns a ShallowRef holding the current snapshot', () => {
-    const s = createClassyStore({count: 5});
+  it('rejects calls without an active scope before subscribing', () => {
+    const store = createClassyStore({count: 0});
+    expect(() => useClassyStore(store)).toThrow(/active.*scope/i);
+    expect(getInternal(store).syncListeners.size).toBe(0);
+    expect(getInternal(store).batchedListeners.size).toBe(0);
+  });
+
+  it('rejects calls after the current scope has stopped', () => {
+    const store = createClassyStore({count: 0});
+    const scope = effectScope();
+    scope.run(() => {
+      scope.stop();
+      expect(() => useClassyStore(store)).toThrow(/active.*scope/i);
+    });
+    expect(getInternal(store).syncListeners.size).toBe(0);
+    expect(getInternal(store).batchedListeners.size).toBe(0);
+  });
+
+  it('returns a shallow ref containing the current immutable snapshot', () => {
+    const store = createClassyStore({count: 5, nested: {label: 'Initial'}});
     const scope = effectScope();
     try {
-      scope.run(() => {
-        const state = useClassyStore(s);
-        expect(state.value).toEqual({count: 5});
-      });
+      const state = scope.run(() => useClassyStore(store));
+      expect(isShallow(state)).toBe(true);
+      expect(state?.value).toBe(snapshot(store));
+      expect(Object.isFrozen(state?.value)).toBe(true);
+      expect(Object.isFrozen(state?.value.nested)).toBe(true);
     } finally {
       scope.stop();
     }
   });
 
-  it('updates the ref when the store mutates', async () => {
-    const s = createClassyStore({count: 0});
+  it('updates refs and computed values synchronously while Vue watchers and core subscriptions batch', async () => {
+    const store = createClassyStore({count: 0});
     const scope = effectScope();
-    let stateRef!: ReturnType<typeof useClassyStore<typeof s>>;
-    scope.run(() => {
-      stateRef = useClassyStore(s);
+    const coreCallback = mock(() => {});
+    const stopCore = subscribe(store, coreCallback);
+    const watcher = mock(() => {});
+    const result = scope.run(() => {
+      const state = useClassyStore(store);
+      watch(state, watcher);
+      return {state, doubled: computed(() => state.value.count * 2)};
     });
-
-    s.count = 42;
-    await flush();
-    expect(stateRef.value).toEqual({count: 42});
-    scope.stop();
+    if (!result) throw new Error('Missing scope result');
+    try {
+      store.count = 1;
+      expect(result.state.value.count).toBe(1);
+      expect(result.doubled.value).toBe(2);
+      store.count = 2;
+      expect(result.state.value.count).toBe(2);
+      expect(result.doubled.value).toBe(4);
+      expect(coreCallback).not.toHaveBeenCalled();
+      expect(watcher).not.toHaveBeenCalled();
+      await nextTick();
+      expect(coreCallback).toHaveBeenCalledTimes(1);
+      expect(watcher).toHaveBeenCalledTimes(1);
+    } finally {
+      scope.stop();
+      stopCore();
+    }
   });
 
-  it('unsubscribes when the effect scope is stopped', async () => {
-    const s = createClassyStore({count: 0});
+  it('flushes Vue post effects after a single nextTick following a store mutation', async () => {
+    const store = createClassyStore({count: 0});
     const scope = effectScope();
-    let stateRef!: ReturnType<typeof useClassyStore<typeof s>>;
+    const rendered: number[] = [];
     scope.run(() => {
-      stateRef = useClassyStore(s);
+      const state = useClassyStore(store);
+      watch(state, (value) => rendered.push(value.count), {flush: 'post'});
     });
+    try {
+      store.count = 1;
+      await nextTick();
+      expect(rendered).toEqual([1]);
+    } finally {
+      scope.stop();
+    }
+  });
 
-    scope.stop();
+  it('cleans up each scope independently and reads fresh state on remount', async () => {
+    const store = createClassyStore({count: 0});
+    const firstScope = effectScope();
+    const secondScope = effectScope();
+    const first = firstScope.run(() => useClassyStore(store));
+    const second = secondScope.run(() => useClassyStore(store));
+    if (!first || !second) throw new Error('Missing scope result');
+    try {
+      store.count = 1;
+      firstScope.stop();
+      firstScope.stop();
+      store.count = 2;
+      await nextTick();
+      expect(first.value.count).toBe(1);
+      expect(second.value.count).toBe(2);
+    } finally {
+      firstScope.stop();
+      secondScope.stop();
+    }
+    expect(getInternal(store).syncListeners.size).toBe(0);
+    expect(getInternal(store).batchedListeners.size).toBe(0);
+    const remountedScope = effectScope();
+    try {
+      const remounted = remountedScope.run(() => useClassyStore(store));
+      expect(remounted?.value.count).toBe(2);
+    } finally {
+      remountedScope.stop();
+    }
+  });
 
-    const before = stateRef.value;
-    s.count = 999;
-    await flush();
-    // After unmount, ref should not update further.
-    expect(stateRef.value).toBe(before);
+  it('does not update a ref whose scope is stopped during the same notification', async () => {
+    const store = createClassyStore({count: 0});
+    const scope = effectScope();
+    const stop = subscribe(store, () => scope.stop(), {sync: true});
+    const state = scope.run(() => useClassyStore(store));
+    try {
+      store.count = 1;
+      await nextTick();
+      expect(state?.value.count).toBe(0);
+    } finally {
+      scope.stop();
+      stop();
+    }
+    expect(getInternal(store).syncListeners.size).toBe(0);
+    expect(getInternal(store).batchedListeners.size).toBe(0);
   });
 });

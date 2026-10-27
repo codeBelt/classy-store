@@ -45,7 +45,7 @@ All framework peer dependencies are optional — install only what your project 
 | Framework | Peer Dependency | Import |
 |-----------|----------------|--------|
 | React | `react >= 18.0.0` | `@codebelt/classy-store/react` |
-| Vue | `vue >= 3.0.0` | `@codebelt/classy-store/vue` |
+| Vue | `vue >= 3.2.0` | `@codebelt/classy-store/vue` |
 | Svelte | `svelte >= 4.0.0` | `@codebelt/classy-store/svelte` |
 | Solid | `solid-js >= 1.0.0` | `@codebelt/classy-store/solid` |
 | Angular | `@angular/core >= 17.0.0` | `@codebelt/classy-store/angular` |
@@ -174,14 +174,24 @@ notifies subscribers synchronously after each mutation. `$store` subscriptions
 are cleaned up automatically when the component is destroyed; manual subscribers
 must call the returned unsubscribe function. Snapshots are readonly: update the
 original store or call its actions from input handlers instead of using
-`bind:value` on snapshot fields. Vue, Solid, Angular, and ordinary core
-subscriptions use microtask batching.
+`bind:value` on snapshot fields. Solid, Angular, and ordinary core subscriptions
+use microtask batching.
+
+Vue's `useClassyStore(store)` updates its `ShallowRef` synchronously, so computed
+values are current immediately after an action and `await nextTick()` waits for
+Vue's DOM update. Vue still batches rendering. Call the hook synchronously in
+`setup()` / `<script setup>` or inside `effectScope().run()`; it throws without an
+active scope, and stops subscribing when that scope is stopped. For inputs, use
+`:value` with an action in `@input`, or a writable `computed` that reads the
+snapshot and writes through a store action. Do not bind `v-model` directly to
+readonly snapshot fields. The Vue adapter requires Vue 3.2 or later for the
+Effect Scope API.
 
 ## API Reference
 
 ### `createClassyStore(instance)`
 
-Wraps a class instance in a reactive Proxy. Mutations notify React and Svelte immediately; ordinary subscribers are batched via `queueMicrotask`.
+Wraps a class instance in a reactive Proxy. Mutations notify React, Vue, and Svelte immediately; ordinary subscribers are batched via `queueMicrotask`.
 
 ```typescript
 const myStore = createClassyStore(new MyClass());
@@ -985,7 +995,7 @@ SOURCE: https://codebelt.github.io/classy-store/docs/TUTORIAL
 
 # Classy Store Tutorial
 
-`Classy Store` is a reactive state library for React, Vue, Svelte, Solid, and Angular built on ES proxies. Define state as classes, wrap them with `createClassyStore()`, and read them with the binding for your framework. Shared client stores need no Provider, observer, or reducer; context providers can scope independent instances. The library batches ordinary subscriptions while notifying React and Svelte synchronously, and uses structural sharing for change detection.
+`Classy Store` is a reactive state library for React, Vue, Svelte, Solid, and Angular built on ES proxies. Define state as classes, wrap them with `createClassyStore()`, and read them with the binding for your framework. Shared client stores need no Provider, observer, or reducer; context providers can scope independent instances. The library batches ordinary subscriptions while notifying React, Vue, and Svelte synchronously, and uses structural sharing for change detection.
 
 ## Quick Start
 
@@ -1752,7 +1762,7 @@ root. This guide and the utility architecture guides live in `website/docs`.
 
 ### Overview
 
-The `createClassyStore()` function wraps a class instance in an ES6 Proxy. Assignments and deletions through that proxy, including array operations and supported nested state, are intercepted. Raw-object writes and descriptor changes bypass these traps. Subscribers are batched by default into one microtask notification, while React and Svelte use the synchronous path.
+The `createClassyStore()` function wraps a class instance in an ES6 Proxy. Assignments and deletions through that proxy, including array operations and supported nested state, are intercepted. Raw-object writes and descriptor changes bypass these traps. Subscribers are batched by default into one microtask notification, while React, Vue, and Svelte use the synchronous path.
 
 ### Data Flow: Mutation → Notification
 
@@ -1834,6 +1844,11 @@ store contract. It subscribes before delivering the initial snapshot so mutation
 inside that first callback are observed, and removes the subscription if the
 initial callback throws. Normal unsubscription stops delivery even if another
 subscriber removes it during an in-progress notification.
+
+The Vue adapter updates its shallow ref synchronously too. Vue handles render
+batching, and `nextTick()` then waits for the queued DOM update. The hook requires
+an active component or effect scope to own cleanup, and ignores notifications if
+that scope has been disposed during an in-progress notification.
 
 ### Version Propagation
 

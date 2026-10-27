@@ -1,5 +1,6 @@
 import {fileURLToPath} from 'node:url';
 import {compile} from 'svelte/compiler';
+import {compileScript, parse} from 'vue/compiler-sfc';
 import {compileConsumer} from '../compiler/compileConsumer.mjs';
 import {
   releaseStreamingBoundary,
@@ -93,12 +94,55 @@ if (!svelteBundle.success)
   );
 const svelteScript = await svelteBundle.outputs[0].text();
 
+const vueBundle = await Bun.build({
+  entrypoints: [fileURLToPath(new URL('./vue/client.ts', import.meta.url))],
+  target: 'browser',
+  format: 'iife',
+  define: {
+    'process.env.NODE_ENV': '"development"',
+    __VUE_OPTIONS_API__: 'true',
+    __VUE_PROD_DEVTOOLS__: 'false',
+    __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: 'false',
+  },
+  plugins: [
+    {
+      name: 'vue-consumer',
+      setup(build) {
+        build.onLoad({filter: /\.vue$/}, async ({path}) => {
+          const {descriptor, errors} = parse(await Bun.file(path).text(), {
+            filename: path,
+          });
+          if (errors.length)
+            throw new AggregateError(errors, 'Could not parse Vue fixture');
+          const {content} = compileScript(descriptor, {
+            id: 'classy-vue-fixture',
+            inlineTemplate: true,
+          });
+          return {contents: content, loader: 'ts'};
+        });
+      },
+    },
+  ],
+});
+if (!vueBundle.success)
+  throw new AggregateError(vueBundle.logs, 'Could not bundle Vue fixture');
+const vueScript = await vueBundle.outputs[0].text();
+
 Bun.serve({
   hostname: '127.0.0.1',
   port: 4179,
   routes: {
     '/': page,
     '/persistence': persistencePage,
+    '/vue': () =>
+      new Response(
+        '<!doctype html><html><head><meta charset="utf-8"><title>Vue consumer</title></head><body><div id="vue-root"></div><script src="/vue/client.js"></script></body></html>',
+        {headers: {'Content-Type': 'text/html; charset=utf-8'}},
+      ),
+    '/vue/client.js': () =>
+      new Response(vueScript, {
+        headers: {'Content-Type': 'text/javascript; charset=utf-8'},
+      }),
     '/svelte': () =>
       new Response(
         '<!doctype html><html><head><meta charset="utf-8"><title>Svelte consumer</title></head><body><div id="svelte-root"></div><script src="/svelte/client.js"></script></body></html>',

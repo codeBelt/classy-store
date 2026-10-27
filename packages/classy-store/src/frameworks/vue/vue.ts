@@ -1,25 +1,45 @@
-import {onScopeDispose, type ShallowRef, shallowRef} from 'vue';
+import {
+  getCurrentScope,
+  onScopeDispose,
+  type ShallowRef,
+  shallowRef,
+} from 'vue';
 import {getInternal, subscribe} from '../../core/core';
 import {snapshot} from '../../snapshot/snapshot';
 import type {Snapshot} from '../../types';
 
+/**
+ * Read immutable snapshots from a shallow ref inside setup() or an active
+ * effect scope. Ref updates are synchronous; Vue batches rendering normally.
+ * The scope owns subscription cleanup.
+ */
 export function useClassyStore<T extends object>(
   proxyStore: T,
 ): ShallowRef<Snapshot<T>> {
-  // Validate up front so users get a clear error instead of an opaque trace.
   getInternal(proxyStore);
+  if (!getCurrentScope()?.active) {
+    throw new Error(
+      '@codebelt/classy-store/vue: useClassyStore() requires an active Vue effect scope; call it in setup() or effectScope().run()',
+    );
+  }
 
   const state = shallowRef(snapshot(proxyStore)) as unknown as ShallowRef<
     Snapshot<T>
   >;
+  let active = true;
+  const unsubscribe = subscribe(
+    proxyStore,
+    () => {
+      // A prior subscriber may stop this scope during the same notification.
+      if (active) state.value = snapshot(proxyStore);
+    },
+    {sync: true},
+  );
 
-  const unsubscribe = subscribe(proxyStore, () => {
-    state.value = snapshot(proxyStore);
+  onScopeDispose(() => {
+    active = false;
+    unsubscribe();
   });
-
-  // `onScopeDispose` runs both on component unmount (setup() runs inside a
-  // scope) and on standalone `effectScope().stop()`.
-  onScopeDispose(unsubscribe);
 
   return state;
 }
