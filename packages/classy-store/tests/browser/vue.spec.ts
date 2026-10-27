@@ -1,5 +1,15 @@
-import {expect} from '@playwright/test';
+import {expect, type Page} from '@playwright/test';
 import {test} from './browser.test';
+import type {} from './vue/client';
+
+async function expectListenerCounts(page: Page, syncListeners: number) {
+  const listeners = await page.evaluate(
+    () => window.vueProbe.getState().listeners,
+  );
+  // Packed consumers retain public cleanup checks; only source tests inspect internals.
+  if (listeners !== null)
+    expect(listeners).toEqual({syncListeners, batchedListeners: 1});
+}
 
 test.beforeEach(async ({page}) => {
   await page.goto('/vue');
@@ -79,9 +89,7 @@ test('Vue unmount cancels pending renders and releases subscriptions across remo
   page,
 }) => {
   for (let cycle = 0; cycle < 3; cycle += 1) {
-    expect(await page.evaluate(() => window.vueProbe.getState())).toMatchObject(
-      {syncListeners: 1, batchedListeners: 1},
-    );
+    await expectListenerCounts(page, 1);
     const commits = await page.evaluate(() => {
       const count = window.vueProbe.getState().commits.length;
       window.vueProbe.setText('pending');
@@ -89,9 +97,7 @@ test('Vue unmount cancels pending renders and releases subscriptions across remo
       return count;
     });
     await expect(page.getByLabel('Text', {exact: true})).toHaveCount(0);
-    expect(await page.evaluate(() => window.vueProbe.getState())).toMatchObject(
-      {syncListeners: 0, batchedListeners: 1},
-    );
+    await expectListenerCounts(page, 0);
     await page.evaluate(
       (value) => window.vueProbe.setText(value),
       `unmounted-${cycle}`,

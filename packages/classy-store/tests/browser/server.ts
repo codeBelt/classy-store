@@ -1,3 +1,4 @@
+import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {transform} from '@solidjs/compiler';
 import {compile} from 'svelte/compiler';
@@ -10,6 +11,31 @@ import {
 } from './hydration/renderHydrationPage';
 import page from './index.html';
 import persistencePage from './persistence/index.html';
+
+// Compile real Angular templates with the example's pinned Angular/TypeScript toolchain.
+const angularExample = fileURLToPath(
+  new URL('../../../../examples/angular/', import.meta.url),
+);
+execFileSync(
+  'node',
+  [
+    fileURLToPath(
+      new URL(
+        '../../../../examples/angular/node_modules/@angular/cli/bin/ng.js',
+        import.meta.url,
+      ),
+    ),
+    'build',
+    'angular-integration',
+    '--configuration',
+    'development',
+  ],
+  {cwd: angularExample, stdio: 'inherit'},
+);
+const angularOutput = new URL(
+  '../../../../examples/angular/.angular/integration/browser/',
+  import.meta.url,
+);
 
 const hydrationBundle = await Bun.build({
   entrypoints: [
@@ -159,6 +185,14 @@ Bun.serve({
   port: 4179,
   routes: {
     '/': page,
+    '/angular/': () =>
+      new Response(Bun.file(new URL('index.html', angularOutput))),
+    '/angular/*': (request) => {
+      const name = new URL(request.url).pathname.slice('/angular/'.length);
+      if (!/^[\w.-]+$/.test(name))
+        return new Response('Not found', {status: 404});
+      return new Response(Bun.file(new URL(name, angularOutput)));
+    },
     '/persistence': persistencePage,
     '/solid': () =>
       new Response(

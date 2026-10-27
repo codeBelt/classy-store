@@ -1,8 +1,5 @@
-import {
-  createClassyStore,
-  getInternal,
-  subscribe,
-} from '../../../src/core/core';
+import {createClassyStore, subscribe} from '../../../src/core/core';
+import {getListenerCounts} from '../getListenerCounts';
 
 class FormStore {
   text = 'abcdef';
@@ -55,7 +52,6 @@ subscribe(formStore, () => {
 export function getProbe() {
   return {
     ...probe,
-    syncListeners: getInternal(formStore).syncListeners.size,
-    batchedListeners: getInternal(formStore).batchedListeners.size,
+    listeners: getListenerCounts(formStore),
   };
 }

@@ -22,6 +22,8 @@ jobs:
       - run: bun run typecheck
       - name: Solid 2 example production build
         run: bun run --filter classy-store-solid-example build
+      - name: Angular 22 example production build
+        run: bun run --filter classy-store-angular-example build
       - name: Use Ubuntu archive mirror for browser dependencies
         run: |
           # Avoid slow Azure mirror downloads on hosted runners.
@@ -31,6 +33,10 @@ jobs:
       - run: bunx playwright install --with-deps chromium firefox webkit
         working-directory: packages/classy-store
       - run: bun run test:browser
+      - name: Packed Vue and Svelte minimum versions
+        run: node packages/classy-store/tests/frameworkCompatibility/runCompatibility.mjs
+      - name: Packed Angular 22 compatibility (22.0.0 and 22.2.3)
+        run: node packages/classy-store/tests/angularCompatibility/runCompatibility.mjs
       - name: React scale commit budgets (production, Compiler off/on)
         run: bun packages/classy-store/tests/performance/runPerformance.ts
         env:

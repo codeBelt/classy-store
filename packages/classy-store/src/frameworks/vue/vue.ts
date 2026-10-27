@@ -1,9 +1,4 @@
-import {
-  getCurrentScope,
-  onScopeDispose,
-  type ShallowRef,
-  shallowRef,
-} from 'vue';
+import {getCurrentScope, onScopeDispose, type Ref, shallowRef} from 'vue';
 import {getInternal, subscribe} from '../../core/core';
 import {snapshot} from '../../snapshot/snapshot';
 import type {Snapshot} from '../../types';
@@ -15,7 +10,7 @@ import type {Snapshot} from '../../types';
  */
 export function useClassyStore<T extends object>(
   proxyStore: T,
-): ShallowRef<Snapshot<T>> {
+): Ref<Snapshot<T>> {
   getInternal(proxyStore);
   if (!getCurrentScope()?.active) {
     throw new Error(
@@ -23,9 +18,7 @@ export function useClassyStore<T extends object>(
     );
   }
 
-  const state = shallowRef(snapshot(proxyStore)) as unknown as ShallowRef<
-    Snapshot<T>
-  >;
+  const state = shallowRef(snapshot(proxyStore)) as unknown as Ref<Snapshot<T>>;
   let active = true;
   const unsubscribe = subscribe(
     proxyStore,

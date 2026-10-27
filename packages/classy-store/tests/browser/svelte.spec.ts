@@ -1,5 +1,15 @@
-import {expect} from '@playwright/test';
+import {expect, type Page} from '@playwright/test';
 import {test} from './browser.test';
+import type {} from './svelte/client';
+
+async function expectListenerCounts(page: Page, syncListeners: number) {
+  const listeners = await page.evaluate(
+    () => window.svelteProbe.getState().listeners,
+  );
+  // Packed consumers retain public delivery/cleanup checks without private exports.
+  if (listeners !== null)
+    expect(listeners).toEqual({syncListeners, batchedListeners: 1});
+}
 
 test.beforeEach(async ({page}) => {
   await page.goto('/svelte');
@@ -48,7 +58,11 @@ test('Svelte sees multi-property updates during the event while core subscriptio
   await expect(page.getByTestId('uppercase')).toHaveText('UPDATED');
   await expect(page.getByTestId('doubled')).toHaveText('6');
   const state = await page.evaluate(() => window.svelteProbe.getState());
-  expect(state.snapshotDuringEvent).toBe('updated:6:UPDATED');
+  // Svelte 4's native $: derivations run before the next render; store values
+  // are already current. Svelte 5's $derived reads are current in the event.
+  expect(state.snapshotDuringEvent).toBe(
+    process.env.SVELTE_MAJOR === '4' ? 'updated:6:ABCDEF' : 'updated:6:UPDATED',
+  );
   expect(state.coreDuringEvent).toBe(0);
   expect(state.coreNotifications).toBe(1);
 });
@@ -79,12 +93,13 @@ test('Svelte automatically unsubscribes on unmount and resubscribes with current
       await page.evaluate(() => window.svelteProbe.getState()),
     ).toMatchObject({
       activeSubscriptions: 1,
-      syncListeners: 1,
     });
+    await expectListenerCounts(page, 1);
     await page.evaluate(() => window.svelteProbe.unmount());
     await expect(page.getByLabel('Text', {exact: true})).toHaveCount(0);
     const unmounted = await page.evaluate(() => window.svelteProbe.getState());
-    expect(unmounted).toMatchObject({activeSubscriptions: 0, syncListeners: 0});
+    expect(unmounted).toMatchObject({activeSubscriptions: 0});
+    await expectListenerCounts(page, 0);
 
     await page.evaluate(
       (value) => window.svelteProbe.setText(value),
