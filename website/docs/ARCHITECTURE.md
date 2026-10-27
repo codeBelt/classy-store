@@ -138,7 +138,7 @@ root. This guide and the utility architecture guides live in `website/docs`.
 
 ### Overview
 
-The `createClassyStore()` function wraps a class instance in an ES6 Proxy. Assignments and deletions through that proxy, including array operations and supported nested state, are intercepted. Raw-object writes and descriptor changes bypass these traps. Subscribers are batched by default into one microtask notification, while React and Svelte use the synchronous path.
+The `createClassyStore()` function wraps a class instance in an ES6 Proxy. Assignments and deletions through that proxy, including array operations and supported nested state, are intercepted. Raw-object writes and descriptor changes bypass these traps. Subscribers are batched by default into one microtask notification, while React, Vue, and Svelte use the synchronous path.
 
 ### Data Flow: Mutation → Notification
 
@@ -220,6 +220,11 @@ store contract. It subscribes before delivering the initial snapshot so mutation
 inside that first callback are observed, and removes the subscription if the
 initial callback throws. Normal unsubscription stops delivery even if another
 subscriber removes it during an in-progress notification.
+
+The Vue adapter updates its shallow ref synchronously too. Vue handles render
+batching, and `nextTick()` then waits for the queued DOM update. The hook requires
+an active component or effect scope to own cleanup, and ignores notifications if
+that scope has been disposed during an in-progress notification.
 
 ### Version Propagation
 

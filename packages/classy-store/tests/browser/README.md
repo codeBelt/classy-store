@@ -9,7 +9,7 @@ bunx playwright install chromium firefox webkit
 bun run test:browser
 ```
 
-CI also installs the Linux system dependencies with `playwright install --with-deps`. The suite starts an isolated local Bun server and tests the source React and Svelte bindings in Chromium, Firefox, and WebKit. Package exports and React version compatibility are tested separately in `tests/compatibility`.
+CI also installs the Linux system dependencies with `playwright install --with-deps`. The suite starts an isolated local Bun server and tests the source React, Vue, and Svelte bindings in Chromium, Firefox, and WebKit. Package exports and React version compatibility are tested separately in `tests/compatibility`.
 
 The `/svelte` fixture compiles a Svelte 5 component using real `$store`
 subscriptions and `$derived` values. Four cases cover input caret behavior,
@@ -23,6 +23,17 @@ Root `bun run typecheck` checks the fixture through the Svelte example's
 `check:integration` script. This reuses its TypeScript 5 installation because
 the current `svelte-check` requires the JavaScript TypeScript compiler API;
 the library's TypeScript 7 installation supplies the native compiler instead.
+
+The `/vue` fixture compiles a Vue single-file component with `vue/compiler-sfc`.
+Four cases cover text caret behavior, writable computed `v-model` inputs and a
+checkbox, same-event computed reads and one-`nextTick()` DOM updates, keyed list
+changes, and three mount/unmount cycles with pending renders. It also verifies
+one render and one ordinary core notification for a multi-property action.
+Before the adapter fix, the DOM read immediately after `await nextTick()` still
+contained the old text and computed value. Vue warnings fail the fixture.
+Run these cases with `bun run test:browser vue.spec.ts`; root `bun run typecheck`
+checks its template through the Vue example's `check:integration` script using
+that example's Vue tooling and TypeScript installation.
 
 Every test fails on browser console errors or uncaught page errors. Native clipboard replacement and subsequent caret behavior are tested in Chromium; Firefox and WebKit explicitly skip those cases because they do not expose the same clipboard permissions API.
 

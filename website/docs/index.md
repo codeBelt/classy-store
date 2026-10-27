@@ -36,7 +36,7 @@ All framework peer dependencies are optional — install only what your project 
 | Framework | Peer Dependency | Import |
 |-----------|----------------|--------|
 | React | `react >= 18.0.0` | `@codebelt/classy-store/react` |
-| Vue | `vue >= 3.0.0` | `@codebelt/classy-store/vue` |
+| Vue | `vue >= 3.2.0` | `@codebelt/classy-store/vue` |
 | Svelte | `svelte >= 4.0.0` | `@codebelt/classy-store/svelte` |
 | Solid | `solid-js >= 1.0.0` | `@codebelt/classy-store/solid` |
 | Angular | `@angular/core >= 17.0.0` | `@codebelt/classy-store/angular` |
@@ -165,14 +165,24 @@ notifies subscribers synchronously after each mutation. `$store` subscriptions
 are cleaned up automatically when the component is destroyed; manual subscribers
 must call the returned unsubscribe function. Snapshots are readonly: update the
 original store or call its actions from input handlers instead of using
-`bind:value` on snapshot fields. Vue, Solid, Angular, and ordinary core
-subscriptions use microtask batching.
+`bind:value` on snapshot fields. Solid, Angular, and ordinary core subscriptions
+use microtask batching.
+
+Vue's `useClassyStore(store)` updates its `ShallowRef` synchronously, so computed
+values are current immediately after an action and `await nextTick()` waits for
+Vue's DOM update. Vue still batches rendering. Call the hook synchronously in
+`setup()` / `<script setup>` or inside `effectScope().run()`; it throws without an
+active scope, and stops subscribing when that scope is stopped. For inputs, use
+`:value` with an action in `@input`, or a writable `computed` that reads the
+snapshot and writes through a store action. Do not bind `v-model` directly to
+readonly snapshot fields. The Vue adapter requires Vue 3.2 or later for the
+Effect Scope API.
 
 ## API Reference
 
 ### `createClassyStore(instance)`
 
-Wraps a class instance in a reactive Proxy. Mutations notify React and Svelte immediately; ordinary subscribers are batched via `queueMicrotask`.
+Wraps a class instance in a reactive Proxy. Mutations notify React, Vue, and Svelte immediately; ordinary subscribers are batched via `queueMicrotask`.
 
 ```typescript
 const myStore = createClassyStore(new MyClass());
