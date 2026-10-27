@@ -41,15 +41,6 @@ const sections: FeatureSection[] = [
         ],
       },
       {
-        api: 'getVersion()',
-        description:
-          'Returns the monotonically increasing version number of a store',
-        links: [
-          {label: 'Dashboard / StoreInspector', href: '/'},
-          {label: 'Shopping / SnapshotViewer', href: '/shopping'},
-        ],
-      },
-      {
         api: 'shallowEqual',
         description:
           'Equality function for selectors to prevent unnecessary re-renders',

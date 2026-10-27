@@ -37,7 +37,7 @@ const unsub = subscribeKey(settingsStore, 'theme', (value, previousValue) => {
 });
 ```
 
-Now only `theme` changes trigger the callback. Mutations to `fontSize` or `language` are ignored entirely.
+Only a changed `theme` snapshot value triggers the callback. Other mutations still notify the underlying store subscription, which compares the watched value and skips your callback if it is unchanged.
 
 ### 3. Unsubscribe when done
 
@@ -48,10 +48,11 @@ unsub();
 ## Signature
 
 ```ts
-function subscribeKey<T extends object, K extends keyof T>(
+function subscribeKey<T extends object, K extends keyof T & keyof Snapshot<T>>(
   proxyStore: T,
   key: K,
   callback: (value: Snapshot<T>[K], previousValue: Snapshot<T>[K]) => void,
+  options?: SubscribeOptions,
 ): () => void;
 ```
 
@@ -60,15 +61,18 @@ function subscribeKey<T extends object, K extends keyof T>(
 | `proxyStore` | `T` | A reactive proxy created by `createClassyStore()` |
 | `key` | `keyof T` | The property to watch |
 | `callback` | `(value, previousValue) => void` | Called when the watched property changes |
+| `options` | `SubscribeOptions` | Optional `{sync: true}` for immediate notifications; otherwise batched |
 | **Returns** | `() => void` | Unsubscribe function |
+
+The callback is not called when you subscribe. It receives the current and previous snapshot values when the watched key changes. By default, several synchronous writes coalesce into one callback with the final value; passing `{sync: true}` as the fourth argument observes each change. Import `Snapshot` from the root entry and `SubscribeOptions` from the root or utilities entry.
 
 ## How It Works
 
 Under the hood, `subscribeKey` wraps the existing `subscribe()` + `snapshot()` APIs:
 
 1. Captures an initial snapshot and stores `snapshot[key]` as the previous value.
-2. On each store mutation, takes a new snapshot and compares `snapshot[key]` with the previous value via `Object.is()`.
-3. If different, fires the callback with `(currentValue, previousValue)` and updates the stored previous value.
+2. On each batched notification (or each mutation with `sync: true`), takes a new snapshot and compares `snapshot[key]` with the previous value via `Object.is()`.
+3. If different, updates the stored previous value and calls the callback with `(currentValue, previousValue)`.
 
 Because `snapshot()` uses structural sharing, unchanged sub-trees return the same reference. This makes the `Object.is()` comparison efficient — no deep equality checks are needed.
 
@@ -125,8 +129,12 @@ class PlayerStore {
 const playerStore = createClassyStore(new PlayerStore());
 
 // Sync volume slider with the Web Audio API
+const audioContext = new AudioContext();
+const gainNode = audioContext.createGain();
+gainNode.connect(audioContext.destination);
+gainNode.gain.value = playerStore.volume; // Subscribing does not apply the initial value.
 subscribeKey(playerStore, 'volume', (volume) => {
-  audioContext.gainNode.gain.value = volume;
+  gainNode.gain.value = volume;
 });
 
 // Update document title when track changes
@@ -167,10 +175,10 @@ subscribeKey(cartStore, 'coupon', (coupon, prev) => {
 
 | | `subscribe()` | `subscribeKey()` |
 |---|---|---|
-| Fires on | Any mutation in the store | Only when the watched key changes |
+| Fires on | Batched store changes by default | Changed watched snapshot value after a notification |
 | Callback args | `()` (no arguments) | `(value, previousValue)` |
 | Use case | General side effects | Property-specific reactions |
-| Overhead | Minimal | One snapshot comparison per mutation |
+| Additional work | Invoke listeners | Read a snapshot and compare the watched value per notification |
 
 Use `subscribe()` when you need to react to any change. Use `subscribeKey()` when you only care about one property and want to avoid running your callback unnecessarily.
 

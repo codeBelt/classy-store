@@ -29,8 +29,8 @@ versions in `report.json`. In the current Next.js 16.4.2 matrix that runtime is
   their leading `use client` directive. The core, collections, utilities, and
   `@codebelt/classy-store/react/server` entrypoints stay server safe and execute
   under Node's `react-server` condition. Normal SSR also checks that the server and
-  React entrypoints share the same hydration preparation function and initial
-  snapshot registry.
+  React entrypoints share the initial snapshot registry, with preparation exported
+  only from `/react/server`.
 - **Actual Compiler output:** the browser captures the production selector and
   auto-tracked consumer function bodies. Both must allocate a positive number of
   Compiler memo-cache slots and read and write those slots when Compiler is enabled;

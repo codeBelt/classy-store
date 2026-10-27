@@ -88,7 +88,7 @@ describe('core and React utility happy paths', () => {
     const storage = createStorage();
     const store = createClassyStore({count: 0});
     const persistence = persist(store, {name: 'draft', storage});
-    cleanups.push(persistence.unsubscribe);
+    cleanups.push(persistence.dispose);
     await persistence.hydrated;
     const history = withHistory(store);
     cleanups.push(history.dispose);
@@ -110,7 +110,7 @@ describe('core and React utility happy paths', () => {
 
     const restored = createClassyStore({count: 0});
     const restoredPersistence = persist(restored, {name: 'draft', storage});
-    cleanups.push(restoredPersistence.unsubscribe);
+    cleanups.push(restoredPersistence.dispose);
     await restoredPersistence.hydrated;
     expect(restored.count).toBe(1);
   });
@@ -173,7 +173,7 @@ describe('core and React utility happy paths', () => {
       ],
     };
     const persistence = persist(store, options);
-    cleanups.push(persistence.unsubscribe);
+    cleanups.push(persistence.dispose);
     await persistence.hydrated;
     store.users.set('ada', 'Ada');
     store.tags.add('saved');
@@ -182,7 +182,7 @@ describe('core and React utility happy paths', () => {
 
     const restored = createStore();
     const restoredPersistence = persist(restored, options);
-    cleanups.push(restoredPersistence.unsubscribe);
+    cleanups.push(restoredPersistence.dispose);
     await restoredPersistence.hydrated;
     expect(restored.users.get('ada')).toBe('Ada');
     expect(restored.tags.has('saved')).toBe(true);
@@ -212,7 +212,7 @@ describe('core and React utility happy paths', () => {
     const extension = installDevtools();
     const store = createClassyStore({count: 0});
     const persistence = persist(store, {name: 'draft', storage});
-    cleanups.push(persistence.unsubscribe);
+    cleanups.push(persistence.dispose);
     await persistence.hydrated;
     const history = withHistory(store);
     cleanups.push(history.dispose, devtools(store));

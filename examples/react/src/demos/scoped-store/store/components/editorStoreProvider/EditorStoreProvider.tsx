@@ -1,7 +1,5 @@
-import {
-  prepareStoreForHydration,
-  useLocalStore,
-} from '@codebelt/classy-store/react';
+import {useLocalStore} from '@codebelt/classy-store/react';
+import {prepareStoreForHydration} from '@codebelt/classy-store/react/server';
 import {persist, type StorageAdapter} from '@codebelt/classy-store/utils';
 import {type ReactNode, useEffect} from 'react';
 import {type EditorData, EditorStore} from '../../editorStore';
@@ -33,8 +31,10 @@ export function EditorStoreProvider({
       properties: ['title', 'body'],
       skipHydration: true,
     });
-    void handle.rehydrate();
-    return () => handle.unsubscribe();
+    void handle
+      .rehydrate()
+      .catch((error) => console.error('Could not restore editor data', error));
+    return () => handle.dispose();
   }, [store, name, storage]);
 
   return (

@@ -1,6 +1,7 @@
 import {afterEach, describe, expect, mock, test} from 'bun:test';
 import {createClassyStore} from '../../core/core';
-import {type PersistHandle, persist} from './persist';
+import {persist} from './persist';
+import type {PersistHandle} from './persist.types';
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -17,7 +18,7 @@ const envelope = (count: number) =>
   JSON.stringify({version: 0, state: {count}});
 const handles: PersistHandle[] = [];
 afterEach(() => {
-  for (const handle of handles.splice(0)) handle.unsubscribe();
+  for (const handle of handles.splice(0)) handle.dispose();
 });
 
 describe('persist async operation ordering', () => {
@@ -57,9 +58,13 @@ describe('persist async operation ordering', () => {
 
     try {
       expect(storage.setItem).toHaveBeenCalledTimes(1);
-      if (fails) firstWrite.reject(new Error('Write failed'));
-      else firstWrite.resolve();
-      await first;
+      if (fails) {
+        firstWrite.reject(new Error('Write failed'));
+        await expect(first).rejects.toThrow('Write failed');
+      } else {
+        firstWrite.resolve();
+        await first;
+      }
       await tick();
       expect(storage.setItem).toHaveBeenCalledTimes(2);
       secondWrite.resolve();
@@ -69,11 +74,11 @@ describe('persist async operation ordering', () => {
     } finally {
       firstWrite.resolve();
       secondWrite.resolve();
-      await Promise.all([first, second]);
+      await Promise.allSettled([first, second]);
     }
   });
 
-  test('drops queued saves after unsubscribe while an issued write can finish', async () => {
+  test('drops queued saves after dispose while an issued write can finish', async () => {
     const pending = deferred<void>();
     const storage = {
       getItem: () => null,
@@ -89,9 +94,9 @@ describe('persist async operation ordering', () => {
     handles.push(handle);
     const first = handle.save();
     const second = handle.save();
-    handle.unsubscribe();
+    handle.dispose();
     pending.resolve();
-    await Promise.all([first, second]);
+    await Promise.all([first, expect(second).rejects.toThrow('disposed')]);
     expect(storage.setItem).toHaveBeenCalledTimes(1);
   });
 

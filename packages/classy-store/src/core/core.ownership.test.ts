@@ -1,7 +1,7 @@
 import {describe, expect, test} from 'bun:test';
 import {createClassyStore, getInternal, subscribe} from './core';
 
-describe('createClassyStore memory ownership QA', () => {
+describe('createClassyStore memory ownership', () => {
   test.each([
     {description: 'replacement', remove: 'replace'},
     {description: 'deletion', remove: 'delete'},

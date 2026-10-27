@@ -1,5 +1,5 @@
 import {afterEach, describe, expect, test} from 'bun:test';
-import {getVersion, snapshot, subscribe} from '@codebelt/classy-store';
+import {snapshot, subscribe} from '@codebelt/classy-store';
 import {StrictMode} from 'react';
 import {createRoot, type Root} from 'react-dom/client';
 import {MemoryScope} from './fixtures/memoryScope/MemoryScope';
@@ -230,7 +230,7 @@ describe('repeated React store lifecycles', () => {
       });
       expect(counters.commits).toEqual([]);
     }
-    const previousVersion = getVersion(store);
+    const previousSnapshot = snapshot(store);
     let notifications = 0;
     const unsubscribe = subscribe(
       store,
@@ -243,7 +243,7 @@ describe('repeated React store lifecycles', () => {
       await act(async () => {
         for (const row of retiredRows) row.title = 'Detached row';
       });
-      expect(getVersion(store)).toBe(previousVersion);
+      expect(snapshot(store)).toBe(previousSnapshot);
       expect(notifications).toBe(0);
       expect(counters.commits).toEqual([]);
       expect(container.textContent).toContain('Current 23');
@@ -278,12 +278,12 @@ describe('repeated React store lifecycles', () => {
       expect(container.querySelector('output')?.textContent).toBe(
         'Rows:Stable:',
       );
-      const versionAfterTruncation = getVersion(store);
+      const snapshotAfterTruncation = snapshot(store);
       counters.commits.length = 0;
       await act(async () => {
         removedRow.title = 'Retired';
       });
-      expect(getVersion(store)).toBe(versionAfterTruncation);
+      expect(snapshot(store)).toBe(snapshotAfterTruncation);
       expect(counters.commits).toEqual([]);
       await act(async () => {
         store.rows.push({title: `Refilled ${cycle}`}, {title: 'Last'});

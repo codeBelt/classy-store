@@ -1,4 +1,4 @@
-import {useClassyStore} from '@codebelt/classy-store/react';
+import {useClassyStore, usePersistStatus} from '@codebelt/classy-store/react';
 import {useState} from 'react';
 import {Button} from '../../components/Button';
 import {DemoContainer} from '../../components/DemoContainer';
@@ -180,6 +180,7 @@ function StorageViewer() {
 }
 
 export function SimplePersistDemo() {
+  const {lastError} = usePersistStatus(preferencesHandle);
   return (
     <DemoContainer
       title="Simple Persist"
@@ -200,8 +201,12 @@ export function SimplePersistDemo() {
           variant="secondary"
           onClick={async () => {
             preferencesStore.reset();
-            await preferencesHandle.clear();
-            await preferencesHandle.save();
+            try {
+              await preferencesHandle.clear();
+              await preferencesHandle.save();
+            } catch {
+              // The status hook renders the storage error below.
+            }
           }}
         >
           Reset &amp; Clear Storage
@@ -210,6 +215,9 @@ export function SimplePersistDemo() {
           Refresh the page &mdash; your preferences survive.
         </span>
       </div>
+      {lastError && (
+        <p role="alert">Could not persist preferences: {lastError.operation}</p>
+      )}
     </DemoContainer>
   );
 }

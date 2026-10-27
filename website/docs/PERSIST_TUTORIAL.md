@@ -10,7 +10,7 @@
 // todoStore.ts
 import {createClassyStore} from '@codebelt/classy-store';
 
-class TodoStore {
+export class TodoStore {
   filter: 'all' | 'active' | 'done' = 'all';
   todos: {text: string; done: boolean}[] = [];
 
@@ -23,7 +23,8 @@ class TodoStore {
   }
 
   toggle(index: number) {
-    this.todos[index].done = !this.todos[index]!.done;
+    const todo = this.todos[index];
+    if (todo) todo.done = !todo.done;
   }
 }
 
@@ -31,6 +32,8 @@ export const todoStore = createClassyStore(new TodoStore());
 ```
 
 ### 2. Persist it
+
+For a client-only app, pass `localStorage` explicitly. Both `name` and `storage` are required. For server-rendered React apps, attach persistence in a client effect as shown in the [SSR section](#skiphydration-ssr--nextjs-support).
 
 ```ts
 // todoStore.ts
@@ -41,32 +44,34 @@ import {persist} from '@codebelt/classy-store/utils';
 
 // Saves all store properties to localStorage
 const handle = persist(todoStore, {
+  storage: localStorage,
   name: 'todo-store',
 });
 ```
 
-**What gets stored in storage:**
+**Stored under the `todo-store` key:**
 
 ```json
-// In localStorage the key will be `todo-store` and the value will be:
 {
   "version": 0,
   "state": {
     "todos": [],
     "filter": "all"
-  },
-  "expiresAt": 300000 // Only present if you set the expireIn option (5 minutes)
+  }
 }
 ```
 
-On every mutation, `todos` and `filter` are saved to `localStorage`. On next page load, they're restored automatically. The getter `remaining` and the methods `addTodo`/`toggle` are **not** persisted -- getters are derived values that recompute from the persisted data, and methods are functions that don't belong in storage.
+The optional `expiresAt` field is an absolute timestamp in milliseconds, calculated as `Date.now() + expireIn` when writing.
+
+Store notifications trigger writes once per mutation batch, or after the configured debounce. On the next initialization, persistence restores saved data. The getter `remaining` and the methods `addTodo`/`toggle` are excluded.
 
 ### Choosing What to Persist
 
-By default, `persist()` saves all own data properties of the store -- everything that isn't a getter or a method. You can narrow this with the `properties` option:
+By default, `persist()` selects string-keyed data fields from the initial snapshot, excluding getters and functions. That list is resolved once when the handle is created; newly added top-level keys are not automatically included. Use declared fields for a stable shape, or put dynamic keys inside a declared object field. You can narrow the selection with `properties`:
 
 ```ts
 persist(todoStore, {
+  storage: localStorage,
   name: 'todo-store',
   properties: ['todos'],  // Only persist todos, not filter
 });
@@ -74,9 +79,13 @@ persist(todoStore, {
 
 Now `filter` resets to its class default (`'all'`) on every page load, while `todos` are restored from storage.
 
+An explicit list is used as supplied. Select writable data fields, not getters or
+methods. Values still need to be JSON-compatible, or have a transform: ordinary
+JSON drops `undefined` and functions, and rejects `BigInt` and cyclic structures.
+
 ### Why getters are excluded
 
-Class getters like `get remaining()` are derived values. They compute their results from the data property (`todos`) every time they're accessed. Persisting a getter result would be redundant and risks restoring a stale value that contradicts the underlying data.
+Class getters like `get remaining()` are derived values. Their memoized results are invalidated when the data they depend on changes. Persisting a getter result would be redundant and risks restoring a stale value that contradicts the underlying data.
 
 ### Configuration and Handle Overview
 
@@ -87,25 +96,36 @@ import {persist} from '@codebelt/classy-store/utils';
 
 const handle = persist(todoStore, {
   name: 'TodoStore',         // Unique storage key (required)
-  properties: [],            // Keys or transform descriptors to persist (default: all own data properties)
-  storage: localStorage,     // Storage adapter with getItem/setItem/removeItem (default: localStorage)
+  properties: ['todos'],     // Omit for initial data fields; [] persists no properties
+  storage: localStorage,     // Required adapter with getItem/setItem/removeItem; no default
   debounce: 500,             // Coalesce rapid mutations into one write, in ms (default: 0)
   version: 0,                // Schema version number; triggers migrate when mismatched (default: 0)
-  migrate: (state, v) => {}, // Called when stored version ≠ current; must return state in current shape
-  merge: 'shallow',          // How to merge persisted state on hydration: 'shallow' | 'replace' | custom fn
-  skipHydration: true,       // Don't hydrate on init; call handle.rehydrate() manually (default: false)
-  syncTabs: true,            // Re-hydrate when another tab writes to the same key (localStorage only)
+  migrate: (state, oldVersion) => state, // Return the migrated state when versions differ
+  merge: 'shallow',          // How to merge persisted state on hydration: 'shallow' | custom function
+  skipHydration: false,      // Set true to wait for a manual handle.rehydrate() call
+  syncTabs: true,            // Opt in to localStorage tab updates (default: false)
   expireIn: 1000,            // TTL in ms; expired data is skipped on hydration. Resets on every write
   clearOnExpire: false,      // Auto-remove storage key when expired data is found (default: false)
+  onError: (error, operation) => console.error(operation, error),
 });
 
-handle.isHydrated;             // Whether hydration from storage has completed
-handle.isExpired;              // True if last hydration found expired data (requires expireIn)
-await handle.hydrated;         // Promise that resolves when initial hydration is complete
-await handle.save();           // Manually write to storage (bypasses debounce)
-await handle.clear();          // Remove this store's persisted data from storage
-await handle.rehydrate();      // Manually re-hydrate the store from storage
-handle.unsubscribe();          // Stop persisting: unsubscribe + cancel debounce + remove storage listener
+handle.isHydrated;           // Whether a hydration attempt has settled, including failures
+handle.isExpired;            // Expiry observed since init or the latest explicit rehydrate()
+await handle.hydrated;       // An attempt settled; inspect getSnapshot().lastError
+handle.getSnapshot();       // Current readonly status
+handle.getServerSnapshot(); // Initial status for SSR/hydration
+const stopStatus = handle.subscribe(() => console.log(handle.getSnapshot()));
+
+try {
+  await handle.save();       // Save now, bypassing debounce
+  await handle.clear();      // Remove stored data; keep in-memory state
+  await handle.rehydrate();  // Read storage again
+} catch (error) {
+  console.error('Explicit persistence operation failed', error);
+}
+
+stopStatus();               // Remove only this status listener
+handle.dispose();           // Stop persistence and release its resources
 ```
 
 ---
@@ -114,17 +134,17 @@ handle.unsubscribe();          // Stop persisting: unsubscribe + cancel debounce
 
 ### `properties` (Per-Property Transforms)
 
-Some values aren't JSON-safe. `Date` objects become strings, and custom classes vanish entirely after `JSON.stringify` + `JSON.parse`. Transforms handle the round-trip through the `properties` option.
+Some values aren't JSON-safe. `Date` objects become strings, and JSON loses custom class prototypes and methods. Transforms handle the round-trip through the `properties` option.
+
+The transform's `key` selects its TypeScript types: `serialize` receives that property's readonly snapshot value, and `deserialize` must return that property's mutable value. Stored input remains `unknown`, so validate it before restoring. Optional properties retain `undefined` in their value type. Standalone descriptors can use `PropertyTransform<YourStore, 'propertyName'>`, exported from `@codebelt/classy-store/utils`.
 
 ```ts
 class UserStore {
   name = '';
   birthdate = new Date();
 
-  get isAdult() {
-    const cutoff = new Date();
-    cutoff.setFullYear(cutoff.getFullYear() - 18);
-    return this.birthdate <= cutoff;
+  get birthYear() {
+    return this.birthdate.getUTCFullYear();
   }
 }
 
@@ -132,12 +152,18 @@ const userStore = createClassyStore(new UserStore());
 
 persist(userStore, {
   name: 'user-store',
+  storage: localStorage,
   properties: [
     'name',  // plain key -- string, no transform needed
     {
       key: 'birthdate',
       serialize: (date) => date.toISOString(),            // Date → string
-      deserialize: (stored) => new Date(stored as string), // string → Date
+      deserialize: (stored) => {
+        if (typeof stored !== 'string') throw new Error('Expected a birthdate');
+        const date = new Date(stored);
+        if (Number.isNaN(date.getTime())) throw new Error('Invalid birthdate');
+        return date;
+      },
     },
   ],
 });
@@ -218,12 +244,21 @@ Disable it when you don't want cross-tab sync:
 
 ```ts
 persist(uiStore, {
+  storage: localStorage,
   name: 'ui',
   syncTabs: false,
 });
 ```
 
-Cross-tab sync only works with `localStorage`. It does not fire for `sessionStorage`, `AsyncStorage`, or custom adapters.
+For synchronization between separate browser tabs, use `localStorage`.
+[`sessionStorage` events](https://developer.mozilla.org/en-US/docs/Web/API/Window/storage_event)
+are limited to same-tab contexts sharing that storage area; async and custom
+adapters do not emit browser storage events themselves. `syncTabs` installs a
+browser event listener, so leave it disabled in environments without that API.
+
+Storage deletion events are ignored. Calling `handle.clear()` in one tab does
+not reset another tab's in-memory state. To broadcast a reset, assign the desired
+data and save it, as the logout example does above.
 
 An event whose value has already been replaced in its storage area is ignored.
 This prevents a delayed event from rolling a newer local save back in the UI.
@@ -244,7 +279,7 @@ async hydration is pending keeps the newer local state. An ignored read still
 settles its promise; hydration completion does not guarantee that stored data won.
 
 `clear()` cancels pending auto-saves and removes stored data after earlier issued
-writes finish. Later edits can persist again. `unsubscribe()` skips queued writes
+writes finish. Later edits can persist again. `dispose()` skips queued writes
 that have not started; it cannot cancel adapter I/O already in progress.
 
 Ordering is per handle. Separate handles sharing an async storage key still
@@ -252,16 +287,17 @@ need coordination at the application or adapter level.
 
 ### `expireIn` & `clearOnExpire` (Expiration / TTL)
 
-Use `expireIn` to set a time-to-live (in milliseconds) on persisted data. After the TTL elapses, stored data is skipped during hydration and the store keeps its class defaults.
+Use `expireIn` to stamp a time-to-live (in milliseconds) on saved data. Hydration skips an expired payload and preserves the store's current values, which are usually its defaults during initialization. Any stored `expiresAt` timestamp is honored on read, even if the reading handle does not specify `expireIn`.
 
 ```ts
 persist(sessionStore, {
+  storage: localStorage,
   name: 'session',
   expireIn: 900_000,  // 15 minutes
 });
 ```
 
-**The TTL resets on every write.** As long as mutations keep happening (an active user session), the data stays fresh. The countdown only matters when the store is hydrated from storage after a period of inactivity (e.g., a page reload).
+**A new expiry timestamp is calculated when each save is serialized.** An async write may wait in the queue after that point. Expiry is checked during hydration or an incoming storage event; no timer expires or resets live state merely because time passes.
 
 **Checking expiration**
 
@@ -269,6 +305,7 @@ The handle exposes an `isExpired` flag that becomes `true` when hydration encoun
 
 ```ts
 const handle = persist(sessionStore, {
+  storage: localStorage,
   name: 'session',
   expireIn: 900_000,
 });
@@ -280,10 +317,15 @@ if (handle.isExpired) {
 }
 ```
 
+The flag records observed expiry, not a live countdown. `rehydrate()` resets it
+before checking storage again. Saving, clearing, or receiving a fresh cross-tab
+payload does not reset a previously observed expiry flag.
+
 By default, expired data is skipped but left in storage. Set `clearOnExpire: true` to automatically remove the key:
 
 ```ts
 persist(sessionStore, {
+  storage: localStorage,
   name: 'session',
   expireIn: 900_000,
   clearOnExpire: true,  // Remove key from storage when expired
@@ -292,110 +334,56 @@ persist(sessionStore, {
 
 ### `skipHydration` (SSR / Next.js Support)
 
-`persist()` requires a `storage` adapter. For SSR (Next.js, etc.) where module init runs on the server, supply an adapter that falls back to in-memory when `localStorage` is undefined and gate hydration on the client with `skipHydration: true`:
+Create the store per request or provider from matching initial data. Call
+`prepareStoreForHydration(store)` from `@codebelt/classy-store/react/server`
+before rendering or starting persistence. This preserves the server snapshot
+for boundaries that hydrate after the live store changes.
 
-```ts
-// _storage.ts -- shared SSR-safe adapter
-const memory = new Map<string, string>();
-export const ssrSafeLocalStorage = {
-  getItem: (k: string) => (typeof localStorage !== 'undefined' ? localStorage.getItem(k) : memory.get(k) ?? null),
-  setItem: (k: string, v: string) => {
-    if (typeof localStorage !== 'undefined') localStorage.setItem(k, v);
-    else memory.set(k, v);
-  },
-  removeItem: (k: string) => {
-    if (typeof localStorage !== 'undefined') localStorage.removeItem(k);
-    else memory.delete(k);
-  },
-};
-
-// store.ts -- runs on both server and client
-export const handle = persist(todoStore, {
-  name: 'todo-store',
-  storage: ssrSafeLocalStorage,
-  skipHydration: true,
-});
-```
-
-Then hydrate manually in a `useEffect` (which only runs on the client):
+Attach persistence in a client effect. The effect owns the handle and disposes
+it during cleanup, including Strict Mode replay:
 
 ```tsx
-import {useEffect} from 'react';
-import {handle} from './store';
-
-function App() {
-  useEffect(() => {
-    handle.rehydrate();
-  }, []);
-
-  return <TodoList />;
-}
-```
-
-#### The hydration mismatch problem
-
-In SSR frameworks like Next.js, the server renders HTML using the store's class defaults (e.g., `theme = 'light'`). When the client hydrates, if `persist()` has already restored a different value from `localStorage` (e.g., `theme = 'dark'`), React sees a mismatch between the server-rendered HTML and the client state. This causes a **hydration error**.
-
-Setting `skipHydration: true` prevents `persist()` from reading `localStorage` until you explicitly call `rehydrate()` — letting you control *when* the stored state is applied and avoid the mismatch.
-
-#### `StoreHydrator` component pattern
-
-When you have multiple persisted stores, calling `rehydrate()` in individual components is repetitive. A better pattern is a single `StoreHydrator` component that gates rendering until all stores are hydrated:
-
-```tsx
-// StoreHydrator.tsx
 'use client';
 
-import {type ReactNode, useEffect, useState} from 'react';
-import {settingsPersist} from './stores/settings-store';
-import {todoPersist} from './stores/todo-store';
+import {useEffect} from 'react';
+import {persist} from '@codebelt/classy-store/utils';
+import type {TodoStore} from './todoStore';
 
-// Collect all persist handles that use skipHydration: true
-const persists = [settingsPersist, todoPersist];
-
-export function StoreHydrator({children}: {children: ReactNode}) {
-  const [hydrated, setHydrated] = useState(false);
-
+export function TodoPersistence({store}: {store: TodoStore}) {
   useEffect(() => {
-    Promise.all(persists.map((p) => p.rehydrate())).then(() =>
-      setHydrated(true),
-    );
-  }, []);
+    const handle = persist(store, {
+      name: 'todo-store',
+      storage: localStorage,
+      skipHydration: true,
+      onError: (error, operation) => console.error(operation, error),
+    });
 
-  if (!hydrated) {
-    return null; // or a loading spinner
-  }
+    // Explicit calls reject even when onError is configured.
+    void handle.rehydrate().catch(() => {
+      // onError already reported the failure; keep the current store values.
+    });
 
-  return <>{children}</>;
+    return () => handle.dispose();
+  }, [store]);
+
+  return null;
 }
 ```
 
-Wrap your app layout with `StoreHydrator` so nothing renders until `localStorage` values have been applied:
+Render this component inside the provider that owns the prepared store. It
+accesses browser storage only inside the effect. Avoid module-level mutable
+stores or shared in-memory storage adapters on the server, where they can mix
+state across requests.
 
-```tsx
-// layout.tsx (Next.js App Router)
-import {StoreHydrator} from '@/components/StoreHydrator';
+`skipHydration: true` delays the initial read until `rehydrate()` is called.
+It does not delay writes, and it does not replace snapshot preparation for
+streamed or selective hydration. If no manual timing is needed, omit it and
+let the effect's `persist()` call start automatic hydration.
 
-export default function RootLayout({children}: {children: React.ReactNode}) {
-  return (
-    <html lang="en">
-      <body>
-        <StoreHydrator>
-          <NavBar />
-          <main>{children}</main>
-        </StoreHydrator>
-      </body>
-    </html>
-  );
-}
-```
-
-**How it works:**
-
-1. The server renders the page using each store's class defaults — no `localStorage` access.
-2. On the client, `StoreHydrator` mounts and calls `rehydrate()` on every persist handle.
-3. Until all handles resolve, `StoreHydrator` renders `null` (or a loading indicator), preventing any child component from reading stale default values.
-4. Once hydration completes, children render with the correct `localStorage`-restored state — no mismatch.
+See [React SSR](./REACT_SSR.md), [store scoping](./REACT_SCOPING.md), and
+[Next.js App Router](./REACT_NEXT.md) for complete provider examples. Rendering
+children only after restoration settles is also possible, but then those
+children do not contribute their own server-rendered content.
 
 ### `debounce` (Debouncing Writes)
 
@@ -403,8 +391,9 @@ For stores that mutate frequently (form inputs, drag positions, real-time data),
 
 ```ts
 persist(formStore, {
+  storage: localStorage,
   name: 'form-draft',
-  debounce: 500,  // Write at most once every 500ms
+  debounce: 500,  // Wait for 500ms without a new store notification
 });
 
 // Rapid mutations:
@@ -420,24 +409,32 @@ When the store's shape changes between releases, versioning and migration preven
 
 ```ts
 persist(todoStore, {
+  storage: localStorage,
   name: 'todo-store',
   version: 2,
   migrate: (state, oldVersion) => {
-    if (oldVersion === 0) {
-      // v0 stored todos as `items`
-      return {...state, todos: state.items, items: undefined};
+    if (oldVersion !== 0 && oldVersion !== 1) {
+      throw new Error(`Unsupported stored version: ${oldVersion}`);
     }
-    if (oldVersion === 1) {
-      // v1 todos were plain strings, v2 todos are objects
-      return {
-        ...state,
-        todos: (state.todos as string[]).map((text) => ({text, done: false})),
-      };
-    }
-    return state;
+
+    // v0 used `items`; v1 renamed it to `todos`. Both stored strings.
+    const storedTodos = oldVersion === 0 ? state.items : state.todos;
+    if (!Array.isArray(storedTodos)) throw new Error('Expected saved todos');
+    const todos = storedTodos.map((text) => {
+      if (typeof text !== 'string') throw new Error('Expected a todo string');
+      return {text, done: false};
+    });
+
+    const {items: _oldItems, ...remaining} = state;
+    return {...remaining, todos};
   },
 });
 ```
+
+Migration runs only when stored and configured versions differ. Without a
+`migrate` callback, a version mismatch does not reject the payload. Validate the
+versions and shapes your application accepts. Migration and hydration do not
+automatically rewrite storage; a later save writes the configured version.
 
 **Merge Strategies**
 
@@ -457,7 +454,7 @@ class TodoStore {
 // { "version": 1, "state": { "filter": "done", "todos": [{"text": "Buy milk", "done": false}] } }
 ```
 
-**`'shallow'`** (default) — persisted values overwrite current values one key at a time. Properties not in storage keep their default value:
+**`'shallow'`** (default) — persisted values overwrite current values one key at a time. Properties not in storage keep their current value, which is the class default on a fresh store:
 
 ```ts
 persist(todoStore, {
@@ -476,10 +473,11 @@ persist(todoStore, {
 
 ```ts
 persist(todoStore, {
+  storage: localStorage,
   name: 'todo-store',
   merge: (persisted, current) => {
     return {
-      ...current,             // start with class defaults
+      ...current,             // start with the current selected fields
       ...persisted,           // overwrite with stored values
       tags: [                 // custom: combine stored + default tags
         ...new Set([
@@ -496,22 +494,68 @@ persist(todoStore, {
 
 ## The Handle
 
+### Observable status
+
+```tsx
+import {usePersistStatus} from '@codebelt/classy-store/react';
+import type {PersistHandle} from '@codebelt/classy-store/utils';
+
+function PersistenceStatus({handle}: {handle: PersistHandle}) {
+  const {isHydrated, isExpired, lastError} = usePersistStatus(handle);
+  if (lastError) return <span>Persistence failed: {lastError.operation}</span>;
+  if (!isHydrated) return <span>Restoring…</span>;
+  return <span>{isExpired ? 'Stored data expired' : 'Ready'}</span>;
+}
+```
+
+`PersistStatus` contains readonly `isHydrated`, `isExpired`, `isDisposed`, and `lastError` fields. `lastError` is `null` or `{error, operation}`; the next successful operation clears it. Hydration, expiry, and errors notify status consumers even when store data stays unchanged.
+
+Outside React, use `handle.subscribe(() => handle.getSnapshot())`. The callback takes no arguments; read the current snapshot inside it. `subscribe` returns listener cleanup and does not control persistence itself. `getSnapshot()` returns the same frozen object until status changes. `getServerSnapshot()` returns initial status for SSR/hydration; server and client handles must start with matching status. See [`usePersistStatus`](./index.md#usepersiststatushandle).
+
+Public types `PersistStatus` and `PersistOperation` are exported from `@codebelt/classy-store/utils`.
+
 ### `isHydrated` & `hydrated`
 
-If you need to know when the stored data has been applied to the store:
+These indicate that a hydration attempt has settled, including failures and obsolete reads that were skipped. `hydrated` resolves once and remains resolved during later reads; await `rehydrate()` to wait for a specific new attempt. They do not guarantee that stored data was applied:
 
 ```ts
 // Async -- await the promise
 await handle.hydrated;
-console.log('Restored:', todoStore.todos);
+console.log('Hydration status:', handle.getSnapshot());
 
 // Sync check
 if (handle.isHydrated) {
-  // safe to read persisted state
+  // The attempt has settled; inspect lastError for a reported failure.
 }
 ```
 
-For `localStorage` (synchronous), hydration resolves almost immediately. For async storage adapters like `AsyncStorage`, the promise resolves after the async read completes.
+Hydration is asynchronous even with `localStorage`: read results are applied after an `await`, not before `persist()` returns. Async adapters can take longer, and a read waits for earlier writes. With `skipHydration: true`, `hydrated` stays pending until a manual hydration attempt settles; disposal alone does not resolve a never-started attempt. Once `isHydrated` becomes true, later reads do not reset it to false.
+
+### Handle operation failures
+
+Explicit `save()`, `clear()`, and `rehydrate()` calls reject on failure after reporting through `onError` and `lastError`. Automatic writes and initial hydration report failures without producing unhandled rejections. Handle errors around manual operations:
+
+```ts
+try {
+  await handle.save();
+  console.log('Saved');
+} catch (error) {
+  console.error('Could not save', error);
+}
+
+try {
+  await handle.clear();
+  await handle.rehydrate();
+} catch (error) {
+  console.error('Could not clear or restore stored data', error);
+}
+```
+
+Each failing operation still calls `onError` once and updates status before rejecting with the original error. `PersistOperation` is `'read' | 'write' | 'remove' | 'parse'`; decoding, transforms, migrations, and merge failures use `'parse'`. A failed operation does not block later queued saves. `rehydrate` also waits for expired-data removal when `clearOnExpire` is enabled and rejects if that removal fails.
+
+An obsolete read superseded by a local edit or newer request is still ignored. Calls on a disposed handle reject; explicit queued writes cancelled by disposal also reject without invoking the adapter. Disposal errors do not invoke `onError` or publish more status.
+
+Handle rejected promises in DOM event handlers, for example `onClick={() => { void handle.save().catch(showError); }}`. Use `try`/`catch` inside an async handler when the UI also needs to show success.
 
 ### `clear()` (Clear stored data)
 
@@ -525,32 +569,37 @@ await handle.clear();
 
 ### `save()` (Manual save)
 
-When you need to save immediately (e.g., before the user navigates away):
+Save and await completion while the page is still active, for example in an application-controlled navigation handler:
 
 ```ts
 const handle = persist(formStore, {
   name: 'form-draft',
+  storage: localStorage,
   debounce: 1000,
 });
 
-// Force save before page unload
-window.addEventListener('beforeunload', () => {
-  handle.save();
-});
+async function saveAndContinue(continueNavigation: () => void) {
+  try {
+    await handle.save();
+    continueNavigation();
+  } catch (error) {
+    console.error('Could not save', error);
+  }
+}
 ```
 
 `save()` cancels the pending debounce timer and requests a write of the current
-state immediately. With async storage it waits behind earlier writes. Await the
-returned promise when completion matters; an async write is not guaranteed to
-finish during page unload.
+state immediately. It waits behind earlier writes, including when a synchronous
+adapter's prior operation is still settling. Browser unload handlers cannot
+guarantee that queued or async writes finish.
 
-### `unsubscribe()` (Stop persisting)
+### `dispose()` (Stop persisting)
 
 ```ts
-const handle = persist(todoStore, {name: 'todo-store'});
+const handle = persist(todoStore, {name: 'todo-store', storage: localStorage});
 
 // Later: stop all persistence (e.g., on logout)
-handle.unsubscribe();
+handle.dispose();
 
 // Mutations after this point are NOT written to storage.
 // Cross-tab sync listener is also removed.
@@ -558,7 +607,9 @@ handle.unsubscribe();
 todoStore.addTodo('This is not persisted');
 ```
 
-Pending storage reads that finish after unsubscribe no longer apply state, clear expired entries, or invoke read-error callbacks. Hydration promises still settle when the read finishes. This prevents a retired React effect from overwriting a newer scope during Strict Mode replay, resets, or storage configuration changes. Already-issued adapter I/O is not cancelled; cleanup cannot undo a write already sent to storage. See the [typed context lifecycle example](./REACT_SCOPING.md).
+Pending storage reads that finish after disposal no longer apply state, clear expired entries, or invoke read-error callbacks. Hydration promises still settle when the read finishes. This prevents a retired React effect from overwriting a newer scope during Strict Mode replay, resets, or storage configuration changes. Already-issued adapter I/O is not cancelled; cleanup cannot undo a write already sent to storage. See the [typed context lifecycle example](./REACT_SCOPING.md).
+
+`dispose()` is safe to call repeatedly. Disposal publishes `isDisposed: true` and clears status listeners; no later callbacks run. A pending hydration may still settle afterward and update the readable `isHydrated` flag without notifying disposed listeners. The public `isHydrated` and `isExpired` properties are readonly, matching their runtime getters.
 
 ---
 
@@ -571,6 +622,7 @@ const todoStore = createClassyStore(new TodoStore());
 
 // Persist todos to localStorage (survives page close)
 persist(todoStore, {
+  storage: localStorage,
   name: 'todo-items',
   properties: ['todos'],
 });
@@ -604,6 +656,7 @@ class AppStore {
 const appStore = createClassyStore(new AppStore());
 
 const handle = persist(appStore, {
+  storage: localStorage,
   name: 'app-store',
   version: 1,
   debounce: 300,
@@ -614,7 +667,12 @@ const handle = persist(appStore, {
     {
       key: 'lastLogin',
       serialize: (date) => date.toISOString(),
-      deserialize: (stored) => new Date(stored as string),
+      deserialize: (stored) => {
+        if (typeof stored !== 'string') throw new Error('Expected a login date');
+        const date = new Date(stored);
+        if (Number.isNaN(date.getTime())) throw new Error('Invalid login date');
+        return date;
+      },
     },
   ],
 
@@ -634,12 +692,14 @@ console.log(`Welcome back! Theme: ${appStore.theme}`);
 
 ## Quick Reference
 
+Catch failures from explicit `save()`, `clear()`, and `rehydrate()` calls. Reading `isHydrated` or awaiting `hydrated` only confirms an attempt settled; inspect status for errors.
+
 | Feature | Code Example |
 |---|---|
-| **Persist everything** | `persist(myStore, {name: 'key'})` |
+| **Persist everything** | `persist(myStore, {name: 'key', storage: localStorage})` |
 | **Persist specific properties** | `properties: ['count', 'name']` |
-| **Handle Dates & Objects** | `{key: 'date', serialize: (d) => d.toISOString(), deserialize: (state) => new Date(s)}` |
-| **Handle Reactive collections** | `users: reactiveMap<string, User>()` (supported natively) |
+| **Handle Dates & Objects** | Supply a property transform with a serializer and a validating deserializer |
+| **Handle reactive collections** | Serialize entries/values and deserialize with `reactiveMap()` / `reactiveSet()`; see the [collections guide](./REACTIVE_COLLECTIONS_TUTORIAL.md) |
 | **Use sessionStorage** | `storage: sessionStorage` |
 | **Use AsyncStorage** | `storage: AsyncStorage, syncTabs: false` |
 | **Disable cross-tab sync** | `syncTabs: false` |
@@ -648,11 +708,11 @@ console.log(`Welcome back! Theme: ${appStore.theme}`);
 | **SSR & manual hydration** | `skipHydration: true` + `handle.rehydrate()` |
 | **Debounce storage writes**| `debounce: 500` |
 | **Migrate schema versions**| `version: 2, migrate: (state, old) => { ... }` |
-| **Merge strategy** | `merge: 'shallow'` \| `'replace'` \| `(persisted, current) => merged` |
+| **Merge strategy** | `merge: 'shallow'` or a custom `(persisted, current) => merged` function |
 | **Check hydration** | `handle.isHydrated` |
 | **Wait for hydration** | `await handle.hydrated` |
 | **Clear stored data** | `await handle.clear()` |
 | **Force immediate save** | `await handle.save()` |
 | **Re-hydrate manually** | `await handle.rehydrate()` |
-| **Stop persisting** | `handle.unsubscribe()` |
+| **Stop persisting** | `handle.dispose()` |
 | **Check if data expired** | `handle.isExpired` |

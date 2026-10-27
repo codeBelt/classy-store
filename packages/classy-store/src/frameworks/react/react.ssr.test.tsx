@@ -147,7 +147,7 @@ describe('React server rendering and hydration', () => {
         skipHydration: true,
       });
       rehydration = persistence.rehydrate();
-      return () => persistence.unsubscribe();
+      return () => persistence.dispose();
     };
 
     expect(storage.getItem).not.toHaveBeenCalled();

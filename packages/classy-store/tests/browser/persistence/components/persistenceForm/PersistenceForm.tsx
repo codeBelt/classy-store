@@ -22,7 +22,7 @@ export function PersistenceForm() {
       <button
         type="button"
         onClick={() => {
-          persistence.unsubscribe();
+          persistence.dispose();
           setConnected(false);
         }}
       >

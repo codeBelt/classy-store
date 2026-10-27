@@ -1,18 +1,11 @@
 'use client';
 
-import {useClassyStore} from '@codebelt/classy-store/react';
+import {useHistoryStatus} from '@codebelt/classy-store/react';
 import type {HistoryHandle} from '@codebelt/classy-store/utils';
 import {ApiInfo} from '@/components/shared/ApiInfo';
 
-export function HistoryControls({
-  history,
-  store,
-}: {
-  history: HistoryHandle;
-  store: object;
-}) {
-  // Subscribe to store changes so we re-render when canUndo/canRedo changes.
-  useClassyStore(store);
+export function HistoryControls({history}: {history: HistoryHandle}) {
+  const status = useHistoryStatus(history);
 
   return (
     <div className="bg-card border border-border rounded-lg p-4 space-y-3">
@@ -21,7 +14,7 @@ export function HistoryControls({
         <button
           type="button"
           onClick={() => history.undo()}
-          disabled={!history.canUndo}
+          disabled={!status.canUndo}
           className="px-3 py-1 bg-accent text-white rounded text-sm disabled:opacity-40"
         >
           Undo
@@ -29,7 +22,7 @@ export function HistoryControls({
         <button
           type="button"
           onClick={() => history.redo()}
-          disabled={!history.canRedo}
+          disabled={!status.canRedo}
           className="px-3 py-1 bg-accent text-white rounded text-sm disabled:opacity-40"
         >
           Redo
@@ -50,8 +43,7 @@ export function HistoryControls({
           Resume
         </button>
         <p className="text-xs text-muted ml-auto">
-          canUndo: {String(history.canUndo)} | canRedo:{' '}
-          {String(history.canRedo)}
+          canUndo: {String(status.canUndo)} | canRedo: {String(status.canRedo)}
         </p>
       </div>
       <ApiInfo
@@ -64,7 +56,7 @@ export function HistoryControls({
           'canUndo',
           'canRedo',
         ]}
-        description="Full history API: undo/redo navigation, pause to batch edits, resume to re-enable tracking."
+        description="History status updates independently of store data. Pause stops recording; resume enables it for future edits."
         code={`history.undo();  history.redo();
 history.pause(); history.resume();
 history.canUndo; history.canRedo;`}

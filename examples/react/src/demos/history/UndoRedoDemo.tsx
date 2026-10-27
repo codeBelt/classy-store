@@ -1,5 +1,4 @@
-import {useClassyStore} from '@codebelt/classy-store/react';
-import {useState} from 'react';
+import {useClassyStore, useHistoryStatus} from '@codebelt/classy-store/react';
 import {Button} from '../../components/Button';
 import {DemoContainer} from '../../components/DemoContainer';
 import {RenderBadge} from '../../components/RenderBadge';
@@ -25,15 +24,16 @@ const COMPONENT_CODE = `// Undo/redo controls
 history.undo();
 history.redo();
 
-// Check availability
-history.canUndo; // boolean
-history.canRedo; // boolean
+// Subscribe to status inside a React component
+const {canUndo, canRedo, isPaused} = useHistoryStatus(history);
 
-// Batch multiple edits into one history entry
-history.pause();
+// Synchronous edits naturally share one history entry
 store.setTitle('New Title');
 store.setContent('New content');
-history.resume(); // single history entry`;
+
+// Control recording separately
+history.pause(); // skip notifications delivered while paused
+history.resume(); // record future notifications`;
 
 function TitleEditor() {
   const title = useClassyStore(textEditorStore, (state) => state.title);
@@ -80,12 +80,9 @@ function ContentEditor() {
 }
 
 function HistoryControls() {
-  const snap = useClassyStore(textEditorStore);
-  const [paused, setPaused] = useState(false);
+  const status = useHistoryStatus(history);
+  const paused = status.isPaused;
   const renders = useRenderCount();
-
-  // Reading snap to force re-render so canUndo/canRedo update
-  void snap;
 
   return (
     <div>
@@ -99,7 +96,7 @@ function HistoryControls() {
         <Button
           size="sm"
           onClick={() => history.undo()}
-          disabled={!history.canUndo}
+          disabled={!status.canUndo}
           className="disabled:opacity-30"
         >
           Undo
@@ -107,7 +104,7 @@ function HistoryControls() {
         <Button
           size="sm"
           onClick={() => history.redo()}
-          disabled={!history.canRedo}
+          disabled={!status.canRedo}
           className="disabled:opacity-30"
         >
           Redo
@@ -118,14 +115,12 @@ function HistoryControls() {
           onClick={() => {
             if (paused) {
               history.resume();
-              setPaused(false);
             } else {
               history.pause();
-              setPaused(true);
             }
           }}
         >
-          {paused ? 'Resume (save entry)' : 'Pause'}
+          {paused ? 'Resume' : 'Pause'}
         </Button>
         <Button
           size="sm"
@@ -139,22 +134,22 @@ function HistoryControls() {
         <span>
           Can undo:{' '}
           <span
-            className={history.canUndo ? 'text-emerald-400' : 'text-zinc-600'}
+            className={status.canUndo ? 'text-emerald-400' : 'text-zinc-600'}
           >
-            {String(history.canUndo)}
+            {String(status.canUndo)}
           </span>
         </span>
         <span>
           Can redo:{' '}
           <span
-            className={history.canRedo ? 'text-emerald-400' : 'text-zinc-600'}
+            className={status.canRedo ? 'text-emerald-400' : 'text-zinc-600'}
           >
-            {String(history.canRedo)}
+            {String(status.canRedo)}
           </span>
         </span>
         {paused && (
           <span className="text-amber-400 font-medium">
-            Recording paused — edits will batch
+            Recording paused — edits are not recorded
           </span>
         )}
       </div>
@@ -166,7 +161,7 @@ export function UndoRedoDemo() {
   return (
     <DemoContainer
       title="Undo / Redo Editor"
-      description="withHistory() adds undo/redo via snapshot stack. Use pause()/resume() to batch multiple edits into a single entry."
+      description="withHistory() adds undo/redo via snapshot stack. Use pause()/resume() to control recording and useHistoryStatus() to render its status."
       codeTabs={[
         {label: 'Store', code: STORE_CODE, language: 'typescript'},
         {label: 'Usage', code: COMPONENT_CODE},

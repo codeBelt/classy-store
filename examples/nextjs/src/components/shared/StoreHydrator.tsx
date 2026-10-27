@@ -10,8 +10,14 @@ export function StoreHydrator({children}: {children: ReactNode}) {
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    Promise.all(persists.map((p) => p.rehydrate())).then(() =>
-      setHydrated(true),
+    void Promise.allSettled(persists.map((handle) => handle.rehydrate())).then(
+      (results) => {
+        for (const result of results) {
+          if (result.status === 'rejected')
+            console.error('Could not restore persisted state', result.reason);
+        }
+        setHydrated(true);
+      },
     );
   }, []);
 

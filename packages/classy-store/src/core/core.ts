@@ -1,5 +1,6 @@
-import type {DepEntry, StoreInternal, SubscribeOptions} from '../types';
+import type {SubscribeOptions} from '../types';
 import {canProxy, findGetterDescriptor} from '../utils/internal/internal';
+import type {DepEntry, StoreInternal} from './core.types';
 
 // ── Global state ──────────────────────────────────────────────────────────────
 
@@ -424,7 +425,7 @@ export function subscribe(
 }
 
 /**
- * Returns the current version number of a store proxy.
+ * @internal Returns the current version number of a store proxy.
  *
  * Versions are monotonically increasing and bump on any mutation in the
  * store's subtree (child mutations propagate up to the root). Useful for

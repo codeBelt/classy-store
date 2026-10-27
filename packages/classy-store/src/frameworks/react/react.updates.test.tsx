@@ -32,7 +32,7 @@ afterEach(() => {
   mountedRoots.clear();
 });
 
-describe('useClassyStore independent QA', () => {
+describe('useClassyStore update consistency', () => {
   test('preserves nested snapshot identity across local state renders', () => {
     const store = createClassyStore({items: ['First']});
     const effect = mock(() => {});

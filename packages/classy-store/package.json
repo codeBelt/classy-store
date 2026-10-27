@@ -1,6 +1,6 @@
 {
   "name": "@codebelt/classy-store",
-  "version": "0.7.0",
+  "version": "0.8.1",
   "description": "Class-based reactive state management — ES6 Proxy + immutable snapshots",
   "repository": {
     "type": "git",
@@ -165,6 +165,7 @@
     "react-compiler-runtime": "1.0.0",
     "react-dom": "19.3.1",
     "solid-js": "1.9.17",
+    "svelte": "5.55.5",
     "tsdown": "0.23.1",
     "typescript": "7.0.2",
     "vue": "3.5.44"

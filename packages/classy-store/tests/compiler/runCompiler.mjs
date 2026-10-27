@@ -154,8 +154,8 @@ try {
       `\nChecking ${compilation.length} memoized components against packed React ${reactVersion} (compiler target ${target})`,
     );
     const testFiles = ['consumer.test.tsx'];
-    if (existsSync(join(consumerDirectory, 'compiler.qa.test.tsx'))) {
-      testFiles.push('compiler.qa.test.tsx');
+    if (existsSync(join(consumerDirectory, 'compiler.behavior.test.tsx'))) {
+      testFiles.push('compiler.behavior.test.tsx');
     }
     testFiles.push('compiler.scale.test.tsx');
     testFiles.push('compiler.memory.test.tsx');

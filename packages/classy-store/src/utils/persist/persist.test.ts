@@ -4,8 +4,8 @@ import {reactiveMap, reactiveSet} from '../../collections/collections';
 import {createClassyStore} from '../../core/core';
 import {snapshot} from '../../snapshot/snapshot';
 import {PROXYABLE} from '../internal/internal';
-import type {StorageAdapter} from './persist';
 import {persist} from './persist';
+import type {StorageAdapter} from './persist.types';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -474,7 +474,7 @@ describe('persist()', () => {
           expect(previous.preferences.display.compact).toBe(false);
         }
       } finally {
-        handle.unsubscribe();
+        handle.dispose();
       }
     });
 
@@ -535,7 +535,7 @@ describe('persist()', () => {
         expect(beforeHydration.users.size).toBe(1);
         expect(beforeHydration.tags.size).toBe(1);
       } finally {
-        handle.unsubscribe();
+        handle.dispose();
       }
     });
 
@@ -571,7 +571,7 @@ describe('persist()', () => {
         store.profile.name = 'Alicia';
         expect(store.profile.greeting).toBe('Hello, Alicia');
       } finally {
-        handle.unsubscribe();
+        handle.dispose();
       }
     });
 
@@ -681,10 +681,10 @@ describe('persist()', () => {
     });
   });
 
-  // ── Unsubscribe ─────────────────────────────────────────────────────────
+  // ── Dispose ─────────────────────────────────────────────────────────────
 
-  describe('unsubscribe', () => {
-    it('stops writing to storage after unsubscribe()', async () => {
+  describe('dispose', () => {
+    it('stops writing to storage after dispose()', async () => {
       const storage = createMockStorage();
       const s = createClassyStore({count: 0});
       const handle = persist(s, {name: 'test', storage});
@@ -693,23 +693,23 @@ describe('persist()', () => {
       await tick();
       expect(parseStored(storage, 'test')?.state.count).toBe(1);
 
-      handle.unsubscribe();
+      handle.dispose();
 
       s.count = 999;
       await tick();
 
-      // Should still be 1 — no write after unsubscribe.
+      // Should still be 1 — no write after dispose.
       expect(parseStored(storage, 'test')?.state.count).toBe(1);
     });
 
-    it('cancels pending debounce on unsubscribe()', async () => {
+    it('cancels pending debounce on dispose()', async () => {
       const storage = createMockStorage();
       const s = createClassyStore({count: 0});
       const handle = persist(s, {name: 'test', storage, debounce: 100});
 
       s.count = 42;
       await tick();
-      handle.unsubscribe();
+      handle.dispose();
 
       await wait(150);
 
@@ -852,7 +852,7 @@ describe('persist()', () => {
 
       expect(s.count).toBe(123);
 
-      handle.unsubscribe();
+      handle.dispose();
     });
 
     it('ignores storage events for other keys', async () => {
@@ -869,16 +869,16 @@ describe('persist()', () => {
 
       expect(s.count).toBe(0); // unchanged
 
-      handle.unsubscribe();
+      handle.dispose();
     });
 
-    it('stops listening after unsubscribe()', async () => {
+    it('stops listening after dispose()', async () => {
       const storage = createMockStorage();
       const s = createClassyStore({count: 0});
       const handle = persist(s, {name: 'test', storage, syncTabs: true});
       await handle.hydrated;
 
-      handle.unsubscribe();
+      handle.dispose();
 
       const event = new StorageEvent('storage', {
         key: 'test',
@@ -903,7 +903,7 @@ describe('persist()', () => {
 
       expect(s.count).toBe(0); // unchanged
 
-      handle.unsubscribe();
+      handle.dispose();
     });
 
     it('does not write back to storage when applying a remote tab event (no ping-pong loop)', async () => {
@@ -929,7 +929,7 @@ describe('persist()', () => {
       expect(s.count).toBe(42);
       expect(setItemSpy).not.toHaveBeenCalled();
 
-      handle.unsubscribe();
+      handle.dispose();
     });
   });
 
@@ -1041,7 +1041,7 @@ describe('persist()', () => {
       expect(s.count).toBe(0); // expired — rejected
       expect(handle.isExpired).toBe(true);
 
-      handle.unsubscribe();
+      handle.dispose();
     });
 
     it('data without expiresAt hydrates normally when expireIn is set', async () => {
@@ -1183,32 +1183,32 @@ describe('persist()', () => {
       expect(s.count).toBe(0); // invalid envelope skipped
     });
 
-    it('unsubscribe is idempotent (calling twice does not throw)', async () => {
+    it('dispose is idempotent (calling twice does not throw)', async () => {
       const storage = createMockStorage();
       const s = createClassyStore({count: 0});
       const handle = persist(s, {name: 'test', storage});
       await handle.hydrated;
 
-      handle.unsubscribe();
-      handle.unsubscribe(); // should not throw
+      handle.dispose();
+      handle.dispose(); // should not throw
     });
 
-    it('save after unsubscribe is a no-op', async () => {
+    it('save after dispose rejects without writing', async () => {
       const storage = createMockStorage();
       const s = createClassyStore({count: 0});
       const handle = persist(s, {name: 'test', storage});
       await handle.hydrated;
 
-      handle.unsubscribe();
+      handle.dispose();
       s.count = 999;
-      await handle.save(); // should not throw or write
+      await expect(handle.save()).rejects.toThrow('disposed');
 
       const stored = parseStored(storage, 'test');
       // Should not have count=999
       expect(stored?.state.count ?? 0).not.toBe(999);
     });
 
-    it('clear after unsubscribe is a no-op', async () => {
+    it('clear after dispose rejects without removing data', async () => {
       const storage = createMockStorage();
       const s = createClassyStore({count: 0});
       const handle = persist(s, {name: 'test', storage});
@@ -1216,8 +1216,8 @@ describe('persist()', () => {
       s.count = 5;
       await tick();
 
-      handle.unsubscribe();
-      await handle.clear(); // should be no-op
+      handle.dispose();
+      await expect(handle.clear()).rejects.toThrow('disposed');
 
       // Storage should still have the data
       expect(storage.data.has('test')).toBe(true);
@@ -1331,7 +1331,7 @@ describe('persist()', () => {
     it.each([
       false,
       true,
-    ])('ignores a pending read after unsubscribe (skipHydration=%s)', async (skipHydration) => {
+    ])('ignores a pending read after dispose (skipHydration=%s)', async (skipHydration) => {
       let resolveRead!: (value: string | null) => void;
       const pendingRead = new Promise<string | null>((resolve) => {
         resolveRead = resolve;
@@ -1344,7 +1344,7 @@ describe('persist()', () => {
       const store = createClassyStore({title: 'Current'});
       const handle = persist(store, {name: 'editor', storage, skipHydration});
       const completion = skipHydration ? handle.rehydrate() : handle.hydrated;
-      handle.unsubscribe();
+      handle.dispose();
       resolveRead(JSON.stringify({version: 0, state: {title: 'Retired'}}));
       await completion;
       await handle.hydrated;
@@ -1358,7 +1358,7 @@ describe('persist()', () => {
     it.each([
       false,
       true,
-    ])('settles a failed pending read without callbacks after unsubscribe (skipHydration=%s)', async (skipHydration) => {
+    ])('settles a failed pending read without callbacks after dispose (skipHydration=%s)', async (skipHydration) => {
       let rejectRead!: (error: Error) => void;
       const pendingRead = new Promise<string | null>((_resolve, reject) => {
         rejectRead = reject;
@@ -1377,7 +1377,7 @@ describe('persist()', () => {
         onError,
       });
       const completion = skipHydration ? handle.rehydrate() : handle.hydrated;
-      handle.unsubscribe();
+      handle.dispose();
       rejectRead(new Error('Late storage failure'));
       await completion;
       await handle.hydrated;
@@ -1403,7 +1403,7 @@ describe('persist()', () => {
         storage,
         clearOnExpire: true,
       });
-      handle.unsubscribe();
+      handle.dispose();
       resolveRead(
         JSON.stringify({version: 0, expiresAt: 0, state: {title: 'Expired'}}),
       );
@@ -1494,7 +1494,7 @@ describe('persist()', () => {
       const handle = persist(s, {name: 'test', storage, onError});
       await handle.hydrated;
 
-      await handle.clear();
+      await expect(handle.clear()).rejects.toThrow('locked');
       expect(onError).toHaveBeenCalledTimes(1);
       expect(onError.mock.calls[0][1]).toBe('remove');
     });
@@ -1583,7 +1583,7 @@ describe('persist()', () => {
       // Pending write must have been cancelled — storage still empty (no setItem ran).
       expect(storage.data.has('test')).toBe(false);
 
-      handle.unsubscribe();
+      handle.dispose();
     });
   });
 });

@@ -1,6 +1,7 @@
 import {markToTrack} from 'proxy-compare';
 import {getInternal} from '../core/core';
-import type {Snapshot, StoreInternal} from '../types';
+import type {StoreInternal} from '../core/core.types';
+import type {Snapshot} from '../types';
 import {canProxy, findGetterDescriptor} from '../utils/internal/internal';
 
 // ── Caches ────────────────────────────────────────────────────────────────────

@@ -3,6 +3,7 @@ import type {SidebarsConfig} from '@docusaurus/plugin-content-docs';
 const sidebars: SidebarsConfig = {
   tutorialSidebar: [
     'index',
+    'UPGRADING_0_8',
     'UPGRADING_0_7',
     {
       type: 'category',
@@ -14,6 +15,7 @@ const sidebars: SidebarsConfig = {
         'REACT_NEXT',
         'REACT_SCOPING',
         'PERSIST_TUTORIAL',
+        'REACTIVE_COLLECTIONS_TUTORIAL',
         'DEVTOOLS_TUTORIAL',
         'SUBSCRIBE_KEY_TUTORIAL',
         'HISTORY_TUTORIAL',

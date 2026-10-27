@@ -1,6 +1,6 @@
 # withHistory Tutorial
 
-`withHistory()` adds undo/redo capability to any store proxy. It maintains a stack of snapshots captured on each mutation. Call `undo()` to go back, `redo()` to go forward, and `pause()`/`resume()` to batch operations that shouldn't create individual history entries.
+`withHistory()` adds undo/redo for a store's data fields using a stack of snapshots. It records after each batched store notification. Call `undo()` to go back, `redo()` to go forward, and `pause()`/`resume()` to suspend and restart recording.
 
 ## Getting Started
 
@@ -42,14 +42,17 @@ import {withHistory} from '@codebelt/classy-store/utils';
 const history = withHistory(drawingStore);
 ```
 
-That's it. Every mutation is now recorded. The initial state is captured as `history[0]`.
+The initial snapshot is the first entry in an internal stack. Each subsequent batched notification records one entry; consecutive synchronous writes share that entry. The returned handle does not expose the stack itself.
 
 ### 3. Undo and redo
 
 ```ts
 drawingStore.setColor('#ff0000');
+await Promise.resolve(); // Record the first edit.
+
 drawingStore.setStrokeWidth(5);
-// history: [initial, {color: '#ff0000'}, {strokeWidth: 5}]
+await Promise.resolve(); // Record the second edit separately.
+// The stack now contains three full snapshots: initial, red, red with width 5.
 
 history.undo();
 // strokeWidth is back to 2
@@ -71,15 +74,17 @@ history.canRedo; // true if there's a next state (after an undo)
 Use these to enable/disable undo/redo buttons:
 
 ```tsx
+import {useHistoryStatus} from '@codebelt/classy-store/react';
+
 function UndoRedoButtons() {
-  const snap = useClassyStore(drawingStore);
+  const {canUndo, canRedo} = useHistoryStatus(history);
 
   return (
     <div>
-      <button onClick={history.undo} disabled={!history.canUndo}>
+      <button onClick={history.undo} disabled={!canUndo}>
         Undo
       </button>
-      <button onClick={history.redo} disabled={!history.canRedo}>
+      <button onClick={history.redo} disabled={!canRedo}>
         Redo
       </button>
     </div>
@@ -95,6 +100,18 @@ history.dispose();
 
 After disposing, mutations are no longer recorded and the snapshot stack is cleared.
 
+### Observe status outside React
+
+```ts
+const stopListening = history.subscribe(() => {
+  console.log(history.getSnapshot());
+  // {canUndo, canRedo, isPaused, isDisposed}
+});
+stopListening(); // Only removes this listener; history keeps recording.
+```
+
+Snapshots are readonly and cached until a status field changes. `pause()` and `resume()` notify status subscribers even when store data is unchanged. `dispose()` publishes the final disposed status, clears listeners, and makes subsequent history operations no-ops. `getServerSnapshot()` always returns initial status for SSR and hydration. The public `HistoryStatus` type is exported from `@codebelt/classy-store/utils`.
+
 ## Signature
 
 ```ts
@@ -108,7 +125,7 @@ function withHistory<T extends object>(
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `limit` | `number` | `100` | Maximum number of history entries |
+| `limit` | `number` | `100` | Maximum snapshots retained, including the current state; use a positive integer |
 
 ### HistoryHandle
 
@@ -121,16 +138,29 @@ function withHistory<T extends object>(
 | `pause()` | `() => void` | Stop recording history entries |
 | `resume()` | `() => void` | Resume recording history entries |
 | `dispose()` | `() => void` | Unsubscribe and clean up |
+| `getSnapshot()` | `() => HistoryStatus` | Cached current status |
+| `getServerSnapshot()` | `() => HistoryStatus` | Initial status for SSR/hydration |
+| `subscribe(listener)` | `(listener: () => void) => () => void` | Observe status changes; returns listener cleanup |
 
 ## How It Works
 
 1. **Init:** captures an initial snapshot as `history[0]` and sets `pointer = 0`.
 2. **Record:** on each `subscribe()` callback (when not paused), captures a new snapshot, truncates any redo entries after the current pointer, pushes the snapshot, and enforces the limit by shifting from the front.
-3. **Undo:** decrements the pointer, pauses recording, applies `history[pointer]` back to the store proxy (skipping getters and methods), and resumes recording.
-4. **Redo:** increments the pointer, pauses recording, applies `history[pointer]`, and resumes.
+3. **Undo:** decrements the pointer, suppresses recording during restoration, and applies `history[pointer]` back to the store proxy (skipping getters and methods).
+4. **Redo:** increments the pointer and restores `history[pointer]` with the same recording suppression.
 5. **State restoration:** iterates own enumerable keys of the snapshot, skips keys with getter descriptors on the prototype chain, and assigns values to the proxy. This triggers SET traps and reactivity — your components update automatically.
 
-Undo and redo themselves do **not** create new history entries because recording is paused during the restore operation.
+Undo and redo themselves do **not** create new history entries. Restoration does not change the explicit `isPaused` status set by `pause()` and `resume()`.
+
+Restoration assigns snapshot fields back as mutable copies; it does not delete
+top-level keys absent from the restored snapshot. Prefer a stable store shape,
+and keep dynamically keyed data inside a declared object field. Opaque snapshot
+leaves (for example native `Map`, `Set`, and `Date`) retain references, so use
+replacement updates or reactive collections when those values need undo support.
+
+Wait for the batched notification before programmatically undoing a new edit.
+After undo/redo, allow the restoration microtask to finish before making another
+edit that must be recorded. Separate user events naturally provide that boundary.
 
 ## Use Cases
 
@@ -194,20 +224,23 @@ const history = withHistory(formStore);
 formStore.setField('name', 'Alice');
 formStore.setField('email', 'alice@example.com');
 
-// Undo last change
+// Let the batched subscription record both edits.
+await Promise.resolve();
+
+// Both writes in this turn form one undo step.
 history.undo();
-// email is back to ''
+// name and email are both back to ''.
 
 // Undo all changes
 while (history.canUndo) {
   history.undo();
 }
-// All fields are back to their initial values
+// All fields are back to the oldest retained state.
 ```
 
-### Batch operations with pause/resume
+### Batched edits and pause/resume
 
-When performing multiple related mutations that should count as a single history entry, use `pause()` and `resume()`:
+Synchronous mutations in one turn already share a history entry because ordinary store subscriptions are batched:
 
 ```ts
 class SpreadsheetStore {
@@ -223,19 +256,13 @@ const history = withHistory(spreadsheetStore);
 
 // Paste a block of cells — should be a single undo step
 function pasteBlock(data: Record<string, string>) {
-  history.pause();
-
   for (const [id, value] of Object.entries(data)) {
     spreadsheetStore.setCell(id, value);
   }
-
-  history.resume();
-
-  // Manually trigger a snapshot capture by making a final
-  // mutation after resume, or just let the next user action
-  // create the history entry.
 }
 ```
+
+`pause()` skips history recording for notifications delivered while paused. `resume()` enables recording again; it does not capture an entry itself or group asynchronous edits into a transaction. `useHistoryStatus(history).isPaused` exposes this recording state. Undo/redo restoration preserves an explicit pause.
 
 ### Canvas with limited history
 
@@ -246,12 +273,12 @@ const history = withHistory(canvasStore, { limit: 50 });
 
 // Only the last 50 states are kept.
 // Older entries are shifted off the front of the stack.
-// Memory usage stays bounded.
+// Retained entry count is bounded; memory also depends on each state's size.
 ```
 
 ## Undo/Redo and Branching
 
-When you undo and then make a new mutation, the redo history is discarded:
+When you undo and then make a new mutation after restoration settles, the redo history is discarded. Each mutation below represents a separately recorded batch:
 
 ```
 Initial state: { count: 0 }
@@ -281,13 +308,23 @@ import {persist, withHistory} from '@codebelt/classy-store/utils';
 const todoStore = createClassyStore(new TodoStore());
 
 // Persist to localStorage (survives page reload)
-persist(todoStore, { name: 'todos' });
+const persistence = persist(todoStore, {name: 'todos', storage: localStorage});
 
-// Undo/redo in memory (resets on page reload)
+// Make the restored data the initial undo state. Check status for read failures.
+await persistence.hydrated;
+if (persistence.getSnapshot().lastError) {
+  console.error('Could not restore saved todos', persistence.getSnapshot().lastError);
+}
+
+// Undo/redo in memory (resets on page reload).
 const history = withHistory(todoStore);
+
+// When the store's owner is torn down:
+history.dispose();
+persistence.dispose();
 ```
 
-History is in-memory only — it doesn't persist across page loads. The persisted state is always the latest state (not the undo pointer position).
+History is in-memory only. Persistence saves the live store state, including changes made by undo/redo, according to its debounce and async queue. It does not save the history stack or pointer. If history is attached before hydration, applying saved data can itself become an undo step.
 
 ### withHistory + devtools
 
@@ -298,11 +335,15 @@ import {devtools, withHistory} from '@codebelt/classy-store/utils';
 
 const store = createClassyStore(new MyStore());
 
-devtools(store, { name: 'MyStore' });
+const disconnect = devtools(store, { name: 'MyStore' });
 const history = withHistory(store);
 
-// DevTools shows every mutation including undo/redo restores.
-// Time-travel in DevTools is independent of withHistory's stack.
+// DevTools receives batched updates, including undo/redo restores.
+// A DevTools jump mutates the same store and can create a history entry.
+
+// When the owner is torn down:
+disconnect();
+history.dispose();
 ```
 
 ## Quick Reference
@@ -315,6 +356,8 @@ const history = withHistory(store);
 | Check if undoable | `h.canUndo` |
 | Check if redoable | `h.canRedo` |
 | Limit history size | `withHistory(store, { limit: 50 })` |
-| Batch as single step | `h.pause(); /* mutations */; h.resume()` |
+| Record one undo step | Make synchronous edits in one turn; history records after the microtask flush |
+| Temporarily stop recording | `h.pause()`; keep paused until those notifications flush, then call `h.resume()` |
+| Render history status in React | `useHistoryStatus(h)` |
 | Stop tracking | `h.dispose()` |
 | Undo all | `while (h.canUndo) h.undo()` |

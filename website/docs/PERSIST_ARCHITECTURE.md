@@ -4,13 +4,13 @@ Internal design documentation for the `persist()` utility in `@codebelt/classy-s
 
 ## Design Principles
 
-1. **Standalone utility, not middleware.** `persist` consumes the existing `subscribe`, `snapshot`, and `getVersion` APIs. No changes to core reactivity or React hooks are needed.
+1. **Standalone utility, not middleware.** `persist` uses `subscribe` and `snapshot`, plus an internal version helper for stale-read protection. No changes to core reactivity or React hooks are needed.
 
-2. **Tree-shakeable.** `persist` lives in a separate entry point (`@codebelt/classy-store/utils`). Applications that don't use persistence pay zero cost -- the code is never bundled.
+2. **Tree-shakeable.** `persist` lives in a separate entry point (`@codebelt/classy-store/utils`). Bundlers that support tree shaking can omit unused utility code; verify the output for your build configuration.
 
 3. **Storage-agnostic.** The `StorageAdapter` interface accepts sync (`localStorage`, `sessionStorage`) and async (`AsyncStorage`, `localForage`) implementations through the same type. `persist` handles both transparently via `await`.
 
-4. **Class-aware.** The utility understands class stores: getters and methods are automatically excluded from persistence. Only source-of-truth data properties are saved. This is a key differentiator from libraries like Zustand where `partialize` requires manual exclusion.
+4. **Class-aware defaults.** Default property selection excludes getters and functions. Explicit `properties` lists are used as supplied and should name writable data fields.
 
 ## How It Hooks Into the Existing Architecture
 
@@ -29,7 +29,8 @@ flowchart LR
     Snap --> Pick["pick properties"]
     Pick --> Serialize["per-property serialize"]
     Serialize --> Envelope["JSON.stringify envelope"]
-    Envelope --> Storage["storage.setItem()"]
+    Envelope --> Queue["per-handle write/remove queue"]
+    Queue --> Storage["storage.setItem()"]
   end
 
   subgraph hydration ["Hydration (init / cross-tab / manual)"]
@@ -52,8 +53,12 @@ src/
   utils/
     index.ts                    # Barrel: persist, devtools, subscribeKey, withHistory
     persist/
-      persist.ts                # persist(), types, and all logic
-      persist.test.ts           # tests with mock storage adapters
+      persist.ts                # Storage queue, hydration, and persistence logic
+      persist.types.ts          # Public options, transforms, adapter, status, and handle
+      persist.test.ts           # Tests with mock storage adapters
+      persist.api.test.ts       # Public lifecycle and status behavior
+      persist.concurrent.test.ts # Overlapping reads, writes, and disposal
+      persist.errors.test.ts    # Error reporting and rejection policy
 package.json                    # "./utils" export entry
 tsdown.config.ts                # 'src/utils/index.ts' in entry array
 ```
@@ -64,20 +69,21 @@ Each `persist()` call creates a closure with the following internal state:
 
 | Variable | Type | Purpose |
 |---|---|---|
-| `disposed` | `boolean` | Guards against writes after `unsubscribe()` |
-| `debounceTimer` | `ReturnType<typeof setTimeout> \| null` | Active debounce timer (cancelled on save/clear/unsubscribe or accepted hydration) |
+| `disposed` | `boolean` | Guards against writes after `dispose()` |
+| `hydrating` | `boolean` | Suppresses auto-saves while applying restored state and flushing its notification |
+| `debounceTimer` | `ReturnType<typeof setTimeout> \| null` | Active debounce timer (cancelled on save/clear/dispose or accepted hydration) |
 | `storageQueue` | `Promise<void> \| undefined` | Orders this handle's writes/removals and lets reads wait for prior operations |
 | `hydrationRequest` | `number` | Rejects read results superseded by newer requests or storage events |
 | `clearedVersion` | `number \| undefined` | Suppresses a pre-clear mutation's pending batched auto-save |
 | `hydratedFlag` | `boolean` | Synchronous hydration status |
 | `expiredFlag` | `boolean` | Set to `true` when hydration encounters expired data |
+| `lastError` | `PersistStatus['lastError']` | Latest reported failure; cleared after a successful operation |
 | `resolveHydrated` | `() => void` | Resolves the `hydrated` promise |
-| `rejectHydrated` | `(error) => void` | Rejects the `hydrated` promise on error |
 | `resolvedProps` | `Array<{key, transform?}>` | Normalized property list with optional transforms |
 | `transformMap` | `Map<string, PropertyTransform>` | Fast lookup from key to transform |
 | `propKeys` | `string[]` | Flat list of property keys to persist |
 
-No global mutable state. Multiple `persist()` calls on different stores (or even the same store with different keys) are fully independent.
+Bookkeeping is per handle. Handles on the same store still observe each other's applied mutations, and handles using the same storage key can overwrite one another. Their queues do not coordinate with each other.
 
 ## Save Flow
 
@@ -91,7 +97,7 @@ Triggered by `subscribe(proxy, callback)` firing after each batched mutation:
      schedule new timer → goto step 4 after delay
    else:
      goto step 4 immediately
-4. snapshot(proxy) → frozen immutable copy
+4. snapshot(proxy) → cached snapshot (with ordinary opaque-leaf semantics)
 5. for each key in propKeys:
      read value from snapshot
      if transform exists → call transform.serialize(value)
@@ -162,32 +168,33 @@ batched subscription notification has run, with cleanup in `finally`.
      return (skip hydration)
 4. if envelope.version !== options.version AND migrate exists:
      state = migrate(state, envelope.version)
+5. for each stored state key:
      if transform exists → state[key] = transform.deserialize(state[key])
 6. Build currentState from snapshot (only propKeys)
 7. Apply merge strategy:
-     'shallow' / 'replace': { ...currentState, ...persistedState }
+     'shallow': { ...currentState, ...persistedState }
      custom function: merge(persistedState, currentState)
 8. for each key in propKeys:
-     if key in mergedState → proxy[key] = mergedState[key]
+     if key in mergedState → proxy[key] = cloneSnapshotValue(mergedState[key])
      (goes through SET trap → reactivity → batched notification)
-9. Set hydratedFlag = true, resolve hydrated promise
+9. Initial/manual read completion marks hydratedFlag and resolves hydrated.
+   Storage-event application alone does not mark hydration settled.
 ```
 
 ### Merge Strategies
 
 | Strategy | Behavior |
 |---|---|
-| `'shallow'` (default) | `{ ...current, ...persisted }` -- persisted keys overwrite, new keys keep defaults |
-| `'replace'` | Same as shallow at top level. Conceptually signals full replacement for nested objects. |
+| `'shallow'` (default) | `{ ...current, ...persisted }` — stored keys overwrite, missing keys keep current values |
 | Custom `fn` | `fn(persisted, current)` -- full control. Enables deep merge or selective overrides. |
 
-Both `'shallow'` and `'replace'` produce the same result for flat stores. The distinction is semantic and affects how consumers think about nested object handling.
+The public merge option accepts `shallow` or a function. Shallow merging replaces each stored top-level property, including its nested value; use a custom function to combine nested data.
 
 ### Error Handling
 
-- **Corrupted JSON** in storage (`JSON.parse` throws): caught silently, hydration completes with no state changes.
+- **Corrupted JSON** in storage (`JSON.parse` throws): reported as `parse` through `onError` and status, with no state changes.
 - **Invalid envelope** (missing `.state` or not an object): detected by shape check, skipped silently.
-- **Adapter read errors** during `storage.getItem()`: reported through `onError` when the request is current; hydration completes. Exceptions from custom migration/merge/transform callbacks can reject hydration.
+- **Adapter read errors** during `storage.getItem()`: reported as `read` when the request is current. Exceptions from custom migration/merge/transform callbacks are reported as `parse`. Initial hydration settles after reporting; explicit `rehydrate()` rejects with the original error.
 
 ## Cross-Tab Sync
 
@@ -212,26 +219,27 @@ sequenceDiagram
 
 Key properties of `window.storage`:
 - For `localStorage`, fires in **other** same-origin tabs (not the tab that wrote). The hydration guard prevents echo writes and loops.
-- Only works with `localStorage` -- not `sessionStorage`, not async adapters.
+- Cross-tab delivery uses `localStorage`. `sessionStorage` events are limited to same-tab contexts sharing the area; async adapters do not emit these browser events.
 - The event payload includes `key`, `oldValue`, `newValue`, and `storageArea`.
 
 `syncTabs` defaults to `false`; enable it explicitly for localStorage-backed state.
 
 ## Cleanup
 
-`handle.unsubscribe()` performs three cleanup steps:
+`handle.dispose()` performs these cleanup steps:
 
 ```
 1. Set disposed = true (guards all future writes)
 2. Cancel pending debounce timer (if any)
 3. Call unsubscribe from store mutations (remove subscribe callback)
 4. Remove window 'storage' event listener (if syncTabs was active)
+5. Publish disposed status and clear status listeners
 ```
 
-After `unsubscribe()`:
+After `dispose()`:
 - Store mutations no longer trigger writes to storage.
 - Cross-tab changes to the storage key are ignored.
-- `save()`, `clear()`, and `rehydrate()` become no-ops.
+- `save()`, `clear()`, and `rehydrate()` reject without starting new work.
 - Queued writes/removals that have not started are skipped. Already-issued adapter I/O can still finish.
 - Pending read results/errors are ignored, and their promises settle when the reads finish.
 
@@ -239,40 +247,51 @@ After `unsubscribe()`:
 
 | Method/Property | Behavior |
 |---|---|
-| `unsubscribe()` | Full cleanup: unsubscribe + cancel debounce + remove storage listener. Idempotent. |
-| `hydrated` | Promise that resolves when initial hydration completes or is superseded. Custom hydration callback exceptions can reject it. |
-| `isHydrated` | Getter returning `boolean`. Becomes `true` after hydration resolves or rejects. |
-| `isExpired` | Getter returning `boolean`. `true` when the last hydration found expired data (requires `expireIn`). Re-evaluated on every `rehydrate()` call. |
-| `save()` | Cancel pending debounce, capture current state, and enqueue its write. No-op if disposed. |
-| `clear()` | Cancel pending auto-saves and enqueue `storage.removeItem(name)` after earlier writes. No-op if disposed. |
-| `rehydrate()` | Re-read from storage, apply to store. Also resolves `hydrated` if not yet resolved (for `skipHydration` flows). |
+| `dispose()` | Idempotent cleanup: cancel debounce and listeners, publish disposed status, ignore pending reads and skip unstarted writes. |
+| `hydrated` | Resolves when a hydration attempt settles, including failure or a superseded read. Inspect `lastError` for reported failures. |
+| `isHydrated` | Readonly getter; true after a hydration attempt settles. |
+| `isExpired` | Readonly getter; true when hydration found expired data. Re-evaluated by `rehydrate()`. |
+| `save()` | Cancel debounce, capture current state, and enqueue its write. |
+| `clear()` | Cancel pending auto-saves and enqueue removal after earlier writes. |
+| `rehydrate()` | Read after prior writes, apply if still current, and await expired-data removal when enabled. |
+| `getSnapshot()` | Cached readonly `PersistStatus`: hydration, expiry, disposal, and latest error. |
+| `getServerSnapshot()` | Initial status for server rendering and hydration. |
+| `subscribe(listener)` | Synchronous status subscription; returns listener cleanup. |
+
+Explicit operations reject with the original failure after reporting it through `onError` and status. Automatic operations catch reported failures at their background entry points. Decoding, transform, migration, and merge errors use the `parse` operation. The internal queue absorbs rejections so later writes still run. Calls on disposed handles reject; explicit queued operations cancelled by disposal also reject without invoking the adapter.
 
 ## Dependency Graph
 
 ```mermaid
 graph LR
-  persist["utils/persist.ts"] --> subscribe["core.ts: subscribe()"]
+  persist["utils/persist/persist.ts"] --> subscribe["core.ts: subscribe()"]
   persist --> snapshot["snapshot.ts: snapshot()"]
-  persist --> findGetter["utils.ts: findGetterDescriptor()"]
+  persist --> findGetter["utils/internal/internal.ts: findGetterDescriptor()"]
+  persist --> version["core.ts: internal getVersion()"]
+  persist --> clone["cloneSnapshotValue()"]
+  persist --> status["createUtilityStatus()"]
   utilsIndex["utils/index.ts"] --> persist
 ```
 
-`persist` has **no dependency** on `useClassyStore`, `types.ts`, or `collections.ts`. It only uses:
+`persist` has no React runtime dependency. Its public contracts live in `persist.types.ts` and are exported by `utils/index.ts`. Transform types use `Snapshot` from the public core `types.ts`. Runtime helpers include:
 - `subscribe()` -- to listen for store mutations
-- `snapshot()` -- to create an immutable copy for serialization
+- Internal `getVersion()` -- to reject stale reads and suppress pre-clear auto-saves
+- `snapshot()` -- to read cached state for serialization
 - `findGetterDescriptor()` -- to detect class getters during property resolution
+- `createUtilityStatus()` -- to cache and publish utility status
+- `cloneSnapshotValue()` -- to restore mutable values from snapshots
 
 ## Performance Characteristics
 
 | Operation | Complexity | Notes |
 |---|---|---|
 | Property resolution | O(keys) | Once at init, not per-save |
-| Save (per mutation batch) | O(propKeys) | Snapshot + pick + serialize + JSON.stringify |
-| Debounced save | O(1) per mutation | Timer reset; actual save is O(propKeys) when timer fires |
-| Hydration | O(propKeys) | JSON.parse + deserialize + merge + assign |
-| Cross-tab sync | O(propKeys) | Same as hydration, triggered by storage event |
-| `save()` | O(propKeys) | Same as auto-save, synchronous trigger |
-| `unsubscribe()` | O(1) | Flag + timer cancel + listener removal |
+| Save | Depends on state size and transforms | Snapshot work + selected-field traversal + JSON serialization + adapter I/O |
+| Debounce scheduling | O(1) per notification | Timer reset; serialization and write happen when it fires |
+| Hydration | Depends on payload and restored state | Parse + user callbacks + mutable cloning + assignments and notifications |
+| Cross-tab sync | Same state-application costs as hydration | Uses the event payload, with a current-value check |
+| `save()` | Same serialization costs as auto-save | Captures immediately, then waits for queued adapter work |
+| `dispose()` | Depends on status listeners | Cancels timer/subscriptions and publishes final status |
 
 ## Design Decisions
 
@@ -282,7 +301,7 @@ Decorators require class modifications and don't compose well with the existing 
 
 ### Why per-property transforms instead of global serialize/deserialize?
 
-Global `serialize`/`deserialize` (as in Zustand's `createJSONStorage`) operates on the entire state blob. This makes it awkward when only one property needs special handling (e.g., a single `Date` field among ten string fields). Per-property transforms are more ergonomic for class-based stores where each property has a known type.
+A per-property transform can handle one value, such as a `Date`, while other fields keep their ordinary JSON representation. The property key determines the serializer and deserializer types.
 
 ### Why exclude getters automatically?
 
@@ -290,7 +309,7 @@ Class getters are derived/computed values that recompute from persisted data pro
 
 ### Why a hydrated Promise instead of lifecycle hooks?
 
-Zustand uses `onRehydrateStorage` (a callback), Pinia uses `beforeHydrate`/`afterHydrate` hooks. A Promise is more composable: it works with `async`/`await`, can be passed to React Suspense boundaries, and doesn't require a registration pattern. The `isHydrated` boolean covers the synchronous check case.
+`hydrated` resolves once a hydration attempt settles, even if that attempt fails. Inspect `lastError` for reported errors. It stays resolved during later reads; await `rehydrate()` when waiting for a specific read or rejecting on failure matters. React components can observe changes with `usePersistStatus(handle)`.
 
 ### Why debounce instead of throttle?
 
@@ -303,12 +322,12 @@ Debounce waits for a quiet period after the last mutation. Throttle writes at re
 | Per-property transforms | Date round-trip, ReactiveMap round-trip |
 | Debounce | Coalescing, save bypass |
 | Version migration | Migration call, version match skip |
-| Merge strategies | Shallow, replace, custom function |
+| Merge strategies | Shallow or custom function |
 | skipHydration | No auto-hydrate, manual rehydrate, promise resolution |
-| Unsubscribe | Stop writes, cancel debounce |
-| Flush/clear/rehydrate | Immediate write, remove data, in-memory preservation, re-read |
+| Dispose | Stop writes, cancel debounce |
+| Save/clear/rehydrate | Immediate write, remove data, in-memory preservation, re-read |
 | Hydration state | Promise instance, resolution timing |
 | Async storage | Async write, async hydrate |
-| Cross-tab sync | Correct key, wrong key, post-unsubscribe, disabled |
+| Cross-tab sync | Correct key, wrong key, post-disposal, disabled |
 | expireIn / TTL | Normal hydration, expired skip, clearOnExpire, default leave-in-storage, cross-tab reject, no-expiresAt envelope, TTL reset on write, rehydrate re-check |
 | Edge cases | Empty storage, corrupted JSON, invalid envelope, no-storage error, multiple persists |
