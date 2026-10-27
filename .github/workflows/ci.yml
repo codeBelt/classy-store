@@ -20,6 +20,8 @@ jobs:
       # Packed-consumer typechecks resolve the package's generated declarations.
       - run: bun run build
       - run: bun run typecheck
+      - name: Solid 2 example production build
+        run: bun run --filter classy-store-solid-example build
       - name: Use Ubuntu archive mirror for browser dependencies
         run: |
           # Avoid slow Azure mirror downloads on hosted runners.

@@ -9,7 +9,7 @@ bunx playwright install chromium firefox webkit
 bun run test:browser
 ```
 
-CI also installs the Linux system dependencies with `playwright install --with-deps`. The suite starts an isolated local Bun server and tests the source React, Vue, and Svelte bindings in Chromium, Firefox, and WebKit. Package exports and React version compatibility are tested separately in `tests/compatibility`.
+CI also installs the Linux system dependencies with `playwright install --with-deps`. The suite starts an isolated local Bun server and tests the source React, Vue, Svelte, and Solid bindings in Chromium, Firefox, and WebKit. Package exports and React version compatibility are tested separately in `tests/compatibility`.
 
 The `/svelte` fixture compiles a Svelte 5 component using real `$store`
 subscriptions and `$derived` values. Four cases cover input caret behavior,
@@ -34,6 +34,17 @@ contained the old text and computed value. Vue warnings fail the fixture.
 Run these cases with `bun run test:browser vue.spec.ts`; root `bun run typecheck`
 checks its template through the Vue example's `check:integration` script using
 that example's Vue tooling and TypeScript installation.
+
+The `/solid` fixture uses Solid 2.0.0-rc.18 and its native `@solidjs/compiler`.
+Six cases cover caret editing, checkboxes, class getters and memos, native
+scheduling and explicit `flush()`, custom-key list identity, and component/root
+cleanup. The lifecycle case checks owner validation, nested and independent roots,
+notifications during an active owner, and disposal during notification. Unexpected
+Solid development warnings fail tests. Run `bun run test:browser solid.spec.ts`.
+The original adapter failed the explicit-flush and owner-validation regressions.
+Bun unit tests resolve Solid's server runtime, so scheduling assertions live in
+these real-browser tests. Root typecheck includes the dedicated Solid JSX config
+and example; CI also builds the example with Solid 2's Vite plugin.
 
 Every test fails on browser console errors or uncaught page errors. Native clipboard replacement and subsequent caret behavior are tested in Chromium; Firefox and WebKit explicitly skip those cases because they do not expose the same clipboard permissions API.
 

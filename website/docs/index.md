@@ -38,7 +38,7 @@ All framework peer dependencies are optional — install only what your project 
 | React | `react >= 18.0.0` | `@codebelt/classy-store/react` |
 | Vue | `vue >= 3.2.0` | `@codebelt/classy-store/vue` |
 | Svelte | `svelte >= 4.0.0` | `@codebelt/classy-store/svelte` |
-| Solid | `solid-js >= 1.0.0` | `@codebelt/classy-store/solid` |
+| Solid 2 RC | `solid-js 2.0.0-rc.18` (exact) | `@codebelt/classy-store/solid` |
 | Angular | `@angular/core >= 17.0.0` | `@codebelt/classy-store/angular` |
 
 ## Quick Start
@@ -165,8 +165,8 @@ notifies subscribers synchronously after each mutation. `$store` subscriptions
 are cleaned up automatically when the component is destroyed; manual subscribers
 must call the returned unsubscribe function. Snapshots are readonly: update the
 original store or call its actions from input handlers instead of using
-`bind:value` on snapshot fields. Solid, Angular, and ordinary core subscriptions
-use microtask batching.
+`bind:value` on snapshot fields. Angular and ordinary core subscriptions use
+microtask batching.
 
 Vue's `useClassyStore(store)` updates its `ShallowRef` synchronously, so computed
 values are current immediately after an action and `await nextTick()` waits for
@@ -177,6 +177,14 @@ active scope, and stops subscribing when that scope is stopped. For inputs, use
 snapshot and writes through a store action. Do not bind `v-model` directly to
 readonly snapshot fields. The Vue adapter requires Vue 3.2 or later for the
 Effect Scope API.
+
+Solid's `useClassyStore(store)` targets **Solid 2.0.0-rc.18 only**. It requires a
+live component or `createRoot()` owner and disposes its subscription with that
+owner. Store notifications reach its signal synchronously; Solid 2 retains its
+native batching. Call Solid's `flush()` when imperative code needs current
+computed values or DOM. The adapter does not call it automatically, and ordinary
+core subscriptions stay batched. See the [Solid 2 guide](./SOLID.md) for pinned
+packages, inputs, keyed lists, and migration from Solid 1.
 
 ## API Reference
 

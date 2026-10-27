@@ -72,6 +72,18 @@
   },
   "overrides": [
     {
+      "includes": [
+        "**/frameworks/solid/**",
+        "**/tests/browser/solid/**",
+        "examples/solid/**"
+      ],
+      "linter": {
+        "rules": {
+          "correctness": {"useHookAtTopLevel": "off"}
+        }
+      }
+    },
+    {
       "includes": ["**/*.vue", "**/*.svelte"],
       "linter": {
         "rules": {
