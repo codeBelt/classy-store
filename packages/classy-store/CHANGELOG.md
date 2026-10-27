@@ -1,5 +1,22 @@
 # @codebelt/classy-store
 
+## 0.8.2
+
+### Patch Changes
+
+- [#38](https://github.com/codeBelt/classy-store/pull/38) [`dfe1228`](https://github.com/codeBelt/classy-store/commit/dfe1228d63472387f002295f1f62bd6160f83be0) Thanks [@codeBelt](https://github.com/codeBelt)! - Update Vue snapshot refs synchronously so computed values are immediately current
+  and one `await nextTick()` waits for the resulting DOM update. Vue rendering and
+  ordinary core subscriptions still batch.
+
+  Require an active Vue effect scope for `useClassyStore()` and stop delivery when
+  that scope is disposed, including disposal during notification. Call the hook in
+  `setup()` / `<script setup>` or `effectScope().run()`; calls without an active
+  scope now throw instead of creating a subscription with no cleanup owner.
+
+  Correct the Vue peer dependency to 3.2 or later, matching the Effect Scope APIs
+  used by the adapter. Add regressions for inputs, writable computed models, class
+  getters, keyed lists, timing, and component cleanup.
+
 ## 0.8.1
 
 ### Patch Changes
