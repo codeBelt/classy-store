@@ -1,5 +1,21 @@
 # @codebelt/classy-store
 
+## 0.10.0
+
+### Minor Changes
+
+- [#42](https://github.com/codeBelt/classy-store/pull/42) [`68bb261`](https://github.com/codeBelt/classy-store/commit/68bb261f9d127159ec7fb98e20add4d049fc6b55) Thanks [@codeBelt](https://github.com/codeBelt)! - Bound optional framework peers to supported stable majors: React `^18.0.0 || ^19.0.0`, Vue `^3.2.0`, and Svelte `^4.0.0 || ^5.0.0`. Future majors are no longer accepted automatically. Development dependency versions remain unchanged.
+
+  Fix the Vue adapter's public declaration to return `Ref<Snapshot<T>>` backed by a shallow ref. Vue 3.2.0 does not export the newer `ShallowRef` type; the stable type preserves readonly snapshot inference at the advertised minimum without changing runtime behavior.
+
+  Validate packed consumers at React 18.0.0/19.0.0, Vue 3.2.0, and Svelte 4.0.0/5.0.0 using existing focused tests. Add the minimums to CI coverage and document Svelte 4's native deferred `$:` computations versus Svelte 5's immediate `$derived` reads. Store snapshots still update synchronously in the adapters, and ordinary core subscriptions remain batched.
+
+- [#42](https://github.com/codeBelt/classy-store/pull/42) [`68bb261`](https://github.com/codeBelt/classy-store/commit/68bb261f9d127159ec7fb98e20add4d049fc6b55) Thanks [@codeBelt](https://github.com/codeBelt)! - Support all stable Angular 22 releases with the optional `@angular/core` peer set to `^22.0.0` and update `injectStore` signals synchronously while preserving Angular's native rendering schedule and ordinary core subscription batching. Ignore notifications during teardown and release each subscription with its Angular lifecycle.
+
+  This removes support for Angular 21 and earlier. Use aligned Angular runtime/compiler packages from a stable Angular 22 release and a compatible TypeScript 6.0 toolchain. Development dependencies and the example remain pinned to 22.2.3. The `/angular` import path and `injectStore(store)` signature are unchanged; imperative signal and computed reads now reflect writes immediately.
+
+  Add zoneless input, computed, keyed-list, and cleanup regressions, an updated Angular example, and migration documentation. Validate packed consumers with aligned Angular 22.0.0 and 22.2.3 packages and run the shared focused browser tests for both versions in CI.
+
 ## 0.9.0
 
 ### Minor Changes
