@@ -35,11 +35,21 @@ All framework peer dependencies are optional — install only what your project 
 
 | Framework | Peer Dependency | Import |
 |-----------|----------------|--------|
-| React | `react >= 18.0.0` | `@codebelt/classy-store/react` |
-| Vue | `vue >= 3.2.0` | `@codebelt/classy-store/vue` |
-| Svelte | `svelte >= 4.0.0` | `@codebelt/classy-store/svelte` |
+| React | `react ^18.0.0 \|\| ^19.0.0` | `@codebelt/classy-store/react` |
+| Vue | `vue ^3.2.0` | `@codebelt/classy-store/vue` |
+| Svelte | `svelte ^4.0.0 \|\| ^5.0.0` | `@codebelt/classy-store/svelte` |
 | Solid 2 RC | `solid-js 2.0.0-rc.18` (exact) | `@codebelt/classy-store/solid` |
-| Angular | `@angular/core >= 17.0.0` | `@codebelt/classy-store/angular` |
+| Angular | `@angular/core ^22.0.0` | `@codebelt/classy-store/angular` |
+
+These ranges include stable releases within the listed majors and exclude
+untested future majors. Solid remains pinned to its exact tested prerelease.
+Use matching React/React DOM versions. Development dependencies stay pinned
+independently of the supported consumer ranges.
+
+Packed compatibility checks cover React 18.0.0 and 19.0.0, Vue 3.2.0, and Svelte
+4.0.0 and 5.0.0. React's existing 18.3.1/current-19 checks remain in the matrix.
+The Vue and Svelte checks reuse the focused input, timing, computed, list, and
+cleanup tests with each consumer's native compiler; CI runs them in Chromium.
 
 ## Quick Start
 
@@ -154,8 +164,8 @@ Import from the entry that owns the API. Core, collections, and utilities do not
 factory functions. The React entry carries `use client`. Import hydration
 preparation from `/react/server` in both server code and client modules.
 
-The other adapters publish whole snapshots. Vue returns a `ShallowRef` and uses
-the current effect scope for cleanup; Svelte returns a readable-store interface;
+The other adapters publish whole snapshots. Vue returns a `Ref<Snapshot<T>>`
+backed by `shallowRef` and uses the current effect scope for cleanup; Svelte returns a readable-store interface;
 Solid returns a signal accessor and uses its
 owner's cleanup; Angular returns a readonly signal and requires an injection
 context. React's selector and auto-tracking modes are specific to `/react`.
@@ -165,18 +175,22 @@ notifies subscribers synchronously after each mutation. `$store` subscriptions
 are cleaned up automatically when the component is destroyed; manual subscribers
 must call the returned unsubscribe function. Snapshots are readonly: update the
 original store or call its actions from input handlers instead of using
-`bind:value` on snapshot fields. Angular and ordinary core subscriptions use
-microtask batching.
+`bind:value` on snapshot fields. Ordinary core subscriptions use microtask
+batching. In Svelte 4, native `$:` computed statements update before the next
+render, while the store snapshot and its class getters are current during the
+input event. Svelte 5's `$derived` reads are current immediately. The adapter
+preserves each version's native rendering schedule.
 
-Vue's `useClassyStore(store)` updates its `ShallowRef` synchronously, so computed
+Vue's `useClassyStore(store)` updates its shallow ref synchronously, so computed
 values are current immediately after an action and `await nextTick()` waits for
 Vue's DOM update. Vue still batches rendering. Call the hook synchronously in
 `setup()` / `<script setup>` or inside `effectScope().run()`; it throws without an
 active scope, and stops subscribing when that scope is stopped. For inputs, use
 `:value` with an action in `@input`, or a writable `computed` that reads the
 snapshot and writes through a store action. Do not bind `v-model` directly to
-readonly snapshot fields. The Vue adapter requires Vue 3.2 or later for the
-Effect Scope API.
+readonly snapshot fields. The Vue adapter supports Vue 3.2 through the rest of
+Vue 3 (`^3.2.0`). Its public return type uses `Ref<Snapshot<T>>`, which is available
+in Vue 3.2.0; the runtime still uses a shallow ref.
 
 Solid's `useClassyStore(store)` targets **Solid 2.0.0-rc.18 only**. It requires a
 live component or `createRoot()` owner and disposes its subscription with that
@@ -186,11 +200,18 @@ computed values or DOM. The adapter does not call it automatically, and ordinary
 core subscriptions stay batched. See the [Solid 2 guide](./SOLID.md) for pinned
 packages, inputs, keyed lists, and migration from Solid 1.
 
+Angular's `injectStore(store)` supports **all stable Angular 22 releases**
+(`^22.0.0`). It requires a live
+injection context and returns a readonly signal. Store writes update the signal
+and dependent computed reads immediately; Angular schedules effects and rendering,
+including zoneless `OnPush` views. Cleanup follows the injected `DestroyRef`.
+See the [Angular guide](./ANGULAR.md) for inputs, keyed lists, and migration.
+
 ## API Reference
 
 ### `createClassyStore(instance)`
 
-Wraps a class instance in a reactive Proxy. Mutations notify React, Vue, and Svelte immediately; ordinary subscribers are batched via `queueMicrotask`.
+Wraps a class instance in a reactive Proxy. Mutations notify React, Vue, Svelte, Solid, and Angular adapters immediately; ordinary subscribers are batched via `queueMicrotask`.
 
 ```typescript
 const myStore = createClassyStore(new MyClass());
@@ -740,7 +761,7 @@ For `Map` and `Set` semantics, use [`reactiveMap()`](#reactivemapk-vinitial) and
 
 ## React Compiler compatibility
 
-Direct and bound hooks work in compiled consumers with either selectors or auto-tracking. The regression matrix compiles consumer components with React Compiler 1.0 using default inference, then runs them against the packed library on React 18.0, 18.3, and 19.3. Fixtures must report successful compilation with memo slots; silently skipped components fail the checks. The library does not require a `"use no memo"` directive or custom compiler configuration.
+Direct and bound hooks work in compiled consumers with either selectors or auto-tracking. The regression matrix compiles consumer components with React Compiler 1.0 using default inference, then runs them against the packed library on React 18.0, 18.3, 19.0, and 19.3. Fixtures must report successful compilation with memo slots; silently skipped components fail the checks. The library does not require a `"use no memo"` directive or custom compiler configuration.
 
 Auto-tracking retains earlier committed reads while an immutable snapshot object is reused, including structurally shared children. This protects dependencies inside cached helpers, array calculations, and memoized children. After a conditional branch changes, an earlier read can still trigger an extra render until that snapshot object's identity changes. Use an explicit selector when exact selected-value equality matters.
 
@@ -774,7 +795,7 @@ I wanted state management that feels like writing plain TypeScript.
 
 - **A class is the store.** Define fields, methods, and getters — that's your state, your actions, and your derived values. The class *is* the type. TypeScript infers everything automatically.
 - **Getters are computed values.** Write `get filtered()` and it's memoized with dependency tracking out of the box. It caches until a dependency changes.
-- **Framework bindings that feel native.** React's `useClassyStore`, Vue's `useClassyStore` (ShallowRef), Svelte's `toSvelteStore`, Solid's `useClassyStore` (signal getter), Angular's `injectStore` — each integration matches the framework's reactive idioms.
+- **Framework bindings that feel native.** React's `useClassyStore`, Vue's `useClassyStore` (shallow ref), Svelte's `toSvelteStore`, Solid's `useClassyStore` (signal getter), Angular's `injectStore` — each integration matches the framework's reactive idioms.
 - **Call methods directly.** `todoStore.addTodo('Buy milk')` — a real object with real methods, callable from anywhere.
 - **Filter React store updates.** Selectors and automatic tracking can skip subscription-driven renders for unchanged data.
 

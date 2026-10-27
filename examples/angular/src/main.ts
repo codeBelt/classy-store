@@ -1,6 +1,5 @@
 import {bootstrapApplication} from '@angular/platform-browser';
 import {AppComponent} from './app/app.component';
 
-bootstrapApplication(AppComponent, {providers: []}).catch((err) =>
-  console.error(err),
-);
+// Angular 22 is zoneless by default; template signals schedule rendering.
+bootstrapApplication(AppComponent).catch((error) => console.error(error));

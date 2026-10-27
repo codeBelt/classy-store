@@ -7,7 +7,7 @@ bun run build
 node packages/classy-store/tests/compatibility/runCompatibility.mjs
 ```
 
-The runner packs the existing build, installs that tarball into temporary consumers, and checks React 18.0.0, 18.3.1, and the version pinned by the library. It requires Node, npm, Bun, and registry access. To check selected versions, pass exact matching `react` / `react-dom` versions:
+The runner packs the existing build, installs that tarball into temporary consumers, and checks React 18.0.0, 18.3.1, 19.0.0, and the version pinned by the library. It requires Node, npm, Bun, and registry access. To check selected versions, pass exact matching `react` / `react-dom` versions:
 
 ```sh
 node packages/classy-store/tests/compatibility/runCompatibility.mjs 18.0.0 19.3.1

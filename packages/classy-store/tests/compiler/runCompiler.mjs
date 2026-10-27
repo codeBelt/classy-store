@@ -21,7 +21,7 @@ const packageManifest = JSON.parse(
 const requestedVersions = process.argv.slice(2);
 const reactVersions = requestedVersions.length
   ? requestedVersions
-  : ['18.0.0', '18.3.1', packageManifest.devDependencies.react];
+  : ['18.0.0', '18.3.1', '19.0.0', packageManifest.devDependencies.react];
 const bunExecutable = process.env.BUN_EXECUTABLE ?? 'bun';
 const temporaryDirectory = mkdtempSync(
   join(tmpdir(), 'classy-store-compiler-'),

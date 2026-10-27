@@ -127,6 +127,17 @@ For independent forms, nested editors, and request-scoped state, see the [typed 
 
 Most components only need `useClassyStore(store)` to render application data. Use [`useHistoryStatus(history)`](https://codebelt.github.io/classy-store/docs/#usehistorystatushistory) for undo/redo controls and recording status, or [`usePersistStatus(handle)`](https://codebelt.github.io/classy-store/docs/#usepersiststatushandle) for hydration, expiry, and persistence errors. Both hooks come from `@codebelt/classy-store/react` and update even when store data is unchanged. Manual `save()`, `clear()`, and `rehydrate()` calls reject on failure after reporting through status and `onError`. Handle these promises in event handlers; automatic persistence reports failures without producing unhandled rejections.
 
+## Angular 22 integration
+
+The `/angular` adapter supports **all stable Angular 22 releases** (`^22.0.0`).
+Development dependencies and the example stay pinned to `22.2.3`. Call `injectStore(store)`
+in a live Angular injection context to get a readonly snapshot signal. Store
+writes update the signal and dependent computed reads immediately; Angular
+schedules rendering, including in zoneless applications. The subscription is
+removed with its `DestroyRef` lifecycle. Ordinary core subscriptions remain
+batched. See the [Angular guide](https://codebelt.github.io/classy-store/docs/ANGULAR)
+for inputs, keyed lists, cleanup, and migration requirements.
+
 ## Solid 2 integration
 
 The `/solid` adapter targets **Solid 2.0.0-rc.18 only**; Solid 1 is no longer
@@ -148,7 +159,21 @@ npm install @codebelt/classy-store
 bun add @codebelt/classy-store
 ```
 
-The React adapter requires React 18 or later. Install `react` and `react-dom` in your application if it does not already provide them.
+Framework peers are optional; install only what your application uses.
+
+| Framework | Supported peer range |
+|-----------|----------------------|
+| React | `^18.0.0 \|\| ^19.0.0` |
+| Vue | `^3.2.0` |
+| Svelte | `^4.0.0 \|\| ^5.0.0` |
+| Angular | `^22.0.0` |
+| Solid | `2.0.0-rc.18` (exact prerelease) |
+
+Use matching `react` and `react-dom` versions for React applications. These
+ranges exclude untested future majors. Development dependency pins are separate
+from consumer support. Packed consumers cover the React 18.0/19.0, Vue 3.2.0,
+and Svelte 4.0.0/5.0.0 minimums; see the
+[framework support documentation](https://codebelt.github.io/classy-store/docs/#installation).
 
 ## 🤖 AI / LLM Usage
 

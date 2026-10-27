@@ -16,6 +16,7 @@
   store definition, React hook modes (selector/auto-tracked), `createStoreHook`, collections,
   controlled inputs without timing options, inheritance, async patterns, local stores
 
+- [Angular 22 integration](https://codebelt.github.io/classy-store/docs/ANGULAR): Stable Angular 22 support (^22.0.0), packed checks on 22.0.0 and 22.2.3, signal timing, zoneless inputs, computed values, keyed lists, and DestroyRef cleanup
 - [Solid 2 integration](https://codebelt.github.io/classy-store/docs/SOLID): Exact rc.18 requirement, inputs, computed values, keyed lists, native batching, flush, and owner cleanup
 
 ## Utilities
