@@ -127,6 +127,19 @@ For independent forms, nested editors, and request-scoped state, see the [typed 
 
 Most components only need `useClassyStore(store)` to render application data. Use [`useHistoryStatus(history)`](https://codebelt.github.io/classy-store/docs/#usehistorystatushistory) for undo/redo controls and recording status, or [`usePersistStatus(handle)`](https://codebelt.github.io/classy-store/docs/#usepersiststatushandle) for hydration, expiry, and persistence errors. Both hooks come from `@codebelt/classy-store/react` and update even when store data is unchanged. Manual `save()`, `clear()`, and `rehydrate()` calls reject on failure after reporting through status and `onError`. Handle these promises in event handlers; automatic persistence reports failures without producing unhandled rejections.
 
+## Solid 2 integration
+
+The `/solid` adapter targets **Solid 2.0.0-rc.18 only**; Solid 1 is no longer
+supported. Pin `solid-js` and the browser renderer `@solidjs/web` to that exact
+release candidate. `useClassyStore(store)` returns an immutable snapshot accessor
+and requires a live component or `createRoot()` owner for automatic cleanup.
+
+Store changes reach Solid synchronously, while Solid 2 batches its reactive
+updates. Use Solid's `flush()` when imperative code needs updated computed values
+or DOM immediately. Ordinary core subscriptions remain batched. See the
+[Solid 2 guide](https://codebelt.github.io/classy-store/docs/SOLID) for inputs,
+keyed lists, ownership, and migration of the example toolchain.
+
 ## 📦 Installation
 
 ```bash

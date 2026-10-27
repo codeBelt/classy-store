@@ -47,7 +47,7 @@ All framework peer dependencies are optional — install only what your project 
 | React | `react >= 18.0.0` | `@codebelt/classy-store/react` |
 | Vue | `vue >= 3.2.0` | `@codebelt/classy-store/vue` |
 | Svelte | `svelte >= 4.0.0` | `@codebelt/classy-store/svelte` |
-| Solid | `solid-js >= 1.0.0` | `@codebelt/classy-store/solid` |
+| Solid 2 RC | `solid-js 2.0.0-rc.18` (exact) | `@codebelt/classy-store/solid` |
 | Angular | `@angular/core >= 17.0.0` | `@codebelt/classy-store/angular` |
 
 ## Quick Start
@@ -174,8 +174,8 @@ notifies subscribers synchronously after each mutation. `$store` subscriptions
 are cleaned up automatically when the component is destroyed; manual subscribers
 must call the returned unsubscribe function. Snapshots are readonly: update the
 original store or call its actions from input handlers instead of using
-`bind:value` on snapshot fields. Solid, Angular, and ordinary core subscriptions
-use microtask batching.
+`bind:value` on snapshot fields. Angular and ordinary core subscriptions use
+microtask batching.
 
 Vue's `useClassyStore(store)` updates its `ShallowRef` synchronously, so computed
 values are current immediately after an action and `await nextTick()` waits for
@@ -186,6 +186,14 @@ active scope, and stops subscribing when that scope is stopped. For inputs, use
 snapshot and writes through a store action. Do not bind `v-model` directly to
 readonly snapshot fields. The Vue adapter requires Vue 3.2 or later for the
 Effect Scope API.
+
+Solid's `useClassyStore(store)` targets **Solid 2.0.0-rc.18 only**. It requires a
+live component or `createRoot()` owner and disposes its subscription with that
+owner. Store notifications reach its signal synchronously; Solid 2 retains its
+native batching. Call Solid's `flush()` when imperative code needs current
+computed values or DOM. The adapter does not call it automatically, and ordinary
+core subscriptions stay batched. See the [Solid 2 guide](https://codebelt.github.io/classy-store/docs/SOLID) for pinned
+packages, inputs, keyed lists, and migration from Solid 1.
 
 ## API Reference
 
@@ -995,7 +1003,7 @@ SOURCE: https://codebelt.github.io/classy-store/docs/TUTORIAL
 
 # Classy Store Tutorial
 
-`Classy Store` is a reactive state library for React, Vue, Svelte, Solid, and Angular built on ES proxies. Define state as classes, wrap them with `createClassyStore()`, and read them with the binding for your framework. Shared client stores need no Provider, observer, or reducer; context providers can scope independent instances. The library batches ordinary subscriptions while notifying React, Vue, and Svelte synchronously, and uses structural sharing for change detection.
+`Classy Store` is a reactive state library for React, Vue, Svelte, Solid, and Angular built on ES proxies. Define state as classes, wrap them with `createClassyStore()`, and read them with the binding for your framework. Shared client stores need no Provider, observer, or reducer; context providers can scope independent instances. The library batches ordinary subscriptions while notifying React, Vue, Svelte, and Solid synchronously (Solid 2 retains its native reactive scheduling), and uses structural sharing for change detection.
 
 ## Quick Start
 
@@ -1762,7 +1770,7 @@ root. This guide and the utility architecture guides live in `website/docs`.
 
 ### Overview
 
-The `createClassyStore()` function wraps a class instance in an ES6 Proxy. Assignments and deletions through that proxy, including array operations and supported nested state, are intercepted. Raw-object writes and descriptor changes bypass these traps. Subscribers are batched by default into one microtask notification, while React, Vue, and Svelte use the synchronous path.
+The `createClassyStore()` function wraps a class instance in an ES6 Proxy. Assignments and deletions through that proxy, including array operations and supported nested state, are intercepted. Raw-object writes and descriptor changes bypass these traps. Subscribers are batched by default into one microtask notification, while React, Vue, Svelte, and Solid use the synchronous path.
 
 ### Data Flow: Mutation → Notification
 
@@ -1849,6 +1857,13 @@ The Vue adapter updates its shallow ref synchronously too. Vue handles render
 batching, and `nextTick()` then waits for the queued DOM update. The hook requires
 an active component or effect scope to own cleanup, and ignores notifications if
 that scope has been disposed during an in-progress notification.
+
+The Solid 2 adapter forwards synchronous notifications into an internal signal
+with `ownedWrite: true`, allowing external store notifications while an owner is
+active. Solid schedules its own reactive work; the adapter never calls `flush()`.
+A live owner is required before subscribing. Owner cleanup marks delivery inactive
+before removing the listener, and callbacks also check disposal during notification.
+The adapter targets the exact `2.0.0-rc.18` prerelease; see the [Solid guide](https://codebelt.github.io/classy-store/docs/SOLID).
 
 ### Version Propagation
 
@@ -4414,6 +4429,150 @@ For example, the server renders `Server:1`, persistence restores `Saved:8`, and 
 Client-only apps need no preparation. `createRoot` reads current state even for a prepared store. Unprepared stores retain the existing behavior of reading current state for server rendering and hydration, so keep them unchanged until every consumer hydrates if you do not use preparation. Neither preparation nor hydration resets the live store; `snapshot(store)` continues to return current data.
 
 React subscriptions notify synchronously by default, including after hydration. Ordinary `subscribe(store, listener)` callbacks remain batched. The React hooks do not have a `sync` option. A normal sequence of mutations in an event can be batched into one React commit, but selectors may run after each mutation; this is not a transaction API.
+
+---
+SOURCE: https://codebelt.github.io/classy-store/docs/SOLID
+---
+
+# Solid 2 integration
+
+The `/solid` adapter targets **Solid 2.0.0-rc.18 only**. Solid 2 is a release
+candidate, so pin this exact version. Solid 1 is no longer supported by this
+adapter. The import and return shape stay the same:
+
+```typescript
+import {useClassyStore} from '@codebelt/classy-store/solid';
+
+// Inside a component or live createRoot():
+const state = useClassyStore(store); // () => Snapshot<typeof store>
+```
+
+Install the runtime packages for a browser application:
+
+```sh
+npm install @codebelt/classy-store solid-js@2.0.0-rc.18 @solidjs/web@2.0.0-rc.18
+```
+
+The repository example uses `@solidjs/vite-plugin@3.0.0-next.51`,
+`@solidjs/compiler@2.0.0-rc.18`, and Vite `8.3.5`. The Vite plugin requires
+Node.js 22.12 or later. Use `@solidjs/web` for DOM imports and
+`jsxImportSource: "@solidjs/web"` in TypeScript configuration. Replace the
+Solid 1 `vite-plugin-solid` package with `@solidjs/vite-plugin`.
+
+## Inputs, computed values, and lists
+
+Read immutable snapshots through the returned accessor in JSX or `createMemo`.
+Write to the original store through actions in event handlers. The adapter
+publishes whole snapshots; it does not expose React's selector or auto-tracking
+options.
+
+```tsx
+import {createClassyStore} from '@codebelt/classy-store';
+import {useClassyStore} from '@codebelt/classy-store/solid';
+import {For} from '@solidjs/web';
+import {createMemo, flush} from 'solid-js';
+
+class FormStore {
+  text = 'Hello';
+  items = [{id: 1, label: 'First'}];
+
+  get length() {
+    return this.text.length;
+  }
+  setText(text: string) {
+    this.text = text;
+  }
+  replaceItems() {
+    this.items = [{id: 1, label: 'Updated'}, {id: 2, label: 'Second'}];
+  }
+}
+
+// Shared state for this client-rendered example.
+const formStore = createClassyStore(new FormStore());
+
+export function Form() {
+  const state = useClassyStore(formStore);
+  const uppercase = createMemo(() => state().text.toUpperCase());
+
+  function handleReset() {
+    formStore.setText('Hello');
+    flush();
+    // Reactive reads and DOM bindings now reflect the mutation.
+    console.log(uppercase());
+  }
+
+  return (
+    <section>
+      <label>
+        Text
+        <input
+          value={state().text}
+          onInput={(event) => formStore.setText(event.currentTarget.value)}
+        />
+      </label>
+      <p>{uppercase()} ({state().length} characters)</p>
+      <button type="button" onClick={handleReset}>Reset</button>
+      <button type="button" onClick={() => formStore.replaceItems()}>
+        Replace items
+      </button>
+      <ul>
+        <For each={state().items} keyed={(item) => item.id}>
+          {(item) => <li>{item().label}</li>}
+        </For>
+      </ul>
+    </section>
+  );
+}
+```
+
+Solid 2's custom-key `For` callback receives an item **accessor**. A stable key
+preserves the row's DOM when an immutable snapshot replaces the item object;
+read `item().label` in JSX so its content updates too.
+
+## Timing
+
+The adapter forwards each store mutation to its internal Solid signal
+synchronously. Solid 2 then schedules its normal reactive updates, coalescing
+consecutive writes. The adapter never calls `flush()` itself.
+
+Use Solid's `flush()` after an action when imperative code needs updated
+computed values or DOM immediately. Ordinary event handlers can let Solid apply
+the updates normally. Avoid capturing snapshot fields at component setup time;
+read them in JSX or a memo to retain reactivity.
+
+Ordinary `subscribe(store, callback)` listeners remain microtask-batched.
+Calling Solid's `flush()` does not flush these core listeners. Read
+`snapshot(store)` when imperative code needs the current core state independently
+of Solid's scheduler.
+
+## Ownership and cleanup
+
+Call `useClassyStore()` during component setup or inside a live `createRoot()`.
+Calls without an owner, or with an already-disposed owner, throw before a
+subscription is created. Unmounting the component or disposing its owner removes
+the subscription. Nested roots follow Solid 2's parent-owned lifetime; independent
+roots clean up independently.
+
+For manual ownership, retain and call the root's disposer:
+
+```typescript
+import {createRoot, flush} from 'solid-js';
+import {useClassyStore} from '@codebelt/classy-store/solid';
+
+const session = createRoot((dispose) => ({
+  state: useClassyStore(formStore),
+  dispose,
+}));
+
+formStore.setText('Updated');
+flush();
+console.log(session.state().text);
+session.dispose();
+```
+
+This integration pass covers client rendering, real inputs, computed values,
+keyed lists, and owner cleanup. It does not establish Solid 2 streaming,
+hydration, router, or async-transition compatibility.
 
 ---
 SOURCE: https://codebelt.github.io/classy-store/docs/SUBSCRIBE_KEY_TUTORIAL

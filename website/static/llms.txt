@@ -16,6 +16,8 @@
   store definition, React hook modes (selector/auto-tracked), `createStoreHook`, collections,
   controlled inputs without timing options, inheritance, async patterns, local stores
 
+- [Solid 2 integration](https://codebelt.github.io/classy-store/docs/SOLID): Exact rc.18 requirement, inputs, computed values, keyed lists, native batching, flush, and owner cleanup
+
 ## Utilities
 
 - [Reactive collections](https://codebelt.github.io/classy-store/docs/REACTIVE_COLLECTIONS_TUTORIAL): Observable Map-like and Set-like operations, with explicit persistence transforms

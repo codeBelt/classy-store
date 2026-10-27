@@ -3,5 +3,6 @@
   "compilerOptions": {
     "rootDir": "../.."
   },
-  "include": ["**/*.ts", "**/*.tsx"]
+  "include": ["**/*.ts", "**/*.tsx"],
+  "exclude": ["solid", "solid.spec.ts"]
 }

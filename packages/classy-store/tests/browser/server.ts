@@ -1,4 +1,5 @@
 import {fileURLToPath} from 'node:url';
+import {transform} from '@solidjs/compiler';
 import {compile} from 'svelte/compiler';
 import {compileScript, parse} from 'vue/compiler-sfc';
 import {compileConsumer} from '../compiler/compileConsumer.mjs';
@@ -128,12 +129,46 @@ if (!vueBundle.success)
   throw new AggregateError(vueBundle.logs, 'Could not bundle Vue fixture');
 const vueScript = await vueBundle.outputs[0].text();
 
+const solidBundle = await Bun.build({
+  entrypoints: [fileURLToPath(new URL('./solid/client.tsx', import.meta.url))],
+  target: 'browser',
+  format: 'iife',
+  conditions: ['development'],
+  plugins: [
+    {
+      name: 'solid-consumer',
+      setup(build) {
+        build.onLoad({filter: /\/solid\/.*\.tsx$/}, async ({path}) => {
+          const result = transform(await Bun.file(path).text(), {
+            filename: path,
+            generate: 'dom',
+            dev: true,
+          });
+          return {contents: result.code, loader: 'ts'};
+        });
+      },
+    },
+  ],
+});
+if (!solidBundle.success)
+  throw new AggregateError(solidBundle.logs, 'Could not bundle Solid fixture');
+const solidScript = await solidBundle.outputs[0].text();
+
 Bun.serve({
   hostname: '127.0.0.1',
   port: 4179,
   routes: {
     '/': page,
     '/persistence': persistencePage,
+    '/solid': () =>
+      new Response(
+        '<!doctype html><html><head><meta charset="utf-8"><title>Solid consumer</title></head><body><div id="solid-root"></div><script src="/solid/client.js"></script></body></html>',
+        {headers: {'Content-Type': 'text/html; charset=utf-8'}},
+      ),
+    '/solid/client.js': () =>
+      new Response(solidScript, {
+        headers: {'Content-Type': 'text/javascript; charset=utf-8'},
+      }),
     '/vue': () =>
       new Response(
         '<!doctype html><html><head><meta charset="utf-8"><title>Vue consumer</title></head><body><div id="vue-root"></div><script src="/vue/client.js"></script></body></html>',
