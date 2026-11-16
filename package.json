@@ -31,7 +31,7 @@
     "---------- Release (Changesets) ----------------------------------------": "",
     "changeset": "changeset",
     "changeset:add": "changeset add",
-    "changeset:version": "changeset version",
+    "changeset:version": "changeset version && biome format --write packages/classy-store/CHANGELOG.md",
     "changeset:publish": "bun run build && changeset publish",
     "changeset:status": "changeset status",
     "prerelease:enter": "changeset pre enter",
