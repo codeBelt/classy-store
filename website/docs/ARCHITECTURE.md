@@ -138,7 +138,7 @@ root. This guide and the utility architecture guides live in `website/docs`.
 
 ### Overview
 
-The `createClassyStore()` function wraps a class instance in an ES6 Proxy. Assignments and deletions through that proxy, including array operations and supported nested state, are intercepted. Raw-object writes and descriptor changes bypass these traps. Subscribers are batched by default into one microtask notification, while React and Svelte use the synchronous path.
+The `createClassyStore()` function wraps a class instance in an ES6 Proxy. Assignments and deletions through that proxy, including array operations and supported nested state, are intercepted. Raw-object writes and descriptor changes bypass these traps. Subscribers are batched by default into one microtask notification, while React, Vue, Svelte, Solid, and Angular use the synchronous path.
 
 ### Data Flow: Mutation → Notification
 
@@ -220,6 +220,24 @@ store contract. It subscribes before delivering the initial snapshot so mutation
 inside that first callback are observed, and removes the subscription if the
 initial callback throws. Normal unsubscription stops delivery even if another
 subscriber removes it during an in-progress notification.
+
+The Vue adapter updates its shallow ref synchronously too. Vue handles render
+batching, and `nextTick()` then waits for the queued DOM update. The hook requires
+an active component or effect scope to own cleanup, and ignores notifications if
+that scope has been disposed during an in-progress notification.
+
+The Solid 2 adapter forwards synchronous notifications into an internal signal
+with `ownedWrite: true`, allowing external store notifications while an owner is
+active. Solid schedules its own reactive work; the adapter never calls `flush()`.
+A live owner is required before subscribing. Owner cleanup marks delivery inactive
+before removing the listener, and callbacks also check disposal during notification.
+The adapter targets the exact `2.0.0-rc.18` prerelease; see the [Solid guide](./SOLID.md).
+
+The Angular adapter also uses synchronous notifications, keeping its readonly
+snapshot signal and dependent computed reads current. Angular schedules its own
+effects and rendering, including zoneless `OnPush` views. `DestroyRef` owns the
+subscription; an inactive/destroyed guard ignores callbacks during teardown.
+It supports stable Angular 22 releases (`^22.0.0`); see the [Angular guide](./ANGULAR.md).
 
 ### Version Propagation
 

@@ -10,7 +10,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        react: ['18.0.0', '18.3.1', '19.3.1']
+        react: ['18.0.0', '18.3.1', '19.0.0', '19.3.1']
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6

@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc -b && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "check:integration": "vue-tsc --project ../../packages/classy-store/tests/browser/vue/tsconfig.json --noEmit"
   },
   "dependencies": {
     "@codebelt/classy-store": "workspace:*",

@@ -1,13 +1,10 @@
-import {
-  createClassyStore,
-  getInternal,
-  subscribe,
-} from '../../../src/core/core';
+import {createClassyStore, subscribe} from '../../../src/core/core';
 import {
   type ClassyReadable,
   toSvelteStore,
 } from '../../../src/frameworks/svelte/svelte';
 import type {Snapshot} from '../../../src/types';
+import {getListenerCounts} from '../getListenerCounts';
 
 class FormStore {
   text = 'abcdef';
@@ -78,6 +75,6 @@ export const snap: ClassyReadable<Snapshot<FormStore>> = {
 export function getProbe() {
   return {
     ...probe,
-    syncListeners: getInternal(formStore).syncListeners.size,
+    listeners: getListenerCounts(formStore),
   };
 }

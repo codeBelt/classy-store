@@ -14,6 +14,8 @@ const sidebars: SidebarsConfig = {
         'REACT_SSR',
         'REACT_NEXT',
         'REACT_SCOPING',
+        'SOLID',
+        'ANGULAR',
         'PERSIST_TUTORIAL',
         'REACTIVE_COLLECTIONS_TUTORIAL',
         'DEVTOOLS_TUTORIAL',

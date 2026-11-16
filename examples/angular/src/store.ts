@@ -10,6 +10,9 @@ export class CounterStore {
   count = 0;
   step = 1;
   label = 'My Counter';
+  enabled = true;
+  items = [{id: 1, label: 'First item'}];
+  nextItemId = 2;
 
   get doubled() {
     return this.count * 2;
@@ -21,11 +24,18 @@ export class CounterStore {
   decrement() {
     this.count -= this.step;
   }
-  setStep(n: number) {
-    this.step = n;
+  setStep(step: number) {
+    this.step = step;
   }
-  setLabel(s: string) {
-    this.label = s;
+  setLabel(label: string) {
+    this.label = label;
+  }
+  addItem() {
+    const id = this.nextItemId++;
+    this.items.push({id, label: `Item ${id}`});
+  }
+  reverseItems() {
+    this.items.reverse();
   }
   reset() {
     this.count = 0;

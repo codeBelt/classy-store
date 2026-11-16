@@ -1,6 +1,6 @@
 import path from 'node:path';
+import solidPlugin from '@solidjs/vite-plugin';
 import {defineConfig} from 'vite';
-import solidPlugin from 'vite-plugin-solid';
 
 export default defineConfig({
   plugins: [solidPlugin()],
@@ -9,21 +9,21 @@ export default defineConfig({
       {
         find: '@codebelt/classy-store/solid',
         replacement: path.resolve(
-          __dirname,
+          import.meta.dirname,
           '../../packages/classy-store/src/frameworks/solid/solid.ts',
         ),
       },
       {
         find: '@codebelt/classy-store/utils',
         replacement: path.resolve(
-          __dirname,
+          import.meta.dirname,
           '../../packages/classy-store/src/utils/index.ts',
         ),
       },
       {
         find: '@codebelt/classy-store',
         replacement: path.resolve(
-          __dirname,
+          import.meta.dirname,
           '../../packages/classy-store/src/index.ts',
         ),
       },

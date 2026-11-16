@@ -150,4 +150,4 @@ Browser storage belongs in the client setup; do not access `localStorage` at mod
 
 ## Regression coverage
 
-`bun run test:react:compatibility` copies the actual example provider, context, hook, and class into isolated installed-package consumers on React 18.0, 18.3, and 19.3. Tests cover sibling and nested isolation, missing providers, stable initialization, keyed resets, Strict Mode, persistence replacement/removal, pending-read cleanup, request isolation, and delayed Suspense hydration with DOM reuse. Strict type checks verify mutable commands, readonly snapshots, selector inference, and provider props.
+`bun run test:react:compatibility` copies the actual example provider, context, hook, and class into isolated installed-package consumers on React 18.0, 18.3, 19.0, and 19.3. Tests cover sibling and nested isolation, missing providers, stable initialization, keyed resets, Strict Mode, persistence replacement/removal, pending-read cleanup, request isolation, and delayed Suspense hydration with DOM reuse. Strict type checks verify mutable commands, readonly snapshots, selector inference, and provider props.

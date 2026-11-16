@@ -1,0 +1,11 @@
+{
+  "extends": "../../../../../examples/angular/tsconfig.json",
+  "compilerOptions": {
+    "outDir": "../../../../../examples/angular/.angular/integration-types",
+    "types": [],
+    "declaration": false,
+    "importHelpers": false
+  },
+  "files": ["client.ts"],
+  "include": ["../angular.spec.ts"]
+}

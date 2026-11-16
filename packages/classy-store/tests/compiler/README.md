@@ -2,7 +2,7 @@
 
 Run `bun run test:react:compiler` from the repository root. The runner builds on
 the package's existing `dist`, packs that public package, and installs isolated
-React 18.0, 18.3, and current React 19 consumers. To check one version after a
+React 18.0, 18.3, 19.0, and current React 19 consumers. To check one version after a
 library build:
 
 ```sh

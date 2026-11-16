@@ -1,5 +1,56 @@
 # @codebelt/classy-store
 
+## 0.10.0
+
+### Minor Changes
+
+- [#42](https://github.com/codeBelt/classy-store/pull/42) [`68bb261`](https://github.com/codeBelt/classy-store/commit/68bb261f9d127159ec7fb98e20add4d049fc6b55) Thanks [@codeBelt](https://github.com/codeBelt)! - Bound optional framework peers to supported stable majors: React `^18.0.0 || ^19.0.0`, Vue `^3.2.0`, and Svelte `^4.0.0 || ^5.0.0`. Future majors are no longer accepted automatically. Development dependency versions remain unchanged.
+
+  Fix the Vue adapter's public declaration to return `Ref<Snapshot<T>>` backed by a shallow ref. Vue 3.2.0 does not export the newer `ShallowRef` type; the stable type preserves readonly snapshot inference at the advertised minimum without changing runtime behavior.
+
+  Validate packed consumers at React 18.0.0/19.0.0, Vue 3.2.0, and Svelte 4.0.0/5.0.0 using existing focused tests. Add the minimums to CI coverage and document Svelte 4's native deferred `$:` computations versus Svelte 5's immediate `$derived` reads. Store snapshots still update synchronously in the adapters, and ordinary core subscriptions remain batched.
+
+- [#42](https://github.com/codeBelt/classy-store/pull/42) [`68bb261`](https://github.com/codeBelt/classy-store/commit/68bb261f9d127159ec7fb98e20add4d049fc6b55) Thanks [@codeBelt](https://github.com/codeBelt)! - Support all stable Angular 22 releases with the optional `@angular/core` peer set to `^22.0.0` and update `injectStore` signals synchronously while preserving Angular's native rendering schedule and ordinary core subscription batching. Ignore notifications during teardown and release each subscription with its Angular lifecycle.
+
+  This removes support for Angular 21 and earlier. Use aligned Angular runtime/compiler packages from a stable Angular 22 release and a compatible TypeScript 6.0 toolchain. Development dependencies and the example remain pinned to 22.2.3. The `/angular` import path and `injectStore(store)` signature are unchanged; imperative signal and computed reads now reflect writes immediately.
+
+  Add zoneless input, computed, keyed-list, and cleanup regressions, an updated Angular example, and migration documentation. Validate packed consumers with aligned Angular 22.0.0 and 22.2.3 packages and run the shared focused browser tests for both versions in CI.
+
+## 0.9.0
+
+### Minor Changes
+
+- [#40](https://github.com/codeBelt/classy-store/pull/40) [`3e2281d`](https://github.com/codeBelt/classy-store/commit/3e2281ddf1202c4742afdd72b0f5065c7d81d237) Thanks [@codeBelt](https://github.com/codeBelt)! - Migrate the `/solid` adapter to Solid 2.0.0-rc.18 only. Solid 1 is no longer
+  supported. Pin the exact release candidate; browser apps should also use
+  `@solidjs/web@2.0.0-rc.18` and Solid 2's compiler tooling. The public
+  `useClassyStore(store): () => Snapshot<T>` API is unchanged.
+
+  Forward store notifications synchronously to Solid while preserving Solid 2's
+  native scheduling and ordinary core subscription batching. Solid's `flush()`
+  now applies pending store-backed computed values and DOM updates.
+
+  Require a live Solid owner before subscribing, and release subscriptions on owner
+  disposal, including disposal during notification. Add real-component regressions
+  for inputs, computed values, keyed lists, timing, and cleanup; update the example,
+  TypeScript checks, CI, and public integration guide.
+
+## 0.8.2
+
+### Patch Changes
+
+- [#38](https://github.com/codeBelt/classy-store/pull/38) [`dfe1228`](https://github.com/codeBelt/classy-store/commit/dfe1228d63472387f002295f1f62bd6160f83be0) Thanks [@codeBelt](https://github.com/codeBelt)! - Update Vue snapshot refs synchronously so computed values are immediately current
+  and one `await nextTick()` waits for the resulting DOM update. Vue rendering and
+  ordinary core subscriptions still batch.
+
+  Require an active Vue effect scope for `useClassyStore()` and stop delivery when
+  that scope is disposed, including disposal during notification. Call the hook in
+  `setup()` / `<script setup>` or `effectScope().run()`; calls without an active
+  scope now throw instead of creating a subscription with no cleanup owner.
+
+  Correct the Vue peer dependency to 3.2 or later, matching the Effect Scope APIs
+  used by the adapter. Add regressions for inputs, writable computed models, class
+  getters, keyed lists, timing, and component cleanup.
+
 ## 0.8.1
 
 ### Patch Changes
