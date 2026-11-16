@@ -12,35 +12,9 @@ Connect any store to Redux DevTools for state inspection and time-travel debuggi
 
 <DemoContainer labels={["Store", "Usage"]} demo={<DevtoolsDemo />}>
 
-```typescript
-class DevtoolsCounterStore {
-  count = 0;
-  label = 'DevTools Counter';
+<include>../../examples/demos/devtools/DevtoolsDemo.tsx#counter</include>
 
-  increment() { this.count++; }
-  decrement() { this.count--; }
-  setLabel(label: string) { this.label = label; }
-}
-
-const store = createClassyStore(
-  new DevtoolsCounterStore()
-);
-```
-
-```tsx
-import { devtools } from '@codebelt/classy-store/utils';
-
-// Connect to Redux DevTools
-useEffect(() => {
-  const dispose = devtools(store, {
-    name: 'MyCounter',
-  });
-  return dispose; // cleanup on unmount
-}, []);
-
-// That's it! Open Redux DevTools to inspect
-// state changes, time-travel, and dispatch.
-```
+<include>../../examples/demos/devtools/DevtoolsDemo.tsx#connect</include>
 
 </DemoContainer>
 

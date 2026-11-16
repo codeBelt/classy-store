@@ -26,6 +26,8 @@ function ThemeToggle() {
         <span className="text-sm text-zinc-400">Theme</span>
         <button
           type="button"
+          aria-label="Dark preference"
+          aria-pressed={theme === 'dark'}
           onClick={() =>
             preferencesStore.setTheme(theme === 'dark' ? 'light' : 'dark')
           }
@@ -163,7 +165,6 @@ export function SimplePersistDemo() {
             preferencesStore.reset();
             try {
               await preferencesHandle.clear();
-              await preferencesHandle.save();
             } catch {
               // The status hook renders the storage error below.
             }

@@ -10,17 +10,25 @@ import {StorageInspector} from './StorageInspector';
 
 function HydrationBadge() {
   const {kitchenSinkHandle} = usePersistenceExamples();
-  const {isHydrated: hydrated} = usePersistStatus(kitchenSinkHandle);
+  const {isHydrated, isDisposed, lastError} =
+    usePersistStatus(kitchenSinkHandle);
+  const label = isDisposed
+    ? 'stopped'
+    : lastError
+      ? `Error: ${lastError.operation}`
+      : isHydrated
+        ? 'hydrated'
+        : 'hydrating…';
 
   return (
     <span
       className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-mono border ${
-        hydrated
+        isHydrated && !isDisposed && !lastError
           ? 'text-emerald-400 border-emerald-400/30'
           : 'text-amber-400 border-amber-400/30 animate-pulse'
       }`}
     >
-      {hydrated ? 'hydrated' : 'hydrating...'}
+      {label}
     </span>
   );
 }
@@ -39,20 +47,25 @@ function AddNoteForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex gap-2">
+    <form
+      onSubmit={handleSubmit}
+      className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]"
+    >
       <input
         type="text"
         value={title}
         onChange={(event) => setTitle(event.target.value)}
+        aria-label="Note title"
         placeholder="Note title"
-        className="flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-1.5 text-sm text-zinc-200 placeholder-zinc-500 outline-none focus:border-teal-500/50"
+        className="min-w-0 flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-1.5 text-sm text-zinc-200 placeholder-zinc-500 outline-none focus:border-teal-500/50"
       />
       <input
         type="text"
         value={body}
         onChange={(event) => setBody(event.target.value)}
+        aria-label="Note body"
         placeholder="Body"
-        className="flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-1.5 text-sm text-zinc-200 placeholder-zinc-500 outline-none focus:border-teal-500/50"
+        className="min-w-0 flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-1.5 text-sm text-zinc-200 placeholder-zinc-500 outline-none focus:border-teal-500/50"
       />
       <button
         type="submit"
@@ -119,7 +132,7 @@ function NotesList() {
                   type="button"
                   onClick={() => kitchenSinkStore.removeNote(id)}
                   className="text-zinc-600 hover:text-rose-400 text-sm transition-colors cursor-pointer shrink-0"
-                  title="Delete note"
+                  aria-label={`Delete note: ${note.title}`}
                 >
                   x
                 </button>
@@ -156,6 +169,7 @@ function TagsSection() {
             {tag}
             <button
               type="button"
+              aria-label={`Remove tag: ${tag}`}
               onClick={() => kitchenSinkStore.removeTag(tag)}
               className="text-violet-400/50 hover:text-rose-400 cursor-pointer"
             >
@@ -181,7 +195,7 @@ function TagsSection() {
           value={newTag}
           onChange={(event) => setNewTag(event.target.value)}
           placeholder="Add tag"
-          className="flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-1 text-sm text-zinc-200 placeholder-zinc-500 outline-none focus:border-violet-500/50"
+          className="min-w-0 flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-1 text-sm text-zinc-200 placeholder-zinc-500 outline-none focus:border-violet-500/50"
         />
         <button
           type="submit"
@@ -206,6 +220,7 @@ function ViewControls() {
         <div className="flex rounded-lg border border-zinc-700 overflow-hidden">
           <button
             type="button"
+            aria-pressed={viewMode === 'list'}
             onClick={() => kitchenSinkStore.setViewMode('list')}
             className={`px-2.5 py-1 text-xs cursor-pointer transition-colors ${
               viewMode === 'list'
@@ -217,6 +232,7 @@ function ViewControls() {
           </button>
           <button
             type="button"
+            aria-pressed={viewMode === 'grid'}
             onClick={() => kitchenSinkStore.setViewMode('grid')}
             className={`px-2.5 py-1 text-xs cursor-pointer transition-colors ${
               viewMode === 'grid'
@@ -228,6 +244,7 @@ function ViewControls() {
           </button>
         </div>
         <select
+          aria-label="Sort notes"
           value={sortBy}
           onChange={(event) =>
             kitchenSinkStore.setSortBy(event.target.value as 'date' | 'title')
@@ -257,8 +274,9 @@ function SearchInput() {
         type="text"
         value={searchQuery}
         onChange={(event) => kitchenSinkStore.setSearch(event.target.value)}
-        placeholder="Search notes... (debounced 300ms)"
-        className="flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-1.5 text-sm text-zinc-200 placeholder-zinc-500 outline-none focus:border-teal-500/50"
+        aria-label="Search notes"
+        placeholder="Search notes…"
+        className="min-w-0 flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-1.5 text-sm text-zinc-200 placeholder-zinc-500 outline-none focus:border-teal-500/50"
       />
       <RenderBadge count={renders} />
     </div>
@@ -290,19 +308,19 @@ function LastEdited() {
 
 function ControlPanel() {
   const {kitchenSinkStore, kitchenSinkHandle} = usePersistenceExamples();
-  const [status, setStatus] = useState('');
-
-  const showStatus = (message: string) => {
-    setStatus(message);
-    setTimeout(() => setStatus(''), 2000);
-  };
+  const [status, showStatus] = useState('');
+  const {isDisposed} = usePersistStatus(kitchenSinkHandle);
 
   return (
     <div>
       <span className="text-xs text-zinc-500 uppercase tracking-wide block mb-2">
         Persist Controls
       </span>
-      <div className="flex flex-wrap gap-2">
+      <fieldset
+        disabled={isDisposed}
+        aria-label="Persistence actions"
+        className="flex flex-wrap gap-2"
+      >
         <Button
           variant="secondary"
           size="sm"
@@ -378,7 +396,7 @@ function ControlPanel() {
         >
           Full Reset
         </Button>
-      </div>
+      </fieldset>
       {status && (
         <p className="text-xs text-emerald-400 mt-2 font-mono">{status}</p>
       )}

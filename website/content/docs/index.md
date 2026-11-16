@@ -14,7 +14,7 @@ bun add @codebelt/classy-store
 ### 1. Define a store class
 
 ```ts title="counter.ts"
-class Counter {
+export class Counter {
   count = 0;
 
   increment() {
@@ -25,20 +25,21 @@ class Counter {
 
 ### 2. Create a reactive store
 
-```ts
+```ts title="stores.ts"
 import {createClassyStore, snapshot} from '@codebelt/classy-store';
+import {Counter} from './counter';
 
-const counter = createClassyStore(new Counter());
-counter.increment();
-snapshot(counter).count; // 1
+export const counter = createClassyStore(new Counter());
+snapshot(counter).count; // 0
 ```
 
 ### 3. Use in React components
 
-```tsx
+```tsx title="CounterButton.tsx"
 import {useClassyStore} from '@codebelt/classy-store/react';
+import {counter} from './stores';
 
-function CounterButton() {
+export function CounterButton() {
   const count = useClassyStore(counter, (state) => state.count);
   return <button onClick={() => counter.increment()}>{count}</button>;
 }

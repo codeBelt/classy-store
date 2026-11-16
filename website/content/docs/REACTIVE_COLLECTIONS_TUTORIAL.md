@@ -16,11 +16,11 @@ arrays internally and expose Map-like and Set-like methods. They are not native
 
 ## Collection behavior
 
-- Lookups and mutations scan backing arrays, so they are O(n), not native-map-style indexed lookups.
+- Reading `.size` takes constant time. Looking up, inserting, replacing, or deleting an entry can scan the backing array. Passing validated entries or values to the factory deduplicates the initial iterable in one pass.
 - Prefer primitive map keys and set values. Objects read through a store can be proxied, and snapshots copy supported objects; their identity may differ from the original input object.
 - Lookup methods use `Object.is`, which distinguishes `0` and `-0`. Initial iterables are deduplicated with native `Map`/`Set` semantics, which treat those two values as equal. Avoid depending on signed-zero keys.
 - Iterators copy the entry/value list when created. Later additions and removals do not change that list; referenced objects can still change. This differs from native live iterators.
-- The public factories expose the listed Map-like/Set-like methods, not every native collection API or subclassing behavior.
+- Both collections expose `size`, `has`, `delete`, `clear`, `keys`, `values`, `entries`, `forEach`, and iteration with `for...of`. The map also exposes `get` and `set`. The set exposes `add`.
 
 ## Reactive updates
 
@@ -75,8 +75,7 @@ const persistence = persist(labelStore, {
       serialize: (labels) => [...labels.entries()],
       deserialize: (stored) => {
         if (!Array.isArray(stored)) throw new Error('Expected label entries');
-        const labels = reactiveMap<string, string>();
-        for (const entry of stored) {
+        const entries = stored.map((entry): [string, string] => {
           if (
             !Array.isArray(entry) ||
             entry.length !== 2 ||
@@ -85,9 +84,9 @@ const persistence = persist(labelStore, {
           ) {
             throw new Error('Invalid label entry');
           }
-          labels.set(entry[0], entry[1]);
-        }
-        return labels;
+          return [entry[0], entry[1]];
+        });
+        return reactiveMap(entries);
       },
     },
   ],
@@ -132,12 +131,10 @@ const persistence = persist(tagStore, {
       serialize: (tags) => [...tags],
       deserialize: (stored) => {
         if (!Array.isArray(stored)) throw new Error('Expected tags');
-        const tags = reactiveSet<string>();
-        for (const value of stored) {
-          if (typeof value !== 'string') throw new Error('Invalid tag');
-          tags.add(value);
+        if (!stored.every((value) => typeof value === 'string')) {
+          throw new Error('Invalid tag');
         }
-        return tags;
+        return reactiveSet<string>(stored);
       },
     },
   ],

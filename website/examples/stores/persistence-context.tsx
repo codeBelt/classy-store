@@ -21,7 +21,10 @@ export function PersistenceProvider({children}: {children: ReactNode}) {
   useEffect(() => {
     let session: Experiments;
     try {
-      session = createPersistenceExamples(window.localStorage);
+      const storage = window.localStorage;
+      // Some browsers expose Storage but reject reads under their privacy policy.
+      storage.getItem('preferences');
+      session = createPersistenceExamples(storage);
     } catch {
       setExamples('unavailable');
       return;

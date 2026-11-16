@@ -12,39 +12,9 @@ withHistory() adds undo/redo via snapshot stack. Use pause()/resume() to control
 
 <DemoContainer labels={["Store", "Usage"]} demo={<UndoRedoDemo />}>
 
-```typescript
-class TextEditorStore {
-  title = 'Untitled Document';
-  content = 'Start typing here...';
+<include>../../examples/stores/historyStore.ts</include>
 
-  setTitle(title: string) { this.title = title; }
-  setContent(content: string) { this.content = content; }
-  reset() {
-    this.title = 'Untitled Document';
-    this.content = 'Start typing here...';
-  }
-}
-
-const store = createClassyStore(new TextEditorStore());
-const history = withHistory(store, { limit: 50 });
-```
-
-```tsx
-// Undo/redo controls
-history.undo();
-history.redo();
-
-// Subscribe to status inside a React component
-const {canUndo, canRedo, isPaused} = useHistoryStatus(history);
-
-// Synchronous edits naturally share one history entry
-store.setTitle('New Title');
-store.setContent('New content');
-
-// Control recording separately
-history.pause(); // skip notifications delivered while paused
-history.resume(); // record future notifications
-```
+<include>../../examples/demos/history/UndoRedoDemo.tsx#controls</include>
 
 </DemoContainer>
 

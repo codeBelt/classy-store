@@ -74,15 +74,15 @@ See the [Angular guide](./ANGULAR.md) for inputs, keyed lists, and migration.
 
 ### `createClassyStore(instance)`
 
-Wraps a class instance in a reactive Proxy. Mutations notify React, Vue, Svelte, Solid, and Angular adapters immediately; ordinary subscribers are batched via `queueMicrotask`.
+Wraps a class instance or plain object in a reactive proxy. Passing the same instance or its store proxy again returns the existing proxy. Mutations notify framework adapters synchronously. Ordinary subscribers receive a batched notification in a microtask.
 
 ```typescript
 const myStore = createClassyStore(new MyClass());
 ```
 
 - **Prototype methods** are automatically bound so `this` mutations go through the proxy; arrow-function fields cannot be rebound
-- **Getters** are automatically memoized — they only recompute when a dependency changes (like MobX `@computed`)
-- **Nested plain objects, arrays, and reactive collections** share a single proxy per object. Retained rows stay reactive after reordering or filtering. Other nested class instances remain opaque
+- **Getters** cache results from the store properties they read. Initialize optional fields used in getters, including fields whose initial value is `undefined`. A live getter that reads an absent field recomputes on subsequent reads
+- **Nested plain objects, arrays, and reactive collections** share a single proxy per object. Retained rows stay reactive after reordering or filtering. A separately created store embedded by its proxy stays reactive too. Ordinary nested class instances remain opaque
 
 Keep the returned proxy as the mutable store. Writes to the original instance
 or raw nested objects bypass notifications and snapshot invalidation. See the
@@ -151,7 +151,7 @@ return (
 
 React subscriptions always notify synchronously, including selector, auto-tracked, and bound hooks. There is no React `sync` option. This lets React observe controlled-field changes during the input event and preserve caret position. Ordinary `subscribe()` callbacks remain batched.
 
-Migration: remove `{sync: true}` or `{sync: false}` from React hook calls and remove imports of `UseClassyStoreOptions`. Selector options still support `isEqual`. Synchronous notification does not make a method transactional: selectors can observe each write, while React batches rendering within event handlers.
+When upgrading from 0.6.x, remove the React hook's `sync` option and imports of `UseClassyStoreOptions`. Selector options still support `isEqual`. Selectors can observe each write to a store even when React batches the resulting renders. [0.7.0 upgrade guide](./UPGRADING_0_7.md)
 
 ### `useHistoryStatus(history)`
 
@@ -217,7 +217,7 @@ Import the preparation helper from `@codebelt/classy-store/react/server` on both
 
 ### `useLocalStore(factory)`
 
-Creates a component-scoped reactive store. Each component instance gets its own isolated store. Unmounting releases React's reference; the store can be garbage collected when no other references remain.
+Creates a component-scoped reactive store from the factory's return value. Return a fresh instance for each mount to isolate components. A factory that returns the same object shares its proxy across mounts. Unmounting releases React's reference, and the store can be collected once other owners release it.
 
 ```tsx
 import {useLocalStore, useClassyStore} from '@codebelt/classy-store/react';
@@ -321,7 +321,7 @@ const snap = snapshot(myStore);
 
 ### `subscribe(store, callback, options?)`
 
-Low-level subscription API. Returns an unsubscribe function. By default, the callback fires once per batched mutation after the microtask flush. Pass `{sync: true}` to notify immediately on each mutation.
+Returns an unsubscribe function. By default, consecutive writes before the scheduled microtask runs produce one callback during that microtask. Pass `{sync: true}` to notify immediately after each mutation.
 
 A subscription to a store created by `createClassyStore()` observes its own subtree, even when another store contains it. A subscription to a child proxy also observes siblings within its nearest owning stores. Moving that child updates its subscription scope automatically.
 
@@ -340,12 +340,16 @@ const unsubSync = subscribe(
   {sync: true},
 );
 
-// Later: unsub();
+// When the listeners are no longer needed:
+unsub();
+unsubSync();
 ```
 
 ### `shallowEqual(a, b)`
 
-Compares primitives with `Object.is`, arrays by length, occupied indices and element values, and other objects by their own enumerable string keys and values. A hole and an explicit `undefined` element compare differently. Comparing an array with a record returns `false`, even when both are empty. Use it for selectors returning plain records or arrays when one-level equality matches the UI's needs. It does not compare prototypes, symbol keys, or native `Map`/`Set`/`Date` contents; different instances with no enumerable keys can compare equal.
+Use `shallowEqual` for selectors returning arrays or plain records with enumerable data fields. It compares primitives with `Object.is` and arrays by length, occupied indices, and element values. A hole differs from an explicit `undefined` element. Comparing an array with a record returns `false`.
+
+For records it compares enumerable string-key counts, then checks each key from the first record for own membership and an `Object.is`-equal value in the second. If keys differ in enumerability, the result can depend on argument order. Symbol keys, prototypes, and the contents of native maps, sets, and dates fall outside this comparison.
 
 [Compare selectors with shallowEqual →](/examples/shallow-equal/)
 
@@ -353,13 +357,13 @@ Compares primitives with `Object.is`, arrays by length, occupied indices and ele
 
 Creates a reactive Map-like collection backed by a plain array. Use inside a `createClassyStore()` for full reactivity. Import from `@codebelt/classy-store/collections`.
 
-```typescript
+```tsx
 import {createClassyStore} from '@codebelt/classy-store';
 import {reactiveMap} from '@codebelt/classy-store/collections';
 import {useClassyStore} from '@codebelt/classy-store/react';
 
 class UserStore {
-  users = reactiveMap<string, { name: string; role: string }>();
+  users = reactiveMap<string, {name: string; role: string}>();
 
   addUser(id: string, name: string, role: string) {
     this.users.set(id, {name, role});
@@ -373,11 +377,13 @@ class UserStore {
 const userStore = createClassyStore(new UserStore());
 
 function UserList() {
-  const snap = useClassyStore(userStore, (state) => [...state.users.entries()]);
+  const users = useClassyStore(userStore, (state) => state.users);
   return (
     <ul>
-      {snap.map(([id, user]) => (
-        <li key={id}>{user.name} ({user.role})</li>
+      {[...users].map(([id, user]) => (
+        <li key={id}>
+          {user.name} ({user.role})
+        </li>
       ))}
     </ul>
   );
@@ -390,7 +396,7 @@ Supports: `.get()`, `.set()`, `.has()`, `.delete()`, `.clear()`, `.size`, `.keys
 
 Creates a reactive Set-like collection backed by a plain array. Use inside a `createClassyStore()` for full reactivity. Import from `@codebelt/classy-store/collections`.
 
-```typescript
+```tsx
 import {createClassyStore} from '@codebelt/classy-store';
 import {reactiveSet} from '@codebelt/classy-store/collections';
 import {useClassyStore} from '@codebelt/classy-store/react';
@@ -406,8 +412,14 @@ class TagStore {
 const tagStore = createClassyStore(new TagStore());
 
 function TagList() {
-  const tags = useClassyStore(tagStore, (state) => [...state.tags]);
-  return tags.map(tag => <span key={tag}>{tag}</span>);
+  const tags = useClassyStore(tagStore, (state) => state.tags);
+  return (
+    <ul>
+      {[...tags].map((tag) => (
+        <li key={tag}>{tag}</li>
+      ))}
+    </ul>
+  );
 }
 ```
 
@@ -417,7 +429,7 @@ Supports: `.add()`, `.has()`, `.delete()`, `.clear()`, `.size`, `.keys()`, `.val
 
 ### `Snapshot<T>`
 
-TypeScript utility type that marks object properties readonly and maps arrays to readonly arrays. Opaque leaf types and function signatures pass through unchanged. Methods remain callable in the type, so call mutating methods on the live store, not its snapshot. Runtime freezing follows the limitations described under [`snapshot`](#snapshotstore).
+TypeScript utility type that marks object properties readonly and maps mutable arrays to readonly arrays. Primitive and function types, dates, regular expressions, errors, native maps and sets, weak collections, and promises pass through unchanged. Other class types receive readonly properties even when their instances remain opaque at runtime. Methods keep their signatures. Call mutating methods on the live store. See the runtime [snapshot semantics](#snapshotstore).
 
 ```typescript
 import type {Snapshot} from '@codebelt/classy-store';
@@ -490,14 +502,19 @@ const unsub = subscribeKey(store, 'theme', (value, prev) => {
 
 ### `withHistory(store, options?)`
 
-Add undo/redo capability via a snapshot stack with pause/resume and configurable limits.
+Adds undo and redo with a bounded history of snapshots. Recording uses a batched subscription, so consecutive writes in the same turn produce one entry.
 
 ```typescript
+import {createClassyStore} from '@codebelt/classy-store';
 import {withHistory} from '@codebelt/classy-store/utils';
 
+const store = createClassyStore({count: 0});
 const history = withHistory(store, {limit: 100});
-history.undo();
-history.redo();
+store.count = 1;
+await Promise.resolve(); // let the recording subscription run
+history.undo(); // count is 0
+history.redo(); // count is 1
+history.dispose();
 ```
 
 > See the [withHistory Tutorial](./HISTORY_TUTORIAL.md).

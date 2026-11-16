@@ -4,7 +4,15 @@ import {persist} from '@codebelt/classy-store/utils';
 
 // ── Simple Store ────────────────────────────────────────────────────────────
 
-type AccentColor = 'indigo' | 'emerald' | 'rose' | 'amber' | 'cyan';
+// #region preferences
+const accentColors = {
+  indigo: '#818cf8',
+  emerald: '#34d399',
+  rose: '#fb7185',
+  amber: '#fbbf24',
+  cyan: '#22d3ee',
+} as const;
+type AccentColor = keyof typeof accentColors;
 
 export class PreferencesStore {
   theme: 'light' | 'dark' = 'dark';
@@ -12,15 +20,8 @@ export class PreferencesStore {
   accentColor: AccentColor = 'indigo';
 
   get cssVars() {
-    const colorMap: Record<AccentColor, string> = {
-      indigo: '#818cf8',
-      emerald: '#34d399',
-      rose: '#fb7185',
-      amber: '#fbbf24',
-      cyan: '#22d3ee',
-    };
     return {
-      '--accent': colorMap[this.accentColor],
+      '--accent': accentColors[this.accentColor],
       '--font-size': `${this.fontSize}px`,
     };
   }
@@ -43,13 +44,33 @@ export class PreferencesStore {
     this.accentColor = 'indigo';
   }
 }
+// #endregion preferences
 
 // ── Kitchen Sink Store ──────────────────────────────────────────────────────
 
+// #region notes
 interface Note {
   title: string;
   body: string;
   createdAt: string; // ISO string for easy serialization
+}
+
+function isNoteEntry(entry: unknown): entry is [string, Note] {
+  if (
+    !Array.isArray(entry) ||
+    entry.length !== 2 ||
+    typeof entry[0] !== 'string'
+  )
+    return false;
+  const note = entry[1];
+  return (
+    note !== null &&
+    typeof note === 'object' &&
+    typeof note.title === 'string' &&
+    typeof note.body === 'string' &&
+    typeof note.createdAt === 'string' &&
+    !Number.isNaN(Date.parse(note.createdAt))
+  );
 }
 
 export class KitchenSinkStore {
@@ -85,7 +106,7 @@ export class KitchenSinkStore {
   }
 
   addNote(title: string, body: string) {
-    const id = `n${Date.now()}`;
+    const id = crypto.randomUUID();
     this.notes.set(id, {
       title,
       body,
@@ -139,6 +160,7 @@ export class KitchenSinkStore {
     this.searchQuery = '';
   }
 }
+// #endregion notes
 
 export function createPersistenceExamples(storage: Storage) {
   // Native storage events only reach other tabs. Notify the on-page inspector
@@ -164,13 +186,38 @@ export function createPersistenceExamples(storage: Storage) {
     };
   }
 
+  // #region save-preferences
   const preferencesStore = createClassyStore(new PreferencesStore());
 
   const preferencesHandle = persist(preferencesStore, {
     name: 'preferences',
     storage: adapter,
+    merge(stored) {
+      if (
+        'theme' in stored &&
+        stored.theme !== 'dark' &&
+        stored.theme !== 'light'
+      )
+        throw new TypeError('Invalid stored theme');
+      if (
+        'fontSize' in stored &&
+        (typeof stored.fontSize !== 'number' ||
+          stored.fontSize < 12 ||
+          stored.fontSize > 24)
+      )
+        throw new TypeError('Invalid stored font size');
+      if (
+        'accentColor' in stored &&
+        (typeof stored.accentColor !== 'string' ||
+          !Object.hasOwn(accentColors, stored.accentColor))
+      )
+        throw new TypeError('Invalid stored accent');
+      return stored;
+    },
   });
+  // #endregion save-preferences
 
+  // #region save-notes
   const kitchenSinkStore = createClassyStore(new KitchenSinkStore());
 
   const kitchenSinkHandle = persist(kitchenSinkStore, {
@@ -182,27 +229,62 @@ export function createPersistenceExamples(storage: Storage) {
     merge: 'shallow',
 
     properties: [
-      'viewMode',
-      'sortBy',
-      'searchQuery',
+      {
+        key: 'viewMode',
+        serialize: (value) => value,
+        deserialize(value) {
+          if (value !== 'grid' && value !== 'list')
+            throw new TypeError('Invalid view mode');
+          return value;
+        },
+      },
+      {
+        key: 'sortBy',
+        serialize: (value) => value,
+        deserialize(value) {
+          if (value !== 'date' && value !== 'title')
+            throw new TypeError('Invalid sort order');
+          return value;
+        },
+      },
+      {
+        key: 'searchQuery',
+        serialize: (value) => value,
+        deserialize(value) {
+          if (typeof value !== 'string')
+            throw new TypeError('Invalid search query');
+          return value;
+        },
+      },
       {
         key: 'lastEditedAt',
-        serialize: (date) => (date as Date).toISOString(),
-        deserialize: (stored) => new Date(stored as string),
+        serialize: (date) => date.toISOString(),
+        deserialize(value) {
+          if (typeof value !== 'string' || Number.isNaN(Date.parse(value)))
+            throw new TypeError('Invalid last edit date');
+          return new Date(value);
+        },
       },
       {
         key: 'notes',
-        serialize: (notes) => [
-          ...(notes as ReturnType<typeof reactiveMap<string, Note>>).entries(),
-        ],
-        deserialize: (stored) => reactiveMap(stored as [string, Note][]),
+        serialize: (notes) => [...notes.entries()],
+        deserialize(value) {
+          if (!Array.isArray(value) || !value.every(isNoteEntry))
+            throw new TypeError('Invalid stored notes');
+          return reactiveMap(value);
+        },
       },
       {
         key: 'tags',
-        serialize: (tags) => [
-          ...(tags as ReturnType<typeof reactiveSet<string>>),
-        ],
-        deserialize: (stored) => reactiveSet(stored as string[]),
+        serialize: (tags) => [...tags],
+        deserialize(value) {
+          if (
+            !Array.isArray(value) ||
+            !value.every((tag) => typeof tag === 'string')
+          )
+            throw new TypeError('Invalid stored tags');
+          return reactiveSet<string>(value);
+        },
       },
     ],
 
@@ -214,6 +296,7 @@ export function createPersistenceExamples(storage: Storage) {
       return state;
     },
   });
+  // #endregion save-notes
 
   return {
     preferencesStore,

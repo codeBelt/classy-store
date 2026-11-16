@@ -25,6 +25,7 @@ export function SubscribeKeyDemo() {
   const [countLog, setCountLog] = useState<LogEntry[]>([]);
   const [nameLog, setNameLog] = useState<LogEntry[]>([]);
 
+  // #region subscriptions
   useEffect(() => {
     const ts = () => new Date().toLocaleTimeString();
 
@@ -51,6 +52,7 @@ export function SubscribeKeyDemo() {
       unsubName();
     };
   }, []);
+  // #endregion subscriptions
 
   return (
     <>

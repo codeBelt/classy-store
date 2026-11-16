@@ -43,13 +43,13 @@ This module-level instance is shared by importers in a client-only app. For SSR,
 
 ## Defining Stores
 
-A store is any class instance wrapped with `createClassyStore()`. State lives as properties, mutations are plain assignments, and computed values are `get` accessors.
+Pass a class instance or a plain object to `createClassyStore()`. Put state in data fields, mutate it through the returned proxy, and use `get` accessors for computed values.
 
-```ts
+```ts title="todoStore.ts"
 import {createClassyStore} from '@codebelt/classy-store';
 
 class TodoStore {
-  items: {id: number; text: string; done: boolean}[] = [];
+  items: {id: string; text: string; done: boolean}[] = [];
   filter: 'all' | 'active' | 'done' = 'all';
 
   get remaining() {
@@ -64,15 +64,15 @@ class TodoStore {
   }
 
   add(text: string) {
-    this.items.push({id: Date.now(), text, done: false});
+    this.items.push({id: crypto.randomUUID(), text, done: false});
   }
 
-  toggle(id: number) {
+  toggle(id: string) {
     const item = this.items.find((todo) => todo.id === id);
     if (item) item.done = !item.done;
   }
 
-  remove(id: number) {
+  remove(id: string) {
     this.items = this.items.filter((todo) => todo.id !== id);
   }
 }
@@ -84,7 +84,7 @@ Key points:
 
 - Prototype methods mutate state by assigning to `this` through the proxy. Arrow-function fields cannot be rebound; see [method constraints](#dont-use-arrow-functions-for-methods).
 - `get` accessors cache derived values until their tracked store dependencies change. Keep them pure; time and external variables are not tracked dependencies.
-- Nested objects and arrays (like `items` and each item inside it) are automatically wrapped in child proxies. `item.done = true` triggers a notification just like a top-level write.
+- Nested plain objects and arrays (like `items` and each item inside it) are automatically wrapped in child proxies. `item.done = true` triggers a notification just like a top-level write.
 
 ## Reading State in React
 
@@ -123,7 +123,7 @@ const todos = useClassyStore(todoStore, (state) => state.items);
 
 The problem shows up when your selector **derives a new value** — calling `.filter()`, `.map()`, or using object spread always allocates a new array or object, even when the underlying data hasn't changed. `Object.is` sees a different reference and triggers a re-render.
 
-`shallowEqual` compares one level deep: array length, occupied indices, and element values, or an object's own enumerable string keys and values, using `Object.is`. Use it for plain records and arrays. It does not inspect prototypes, symbol keys, or native `Map`/`Set`/`Date` contents, so it is not a general equality function for those values.
+`shallowEqual` compares one level deep. Use it for arrays or plain records whose data fields are enumerable string keys. It checks array length, occupied indices, and element values, and compares field or element values with `Object.is`. Other object shapes have additional limits. [API reference](./API_REFERENCE.md#shallowequala-b)
 
 Without `shallowEqual` — `.filter()` creates a new array every time the snapshot updates, even if the todo items haven't changed:
 
@@ -197,7 +197,7 @@ function NameInput() {
 }
 ```
 
-When upgrading, remove the React `sync` option and `UseClassyStoreOptions` imports. Keep `isEqual` options if you use custom selector equality. The low-level `subscribe()` API retains its existing batching and optional `sync` setting.
+If upgrading from 0.6.x, remove the React `sync` option and `UseClassyStoreOptions` imports. Keep `isEqual` if you use custom selector equality. The low-level `subscribe()` API retains its batching and optional `sync` setting.
 
 ## Batching
 
@@ -230,7 +230,9 @@ Mutations separated by `await` can commit separately, allowing loading and resul
 
 ## Snapshots
 
-`snapshot()` freezes copies of the root state and nested plain objects, arrays, and reactive collections. It preserves the root class prototype. Opaque values such as native `Date`, `Map`, `Set`, functions, and other nested class instances retain their references; snapshots do not make those values immutable. Newly allocated getter results are cached but are not automatically deep-frozen. Treat all snapshot values as readonly and perform actions on the live store.
+`snapshot()` freezes copies of the root state and nested plain objects, arrays, and reactive collections. A snapshot of an ordinary class instance preserves its prototype. Array snapshots copy the length and occupied indices, preserving holes. Keep named or symbol-keyed metadata on a surrounding object if you need it in the snapshot.
+
+Opaque values such as native `Date`, `Map`, `Set`, functions, and ordinary nested class instances retain their references. Newly allocated getter results retain their own mutability. Treat all snapshot values as readonly and perform actions on the live store.
 
 ```ts
 import {snapshot} from '@codebelt/classy-store';
@@ -247,7 +249,7 @@ Snapshots use structural sharing: unchanged sub-trees return the same frozen ref
 
 ## Subscribing Outside React
 
-`subscribe()` registers a callback that fires once per batched mutation. It returns an unsubscribe function.
+`subscribe()` groups writes made before its scheduled microtask into one callback. It returns an unsubscribe function.
 
 ```ts
 import {subscribe, snapshot} from '@codebelt/classy-store';
@@ -265,7 +267,7 @@ const unsub = subscribe(counterStore, () => {
 
 ## Nested State & Structural Sharing
 
-Deep objects and arrays are automatically reactive. You don't need to do anything special.
+Mutate nested plain objects and arrays through the store proxy to notify subscribers.
 
 ```ts
 class DocStore {
@@ -356,6 +358,7 @@ class UserStore extends BaseStore {
     this.setError(null);
     try {
       const res = await fetch('/api/users');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       this.users = await res.json();
     } catch (error) {
       this.setError(error instanceof Error ? error.message : 'Failed');
@@ -407,11 +410,11 @@ A component selecting `loading` can show a spinner while the request is pending 
 
 ## Local Stores
 
-Where you create a store determines its scope. A module-level store is shared by importers; `useLocalStore` creates one instance per mounted component. For SSR, use request-scoped or provider-owned stores instead of a shared server singleton.
+Where you create a store determines its scope. A module-level store is shared by importers. Give `useLocalStore` a factory that creates fresh state for each mounted component. For SSR, use request-scoped or provider-owned stores.
 
 ### Basic usage
 
-`useLocalStore` creates a reactive store scoped to the component's lifetime. Each component instance gets its own isolated store. Unmounting releases React's reference. Garbage collection can reclaim the store once no other references remain.
+`useLocalStore(() => new CounterStore())` gives each mounted counter its own store. Returning an existing shared instance from the factory shares its proxy across mounts. Unmounting releases React's reference, and garbage collection can reclaim the store once other owners release it.
 
 ```tsx
 import {useLocalStore, useClassyStore} from '@codebelt/classy-store/react';
@@ -488,48 +491,53 @@ The effect cleanup stops persistence. The store can be collected once React and 
 
 ## Creating a Bound Hook with `createStoreHook`
 
-When you have a module-level store, you typically also export a typed hook for it:
+For a client-only app, you can export a hook bound to the `todoStore` defined above. A manual selector wrapper would look like this.
 
 ```ts
 // Before — manual boilerplate for each store
-import {createClassyStore} from '@codebelt/classy-store';
 import {useClassyStore} from '@codebelt/classy-store/react';
 import type {Snapshot} from '@codebelt/classy-store';
+import {todoStore} from './todoStore';
 
-export const catalogStore = createClassyStore(new CatalogPageStore());
-
-export function useCatalogStore<S>(
-  selector: (snap: Snapshot<CatalogPageStore>) => S,
+export function useTodoStore<S>(
+  selector: (snap: Snapshot<typeof todoStore>) => S,
 ): S {
-  return useClassyStore(catalogStore, selector);
+  return useClassyStore(todoStore, selector);
 }
 ```
 
 `createStoreHook` does this in one line:
 
-```ts
+```ts title="useTodoStore.ts"
 // After — one-liner
-import {createClassyStore} from '@codebelt/classy-store';
 import {createStoreHook} from '@codebelt/classy-store/react';
+import {todoStore} from './todoStore';
 
-export const catalogStore = createClassyStore(new CatalogPageStore());
-export const useCatalogStore = createStoreHook(catalogStore);
+export const useTodoStore = createStoreHook(todoStore);
 ```
 
 The returned hook supports both selector and auto-tracked modes, plus custom `isEqual` — identical to `useClassyStore`, but with the store already bound:
 
 ```tsx
-// Selector mode
-const count = useCatalogStore((state) => state.count);
+import {shallowEqual} from '@codebelt/classy-store';
+import {useTodoStore} from './useTodoStore';
 
-// Auto-tracked mode
-const snap = useCatalogStore();
+function TodoSummary() {
+  const data = useTodoStore(
+    (state) => ({total: state.items.length, remaining: state.remaining}),
+    {isEqual: shallowEqual},
+  );
+  return (
+    <p>
+      {data.remaining} of {data.total} remaining
+    </p>
+  );
+}
 
-// Custom equality
-const data = useCatalogStore(
-  (state) => ({count: state.count, loading: state.loading}),
-  {isEqual: shallowEqual},
-);
+function FilterLabel() {
+  const snap = useTodoStore();
+  return <span>{snap.filter}</span>;
+}
 ```
 
 `createStoreHook` validates its argument when called. It throws if the argument is not a store proxy; a module-level call therefore fails during module initialization.
@@ -632,7 +640,7 @@ Each render gets its own read set. This keeps a suspended or abandoned render fr
 
 ### Snapshot caching
 
-Calling `snapshot()` multiple times without intervening mutations returns the same frozen object — an O(1) cache hit. After mutations, rebuilding changed objects or arrays has a cost proportional to the properties or elements visited, even when unchanged children are shared.
+Repeated calls to `snapshot()` on an attached, unchanged store return the same frozen object in O(1) time. Rebuilding changed containers visits their fields or elements. The first read of a detached subtree can also reconnect its child links before checking the snapshot cache.
 
 ```ts
 import {snapshot} from '@codebelt/classy-store';

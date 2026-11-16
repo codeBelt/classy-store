@@ -11,7 +11,12 @@ import type {Metadata} from 'next';
 import {notFound} from 'next/navigation';
 import {getMDXComponents} from '@/components/mdx';
 import {MovedSections} from '@/components/moved-sections';
-import {getPageImageUrl, getPageMarkdownUrl, gitConfig} from '@/lib/shared';
+import {
+  canonicalUrl,
+  getPageImageUrl,
+  getPageMarkdownUrl,
+  gitConfig,
+} from '@/lib/shared';
 import {source} from '@/lib/source';
 import {RackStrip} from '@/signal/instruments';
 
@@ -39,7 +44,10 @@ export default async function Page(props: PageProps<'/docs/[[...slug]]'>) {
         <MarkdownCopyButton markdownUrl={markdownUrl} />
         <ViewOptionsPopover
           markdownUrl={markdownUrl}
-          githubUrl={`https://github.com/${gitConfig.user}/${gitConfig.repo}/blob/${gitConfig.branch}/website/content/docs/${page.path}`}
+          githubUrl={
+            gitConfig.revision &&
+            `https://github.com/${gitConfig.user}/${gitConfig.repo}/blob/${gitConfig.revision}/website/content/docs/${page.path}`
+          }
         />
       </div>
       <DocsBody
@@ -86,7 +94,9 @@ export async function generateMetadata(
   return {
     title: page.data.title,
     description: page.data.description,
+    alternates: {canonical: canonicalUrl(page.url)},
     openGraph: {
+      url: canonicalUrl(page.url),
       images: getPageImageUrl(page).url,
     },
   };

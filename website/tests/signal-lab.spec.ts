@@ -239,3 +239,95 @@ test('mobile and reduced motion preserve navigation, controls and readable text'
     page.getByRole('heading', {name: 'History', exact: true}),
   ).toBeVisible();
 });
+
+test('clear cancels pending post results and fetch failures explain the sample data', async ({
+  page,
+}) => {
+  let finish: () => void = () => {};
+  const pending = new Promise<void>((resolve) => {
+    finish = resolve;
+  });
+  await page.route('**/examples-data/posts.json', async (route) => {
+    await pending;
+    await route.fulfill({
+      json: [{id: 88, title: 'Stale result', body: 'Earlier request'}],
+    });
+  });
+  await page.goto(example('reactivity'));
+  const started = page.waitForRequest('**/examples-data/posts.json');
+  await control(page, 'Fetch Posts').click();
+  await started;
+  await control(page, 'Clear').click();
+  try {
+    await expect(page.getByText('Idle', {exact: true})).toBeVisible();
+  } finally {
+    finish();
+  }
+  await page.unrouteAll({behavior: 'wait'});
+  await page.route('**/examples-data/posts.json', (route) =>
+    route.fulfill({status: 503, body: 'Unavailable'}),
+  );
+  await control(page, 'Fetch Posts').click();
+  await expect(
+    page.getByText('Fetch failed. Showing bundled sample posts.'),
+  ).toBeVisible();
+  await expect(
+    page.getByText('Introduction to Classy Store', {exact: true}),
+  ).toBeVisible();
+  await expect(page.getByText('Stale result')).toHaveCount(0);
+});
+
+test('persistence recovers from invalid saved values and reset actually removes the key', async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      'preferences',
+      JSON.stringify({version: 0, state: {theme: {}}}),
+    );
+    localStorage.setItem(
+      'kitchen-sink',
+      JSON.stringify({version: 1, state: {searchQuery: null}}),
+    );
+  });
+  await page.goto(example('persist'));
+  await expect(page.getByRole('main').getByRole('alert')).toHaveText(
+    'Could not persist preferences: parse',
+  );
+  await expect(page.getByText('Error: parse', {exact: true})).toBeVisible();
+  const slider = page.getByRole('slider', {name: 'Font size'});
+  await slider.focus();
+  await page.keyboard.press('End');
+  await expect(page.getByLabel('Stored preferences')).toContainText('24');
+  await control(page, 'Reset & Clear Storage').click();
+  await expect(slider).toHaveValue('16');
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem('preferences')))
+    .toBeNull();
+  await control(page, 'Stop Persisting').click();
+  await expect(page.getByText('stopped', {exact: true})).toBeVisible();
+  await expect(control(page, 'Force Save')).toBeDisabled();
+});
+
+test('both persistence setups show working source from the live adapters', async ({
+  page,
+}) => {
+  await page.goto(example('persist'));
+  const panels = page
+    .locator('section')
+    .filter({has: page.getByRole('group', {name: 'Example source'})});
+  // Both panels keep their experiment mounted alongside the selected source.
+  const tabs = page.getByRole('button', {name: 'Persistence', exact: true});
+  await tabs.first().click();
+  await tabs.last().click();
+  const blocks = page.locator('.example-source figure');
+  await expect(blocks).toHaveCount(2);
+  await expect(blocks.first()).toContainText(
+    'preferencesHandle = persist(preferencesStore',
+  );
+  await expect(blocks.last()).toContainText("name: 'kitchen-sink'");
+  await expect(blocks.last()).toContainText('value.every(isNoteEntry)');
+  await expect(
+    panels.first().getByRole('slider', {name: 'Font size'}),
+  ).toBeVisible();
+});

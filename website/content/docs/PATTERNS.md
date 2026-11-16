@@ -9,7 +9,7 @@ description: "Model nested state, combine stores, and work with computed getters
 
 ### Multiple stores
 
-```typescript
+```tsx
 const authStore = createClassyStore(new AuthStore());
 const uiStore = createClassyStore(new UiStore());
 
@@ -22,7 +22,7 @@ function Header() {
 
 ### Class inheritance
 
-Subclasses work out of the box. Methods, getters, and `super` calls from any ancestor are fully reactive:
+Subclasses inherit store fields, prototype methods, and getters. A base method called with `super` still receives the store proxy as `this`.
 
 ```typescript
 class BaseStore {
@@ -60,9 +60,9 @@ const userStore = createClassyStore(new UserStore());
 
 ### Nested object mutations
 
-Nested objects are deeply reactive. Mutations at any depth trigger the correct re-renders:
+Nested plain objects and arrays are reactive when you mutate them through the store proxy. A selector can subscribe to a single nested setting.
 
-```typescript
+```tsx
 class SettingsStore {
   settings = {
     theme: 'dark',
@@ -79,10 +79,19 @@ class SettingsStore {
 
 const settingsStore = createClassyStore(new SettingsStore());
 
-// Only re-renders when push notification setting changes
 function PushToggle() {
-  const push = useClassyStore(settingsStore, (state) => state.settings.notifications.push);
-  return <Switch checked={push} onChange={() => settingsStore.togglePush()} />;
+  const push = useClassyStore(
+    settingsStore,
+    (state) => state.settings.notifications.push,
+  );
+  return (
+    <input
+      type="checkbox"
+      aria-label="Push notifications"
+      checked={push}
+      onChange={() => settingsStore.togglePush()}
+    />
+  );
 }
 ```
 

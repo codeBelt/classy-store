@@ -1,7 +1,14 @@
+import type {Metadata} from 'next';
 import Link from 'next/link';
 import {HomeCounter} from '@/components/home-counter';
 import {getMDXComponents} from '@/components/mdx';
+import {appName, canonicalUrl} from '@/lib/shared';
 import CounterSample from './counter.mdx';
+
+export const metadata: Metadata = {
+  alternates: {canonical: canonicalUrl('/')},
+  openGraph: {url: canonicalUrl('/'), title: appName, images: ['/og/site.png']},
+};
 
 export default function HomePage() {
   return (

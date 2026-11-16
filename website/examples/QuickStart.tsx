@@ -4,6 +4,7 @@ import {createClassyStore} from '@codebelt/classy-store';
 import {useClassyStore} from '@codebelt/classy-store/react';
 import {type ReactNode, useState} from 'react';
 
+// #region todo-app
 class TodoStore {
   items: {id: number; text: string; done: boolean}[] = [];
   private nextId = 1;
@@ -96,6 +97,7 @@ function LiveTodoApp() {
     </div>
   );
 }
+// #endregion todo-app
 
 // ── Quick Start Section ─────────────────────────────────────────────────────
 

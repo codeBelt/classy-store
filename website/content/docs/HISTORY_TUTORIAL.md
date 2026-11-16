@@ -153,7 +153,7 @@ function withHistory<T extends object>(
 2. **Record:** on each `subscribe()` callback (when not paused), captures a new snapshot, truncates any redo entries after the current pointer, pushes the snapshot, and enforces the limit by shifting from the front.
 3. **Undo:** decrements the pointer, suppresses recording during restoration, and applies `history[pointer]` back to the store proxy (skipping getters and methods).
 4. **Redo:** increments the pointer and restores `history[pointer]` with the same recording suppression.
-5. **State restoration:** iterates own enumerable keys of the snapshot, skips keys with getter descriptors on the prototype chain, and assigns values to the proxy. This triggers SET traps and reactivity — your components update automatically.
+5. **State restoration:** iterates the snapshot's own enumerable string keys. It skips keys that resolve to a getter or function on the live store, then assigns mutable copies of the remaining values through the proxy. Subscribers observe the resulting mutations.
 
 Undo and redo themselves do **not** create new history entries. Restoration does not change the explicit `isPaused` status set by `pause()` and `resume()`.
 
@@ -198,7 +198,7 @@ const history = withHistory(editorStore, {limit: 200});
 
 // Cmd+Z / Ctrl+Z
 document.addEventListener('keydown', (e) => {
-  if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') {
     e.preventDefault();
     if (e.shiftKey) {
       history.redo();

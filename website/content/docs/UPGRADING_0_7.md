@@ -34,14 +34,18 @@ const boundCount = useCounterStore((state) => state.count);
 
 Auto-tracked hooks no longer accept an options argument, even an empty `{}`. Remove imports and annotations using the removed `UseClassyStoreOptions` type. Selector hooks still accept `UseClassyStoreSelectorOptions<S>` with `isEqual`:
 
+In 0.6.x, a selector could use both options.
+
 ```tsx
-// Before
 const selection = useClassyStore(store, selectSummary, {
   sync: true,
   isEqual: shallowEqual,
 });
+```
 
-// After
+In 0.7.0, keep the equality function.
+
+```tsx
 const selection = useClassyStore(store, selectSummary, {
   isEqual: shallowEqual,
 });

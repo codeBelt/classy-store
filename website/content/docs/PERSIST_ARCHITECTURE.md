@@ -11,7 +11,7 @@ Internal design documentation for the `persist()` utility in `@codebelt/classy-s
 
 2. **Tree-shakeable.** `persist` lives in a separate entry point (`@codebelt/classy-store/utils`). Bundlers that support tree shaking can omit unused utility code; verify the output for your build configuration.
 
-3. **Storage-agnostic.** The `StorageAdapter` interface accepts sync (`localStorage`, `sessionStorage`) and async (`AsyncStorage`, `localForage`) implementations through the same type. `persist` handles both transparently via `await`.
+3. **Storage adapters.** `StorageAdapter` reads a string or `null`, writes a string, and removes a key. Reads, writes, and removals can return promises. A wrapper around a database can implement the contract by returning `Promise<string | null>` on read and `Promise<void>` on write or removal.
 
 4. **Class-aware defaults.** Default property selection excludes getters and functions. Explicit `properties` lists are used as supplied and should name writable data fields.
 
@@ -36,8 +36,9 @@ flowchart LR
     Queue --> Storage["storage.setItem()"]
   end
 
-  subgraph hydration ["Hydration (init / cross-tab / manual)"]
+  subgraph hydration ["Hydration"]
     Read["storage.getItem()"] --> Parse["JSON.parse"]
+    Event["storage event.newValue"] --> Parse
     Parse --> Migrate["version check + migrate"]
     Migrate --> Deserialize["per-property deserialize"]
     Deserialize --> Merge["merge strategy"]
@@ -46,7 +47,7 @@ flowchart LR
   end
 ```
 
-The key insight: writing `proxy[key] = value` during hydration flows through the existing SET trap in `core.ts`, which handles child proxy cleanup, version bumping, and notification scheduling automatically. The persist utility doesn't need to know anything about the proxy internals.
+Assigning `proxy[key] = value` during hydration goes through the SET trap in `core.ts`. Core updates child ownership, advances the version, and notifies subscribers. Persistence reads that internal version to recognize superseded reads and suppress writes caused by its own restore.
 
 ## File Structure
 
@@ -86,7 +87,7 @@ Each `persist()` call creates a closure with the following internal state:
 | `transformMap`        | `Map<string, PropertyTransform>`        | Fast lookup from key to transform                                                 |
 | `propKeys`            | `string[]`                              | Flat list of property keys to persist                                             |
 
-Bookkeeping is per handle. Handles on the same store still observe each other's applied mutations, and handles using the same storage key can overwrite one another. Their queues do not coordinate with each other.
+Bookkeeping is per handle. Two handles reading different keys into one store still check the same store version. Applying either read can invalidate the other, and the discarded read's handle can save its defaults over stored data. Attach and hydrate those handles one at a time during initialization. Separate handles writing the same storage key also need application-level coordination.
 
 ## Save Flow
 
@@ -165,7 +166,7 @@ batched subscribers advance the revision and are saved. If a synchronous subscri
 
 ```
 1. JSON.parse(raw) → envelope
-2. Validate envelope shape (object with .state)
+2. Check that envelope and envelope.state are non-null objects
    if invalid → return silently (corrupted data)
 3. if envelope.expiresAt exists AND Date.now() >= expiresAt:
      set expiredFlag = true
@@ -188,10 +189,10 @@ batched subscribers advance the revision and are saved. If a synchronous subscri
 
 ### Merge Strategies
 
-| Strategy              | Behavior                                                                                                 |
-| --------------------- | -------------------------------------------------------------------------------------------------------- |
-| `'shallow'` (default) | `{ ...current, ...persisted }` — stored keys overwrite, missing keys keep their live values and identity |
-| Custom `fn`           | `fn(persisted, current)` -- full control. Enables deep merge or selective overrides.                     |
+| Strategy              | Behavior                                                                                                   |
+| --------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `'shallow'` (default) | Assign only selected keys present in the stored state. Other live fields retain their values and identity. |
+| Custom `fn`           | `fn(persisted, current)` -- full control. Enables deep merge or selective overrides.                       |
 
 The public merge option accepts `shallow` or a function. Shallow merging replaces each stored top-level property, including its nested value; use a custom function to combine nested data.
 
@@ -199,7 +200,8 @@ The public merge option accepts `shallow` or a function. Shallow merging replace
 
 - **Corrupted JSON** in storage (`JSON.parse` throws): reported as `parse` through `onError` and status, with no state changes.
 - **Invalid envelope** (missing `.state` or not an object): detected by shape check, skipped silently.
-- **Adapter read errors** during `storage.getItem()`: reported as `read` when the request is current. Exceptions from custom migration/merge/transform callbacks are reported as `parse`. Initial hydration settles after reporting; explicit `rehydrate()` rejects with the original error.
+- **Adapter read errors** during `storage.getItem()` are reported as `read` when the request is current. Exceptions during migration, deserialization, merge, or assignment are reported as `parse`. Initial hydration settles after reporting. Explicit `rehydrate()` rejects with the original error.
+- **Serialization and storage writes** report `write` for failures in a property's serializer, `JSON.stringify`, or `storage.setItem()`. Storage removal failures report `remove`.
 
 ## Cross-Tab Sync
 
@@ -229,6 +231,7 @@ Key properties of `window.storage`:
 - The event payload includes `key`, `oldValue`, `newValue`, and `storageArea`.
 
 `syncTabs` defaults to `false`; enable it explicitly for localStorage-backed state.
+Use distinct names across storage areas. The listener checks the key and the current value in the emitting area, so a matching event can apply even when that area differs from the handle's adapter.
 
 ## Cleanup
 
@@ -265,7 +268,7 @@ After `dispose()`:
 | `getServerSnapshot()` | Initial status for server rendering and hydration.                                                                            |
 | `subscribe(listener)` | Synchronous status subscription; returns listener cleanup.                                                                    |
 
-Explicit operations reject with the original failure after reporting it through `onError` and status. Automatic operations catch reported failures at their background entry points. Decoding, transform, migration, and merge errors use the `parse` operation. The internal queue absorbs rejections so later writes still run. Calls on disposed handles reject; explicit queued operations cancelled by disposal also reject without invoking the adapter.
+An active handle reports failures through `onError` and status. Explicit operations reject with the original failure. Automatic operations catch reported failures at their background entry points. The internal queue absorbs rejections so later writes still run. Calls on disposed handles reject. Explicit queued operations cancelled by disposal also reject before invoking the adapter.
 
 ## Dependency Graph
 
@@ -293,7 +296,7 @@ graph LR
 
 | Operation           | Complexity                                | Notes                                                                       |
 | ------------------- | ----------------------------------------- | --------------------------------------------------------------------------- |
-| Property resolution | O(keys)                                   | Once at init, not per-save                                                  |
+| Property resolution | Depends on the initial snapshot and keys  | Default selection snapshots the store and checks each enumerable string key |
 | Save                | Depends on state size and transforms      | Snapshot work + selected-field traversal + JSON serialization + adapter I/O |
 | Debounce scheduling | O(1) per notification                     | Timer reset; serialization and write happen when it fires                   |
 | Hydration           | Depends on payload and restored state     | Parse + user callbacks + mutable cloning + assignments and notifications    |
@@ -313,7 +316,7 @@ A per-property transform can handle one value, such as a `Date`, while other fie
 
 ### Why exclude getters automatically?
 
-Class getters are derived/computed values that recompute from persisted data properties. Persisting a getter result would be redundant and risk restoring a stale value that contradicts the actual data. For example, if `get remaining()` returns 3 but the persisted `todos` array has 5 incomplete items, the restored getter value would be wrong until something triggers a recompute. By excluding getters, we persist only the inputs and let the outputs recompute naturally.
+Restoring the `todos` data gives `get remaining()` the inputs it needs to compute the current count. Including a getter explicitly in `properties` can cause hydration to fail when it tries to assign a stored value to a getter without a setter.
 
 ### Why a hydrated Promise instead of lifecycle hooks?
 

@@ -10,47 +10,6 @@ import {QuickStart} from '@/examples/QuickStart';
 
 <QuickStart>
 
-```tsx title="todo-example.tsx"
-import { createClassyStore } from '@codebelt/classy-store';
-import { useClassyStore } from '@codebelt/classy-store/react';
-
-class TodoStore {
-  items: { text: string; done: boolean }[] = [];
-
-  // Getters are computed values — memoized until deps change
-  get remaining() {
-    return this.items.filter((item) => !item.done).length;
-  }
-
-  add(text: string) {
-    this.items = [...this.items, { text, done: false }];
-  }
-
-  toggle(index: number) {
-    this.items[index].done = !this.items[index].done;
-  }
-}
-
-const todoStore = createClassyStore(new TodoStore());
-
-function TodoApp() {
-  const snap = useClassyStore(todoStore);
-  return (
-    <div>
-      <h2>{snap.remaining} remaining</h2>
-      {snap.items.map((item, i) => (
-        <label key={i}>
-          <input
-            type="checkbox"
-            checked={item.done}
-            onChange={() => todoStore.toggle(i)}
-          />
-          {item.text}
-        </label>
-      ))}
-    </div>
-  );
-}
-```
+<include>../../examples/QuickStart.tsx#todo-app</include>
 
 </QuickStart>

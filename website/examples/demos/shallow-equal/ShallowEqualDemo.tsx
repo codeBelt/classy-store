@@ -13,6 +13,7 @@ let fnIdx = 0;
 const lastNames = ['Smith', 'Jones', 'Garcia', 'Kim', 'Patel'];
 let lnIdx = 0;
 
+// #region selectors
 function NameCardWithout() {
   const name = useClassyStore(profileStore, (state) => ({
     first: state.firstName,
@@ -63,6 +64,7 @@ function NameCardWith() {
     </div>
   );
 }
+// #endregion selectors
 
 function SettingsDisplay() {
   const snap = useClassyStore(profileStore);

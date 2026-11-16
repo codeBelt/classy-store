@@ -79,6 +79,7 @@ function DocumentTrace() {
   );
 }
 
+// #region controls
 function HistoryControls() {
   const status = useHistoryStatus(history);
   const paused = status.isPaused;
@@ -156,6 +157,7 @@ function HistoryControls() {
     </div>
   );
 }
+// #endregion controls
 
 export function UndoRedoDemo() {
   return (

@@ -47,14 +47,14 @@ import {persist} from '@codebelt/classy-store/utils';
 
 // ... (Include TodoStore setup from Step 1)
 
-// Saves all store properties to localStorage
+// Start restoring saved data and listening for store changes.
 const handle = persist(todoStore, {
   storage: localStorage,
   name: 'todo-store',
 });
 ```
 
-**Stored under the `todo-store` key:**
+With initially empty storage, the first save of the defaults writes this envelope under `todo-store`. Attaching the handle alone only starts a read.
 
 ```json
 {
@@ -84,9 +84,10 @@ persist(todoStore, {
 
 Now `filter` resets to its class default (`'all'`) on every page load, while `todos` are restored from storage.
 
-An explicit list is used as supplied. Select writable data fields, not getters or
-methods. Values still need to be JSON-compatible, or have a transform: ordinary
-JSON drops `undefined` and functions, and rejects `BigInt` and cyclic structures.
+Use writable, string-keyed data fields in an explicit list. JSON omits symbol keys.
+For numeric property names, declare and select the key as a string so its transform
+can be found again during hydration. Ordinary JSON omits object fields containing
+`undefined` or functions and rejects `BigInt` and cyclic structures.
 
 ### Why getters are excluded
 
@@ -188,11 +189,11 @@ persist(userStore, {
 
 On restore, `deserialize` converts the ISO string back into a `Date` object before assigning it to `userStore.birthdate`.
 
-_(If you need to persist `Map` or `Set` objects, see the [Reactive Collections Tutorial](./REACTIVE_COLLECTIONS_TUTORIAL.md).)_
+Native `Map` and `Set` need a transform to round-trip their entries through JSON. Replace the live field to notify persistence after an edit, or use a reactive collection for in-place updates. See the [Reactive Collections Tutorial](./REACTIVE_COLLECTIONS_TUTORIAL.md).
 
 ### `storage`
 
-`persist()` requires a storage adapter. Any object with `getItem`, `setItem`, and `removeItem` (sync or async) works, including `localStorage`.
+`persist()` requires a storage adapter. `getItem(name)` returns a string or `null`. `setItem(name, value)` and `removeItem(name)` return `void`. Each method may also return a promise of its result. Browser `localStorage` implements this contract.
 
 **sessionStorage (Tab-Scoped)**
 
@@ -260,6 +261,10 @@ For synchronization between separate browser tabs, use `localStorage`.
 are limited to same-tab contexts sharing that storage area; async and custom
 adapters do not emit browser storage events themselves. `syncTabs` installs a
 browser event listener, so leave it disabled in environments without that API.
+
+Use a distinct key across storage areas. The listener matches the event's key
+and checks its latest value in the emitting area. A same-key event from another
+storage area can therefore update this store too.
 
 Storage deletion events are ignored. Calling `handle.clear()` in one tab does
 not reset another tab's in-memory state. To broadcast a reset, assign the desired
@@ -485,15 +490,19 @@ persist(todoStore, {
       ...current, // start with the current selected fields
       ...persisted, // overwrite with stored values
       tags: [
-        // custom: combine stored + default tags
-        ...new Set([
-          ...((persisted.tags as string[]) ?? []),
-          ...((current.tags as string[]) ?? []),
-        ]),
+        ...new Set([...readTags(persisted.tags), ...readTags(current.tags)]),
       ],
     };
   },
 });
+
+function readTags(value: unknown): string[] {
+  if (value === undefined) return [];
+  if (!Array.isArray(value) || !value.every((tag) => typeof tag === 'string')) {
+    throw new Error('Expected an array of tag names');
+  }
+  return value;
+}
 ```
 
 ---
@@ -557,7 +566,7 @@ try {
 }
 ```
 
-Each failing operation still calls `onError` once and updates status before rejecting with the original error. `PersistOperation` is `'read' | 'write' | 'remove' | 'parse'`; decoding, transforms, migrations, and merge failures use `'parse'`. A failed operation does not block later queued saves. `rehydrate` also waits for expired-data removal when `clearOnExpire` is enabled and rejects if that removal fails.
+An active handle reports failures through `onError` and status before rejecting with the original error. `PersistOperation` identifies the failing step. Reading storage uses `'read'`. Decoding JSON, deserializing properties, migrating, merging, and applying restored fields use `'parse'`. Serializing properties, encoding JSON, and writing storage use `'write'`. Removing data uses `'remove'`. Later queued saves can still run after a failure. `rehydrate()` also waits for expired-data removal when `clearOnExpire` is enabled and rejects if that removal fails.
 
 An obsolete read superseded by a local edit or newer request is still ignored. Calls on a disposed handle reject; explicit queued writes cancelled by disposal also reject without invoking the adapter. Disposal errors do not invoke `onError` or publish more status.
 
@@ -621,24 +630,29 @@ Pending storage reads that finish after disposal no longer apply state, clear ex
 
 ## Multiple Persistence Targets
 
-Call `persist()` multiple times with different options to persist different parts of a store to different locations:
+To save different fields to different storage locations, attach and hydrate each
+handle in sequence before accepting edits. Each read tracks the version of the
+whole store. If two initial reads overlap, applying the first can cause the
+second to discard its saved value and write the in-memory default over it.
 
 ```ts
 const todoStore = createClassyStore(new TodoStore());
 
 // Persist todos to localStorage (survives page close)
-persist(todoStore, {
+const items = persist(todoStore, {
   storage: localStorage,
   name: 'todo-items',
   properties: ['todos'],
 });
+await items.hydrated;
 
 // Persist UI filter to sessionStorage (resets on tab close)
-persist(todoStore, {
+const filter = persist(todoStore, {
   name: 'todo-filter',
   storage: sessionStorage,
   properties: ['filter'],
 });
+await filter.hydrated;
 ```
 
 ## Putting It All Together

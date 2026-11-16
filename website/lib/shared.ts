@@ -9,7 +9,7 @@ export const docsContentRoute = '/llms.mdx/docs';
 export const gitConfig = {
   user: 'codebelt',
   repo: 'classy-store',
-  branch: 'main',
+  revision: process.env.GITHUB_SHA,
 };
 
 const getContentUrl = createGetUrl(docsContentRoute);
@@ -26,4 +26,8 @@ export function getPageImageUrl(page: {slugs: string[]; locale?: string}) {
   const segments = [...page.slugs, 'image.png'];
 
   return {segments, url: getImageUrl(segments, page.locale)};
+}
+
+export function canonicalUrl(path: string) {
+  return siteUrl + path.replace(/\/?$/, '/');
 }

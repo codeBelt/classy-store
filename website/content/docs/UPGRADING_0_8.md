@@ -17,17 +17,13 @@ Version 0.8.0 adds observable history and persistence status and simplifies the 
 
 ## Dispose persistence handles
 
-Update effect cleanups and other teardown calls:
+In a 0.7.x effect, the cleanup called `persistence.unsubscribe()`. In 0.8.0, return this cleanup from the effect that created the handle.
 
 ```ts
-// Before
-return () => persistence.unsubscribe();
-
-// After
 return () => persistence.dispose();
 ```
 
-Disposal is idempotent. It stops subscriptions and timers, ignores pending read results, and cancels writes that have not started. Already-issued storage I/O cannot be cancelled. Explicit queued operations cancelled by disposal reject, as do explicit operations called after disposal.
+Disposal is idempotent. It stops subscriptions and timers. Queued saves and removals that have yet to start reject, as do explicit calls made after disposal. A rehydration already waiting for a write or a read settles without applying its result. Storage I/O already issued can still finish.
 
 ## Handle explicit persistence failures
 
@@ -46,16 +42,20 @@ Automatic writes and initial hydration handle reported failures internally. `hyd
 
 ## Subscribe to utility status in React
 
-Use `useClassyStore(store)` for store data. Use the new hooks when rendering utility metadata that can change independently of that data:
+Use `useClassyStore(store)` for store data. Call the status hooks inside a component or custom hook when rendering metadata that changes independently of store data.
 
 ```tsx
 import {useHistoryStatus, usePersistStatus} from '@codebelt/classy-store/react';
+import type {HistoryHandle, PersistHandle} from '@codebelt/classy-store/utils';
 
-const {canUndo, canRedo, isPaused} = useHistoryStatus(history);
-const {isHydrated, isExpired, lastError} = usePersistStatus(persistence);
+function useEditorStatus(history: HistoryHandle, persistence: PersistHandle) {
+  const {canUndo, canRedo, isPaused} = useHistoryStatus(history);
+  const {isHydrated, isExpired, lastError} = usePersistStatus(persistence);
+  return {canUndo, canRedo, isPaused, isHydrated, isExpired, lastError};
+}
 ```
 
-Call these hooks inside a component or custom hook, with stable handles. Both status snapshots include `isDisposed`. History pause state now stays consistent when undo/redo finishes.
+Pass stable handles. Both status snapshots include `isDisposed`. History pause state stays consistent when undo/redo finishes.
 
 Outside React, handles expose `getSnapshot()`, `getServerSnapshot()`, and `subscribe(listener)`. The function returned by `subscribe` removes that status listener; `dispose()` tears down the utility handle itself. The shared status source implementation is internal. Consumer types are `HistoryHandle`, `HistoryStatus`, `PersistHandle`, and `PersistStatus`, exported from `@codebelt/classy-store/utils`.
 

@@ -64,12 +64,12 @@ function subscribeKey<T extends object, K extends keyof T & keyof Snapshot<T>>(
 | Parameter    | Type                             | Description                                                            |
 | ------------ | -------------------------------- | ---------------------------------------------------------------------- |
 | `proxyStore` | `T`                              | A reactive proxy created by `createClassyStore()`                      |
-| `key`        | `keyof T`                        | The property to watch                                                  |
+| `key`        | `keyof T & keyof Snapshot<T>`    | A key shared by the live store and its snapshot                        |
 | `callback`   | `(value, previousValue) => void` | Called when the watched property changes                               |
 | `options`    | `SubscribeOptions`               | Optional `{sync: true}` for immediate notifications; otherwise batched |
 | **Returns**  | `() => void`                     | Unsubscribe function                                                   |
 
-The callback is not called when you subscribe. It receives the current and previous snapshot values when the watched key changes. By default, several synchronous writes coalesce into one callback with the final value; passing `{sync: true}` as the fourth argument observes each change. Import `Snapshot` from the root entry and `SubscribeOptions` from the root or utilities entry.
+Subscribing captures the initial value. The callback receives current and previous snapshot values on later changes. By default, several synchronous writes coalesce. If the final value equals the previous value under `Object.is`, the callback is skipped. Pass `{sync: true}` as the fourth argument to compare values on each synchronous notification. Import `Snapshot` from the root entry and `SubscribeOptions` from the root or utilities entry.
 
 ## How It Works
 

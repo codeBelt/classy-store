@@ -11,7 +11,7 @@ description: "Connect Classy Store to Redux DevTools for inspection and time-tra
 
 Install the Redux DevTools extension for your browser:
 
-- [Chrome](https://chrome.google.com/webstore/detail/redux-devtools/lmhkpmbekcpmknklioeibfkpmmfibljd)
+- [Chrome](https://chromewebstore.google.com/detail/redux-devtools/lmhkpmbekcpmknklioeibfkpmmfibljd)
 - [Firefox](https://addons.mozilla.org/en-US/firefox/addon/reduxdevtools/)
 - [Edge](https://microsoftedge.microsoft.com/addons/detail/redux-devtools/nnkgneoiohoecpdiaponcejilbhhikei)
 
@@ -112,7 +112,7 @@ A cleanup function `() => void` that removes the store subscription and DevTools
 1. **Connect:** calls `window.__REDUX_DEVTOOLS_EXTENSION__.connect({ name })` to create a DevTools connection.
 2. **Init:** sends the initial snapshot via `connection.init(snapshot(store))`.
 3. **Subscribe:** uses `subscribe(store, ...)` to listen for mutations. On each batched mutation, sends `snapshot(store)` to DevTools via `connection.send()`.
-4. **Time-travel:** listens for `DISPATCH` messages from DevTools. When a `JUMP_TO_STATE` or `JUMP_TO_ACTION` message arrives, parses the state and applies it back to the store proxy — skipping getters and methods (same pattern as `persist()`).
+4. **Time-travel:** listens for `DISPATCH` messages from DevTools. For `JUMP_TO_STATE` and `JUMP_TO_ACTION`, it parses the state and assigns top-level data fields to the store proxy, skipping top-level getters and methods.
 5. **Dispose:** unsubscribes from the store and removes the DevTools message listener.
 
 ## Use Cases
@@ -199,14 +199,15 @@ The `devtools()` utility:
 5. Assigns data properties directly to the store proxy: `proxy[key] = value`.
 6. The SET trap fires, triggers reactivity, and your components update.
 
-During time-travel, the utility temporarily pauses sending updates to DevTools to avoid echoing the applied state back as a new action.
+During time-travel, the utility suppresses the batched notification for the jump. A local write in that same batch can also be absent from the DevTools timeline.
 
-Restoration is JSON-based. It does not run persistence transforms or reconstruct
-custom classes, dates, or reactive collection methods from parsed objects. It also
-does not delete store keys missing from the received state. Use JSON-compatible
-data for time travel, and use the persistence transform API for typed storage
-restoration. The adapter handles `JUMP_TO_STATE` and `JUMP_TO_ACTION`; other Redux
-DevTools dispatch commands are not implemented.
+Restoration replaces nested values with their parsed JSON. A nested object's
+methods are lost, and a serialized nested getter becomes an ordinary data field.
+Dates, custom class instances, and reactive collections also lose their original
+types. Store fields missing from the received state keep their live values.
+Use JSON-compatible data for time travel. Persistence transforms apply only to
+storage restoration. The supported dispatch commands are `JUMP_TO_STATE` and
+`JUMP_TO_ACTION`.
 
 ## Quick Reference
 

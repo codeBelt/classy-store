@@ -72,6 +72,7 @@ function ErrorDisplay() {
   );
 }
 
+// #region posts
 function PostList() {
   const posts = useClassyStore(postStore, (state) => state.posts);
   const renders = useRenderCount();
@@ -102,6 +103,7 @@ function PostList() {
     </div>
   );
 }
+// #endregion posts
 
 function PostCount() {
   const count = useClassyStore(postStore, (state) => state.count);

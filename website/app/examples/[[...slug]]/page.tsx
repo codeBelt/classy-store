@@ -8,6 +8,7 @@ import type {Metadata} from 'next';
 import {notFound} from 'next/navigation';
 import {getMDXComponents} from '@/components/mdx';
 import {exampleSource} from '@/lib/example-source';
+import {canonicalUrl} from '@/lib/shared';
 import {RackStrip} from '@/signal/instruments';
 
 type Props = PageProps<'/examples/[[...slug]]'>;
@@ -19,7 +20,17 @@ export function generateStaticParams() {
 export async function generateMetadata({params}: Props): Promise<Metadata> {
   const page = exampleSource.getPage((await params).slug);
   if (!page) notFound();
-  return {title: page.data.title, description: page.data.description};
+  return {
+    title: page.data.title,
+    description: page.data.description,
+    alternates: {canonical: canonicalUrl(page.url)},
+    openGraph: {
+      url: canonicalUrl(page.url),
+      title: page.data.title,
+      description: page.data.description,
+      images: ['/og/site.png'],
+    },
+  };
 }
 
 export default async function ExamplePage({params}: Props) {

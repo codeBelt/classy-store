@@ -61,6 +61,7 @@ function CounterScope() {
   );
 }
 
+// #region selectors
 function CountCard() {
   const count = useClassyStore(counterStore, (state) => state.count);
   const renders = useRenderCount();
@@ -94,6 +95,7 @@ function NameCard() {
     </div>
   );
 }
+// #endregion selectors
 
 const BatchCard = memo(function BatchCard() {
   const count = useClassyStore(batchStore, (state) => state.count);

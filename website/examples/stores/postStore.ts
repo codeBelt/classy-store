@@ -8,6 +8,7 @@ interface Post {
 }
 
 export class PostStore {
+  private request: AbortController | null = null;
   posts: Post[] = [];
   loading = false;
   error: string | null = null;
@@ -17,26 +18,37 @@ export class PostStore {
   }
 
   async fetchPosts() {
+    this.request?.abort();
+    const request = new AbortController();
+    this.request = request;
     this.loading = true;
     this.error = null;
     try {
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_DOCS_BASE_PATH}/examples-data/posts.json`,
+        {signal: request.signal},
       );
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      this.posts = await res.json();
+      const posts: Post[] = await res.json();
+      if (!request.signal.aborted) this.posts = posts;
     } catch {
-      // Keep the example usable if the request fails.
+      if (request.signal.aborted) return;
       this.posts = fallbackPosts;
-      this.error = null;
+      this.error = 'Fetch failed. Showing bundled sample posts.';
     } finally {
-      this.loading = false;
+      if (this.request === request) {
+        this.request = null;
+        this.loading = false;
+      }
     }
   }
 
   clear() {
-    this.posts = [];
+    this.request?.abort();
+    this.request = null;
+    this.loading = false;
     this.error = null;
+    this.posts = [];
   }
 }
 

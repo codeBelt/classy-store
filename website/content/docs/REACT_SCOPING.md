@@ -5,7 +5,7 @@ description: "Control the lifetime of stores with context providers and React ke
 
 Use React context to choose a store instance for a subtree, then `useClassyStore` to subscribe to that instance. This is useful for independent forms, editors, nested workspaces, and request-scoped server rendering.
 
-The runnable [scoped editors demo](/examples/scoped-stores/) shows two independent editors and a nested editor. Its [source](https://github.com/codeBelt/classy-store/tree/main/website/examples/demos/scoped-store) is an application example built from existing APIs; there is no new context factory to install.
+The runnable [scoped editors demo](/examples/scoped-stores/) shows two independent editors and a nested editor. Its [source](/examples/scoped-stores/#editor-provider) is an application example built from existing APIs; there is no new context factory to install.
 
 ```mermaid
 flowchart LR
@@ -135,6 +135,7 @@ export function EditorTitle() {
   const title = useClassyStore(store, (state) => state.title);
   return (
     <input
+      aria-label="Editor title"
       value={title}
       onChange={(event) => store.setTitle(event.target.value)}
     />

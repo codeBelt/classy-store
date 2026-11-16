@@ -8,6 +8,7 @@ import {Button} from '../../components/Button';
 import {RenderBadge} from '../../components/RenderBadge';
 import {useRenderCount} from '../../hooks/useRenderCount';
 
+// #region counter
 class DevtoolsCounterStore {
   count = 0;
   label = 'DevTools Counter';
@@ -31,12 +32,14 @@ class DevtoolsCounterStore {
 }
 
 const devtoolsCounterStore = createClassyStore(new DevtoolsCounterStore());
+// #endregion counter
 
 function DevtoolsCounter() {
   const snap = useClassyStore(devtoolsCounterStore);
   const renders = useRenderCount();
   const [connected, setConnected] = useState(false);
 
+  // #region connect
   useEffect(() => {
     const dispose = devtools(devtoolsCounterStore, {
       name: 'DemoCounter',
@@ -47,6 +50,7 @@ function DevtoolsCounter() {
       setConnected(false);
     };
   }, []);
+  // #endregion connect
 
   return (
     <div className="flex flex-col gap-4">

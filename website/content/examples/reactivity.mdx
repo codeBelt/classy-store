@@ -13,54 +13,9 @@ Change a channel to watch its subscribers update. The batch control uses its own
 
 <DemoContainer labels={["Store", "Component"]} demo={<ReactiveFundamentalsDemo />}>
 
-```typescript
-class CounterStore {
-  count = 0;
-  name = 'World';
+<include>../../examples/stores/counterStore.ts</include>
 
-  increment() { this.count++; }
-  setName(name: string) { this.name = name; }
-  incrementMany(n: number) {
-    for (let i = 0; i < n; i++) this.count++;
-  }
-  reset() { this.count = 0; this.name = 'World'; }
-}
-
-export const counterStore = createClassyStore(
-  new CounterStore()
-);
-```
-
-```tsx
-function CountCard() {
-  // Only re-renders when count changes
-  const count = useClassyStore(counterStore, (state) => state.count);
-  return <div>{count}</div>;
-}
-
-function NameCard() {
-  // Only re-renders when name changes
-  const name = useClassyStore(counterStore, (state) => state.name);
-  return <div>{name}</div>;
-}
-
-function BatchCard() {
-  // 1000 mutations → 1 render in this event (React batching)
-  const count = useClassyStore(batchStore, (state) => state.count);
-  return <div>{count}</div>;
-}
-
-function NameInput() {
-  const name = useClassyStore(formStore, (state) => state.name);
-
-  return (
-    <input
-      value={name}
-      onChange={(event) => formStore.setName(event.target.value)}
-    />
-  );
-}
-```
+<include>../../examples/demos/reactivity/ReactiveFundamentalsDemo.tsx#selectors</include>
 
 </DemoContainer>
 
@@ -70,36 +25,9 @@ Loading and result subscribers update on either side of the asynchronous request
 
 <DemoContainer labels={["Store", "Component"]} demo={<AsyncDemo />}>
 
-```typescript
-class PostStore {
-  posts: Post[] = [];
-  loading = false;
-  error: string | null = null;
+<include>../../examples/stores/postStore.ts</include>
 
-  get count() { return this.posts.length; }
-
-  async fetchPosts() {
-    this.loading = true;      // notification 1
-    this.error = null;
-    try {
-      const res = await fetch(postsUrl);
-      this.posts = await res.json();
-    } catch (e) {
-      this.error = e.message;
-    } finally {
-      this.loading = false;   // notification 2
-    }
-  }
-}
-```
-
-```tsx
-// Each selector isolates re-renders
-const loading = useClassyStore(postStore, (state) => state.loading);
-const error = useClassyStore(postStore, (state) => state.error);
-const posts = useClassyStore(postStore, (state) => state.posts);
-const count = useClassyStore(postStore, (state) => state.count);
-```
+<include>../../examples/demos/reactivity/AsyncDemo.tsx#posts</include>
 
 </DemoContainer>
 

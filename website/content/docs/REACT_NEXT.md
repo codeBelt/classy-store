@@ -93,10 +93,11 @@ The Server Component supplies data and an intentional reset key:
 // app/profile/page.tsx
 import {ProfileEditor} from '../../components/profileEditor/ProfileEditor';
 
-type Props = {searchParams: Promise<{name?: string}>};
+type Props = {searchParams: Promise<{name?: string | string[]}>};
 
 export default async function ProfilePage({searchParams}: Props) {
-  const {name = 'Ada'} = await searchParams;
+  const {name: queryName} = await searchParams;
+  const name = (Array.isArray(queryName) ? queryName[0] : queryName) ?? 'Ada';
   return <ProfileEditor key={name} initialData={{name, visits: 0}} />;
 }
 ```

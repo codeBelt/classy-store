@@ -18,6 +18,7 @@ const bodies = [
 ];
 let bodyIndex = 0;
 
+// #region reference-tree
 function SnapshotTree() {
   const [pair, setPair] = useState<{current: Snap; previous?: Snap}>(() => ({
     current: snapshot(documentStore),
@@ -67,6 +68,7 @@ function SnapshotTree() {
     </section>
   );
 }
+// #endregion reference-tree
 
 interface LogEntry {
   id: number;

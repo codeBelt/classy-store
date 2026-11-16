@@ -141,3 +141,70 @@ test('architecture diagrams render on a narrow screen', async ({page}) => {
     await expect(page.locator('.error-icon, .error-text')).toHaveCount(0);
   }
 });
+
+test('the sitemap, canonical URLs and share images describe every public page', async ({
+  request,
+  page,
+}) => {
+  const paths = ['', ...pages, ...examplePages];
+  const sitemap = await request.get('sitemap.xml');
+  expect(sitemap.ok()).toBe(true);
+  const urls = await page.evaluate(
+    (xml) =>
+      Array.from(
+        new DOMParser()
+          .parseFromString(xml, 'text/xml')
+          .querySelectorAll('loc'),
+        (loc) => loc.textContent,
+      ),
+    await sitemap.text(),
+  );
+  expect(urls.sort()).toEqual(
+    paths.map((path) => new URL(path, site).href).sort(),
+  );
+  const images = new Set<string>();
+  for (const path of paths) {
+    const meta = await page.evaluate(
+      (html) => {
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        return {
+          canonical: doc
+            .querySelector('link[rel=canonical]')
+            ?.getAttribute('href'),
+          image: doc
+            .querySelector('meta[property="og:image"]')
+            ?.getAttribute('content'),
+        };
+      },
+      readFileSync(`out/${path}index.html`, 'utf8'),
+    );
+    expect(meta.canonical, path).toBe(new URL(path, site).href);
+    expect(meta.image, path).toMatch(
+      /^https:\/\/codebelt\.github\.io\/classy-store\/og\//,
+    );
+    images.add(new URL(String(meta.image)).pathname);
+  }
+  for (const image of images)
+    expect((await request.get(image)).headers()['content-type'], image).toBe(
+      'image/png',
+    );
+});
+
+test('long architecture headings and the add-note form fit a phone', async ({
+  page,
+}) => {
+  await page.setViewportSize({width: 390, height: 844});
+  await page.goto('docs/ARCHITECTURE/');
+  const heading = page
+    .getByRole('heading', {name: /Layer 3: React Hook/})
+    .first();
+  await expect(heading).toBeVisible();
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth),
+  ).toBeLessThanOrEqual(390);
+  await page.goto('examples/persist/');
+  const add = page.getByRole('button', {name: 'Add', exact: true});
+  await expect(add).toBeVisible();
+  const rect = await add.boundingBox();
+  expect(rect && rect.x + rect.width).toBeLessThanOrEqual(390);
+});

@@ -56,6 +56,7 @@ function UserList() {
                 </button>
                 <button
                   type="button"
+                  aria-label={`Remove ${user.name}`}
                   onClick={() => collectionStore.removeUser(id)}
                   className="px-2 py-0.5 rounded text-[10px] font-medium bg-red-500/20 text-red-300 hover:bg-red-500/30 transition-colors cursor-pointer"
                 >
@@ -95,6 +96,7 @@ function TagList() {
               {tag}
               <button
                 type="button"
+                aria-label={`Remove tag: ${tag}`}
                 onClick={() => collectionStore.removeTag(tag)}
                 className="hover:text-red-400 transition-colors cursor-pointer"
               >
@@ -108,6 +110,7 @@ function TagList() {
   );
 }
 
+// #region counts
 function CountDisplay() {
   const userCount = useClassyStore(collectionStore, (state) => state.userCount);
   const tagCount = useClassyStore(collectionStore, (state) => state.tagCount);
@@ -129,6 +132,8 @@ function CountDisplay() {
 }
 
 let userId = 3;
+// #endregion counts
+
 const sampleNames = ['Charlie', 'Diana', 'Eve', 'Frank', 'Grace', 'Hank'];
 let nameIdx = 0;
 

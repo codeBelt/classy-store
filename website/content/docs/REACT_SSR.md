@@ -9,7 +9,7 @@ The [typed context example](./REACT_SCOPING.md) provides a complete provider pat
 
 Import hydration preparation from `@codebelt/classy-store/react/server` in server code and client modules. This entry does not import React hooks. The separate `@codebelt/classy-store/react` hooks entry is marked `use client`. The [Next.js App Router guide](./REACT_NEXT.md) explains where to construct stores and how to cross that boundary with initial data.
 
-Call `prepareStoreForHydration(store)` after initializing the store with the data used to render the page, on both the server and client. It captures that initial snapshot before persistence or other live updates begin. All direct and bound hooks use the captured data during server rendering and client hydration, then read the current live store. React requires the initial server and client data to match; see [React's external-store SSR guidance](https://react.dev/reference/react/useSyncExternalStore#adding-support-for-server-rendering).
+Call `prepareStoreForHydration(store)` after initializing the store with the data used to render the page, on both the server and client. It captures that initial snapshot before persistence or other live updates begin. `useClassyStore` and hooks returned by `createStoreHook` read that snapshot during server rendering and client hydration, then read the current live store. React requires the initial server and client data to match. [React's external-store SSR guidance](https://react.dev/reference/react/useSyncExternalStore#adding-support-for-server-rendering)
 
 ## Initialize from request data
 
@@ -78,14 +78,16 @@ import {persist} from '@codebelt/classy-store/utils';
 import {Profile} from './Profile';
 import {type ProfileData, ProfileStore} from './profileStore';
 
-export function PersistedProfile({initialData}: {initialData: ProfileData}) {
+type Props = {profileId: string; initialData: ProfileData};
+
+export function PersistedProfile({profileId, initialData}: Props) {
   const store = prepareStoreForHydration(
     useLocalStore(() => new ProfileStore(initialData)),
   );
 
   useEffect(() => {
     const persistence = persist(store, {
-      name: 'profile',
+      name: `profile:${profileId}`,
       storage: localStorage,
       skipHydration: true,
     });
@@ -95,13 +97,15 @@ export function PersistedProfile({initialData}: {initialData: ProfileData}) {
         console.error('Could not restore persisted state', error),
       );
     return () => persistence.dispose();
-  }, [store]);
+  }, [store, profileId]);
 
   return <Profile store={store} />;
 }
 ```
 
-For example, the server renders `Server:1`, persistence restores `Saved:8`, and a delayed boundary then hydrates. The boundary first reads `Server:1` from the captured snapshot, reuses the server DOM, and then updates to `Saved:8` from the live store. It does not need an earlier hook read to establish the initial data. This applies to completed server HTML with selective hydration and to streamed Suspense content.
+Render `<PersistedProfile key={profileId} profileId={profileId} initialData={initialData} />` so switching profiles creates a fresh store and restores that profile's saved data.
+
+For example, suppose the server renders `Server: 1` and persistence restores `Saved: 8` before a delayed boundary hydrates. The boundary first reads `Server: 1` from the captured snapshot, reuses the server DOM, and then updates to `Saved: 8` from the live store. This also works when the boundary is the first consumer to read the store, including with streamed Suspense content.
 
 ## Snapshot lifetime and scope
 

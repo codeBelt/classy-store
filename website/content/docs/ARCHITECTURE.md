@@ -52,7 +52,7 @@ flowchart TB
   storeFn --> DeleteTrap
   SetTrap --> SyncNotify
   SetTrap --> Batch
-  Batch --> SnapshotFn
+  SyncNotify -->|adapter reads| SnapshotFn
   GetTrap --> DeepProxy
   SnapshotFn --> StructuralShare
   StructuralShare --> Freeze
@@ -75,6 +75,7 @@ implementation files and types live with the feature that owns them.
 packages/classy-store/
 ├── src/
 │   ├── index.ts                         # Core public entry; no React dependency
+│   ├── storeRuntime.ts                  # Shared runtime for public entries and both module formats
 │   ├── types.ts                         # Public Snapshot<T> and SubscribeOptions
 │   ├── core/
 │   │   ├── core.ts                      # Write proxies, subscriptions, computed getters
@@ -157,14 +158,14 @@ sequenceDiagram
 
   User->>Proxy: store.count = 5
   Proxy->>Target: Reflect.set(target, 'count', 5)
-  Proxy->>Internal: bumpVersion(internal) up to root
+  Proxy->>Internal: notifyMutation(internal) increments all reachable owners
   Note over Internal: Version mismatch invalidates cached snapshots
   Proxy->>Sync: notify sync listeners immediately
   Proxy->>Micro: schedule batched notify (if not already scheduled)
   Note over Micro: Coalesces all sync mutations
   User->>Proxy: store.name = 'new'
   Proxy->>Target: Reflect.set(target, 'name', 'new')
-  Proxy->>Internal: bumpVersion (version increments again)
+  Proxy->>Internal: notifyMutation increments the versions again
   Proxy->>Sync: notify sync listeners again
   Note over Micro: Still same microtask batch
   Micro->>Batched: notify batched listeners once
@@ -187,8 +188,8 @@ child versions identify edits to shared rows made while it was detached.
 
 **SET trap:**
 
-1. Compare old and new values with `Object.is` — noop if equal
-2. Forward data writes to the raw target. Invoke accessors with the store proxy as their receiver so setter mutations use the same write path.
+1. Resolve the nearest property descriptor. Invoke accessors with the proxy as their receiver so a setter's own writes follow the usual mutation path.
+2. For an existing own data property, skip an `Object.is`-equal value or the same child supplied by its raw object or proxy. Forward other data writes to the raw target. Filling a missing array index with `undefined` creates an element.
 3. After a successful write, detach the old child proxy and clear the bound-method cache. Array length truncation detaches removed children, including partial truncation when a non-configurable index rejects the requested length. An otherwise failed write preserves the old connection.
 4. Bump version for this node and all ancestors
 5. Notify sync listeners immediately, then schedule batched listeners via `queueMicrotask` (deduped)
@@ -196,7 +197,7 @@ child versions identify edits to shared rows made while it was detached.
 **GET trap (priority order):**
 
 1. **Memoized getter detection** — walk prototype chain with `Object.getOwnPropertyDescriptor`. If a getter is found, call `evaluateComputed()` which checks dependency validity and returns the cached result or re-evaluates with dependency tracking.
-2. **Method binding** — if value is a function, bind to proxy so `this.count++` in methods goes through the SET trap. Bound methods are cached.
+2. **Method binding** — bind function values to the proxy so `this.count++` in methods goes through the SET trap. Object methods reuse a cached binding. Array method reads create a fresh binding.
 3. **Nested state** — if `canProxy()` accepts it (plain object, array, or a class such as the library's reactive collections using the internal opt-in), return its canonical child proxy. Record a dependency if a getter is currently being tracked.
 4. **Primitives and opaque values** — return as-is and record a value dependency when a getter is being tracked.
 
@@ -207,13 +208,14 @@ child versions identify edits to shared rows made while it was detached.
 Array operations like `push()` trigger multiple SET traps (element + length). For ordinary listeners, a set of pending owners and one microtask coalesce these mutations into one notification:
 
 ```
-store.items.push('a')
-  → SET trap for index 0 → scheduleNotify (flags, queues microtask)
-  → SET trap for length  → already updated by the index write, Object.is skips it
-  → microtask fires → notifies listeners ONCE
+store.items.push('a')                  // initially empty array
+  → SET index 0, increment owner versions, deliver synchronous notifications
+  → add owners with batched listeners to pendingNotifications, queue one microtask
+  → SET length, already updated by the index write, skip the equal value
+  → flushNotifications delivers the batched callbacks
 ```
 
-Subscribers opt into immediate timing with `{sync: true}`. Sync subscribers run after version propagation and before the batched microtask. They are intentionally not deduped: two writes mean two sync notifications. Every React hook uses this timing so `useSyncExternalStore` observes the new value during the input event, preserving controlled-input caret position. Selectors can run after each write; React batches rendering within event handlers.
+Subscribers opt into immediate timing with `{sync: true}`. Each mutation delivers once per matching registration after version propagation. Two successive mutations deliver twice. React's store-reading hooks use this timing so `useSyncExternalStore` can observe a controlled input's new value during its event. Selectors can run after each mutation, and React schedules the renders.
 
 The Svelte adapter also uses synchronous notifications to satisfy the readable
 store contract. It subscribes before delivering the initial snapshot so mutations
@@ -281,10 +283,12 @@ flowchart TD
 ### Snapshot cache
 
 Each reactive object has one versioned snapshot shared across all paths to
-that object. Snapshots copy own data properties, including JSON keys named
-`__proto__`, and preserve the prototype. Own accessors and class getters read
-against that snapshot. Mutate state through the live store proxy to invalidate
-the affected versions.
+that object. Object snapshots copy own data properties, including JSON keys
+named `__proto__`, and preserve the prototype. Own accessors and class
+getters read against that snapshot. Array snapshots preserve length and
+occupied indices, including holes between them. Named and symbol-keyed array
+properties are omitted. Mutate state through the live store proxy to
+invalidate the affected versions.
 
 ### Structural Sharing Example
 
@@ -469,24 +473,24 @@ graph LR
   reactEntry --> localHook["useLocalStore.ts"]
   reactEntry --> factory["createStoreHook.ts"]
   factory --> hook
-  factory --> core["core.ts"]
-  localHook --> core
-  hook --> core
-  hook --> snapshot["snapshot.ts"]
-  hook --> proxyCompare["proxy-compare"]
-  hook --> hydration["hydrationSnapshots.ts"]
-  serverEntry["/react/server entry"] --> hydration
-  serverEntry --> snapshot
-  serverEntry --> core
+  factory --> runtime["storeRuntime.ts (packed as #store-runtime)"]
+  localHook --> runtime
+  hook --> runtime
+  serverEntry["/react/server entry"] --> runtime
+  adapters["Vue / Svelte / Solid / Angular entries"] --> runtime
+  runtime --> core["core.ts"]
+  runtime --> snapshot["snapshot.ts"]
+  runtime --> proxyCompare["proxy-compare"]
+  runtime --> hydration["hydrationSnapshots.ts"]
   snapshot --> core
   snapshot --> types["types.ts: public types"]
-  snapshot --> coreTypes["core.types.ts: internal types"]
+  snapshot --> proxyCompare
   snapshot --> internal["utils/internal/internal.ts"]
   core --> types
-  core --> coreTypes
+  core --> coreTypes["core.types.ts: internal types"]
+  core --> ownership["ownership.ts"]
   core --> internal
-  index["Core entry: index.ts"] --> core
-  index --> snapshot
+  index["Core entry: index.ts"] --> runtime
   index --> equality["equality.ts"]
   index --> types
 
@@ -498,23 +502,21 @@ graph LR
     status["utilityStatus.ts"]
   end
 
-  persist --> core
-  persist --> snapshot
+  persist --> runtime
   persist --> internal
   persist --> status
-  devtools --> core
-  devtools --> snapshot
-  subscribeKey --> core
-  subscribeKey --> snapshot
-  withHistory --> core
-  withHistory --> snapshot
+  devtools --> runtime
+  subscribeKey --> runtime
+  withHistory --> runtime
   withHistory --> status
   reactEntry --> statusHooks["useHistoryStatus / usePersistStatus"]
   statusHooks --> sharedHook["useUtilityStatus.ts"]
 ```
 
-The client entry owns the React boundary. Core, snapshots, collections, and
-utilities remain framework-neutral. React status hooks share an internal hook;
+The published ESM and CommonJS entries resolve `#store-runtime` to the
+same module within one package installation. They share the proxy registry,
+snapshot caches, and hydration captures. The client entry owns the React
+boundary. Core, snapshots, collections, and utilities remain framework-neutral. React status hooks share an internal hook;
 the status source itself lives with the utilities and has no React dependency.
 `types.ts` contains public core types, while `core.types.ts` describes private
 bookkeeping. Persistence contracts live in `persist.types.ts` and are exported
@@ -565,7 +567,7 @@ No special handling is needed — three mechanisms in the existing design make i
 
 1. **Methods** — The GET trap uses `Reflect.get(target, prop)`, which naturally walks the JavaScript prototype chain. Methods from any ancestor class are found and bound to the proxy via `.bind(receiver)`, so `this` mutations inside inherited methods go through the SET trap. **Important:** Arrow function properties (`increment = () => {}`) are own properties whose `this` is lexically bound to the raw instance at construction time. `.bind()` is a no-op on arrow functions, so mutations inside them bypass the proxy entirely. Always use prototype methods (`increment() {}`) for reactive mutations.
 
-2. **Getters** — `findGetterDescriptor()` (in `utils/internal/internal.ts`) walks the prototype chain with `Object.getOwnPropertyDescriptor` and returns the first getter found. For snapshots, `collectGetters()` walks the chain and collects the most-derived getter for each getter name.
+2. **Getters** — `findPropertyDescriptor()` returns the nearest own or inherited descriptor. The write proxy evaluates a getter when that descriptor defines one. For snapshots, `installMemoizedGetters()` visits the instance and its prototypes in order, so a nearer data field or accessor shadows a base getter with the same key.
 
 3. **Snapshot prototype** — `createSnapshotRecursive()` creates snapshot objects with `Object.create(Object.getPrototypeOf(target))`, preserving the full prototype chain. This means `snapshot(store) instanceof DerivedClass` is `true`, and `installMemoizedGetters()` installs getters from all levels with cross-snapshot memoization.
 
@@ -573,16 +575,16 @@ No special handling is needed — three mechanisms in the existing design make i
 
 ## Performance Characteristics
 
-| Operation                    | Complexity                                   | Notes                                                                                     |
-| ---------------------------- | -------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| Data property read           | Prototype lookup and proxy lookup            | Getter detection walks the prototype chain and existing child proxies are reused          |
-| Property write               | O(reachable owner edges), plus notifications | New values are indexed on attachment. Array truncation also inspects indexed children.    |
-| Notification                 | O(listeners), plus callback work             | React checks run per mutation; snapshot, selector, and render costs are additional        |
-| Getter (cache hit)           | Depends on recorded dependencies             | Nested computed dependencies are validated recursively                                    |
-| Getter (cache miss)          | O(getter body)                               | Re-evaluates with dep tracking                                                            |
-| Snapshot (cache hit)         | O(1)                                         | Version check only                                                                        |
-| Snapshot (cache miss)        | Proportional to visited fields/elements      | Rebuilds changed containers and scans their entries; unchanged child snapshots are reused |
-| Snapshot getter (same snap)  | O(1)                                         | Per-snapshot cache hit                                                                    |
-| Snapshot getter (cross-snap) | O(deps)                                      | Reference comparison via structural sharing                                               |
-| Selector equality            | O(1) for primitives                          | `Object.is` check                                                                         |
-| Auto-track diff              | Depends on tracked operations                | Nested reads, enumeration, and whole-node comparisons can require more work               |
+| Operation                    | Complexity                                              | Notes                                                                                                               |
+| ---------------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Data property read           | Prototype lookup and proxy lookup                       | Getter detection walks the prototype chain and existing child proxies are reused                                    |
+| Property write               | Depends on the changed ownership graph                  | Includes indexing new subtrees, detaching old ones, refreshing subscription paths, and visiting owners              |
+| Notification                 | Visited owners, scoped registrations, and callback work | Synchronous listeners run per mutation. Snapshot, selector, and render costs are additional                         |
+| Getter (cache hit)           | Depends on recorded dependencies                        | Nested computed dependencies are validated recursively                                                              |
+| Getter (cache miss)          | Validation plus getter execution                        | A stale entry may require dependency checks before the getter runs                                                  |
+| Snapshot (cache hit)         | O(1) for an active node                                 | A detached subtree can first reconnect child links and compare saved versions                                       |
+| Snapshot (cache miss)        | Proportional to visited fields/elements                 | Rebuilds changed containers and scans their entries; unchanged child snapshots are reused                           |
+| Snapshot getter (same snap)  | O(1)                                                    | Per-snapshot cache hit                                                                                              |
+| Snapshot getter (cross-snap) | Depends on the dependency chain                         | Each direct read is compared with `Object.is`. Reading another getter can validate its dependencies or run its body |
+| Selector equality            | O(1) for primitives                                     | `Object.is` check                                                                                                   |
+| Auto-track diff              | Depends on tracked operations                           | Nested reads, enumeration, and whole-node comparisons can require more work                                         |

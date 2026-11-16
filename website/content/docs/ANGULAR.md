@@ -42,6 +42,7 @@ class FormStore {
   }
 }
 
+// Shared by components in this client-rendered example.
 const formStore = createClassyStore(new FormStore());
 
 @Component({
@@ -78,6 +79,9 @@ export class FormComponent {
   }
 }
 ```
+
+For SSR, create the store in a request-scoped provider. A module-level instance
+would share edits between requests.
 
 Snapshots are immutable. Do not bind `[(ngModel)]` to a snapshot field or try to
 call `.set()` on the returned signal. Using stable, unique IDs in `@for` preserves

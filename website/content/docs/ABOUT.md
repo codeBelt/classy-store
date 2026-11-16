@@ -8,8 +8,8 @@ description: "Design goals, comparisons, and the projects behind Classy Store."
 - **Class-based stores** — plain classes with fields, methods, and getters
 - **No required wrappers** — shared client stores need no `observer()`, Provider, HOC, or decorator; use context to scope instances
 - **React render filtering** — selectors and tracked reads filter updates caused by store subscriptions
-- **Immutable snapshots** — structural sharing keeps unchanged sub-trees reference-equal
-- **Memoized computed values** — class getters are automatically cached, recompute only when deps change
+- **Snapshots** — frozen copies of supported state share unchanged branches. Opaque values such as dates keep their original references
+- **Memoized computed values** — class getters cache results from the store properties they read
 - **Batched subscriptions** — ordinary listeners coalesce mutations in a microtask; React receives updates synchronously
 - **Type-safe** — full TypeScript inference from your class definitions
 - **Framework bindings** — React hooks and adapters for Vue, Svelte, Solid, and Angular
@@ -36,7 +36,7 @@ size is not the amount of JavaScript delivered to the browser.
 I wanted state management that feels like writing plain TypeScript.
 
 - **A class is the store.** Define fields, methods, and getters — that's your state, your actions, and your derived values. The class _is_ the type. TypeScript infers everything automatically.
-- **Getters are computed values.** Write `get filtered()` and it's memoized with dependency tracking out of the box. It caches until a dependency changes.
+- **Getters are computed values.** Write `get filtered()` to derive a cached value from store fields such as `this.items` and `this.filter`.
 - **Framework bindings that feel native.** React's `useClassyStore`, Vue's `useClassyStore` (shallow ref), Svelte's `toSvelteStore`, Solid's `useClassyStore` (signal getter), Angular's `injectStore` — each integration matches the framework's reactive idioms.
 - **Call methods directly.** `todoStore.addTodo('Buy milk')` — a real object with real methods, callable from anywhere.
 - **Filter React store updates.** Selectors and automatic tracking can skip subscription-driven renders for unchanged data.

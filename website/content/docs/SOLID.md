@@ -17,7 +17,8 @@ const state = useClassyStore(store); // () => Snapshot<typeof store>
 Install the runtime packages for a browser application:
 
 ```sh
-npm install @codebelt/classy-store solid-js@2.0.0-rc.18 @solidjs/web@2.0.0-rc.18
+npm install @codebelt/classy-store
+npm install --save-exact solid-js@2.0.0-rc.18 @solidjs/web@2.0.0-rc.18
 ```
 
 The repository example uses `@solidjs/vite-plugin@3.0.0-next.51`,
