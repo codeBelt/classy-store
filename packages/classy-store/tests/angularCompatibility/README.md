@@ -5,7 +5,7 @@ packs the library, then installs isolated Angular 22.0.0 and 22.2.3 consumers.
 Each consumer pins its Angular core, common, platform-browser, compiler,
 compiler-cli, CLI, and build packages to the selected version. The runner checks
 the installed dependency tree for mixed Angular versions and checks the packed
-optional peer range. The workspace's development/example versions stay at 22.2.3.
+optional peer range. The workspace's development/example framework packages use 22.2.6.
 
 Both consumers typecheck the public API and compile the same AOT fixture used by
 the source browser suite. The six shared scenarios cover timing/core batching,

@@ -29,26 +29,27 @@ describe('snapshot()', () => {
     it.each([
       {description: 'previously accessed', accessBeforeSnapshot: true},
       {description: 'previously unaccessed', accessBeforeSnapshot: false},
-    ])('tracks $description nested opted-in classes', ({
-      accessBeforeSnapshot,
-    }) => {
-      class Child {
-        static [PROXYABLE] = true;
-        count = 0;
-        other = 0;
-      }
-      const store = createClassyStore({child: new Child()});
-      if (accessBeforeSnapshot) expect(store.child.count).toBe(0);
-      const previous = snapshot(store);
-      const affected = new WeakMap<object, unknown>();
-      const tracked = createProxy(previous, affected);
-      expect(tracked.child.count).toBe(0);
+    ])(
+      'tracks $description nested opted-in classes',
+      ({accessBeforeSnapshot}) => {
+        class Child {
+          static [PROXYABLE] = true;
+          count = 0;
+          other = 0;
+        }
+        const store = createClassyStore({child: new Child()});
+        if (accessBeforeSnapshot) expect(store.child.count).toBe(0);
+        const previous = snapshot(store);
+        const affected = new WeakMap<object, unknown>();
+        const tracked = createProxy(previous, affected);
+        expect(tracked.child.count).toBe(0);
 
-      store.child.other++;
-      expect(isChanged(previous, snapshot(store), affected)).toBe(false);
-      store.child.count++;
-      expect(isChanged(previous, snapshot(store), affected)).toBe(true);
-    });
+        store.child.other++;
+        expect(isChanged(previous, snapshot(store), affected)).toBe(false);
+        store.child.count++;
+        expect(isChanged(previous, snapshot(store), affected)).toBe(true);
+      },
+    );
 
     it('tracks null-prototype store properties', () => {
       const store = createClassyStore(

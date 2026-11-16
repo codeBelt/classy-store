@@ -33,13 +33,13 @@ bun add @codebelt/classy-store
 
 All framework peer dependencies are optional — install only what your project uses:
 
-| Framework | Peer Dependency | Import |
-|-----------|----------------|--------|
-| React | `react ^18.0.0 \|\| ^19.0.0` | `@codebelt/classy-store/react` |
-| Vue | `vue ^3.2.0` | `@codebelt/classy-store/vue` |
-| Svelte | `svelte ^4.0.0 \|\| ^5.0.0` | `@codebelt/classy-store/svelte` |
-| Solid 2 RC | `solid-js 2.0.0-rc.18` (exact) | `@codebelt/classy-store/solid` |
-| Angular | `@angular/core ^22.0.0` | `@codebelt/classy-store/angular` |
+| Framework  | Peer Dependency                | Import                           |
+| ---------- | ------------------------------ | -------------------------------- |
+| React      | `react ^18.0.0 \|\| ^19.0.0`   | `@codebelt/classy-store/react`   |
+| Vue        | `vue ^3.2.0`                   | `@codebelt/classy-store/vue`     |
+| Svelte     | `svelte ^4.0.0 \|\| ^5.0.0`    | `@codebelt/classy-store/svelte`  |
+| Solid 2 RC | `solid-js 2.0.0-rc.18` (exact) | `@codebelt/classy-store/solid`   |
+| Angular    | `@angular/core ^22.0.0`        | `@codebelt/classy-store/angular` |
 
 These ranges include stable releases within the listed majors and exclude
 untested future majors. Solid remains pinned to its exact tested prerelease.
@@ -66,7 +66,7 @@ class TodoStore {
   get filtered() {
     if (this.filter === 'all') return this.todos;
     return this.todos.filter((todo) =>
-        this.filter === 'done' ? todo.done : !todo.done,
+      this.filter === 'done' ? todo.done : !todo.done,
     );
   }
 
@@ -126,19 +126,19 @@ function AddButton() {
 
 ## Choosing an API
 
-| What you need | API |
-| --- | --- |
-| Create shared state from a class or object | `createClassyStore(instance)` |
-| Render store data in React | `useClassyStore(store)` or `useClassyStore(store, selector)` |
-| Create a store owned by a component | `useLocalStore(factory)` |
-| Bind a reusable hook to an existing store | `createStoreHook(store)` |
-| Render undo/redo availability or pause state | `useHistoryStatus(history)` |
-| Render persistence hydration, expiry, or errors | `usePersistStatus(handle)` |
-| Prepare matching initial data for SSR/hydration | `prepareStoreForHydration(store)` |
-| Read state outside React or observe mutations | `snapshot(store)`, `subscribe(store, listener)`, `subscribeKey(store, key, listener)` |
-| Persist state, record history, or inspect it in DevTools | `persist(store, options)`, `withHistory(store)`, `devtools(store)` |
-| Track changes inside Map-like or Set-like collections | `reactiveMap()`, `reactiveSet()` |
-| Compare selector results one level deep | `shallowEqual(previous, next)` |
+| What you need                                            | API                                                                                   |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Create shared state from a class or object               | `createClassyStore(instance)`                                                         |
+| Render store data in React                               | `useClassyStore(store)` or `useClassyStore(store, selector)`                          |
+| Create a store owned by a component                      | `useLocalStore(factory)`                                                              |
+| Bind a reusable hook to an existing store                | `createStoreHook(store)`                                                              |
+| Render undo/redo availability or pause state             | `useHistoryStatus(history)`                                                           |
+| Render persistence hydration, expiry, or errors          | `usePersistStatus(handle)`                                                            |
+| Prepare matching initial data for SSR/hydration          | `prepareStoreForHydration(store)`                                                     |
+| Read state outside React or observe mutations            | `snapshot(store)`, `subscribe(store, listener)`, `subscribeKey(store, key, listener)` |
+| Persist state, record history, or inspect it in DevTools | `persist(store, options)`, `withHistory(store)`, `devtools(store)`                    |
+| Track changes inside Map-like or Set-like collections    | `reactiveMap()`, `reactiveSet()`                                                      |
+| Compare selector results one level deep                  | `shallowEqual(previous, next)`                                                        |
 
 `useClassyStore` is the starting point for React components. The two status hooks
 are optional: use them only when displaying metadata from an existing history or
@@ -148,17 +148,17 @@ persistence handle. They do not create those handles or subscribe to store data.
 
 Import from the entry that owns the API. Core, collections, and utilities do not depend on React.
 
-| Import path | Runtime exports | Public types |
-| --- | --- | --- |
-| `@codebelt/classy-store` | `createClassyStore`, `snapshot`, `subscribe`, `shallowEqual` | `Snapshot`, `SubscribeOptions` |
-| `@codebelt/classy-store/react` | `useClassyStore`, `useLocalStore`, `createStoreHook`, `useHistoryStatus`, `usePersistStatus` | `UseClassyStoreSelectorOptions` |
-| `@codebelt/classy-store/react/server` | `prepareStoreForHydration` | — |
-| `@codebelt/classy-store/collections` | `reactiveMap`, `reactiveSet` | `ReactiveMap`, `ReactiveSet` |
-| `@codebelt/classy-store/utils` | `persist`, `withHistory`, `subscribeKey`, `devtools` | `PersistOptions`, `PersistHandle`, `PersistStatus`, `PersistOperation`, `PropertyTransform`, `StorageAdapter`, `HistoryOptions`, `HistoryHandle`, `HistoryStatus`, `DevtoolsOptions`, `SubscribeOptions` |
-| `@codebelt/classy-store/vue` | `useClassyStore` | — |
-| `@codebelt/classy-store/svelte` | `toSvelteStore` | `ClassyReadable` |
-| `@codebelt/classy-store/solid` | `useClassyStore` | — |
-| `@codebelt/classy-store/angular` | `injectStore` | — |
+| Import path                           | Runtime exports                                                                              | Public types                                                                                                                                                                                             |
+| ------------------------------------- | -------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@codebelt/classy-store`              | `createClassyStore`, `snapshot`, `subscribe`, `shallowEqual`                                 | `Snapshot`, `SubscribeOptions`                                                                                                                                                                           |
+| `@codebelt/classy-store/react`        | `useClassyStore`, `useLocalStore`, `createStoreHook`, `useHistoryStatus`, `usePersistStatus` | `UseClassyStoreSelectorOptions`                                                                                                                                                                          |
+| `@codebelt/classy-store/react/server` | `prepareStoreForHydration`                                                                   | —                                                                                                                                                                                                        |
+| `@codebelt/classy-store/collections`  | `reactiveMap`, `reactiveSet`                                                                 | `ReactiveMap`, `ReactiveSet`                                                                                                                                                                             |
+| `@codebelt/classy-store/utils`        | `persist`, `withHistory`, `subscribeKey`, `devtools`                                         | `PersistOptions`, `PersistHandle`, `PersistStatus`, `PersistOperation`, `PropertyTransform`, `StorageAdapter`, `HistoryOptions`, `HistoryHandle`, `HistoryStatus`, `DevtoolsOptions`, `SubscribeOptions` |
+| `@codebelt/classy-store/vue`          | `useClassyStore`                                                                             | —                                                                                                                                                                                                        |
+| `@codebelt/classy-store/svelte`       | `toSvelteStore`                                                                              | `ClassyReadable`                                                                                                                                                                                         |
+| `@codebelt/classy-store/solid`        | `useClassyStore`                                                                             | —                                                                                                                                                                                                        |
+| `@codebelt/classy-store/angular`      | `injectStore`                                                                                | —                                                                                                                                                                                                        |
 
 `ReactiveMap` and `ReactiveSet` are exported as types; construct values with the
 factory functions. The React entry carries `use client`. Import hydration
@@ -263,10 +263,14 @@ Auto-tracking requires native `WeakRef` support (ES2021). Tracking dependencies 
 import {shallowEqual} from '@codebelt/classy-store';
 import {useClassyStore} from '@codebelt/classy-store/react';
 
-const userData = useClassyStore(myStore, (state) => ({
-  name: state.user.name,
-  role: state.user.role,
-}), {isEqual: shallowEqual});
+const userData = useClassyStore(
+  myStore,
+  (state) => ({
+    name: state.user.name,
+    role: state.user.role,
+  }),
+  {isEqual: shallowEqual},
+);
 ```
 
 **Controlled input timing:**
@@ -296,7 +300,11 @@ import type {HistoryHandle} from '@codebelt/classy-store/utils';
 
 function UndoButton({history}: {history: HistoryHandle}) {
   const {canUndo} = useHistoryStatus(history);
-  return <button disabled={!canUndo} onClick={history.undo}>Undo</button>;
+  return (
+    <button disabled={!canUndo} onClick={history.undo}>
+      Undo
+    </button>
+  );
 }
 ```
 
@@ -353,7 +361,9 @@ import {useLocalStore, useClassyStore} from '@codebelt/classy-store/react';
 
 class CounterStore {
   count = 0;
-  increment() { this.count++; }
+  increment() {
+    this.count++;
+  }
 }
 
 function Counter() {
@@ -382,9 +392,13 @@ class CatalogPageStore {
   items: string[] = [];
   loading = false;
 
-  get count() { return this.items.length; }
+  get count() {
+    return this.items.length;
+  }
 
-  addItem(item: string) { this.items.push(item); }
+  addItem(item: string) {
+    this.items.push(item);
+  }
 }
 
 const catalogStore = createClassyStore(new CatalogPageStore());
@@ -403,7 +417,13 @@ function ItemCount() {
 // Auto-tracked mode
 function ItemList() {
   const snap = useCatalogStore();
-  return <ul>{snap.items.map((item) => <li key={item}>{item}</li>)}</ul>;
+  return (
+    <ul>
+      {snap.items.map((item) => (
+        <li key={item}>{item}</li>
+      ))}
+    </ul>
+  );
 }
 
 // Custom equality
@@ -548,7 +568,12 @@ import {reactiveMap, reactiveSet} from '@codebelt/classy-store/collections';
 Tree-shakeable utilities are available via a separate entry point:
 
 ```typescript
-import {persist, devtools, subscribeKey, withHistory} from '@codebelt/classy-store/utils';
+import {
+  persist,
+  devtools,
+  subscribeKey,
+  withHistory,
+} from '@codebelt/classy-store/utils';
 ```
 
 ### `persist(store, options)`
@@ -630,15 +655,23 @@ class BaseStore {
   loading = false;
   error: string | null = null;
 
-  get hasError() { return this.error !== null; }
-  setLoading(value: boolean) { this.loading = value; }
-  setError(msg: string | null) { this.error = msg; }
+  get hasError() {
+    return this.error !== null;
+  }
+  setLoading(value: boolean) {
+    this.loading = value;
+  }
+  setError(msg: string | null) {
+    this.error = msg;
+  }
 }
 
 class UserStore extends BaseStore {
   users: string[] = [];
 
-  get count() { return this.users.length; }
+  get count() {
+    return this.users.length;
+  }
 
   addUser(name: string) {
     this.users.push(name);
@@ -715,7 +748,7 @@ class Store {
     // Only runs when `items` or `filter` changes.
     // Accessing store.filtered multiple times returns the same reference.
     if (this.filter === 'all') return this.items;
-    return this.items.filter(item => item === this.filter);
+    return this.items.filter((item) => item === this.filter);
   }
 
   get filteredCount() {
@@ -771,12 +804,12 @@ Run `bun run test:react:compiler` for the installed-package matrix and `bun run 
 
 ## When to use each mode
 
-| Mode | Best for | How it works |
-|------|----------|--------------|
-| `useClassyStore(store, selector)` | Derived values, primitives, specific slices | Selector runs on snapshot, compared with `Object.is` |
-| `useClassyStore(store)` | Components reading many props, rapid prototyping | `proxy-compare` tracks reads automatically |
-| `useClassyStore(store, selector, {isEqual: shallowEqual})` | Selectors returning new objects/arrays | Shallow comparison prevents unnecessary re-renders |
-| `useClassyStore(store, selector)` | Controlled form fields | Always notifies React during the input event turn |
+| Mode                                                       | Best for                                         | How it works                                         |
+| ---------------------------------------------------------- | ------------------------------------------------ | ---------------------------------------------------- |
+| `useClassyStore(store, selector)`                          | Derived values, primitives, specific slices      | Selector runs on snapshot, compared with `Object.is` |
+| `useClassyStore(store)`                                    | Components reading many props, rapid prototyping | `proxy-compare` tracks reads automatically           |
+| `useClassyStore(store, selector, {isEqual: shallowEqual})` | Selectors returning new objects/arrays           | Shallow comparison prevents unnecessary re-renders   |
+| `useClassyStore(store, selector)`                          | Controlled form fields                           | Always notifies React during the input event turn    |
 
 ## Comparison with other libraries
 
@@ -793,7 +826,7 @@ size is not the amount of JavaScript delivered to the browser.
 
 I wanted state management that feels like writing plain TypeScript.
 
-- **A class is the store.** Define fields, methods, and getters — that's your state, your actions, and your derived values. The class *is* the type. TypeScript infers everything automatically.
+- **A class is the store.** Define fields, methods, and getters — that's your state, your actions, and your derived values. The class _is_ the type. TypeScript infers everything automatically.
 - **Getters are computed values.** Write `get filtered()` and it's memoized with dependency tracking out of the box. It caches until a dependency changes.
 - **Framework bindings that feel native.** React's `useClassyStore`, Vue's `useClassyStore` (shallow ref), Svelte's `toSvelteStore`, Solid's `useClassyStore` (signal getter), Angular's `injectStore` — each integration matches the framework's reactive idioms.
 - **Call methods directly.** `todoStore.addTodo('Buy milk')` — a real object with real methods, callable from anywhere.

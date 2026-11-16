@@ -93,10 +93,10 @@ function devtools<T extends object>(
 
 ### Options
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `name` | `string` | `'ClassyStore'` | Display name in the DevTools panel |
-| `enabled` | `boolean` | `true` | Set to `false` to disable (returns a noop) |
+| Option    | Type      | Default         | Description                                |
+| --------- | --------- | --------------- | ------------------------------------------ |
+| `name`    | `string`  | `'ClassyStore'` | Display name in the DevTools panel         |
+| `enabled` | `boolean` | `true`          | Set to `false` to disable (returns a noop) |
 
 ### Return value
 
@@ -205,10 +205,10 @@ DevTools dispatch commands are not implemented.
 
 ## Quick Reference
 
-| What you want | How to do it |
-|---|---|
-| Connect a store | `devtools(store, {name: 'MyStore'})` |
-| Disconnect | `const dispose = devtools(...); dispose()` |
-| Disable in production | `enabled: import.meta.env.DEV` |
-| Multiple stores | Call `devtools()` once per store with unique names |
+| What you want         | How to do it                                          |
+| --------------------- | ----------------------------------------------------- |
+| Connect a store       | `devtools(store, {name: 'MyStore'})`                  |
+| Disconnect            | `const dispose = devtools(...); dispose()`            |
+| Disable in production | `enabled: import.meta.env.DEV`                        |
+| Multiple stores       | Call `devtools()` once per store with unique names    |
 | Use without extension | Works safely — returns a noop if extension is missing |

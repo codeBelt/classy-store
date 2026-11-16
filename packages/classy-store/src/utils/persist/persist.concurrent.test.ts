@@ -25,58 +25,59 @@ describe('persist async operation ordering', () => {
   test.each([
     {description: 'successful', fails: false},
     {description: 'failed', fails: true},
-  ])('keeps a newer save behind a $description pending write', async ({
-    fails,
-  }) => {
-    const firstWrite = deferred<void>();
-    const secondWrite = deferred<void>();
-    let saved: string | null = null;
-    const storage = {
-      getItem: () => saved,
-      setItem: mock(async (_name: string, value: string) => {
-        await (JSON.parse(value).state.count === 1 ? firstWrite : secondWrite)
-          .promise;
-        saved = value;
-      }),
-      removeItem: () => {},
-    };
-    const onError = mock(() => {});
-    const store = createClassyStore({count: 1});
-    const handle = persist(store, {
-      name: 'draft',
-      storage,
-      skipHydration: true,
-      debounce: 1000,
-      onError,
-    });
-    handles.push(handle);
-    const first = handle.save();
-    store.count = 2;
-    await tick();
-    const second = handle.save();
-    store.count = 3; // The queued save must retain its requested value, 2.
-
-    try {
-      expect(storage.setItem).toHaveBeenCalledTimes(1);
-      if (fails) {
-        firstWrite.reject(new Error('Write failed'));
-        await expect(first).rejects.toThrow('Write failed');
-      } else {
-        firstWrite.resolve();
-        await first;
-      }
+  ])(
+    'keeps a newer save behind a $description pending write',
+    async ({fails}) => {
+      const firstWrite = deferred<void>();
+      const secondWrite = deferred<void>();
+      let saved: string | null = null;
+      const storage = {
+        getItem: () => saved,
+        setItem: mock(async (_name: string, value: string) => {
+          await (JSON.parse(value).state.count === 1 ? firstWrite : secondWrite)
+            .promise;
+          saved = value;
+        }),
+        removeItem: () => {},
+      };
+      const onError = mock(() => {});
+      const store = createClassyStore({count: 1});
+      const handle = persist(store, {
+        name: 'draft',
+        storage,
+        skipHydration: true,
+        debounce: 1000,
+        onError,
+      });
+      handles.push(handle);
+      const first = handle.save();
+      store.count = 2;
       await tick();
-      expect(storage.setItem).toHaveBeenCalledTimes(2);
-      secondWrite.resolve();
-      await second;
-      expect<string | null>(saved).toBe(envelope(2));
-      expect(onError).toHaveBeenCalledTimes(fails ? 1 : 0);
-    } finally {
-      firstWrite.resolve();
-      secondWrite.resolve();
-      await Promise.allSettled([first, second]);
-    }
-  });
+      const second = handle.save();
+      store.count = 3; // The queued save must retain its requested value, 2.
+
+      try {
+        expect(storage.setItem).toHaveBeenCalledTimes(1);
+        if (fails) {
+          firstWrite.reject(new Error('Write failed'));
+          await expect(first).rejects.toThrow('Write failed');
+        } else {
+          firstWrite.resolve();
+          await first;
+        }
+        await tick();
+        expect(storage.setItem).toHaveBeenCalledTimes(2);
+        secondWrite.resolve();
+        await second;
+        expect<string | null>(saved).toBe(envelope(2));
+        expect(onError).toHaveBeenCalledTimes(fails ? 1 : 0);
+      } finally {
+        firstWrite.resolve();
+        secondWrite.resolve();
+        await Promise.allSettled([first, second]);
+      }
+    },
+  );
 
   test('drops queued saves after dispose while an issued write can finish', async () => {
     const pending = deferred<void>();
@@ -184,37 +185,38 @@ describe('persist async operation ordering', () => {
   test.each([
     {description: 'batched', debounce: 0},
     {description: 'debounced', debounce: 20},
-  ])('clear cancels a pending $description save and later edits still persist', async ({
-    debounce,
-  }) => {
-    let saved: string | null = envelope(1);
-    const storage = {
-      getItem: () => saved,
-      setItem: mock((_name: string, value: string) => {
-        saved = value;
-      }),
-      removeItem: () => {
-        saved = null;
-      },
-    };
-    const store = createClassyStore({count: 1});
-    const handle = persist(store, {
-      name: 'draft',
-      storage,
-      debounce,
-      skipHydration: true,
-    });
-    handles.push(handle);
-    store.count = 2;
-    if (debounce) await tick(); // Arm the timer; the zero-delay case still has a batched notification.
-    await handle.clear();
-    await new Promise((resolve) => setTimeout(resolve, debounce + 10));
-    expect(saved).toBeNull();
-    expect(storage.setItem).not.toHaveBeenCalled();
-    store.count = 3;
-    await new Promise((resolve) => setTimeout(resolve, debounce + 10));
-    expect(saved).toBe(envelope(3));
-  });
+  ])(
+    'clear cancels a pending $description save and later edits still persist',
+    async ({debounce}) => {
+      let saved: string | null = envelope(1);
+      const storage = {
+        getItem: () => saved,
+        setItem: mock((_name: string, value: string) => {
+          saved = value;
+        }),
+        removeItem: () => {
+          saved = null;
+        },
+      };
+      const store = createClassyStore({count: 1});
+      const handle = persist(store, {
+        name: 'draft',
+        storage,
+        debounce,
+        skipHydration: true,
+      });
+      handles.push(handle);
+      store.count = 2;
+      if (debounce) await tick(); // Arm the timer; the zero-delay case still has a batched notification.
+      await handle.clear();
+      await new Promise((resolve) => setTimeout(resolve, debounce + 10));
+      expect(saved).toBeNull();
+      expect(storage.setItem).not.toHaveBeenCalled();
+      store.count = 3;
+      await new Promise((resolve) => setTimeout(resolve, debounce + 10));
+      expect(saved).toBe(envelope(3));
+    },
+  );
 
   test('rehydrates from the result of a previously requested save', async () => {
     const pendingWrite = deferred<void>();

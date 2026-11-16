@@ -153,13 +153,13 @@
     }
   },
   "devDependencies": {
-    "@angular/core": "22.2.3",
+    "@angular/core": "22.2.6",
     "@babel/core": "7.29.7",
     "@happy-dom/global-registrator": "21.0.4",
-    "@playwright/test": "1.64.1",
+    "@playwright/test": "1.65.1",
     "@solidjs/compiler": "2.0.0-rc.18",
     "@solidjs/web": "2.0.0-rc.18",
-    "@types/bun": "1.4.3",
+    "@types/bun": "1.4.4",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
     "babel-plugin-react-compiler": "1.0.0",
@@ -167,12 +167,12 @@
     "react-compiler-runtime": "1.0.0",
     "react-dom": "19.3.1",
     "solid-js": "2.0.0-rc.18",
-    "svelte": "5.55.5",
-    "tsdown": "0.23.1",
+    "svelte": "5.57.3",
+    "tsdown": "0.23.7",
     "typescript": "7.0.2",
-    "vue": "3.5.44",
-    "@angular/platform-browser": "22.2.3",
-    "@angular/compiler": "22.2.3"
+    "vue": "3.5.45",
+    "@angular/platform-browser": "22.2.6",
+    "@angular/compiler": "22.2.6"
   },
   "keywords": [
     "classy-store",

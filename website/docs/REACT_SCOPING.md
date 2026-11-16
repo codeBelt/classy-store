@@ -21,8 +21,12 @@ export class EditorStore {
     this.body = initialData.body;
   }
 
-  setTitle(title: string) { this.title = title; }
-  setBody(body: string) { this.body = body; }
+  setTitle(title: string) {
+    this.title = title;
+  }
+  setBody(body: string) {
+    this.body = body;
+  }
 }
 ```
 
@@ -69,7 +73,11 @@ type Props = {
   persistence?: {name: string; storage: StorageAdapter};
 };
 
-export function EditorStoreProvider({initialData, children, persistence}: Props) {
+export function EditorStoreProvider({
+  initialData,
+  children,
+  persistence,
+}: Props) {
   const store = prepareStoreForHydration(
     useLocalStore(() => new EditorStore(initialData)),
   );
@@ -84,7 +92,11 @@ export function EditorStoreProvider({initialData, children, persistence}: Props)
       properties: ['title', 'body'],
       skipHydration: true,
     });
-    void handle.rehydrate().catch((error) => console.error('Could not restore persisted state', error));
+    void handle
+      .rehydrate()
+      .catch((error) =>
+        console.error('Could not restore persisted state', error),
+      );
     return () => handle.dispose();
   }, [store, name, storage]);
 
@@ -108,7 +120,12 @@ import {useEditorStore} from '../../hooks/useEditorStore';
 export function EditorTitle() {
   const store = useEditorStore();
   const title = useClassyStore(store, (state) => state.title);
-  return <input value={title} onChange={(event) => store.setTitle(event.target.value)} />;
+  return (
+    <input
+      value={title}
+      onChange={(event) => store.setTitle(event.target.value)}
+    />
+  );
 }
 ```
 
@@ -124,19 +141,19 @@ Auto-tracking also works: `const state = useClassyStore(useEditorStore())`. Read
   initialData={documentData}
 >
   <EditorTitle />
-</EditorStoreProvider>
+</EditorStoreProvider>;
 ```
 
 Change `documentId` when moving to a different document; increment `revision` for an explicit reset. A key change remounts the provider's whole subtree, including nested providers. Resetting a nested provider leaves its parent and siblings intact.
 
-| Event | Store and effect behavior |
-| --- | --- |
-| Parent render or changed `initialData`, same key | Preserve the existing store and edits |
-| Provider key changes | Create a new store and clean up the old subtree |
-| Nested provider | Consumers inside it use its independent store |
-| Storage name or adapter changes | Keep the store; detach old persistence and load from the new configuration |
-| Persistence removed | Keep current state and stop persistence |
-| Provider unmounts | React releases its store reference and effect cleanup detaches persistence |
+| Event                                            | Store and effect behavior                                                  |
+| ------------------------------------------------ | -------------------------------------------------------------------------- |
+| Parent render or changed `initialData`, same key | Preserve the existing store and edits                                      |
+| Provider key changes                             | Create a new store and clean up the old subtree                            |
+| Nested provider                                  | Consumers inside it use its independent store                              |
+| Storage name or adapter changes                  | Keep the store; detach old persistence and load from the new configuration |
+| Persistence removed                              | Keep current state and stop persistence                                    |
+| Provider unmounts                                | React releases its store reference and effect cleanup detaches persistence |
 
 A reset does **not** clear saved data. If the new provider uses the same persistence key, it restores that saved draft. To clear it, stop new edits and await the active handle's `clear()` before disposing that handle and remounting. `clear()` orders removal after earlier writes and invalidates pending reads. If the provider hides its handle, expose an application reset command that performs this sequence. Disposing first and calling the adapter's `removeItem()` directly can race with an already-issued async write. Coordinate any other handles using the same key. Use distinct storage keys for independent documents or users.
 

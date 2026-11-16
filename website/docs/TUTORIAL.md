@@ -44,7 +44,7 @@ A store is any class instance wrapped with `createClassyStore()`. State lives as
 import {createClassyStore} from '@codebelt/classy-store';
 
 class TodoStore {
-  items: { id: number; text: string; done: boolean }[] = [];
+  items: {id: number; text: string; done: boolean}[] = [];
   filter: 'all' | 'active' | 'done' = 'all';
 
   get remaining() {
@@ -52,7 +52,8 @@ class TodoStore {
   }
 
   get filtered() {
-    if (this.filter === 'active') return this.items.filter((item) => !item.done);
+    if (this.filter === 'active')
+      return this.items.filter((item) => !item.done);
     if (this.filter === 'done') return this.items.filter((item) => item.done);
     return this.items;
   }
@@ -125,7 +126,9 @@ Without `shallowEqual` — `.filter()` creates a new array every time the snapsh
 import {useClassyStore} from '@codebelt/classy-store/react';
 
 // ❌ New array reference every snapshot → unnecessary re-renders
-const active = useClassyStore(todoStore, (state) => state.items.filter((item) => !item.done));
+const active = useClassyStore(todoStore, (state) =>
+  state.items.filter((item) => !item.done),
+);
 ```
 
 With `shallowEqual` — compares the array contents, not the reference:
@@ -203,14 +206,14 @@ class FormStore {
   count = 0;
 
   submit(name: string, email: string) {
-    this.name = name;       // immediately notifies React
-    this.email = email;     // immediately notifies React
-    this.submitted = true;  // React batches renders in an event handler
+    this.name = name; // immediately notifies React
+    this.email = email; // immediately notifies React
+    this.submitted = true; // React batches renders in an event handler
   }
 
   incrementMany(n: number) {
     for (let i = 0; i < n; i++) {
-      this.count++;         // each write notifies React
+      this.count++; // each write notifies React
     }
   }
 }
@@ -290,7 +293,7 @@ import {createClassyStore} from '@codebelt/classy-store';
 import {reactiveMap} from '@codebelt/classy-store/collections';
 
 class UserStore {
-  users = reactiveMap<string, { name: string; role: string }>();
+  users = reactiveMap<string, {name: string; role: string}>();
 
   get count() {
     return this.users.size;
@@ -310,7 +313,7 @@ export const userStore = createClassyStore(new UserStore());
 
 `ReactiveMap` and `ReactiveSet` provide Map-like and Set-like methods backed by arrays. They are not native collections or exact substitutes for native identity and iterator semantics. See the [collection behavior](./REACTIVE_COLLECTIONS_TUTORIAL.md#collection-behavior).
 
-> **When to use:** Whenever you'd reach for `Map` or `Set` inside a store. You *can* use native `Map`/`Set`, but only the reference is reactive — mutations like `.set()` or `.add()` won't trigger updates. You'd have to replace the entire Map/Set (e.g., `this.users = new Map(this.users)`) to notify subscribers. `reactiveMap()` and `reactiveSet()` avoid that by making individual operations reactive.
+> **When to use:** Whenever you'd reach for `Map` or `Set` inside a store. You _can_ use native `Map`/`Set`, but only the reference is reactive — mutations like `.set()` or `.add()` won't trigger updates. You'd have to replace the entire Map/Set (e.g., `this.users = new Map(this.users)`) to notify subscribers. `reactiveMap()` and `reactiveSet()` avoid that by making individual operations reactive.
 
 ## Class Inheritance
 
@@ -337,14 +340,14 @@ class BaseStore {
 }
 
 class UserStore extends BaseStore {
-  users: { id: string; name: string }[] = [];
+  users: {id: string; name: string}[] = [];
 
   get activeCount() {
     return this.users.length;
   }
 
   async fetchUsers() {
-    this.setLoading(true);       // base method — reactive
+    this.setLoading(true); // base method — reactive
     this.setError(null);
     try {
       const res = await fetch('/api/users');
@@ -375,12 +378,12 @@ Async methods work naturally. React is notified as each field changes, and pendi
 
 ```ts
 class PostStore {
-  posts: { id: number; title: string }[] = [];
+  posts: {id: number; title: string}[] = [];
   loading = false;
   error: string | null = null;
 
   async fetchPosts() {
-    this.loading = true;   // notify React that loading started
+    this.loading = true; // notify React that loading started
     this.error = null;
     try {
       const res = await fetch('/api/posts');
@@ -410,8 +413,12 @@ import {useLocalStore, useClassyStore} from '@codebelt/classy-store/react';
 
 class CounterStore {
   count = 0;
-  get doubled() { return this.count * 2; }
-  increment() { this.count++; }
+  get doubled() {
+    return this.count * 2;
+  }
+  increment() {
+    this.count++;
+  }
 }
 
 function Counter() {
@@ -436,8 +443,12 @@ import {persist} from '@codebelt/classy-store/utils';
 class FormStore {
   name = '';
   email = '';
-  setName(v: string) { this.name = v; }
-  setEmail(v: string) { this.email = v; }
+  setName(v: string) {
+    this.name = v;
+  }
+  setEmail(v: string) {
+    this.email = v;
+  }
 }
 
 function EditProfile() {
@@ -446,14 +457,23 @@ function EditProfile() {
   const snap = useClassyStore(store);
 
   useEffect(() => {
-    const handle = persist(store, { storage: localStorage, name: 'edit-profile-draft' });
+    const handle = persist(store, {
+      storage: localStorage,
+      name: 'edit-profile-draft',
+    });
     return () => handle.dispose();
   }, [store]);
 
   return (
     <form>
-      <input value={snap.name} onChange={(e) => store.setName(e.target.value)} />
-      <input value={snap.email} onChange={(e) => store.setEmail(e.target.value)} />
+      <input
+        value={snap.name}
+        onChange={(e) => store.setName(e.target.value)}
+      />
+      <input
+        value={snap.email}
+        onChange={(e) => store.setEmail(e.target.value)}
+      />
     </form>
   );
 }
@@ -513,7 +533,7 @@ const data = useCatalogStore(
 
 ### Mutate through methods, not from components
 
-While you *can* write `counterStore.count = 5` directly from a component, you shouldn't. Centralizing mutations in store methods keeps your logic in one place and makes it easier to find, refactor, and test.
+While you _can_ write `counterStore.count = 5` directly from a component, you shouldn't. Centralizing mutations in store methods keeps your logic in one place and makes it easier to find, refactor, and test.
 
 ```ts
 // ✅ Good — mutation logic lives in the store

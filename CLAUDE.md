@@ -74,7 +74,7 @@ Because mutations are batched via `queueMicrotask`, tests must flush the microta
 const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 
 it('notifies on mutation', async () => {
-  const store = createClassyStore({ count: 0 });
+  const store = createClassyStore({count: 0});
   const cb = mock(() => {});
   subscribe(store, cb);
   store.count++;
@@ -86,6 +86,7 @@ it('notifies on mutation', async () => {
 ## Code Style
 
 Enforced by Biome 2.4.0 (`biome.json` at repo root):
+
 - 2-space indentation, single quotes, no bracket spacing
 - `noUnusedImports` is an error
 - Style rules enforced as errors: `noImplicitBoolean`, `noInferrableTypes`, `useConsistentCurlyBraces`, `useSingleVarDeclarator`, and others
@@ -105,16 +106,16 @@ Enforced by Biome 2.4.0 (`biome.json` at repo root):
 
 ## Package Export Entry Points
 
-| Import path | Contents |
-|---|---|
-| `@codebelt/classy-store` | `createClassyStore`, `snapshot`, `subscribe`, `getVersion`, `shallowEqual`, `Snapshot` type |
-| `@codebelt/classy-store/collections` | `reactiveMap`, `reactiveSet`, `ReactiveMap` type, `ReactiveSet` type |
-| `@codebelt/classy-store/react` | `useClassyStore`, `useLocalStore`, `createStoreHook` |
-| `@codebelt/classy-store/vue` | `useClassyStore` (ShallowRef) |
-| `@codebelt/classy-store/svelte` | `toSvelteStore` (ClassyReadable) |
-| `@codebelt/classy-store/solid` | `useClassyStore` (signal getter) |
-| `@codebelt/classy-store/angular` | `injectStore` (Signal) |
-| `@codebelt/classy-store/utils` | `persist`, `devtools`, `subscribeKey`, `withHistory` |
+| Import path                          | Contents                                                                                    |
+| ------------------------------------ | ------------------------------------------------------------------------------------------- |
+| `@codebelt/classy-store`             | `createClassyStore`, `snapshot`, `subscribe`, `getVersion`, `shallowEqual`, `Snapshot` type |
+| `@codebelt/classy-store/collections` | `reactiveMap`, `reactiveSet`, `ReactiveMap` type, `ReactiveSet` type                        |
+| `@codebelt/classy-store/react`       | `useClassyStore`, `useLocalStore`, `createStoreHook`                                        |
+| `@codebelt/classy-store/vue`         | `useClassyStore` (ShallowRef)                                                               |
+| `@codebelt/classy-store/svelte`      | `toSvelteStore` (ClassyReadable)                                                            |
+| `@codebelt/classy-store/solid`       | `useClassyStore` (signal getter)                                                            |
+| `@codebelt/classy-store/angular`     | `injectStore` (Signal)                                                                      |
+| `@codebelt/classy-store/utils`       | `persist`, `devtools`, `subscribeKey`, `withHistory`                                        |
 
 ## LLM Documentation Files
 

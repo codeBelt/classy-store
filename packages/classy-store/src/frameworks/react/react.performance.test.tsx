@@ -109,59 +109,65 @@ describe('useClassyStore render counts', () => {
       description: 'nested row',
       select: (state: Snapshot<PerformanceQaStore>) => state.rows[0],
     },
-  ])('protects shared $description targets starting with the first consumer', ({
-    select,
-  }) => {
-    const store = createStore();
-    const {states, counts, onCommit} = createCommits();
-    const {container} = mount([
-      <PerformanceQaView
-        key="first"
-        id="first"
-        store={store}
-        index={0}
-        onCommit={onCommit}
-      />,
-      <PerformanceQaView
-        key="second"
-        id="second"
-        store={store}
-        index={1}
-        onCommit={onCommit}
-      />,
-    ]);
+  ])(
+    'protects shared $description targets starting with the first consumer',
+    ({select}) => {
+      const store = createStore();
+      const {states, counts, onCommit} = createCommits();
+      const {container} = mount([
+        <PerformanceQaView
+          key="first"
+          id="first"
+          store={store}
+          index={0}
+          onCommit={onCommit}
+        />,
+        <PerformanceQaView
+          key="second"
+          id="second"
+          store={store}
+          index={1}
+          onCommit={onCommit}
+        />,
+      ]);
 
-    for (const id of ['first', 'second']) {
-      const state = states.get(id);
-      expect(state).toBeDefined();
-      if (!state) throw new Error('Missing committed snapshot');
-      const target = select(state);
-      const prototype = Object.getPrototypeOf(target);
-      expect(
-        Reflect.defineProperty(target, 'injected', {value: 'poison'}),
-      ).toBe(false);
-      expect(Reflect.setPrototypeOf(target, {injected: 'poison'})).toBe(false);
-      expect(Reflect.preventExtensions(target)).toBe(false);
-      expect(Reflect.set(target, 'injected', 'poison')).toBe(false);
-      expect(
-        Reflect.deleteProperty(target, Array.isArray(target) ? '0' : 'ignored'),
-      ).toBe(false);
-      expect(Object.getPrototypeOf(target)).toBe(prototype);
-      expect('injected' in target).toBe(false);
-    }
+      for (const id of ['first', 'second']) {
+        const state = states.get(id);
+        expect(state).toBeDefined();
+        if (!state) throw new Error('Missing committed snapshot');
+        const target = select(state);
+        const prototype = Object.getPrototypeOf(target);
+        expect(
+          Reflect.defineProperty(target, 'injected', {value: 'poison'}),
+        ).toBe(false);
+        expect(Reflect.setPrototypeOf(target, {injected: 'poison'})).toBe(
+          false,
+        );
+        expect(Reflect.preventExtensions(target)).toBe(false);
+        expect(Reflect.set(target, 'injected', 'poison')).toBe(false);
+        expect(
+          Reflect.deleteProperty(
+            target,
+            Array.isArray(target) ? '0' : 'ignored',
+          ),
+        ).toBe(false);
+        expect(Object.getPrototypeOf(target)).toBe(prototype);
+        expect('injected' in target).toBe(false);
+      }
 
-    expect(snapshot(store).rows.map((row) => row.name)).toEqual([
-      'Row 0',
-      'Row 1',
-    ]);
-    expect(container.textContent).toBe(':Row 0:Row 1');
-    act(() => {
-      store.rows[0].name = 'Still live';
-    });
-    expect(container.textContent).toBe(':Still live:Row 1');
-    expect(counts.get('first')).toBe(2);
-    expect(counts.get('second')).toBe(1);
-  });
+      expect(snapshot(store).rows.map((row) => row.name)).toEqual([
+        'Row 0',
+        'Row 1',
+      ]);
+      expect(container.textContent).toBe(':Row 0:Row 1');
+      act(() => {
+        store.rows[0].name = 'Still live';
+      });
+      expect(container.textContent).toBe(':Still live:Row 1');
+      expect(counts.get('first')).toBe(2);
+      expect(counts.get('second')).toBe(1);
+    },
+  );
 
   test('keeps target reuse independent when a consumer changes stores and unmounts', () => {
     const firstStore = createStore();

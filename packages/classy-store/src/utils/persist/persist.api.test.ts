@@ -19,80 +19,82 @@ describe('persist public API', () => {
     {description: 'read', operation: 'read'},
     {description: 'decoding', operation: 'parse'},
     {description: 'expired-data removal', operation: 'remove'},
-  ])('automatic hydration reports $description failures and settles without rejecting', async ({
-    operation,
-  }) => {
-    const failure = new Error(operation);
-    const onError = mock(() => {});
-    const handle = persist(createClassyStore({count: 0}), {
-      name: 'automatic-hydration-error',
-      clearOnExpire: true,
-      storage: {
-        ...storage,
-        getItem: async () => {
-          if (operation === 'read') throw failure;
-          return operation === 'parse'
-            ? raw
-            : JSON.stringify({version: 0, state: {}, expiresAt: 1});
-        },
-        removeItem: async () => {
-          throw failure;
-        },
-      },
-      properties: [
-        {
-          key: 'count',
-          serialize: (value) => value,
-          deserialize: () => {
+  ])(
+    'automatic hydration reports $description failures and settles without rejecting',
+    async ({operation}) => {
+      const failure = new Error(operation);
+      const onError = mock(() => {});
+      const handle = persist(createClassyStore({count: 0}), {
+        name: 'automatic-hydration-error',
+        clearOnExpire: true,
+        storage: {
+          ...storage,
+          getItem: async () => {
+            if (operation === 'read') throw failure;
+            return operation === 'parse'
+              ? raw
+              : JSON.stringify({version: 0, state: {}, expiresAt: 1});
+          },
+          removeItem: async () => {
             throw failure;
           },
         },
-      ],
-      onError,
-    });
-    handles.push(handle);
-    await expect(handle.hydrated).resolves.toBeUndefined();
-    expect(handle.getSnapshot()).toMatchObject({
-      isHydrated: true,
-      lastError: {error: failure, operation},
-    });
-    expect(onError).toHaveBeenCalledTimes(1);
-  });
+        properties: [
+          {
+            key: 'count',
+            serialize: (value) => value,
+            deserialize: () => {
+              throw failure;
+            },
+          },
+        ],
+        onError,
+      });
+      handles.push(handle);
+      await expect(handle.hydrated).resolves.toBeUndefined();
+      expect(handle.getSnapshot()).toMatchObject({
+        isHydrated: true,
+        lastError: {error: failure, operation},
+      });
+      expect(onError).toHaveBeenCalledTimes(1);
+    },
+  );
 
   test.each([
     {description: 'batched', debounce: 0},
     {description: 'debounced', debounce: 5},
-  ])('automatic $description writes report rejection and recover on the next edit', async ({
-    debounce,
-  }) => {
-    const failure = new Error('quota');
-    let failing = true;
-    const onError = mock(() => {});
-    const setItem = mock(async () => {
-      if (failing) throw failure;
-    });
-    const store = createClassyStore({count: 0});
-    const handle = persist(store, {
-      name: 'automatic-write-error',
-      storage: {...storage, setItem},
-      debounce,
-      skipHydration: true,
-      onError,
-    });
-    handles.push(handle);
-    store.count = 1;
-    await new Promise<void>((resolve) => setTimeout(resolve, debounce + 20));
-    expect(onError).toHaveBeenCalledTimes(1);
-    expect(handle.getSnapshot().lastError).toEqual({
-      error: failure,
-      operation: 'write',
-    });
-    failing = false;
-    store.count = 2;
-    await new Promise<void>((resolve) => setTimeout(resolve, debounce + 20));
-    expect(setItem).toHaveBeenCalledTimes(2);
-    expect(handle.getSnapshot().lastError).toBeNull();
-  });
+  ])(
+    'automatic $description writes report rejection and recover on the next edit',
+    async ({debounce}) => {
+      const failure = new Error('quota');
+      let failing = true;
+      const onError = mock(() => {});
+      const setItem = mock(async () => {
+        if (failing) throw failure;
+      });
+      const store = createClassyStore({count: 0});
+      const handle = persist(store, {
+        name: 'automatic-write-error',
+        storage: {...storage, setItem},
+        debounce,
+        skipHydration: true,
+        onError,
+      });
+      handles.push(handle);
+      store.count = 1;
+      await new Promise<void>((resolve) => setTimeout(resolve, debounce + 20));
+      expect(onError).toHaveBeenCalledTimes(1);
+      expect(handle.getSnapshot().lastError).toEqual({
+        error: failure,
+        operation: 'write',
+      });
+      failing = false;
+      store.count = 2;
+      await new Promise<void>((resolve) => setTimeout(resolve, debounce + 20));
+      expect(setItem).toHaveBeenCalledTimes(2);
+      expect(handle.getSnapshot().lastError).toBeNull();
+    },
+  );
 
   test('automatic tab expiration reports asynchronous removal failures', async () => {
     const failure = new Error('remove expired');
@@ -159,30 +161,31 @@ describe('persist public API', () => {
   test.each([
     {description: 'save', method: 'save' as const},
     {description: 'clear', method: 'clear' as const},
-  ])('rejects a queued $description skipped by disposal without invoking its adapter', async ({
-    method,
-  }) => {
-    let finishWrite!: () => void;
-    const pending = new Promise<void>((resolve) => {
-      finishWrite = resolve;
-    });
-    const setItem = mock(() => pending);
-    const removeItem = mock(() => {});
-    const handle = persist(createClassyStore({count: 0}), {
-      name: 'queued-disposal',
-      storage: {...storage, setItem, removeItem},
-      skipHydration: true,
-    });
-    handles.push(handle);
-    const issued = handle.save();
-    const queued = handle[method]().catch((error: unknown) => error);
-    handle.dispose();
-    finishWrite();
-    await issued;
-    expect(await queued).toBeInstanceOf(Error);
-    expect(setItem).toHaveBeenCalledTimes(1);
-    expect(removeItem).not.toHaveBeenCalled();
-  });
+  ])(
+    'rejects a queued $description skipped by disposal without invoking its adapter',
+    async ({method}) => {
+      let finishWrite!: () => void;
+      const pending = new Promise<void>((resolve) => {
+        finishWrite = resolve;
+      });
+      const setItem = mock(() => pending);
+      const removeItem = mock(() => {});
+      const handle = persist(createClassyStore({count: 0}), {
+        name: 'queued-disposal',
+        storage: {...storage, setItem, removeItem},
+        skipHydration: true,
+      });
+      handles.push(handle);
+      const issued = handle.save();
+      const queued = handle[method]().catch((error: unknown) => error);
+      handle.dispose();
+      finishWrite();
+      await issued;
+      expect(await queued).toBeInstanceOf(Error);
+      expect(setItem).toHaveBeenCalledTimes(1);
+      expect(removeItem).not.toHaveBeenCalled();
+    },
+  );
 
   test('automatic queued writes cancelled by disposal settle without reporting errors', async () => {
     let finishWrite!: () => void;
@@ -233,89 +236,92 @@ describe('persist public API', () => {
       adapterMethod: 'removeItem' as const,
       operation: 'remove',
     },
-  ])('rejects $description failures and reports each error once', async ({
-    method,
-    adapterMethod,
-    operation,
-  }) => {
-    const failure = new Error(`${operation} failed`);
-    const onError = mock(() => {});
-    let failing = true;
-    const adapter = {
-      ...storage,
-      [adapterMethod]: async () => {
-        if (failing) throw failure;
-        return null;
-      },
-    };
-    const handle = persist(createClassyStore({count: 0}), {
-      name: 'api',
-      storage: adapter,
-      skipHydration: true,
-      onError,
-    });
-    handles.push(handle);
-    await expect(handle[method]()).rejects.toBe(failure);
-    expect(onError).toHaveBeenCalledTimes(1);
-    expect(handle.getSnapshot().lastError).toEqual({error: failure, operation});
-    failing = false;
-    await handle[method]();
-    expect(handle.getSnapshot().lastError).toBeNull();
-    if (method === 'rehydrate') {
-      await handle.hydrated;
-      expect(handle.isHydrated).toBe(true);
-    }
-  });
+  ])(
+    'rejects $description failures and reports each error once',
+    async ({method, adapterMethod, operation}) => {
+      const failure = new Error(`${operation} failed`);
+      const onError = mock(() => {});
+      let failing = true;
+      const adapter = {
+        ...storage,
+        [adapterMethod]: async () => {
+          if (failing) throw failure;
+          return null;
+        },
+      };
+      const handle = persist(createClassyStore({count: 0}), {
+        name: 'api',
+        storage: adapter,
+        skipHydration: true,
+        onError,
+      });
+      handles.push(handle);
+      await expect(handle[method]()).rejects.toBe(failure);
+      expect(onError).toHaveBeenCalledTimes(1);
+      expect(handle.getSnapshot().lastError).toEqual({
+        error: failure,
+        operation,
+      });
+      failing = false;
+      await handle[method]();
+      expect(handle.getSnapshot().lastError).toBeNull();
+      if (method === 'rehydrate') {
+        await handle.hydrated;
+        expect(handle.isHydrated).toBe(true);
+      }
+    },
+  );
 
   test.each([
     {description: 'JSON', stage: 'json'},
     {description: 'transform', stage: 'transform'},
     {description: 'migration', stage: 'migration'},
     {description: 'merge', stage: 'merge'},
-  ])('rejects a $description hydration failure once and settles initial hydration', async ({
-    stage,
-  }) => {
-    const failure = new Error(stage);
-    const onError = mock(() => {});
-    const handle = persist(createClassyStore({count: 0}), {
-      name: 'parse',
-      storage: {
-        ...storage,
-        getItem: () => (stage === 'json' ? '{broken' : raw),
-      },
-      skipHydration: true,
-      onError,
-      version: 1,
-      migrate: (value) => {
-        if (stage === 'migration') throw failure;
-        return value;
-      },
-      merge: (value) => {
-        if (stage === 'merge') throw failure;
-        return value;
-      },
-      properties: [
-        {
-          key: 'count',
-          serialize: (value) => value,
-          deserialize: (value) => {
-            if (stage === 'transform') throw failure;
-            return Number(value);
-          },
+  ])(
+    'rejects a $description hydration failure once and settles initial hydration',
+    async ({stage}) => {
+      const failure = new Error(stage);
+      const onError = mock(() => {});
+      const handle = persist(createClassyStore({count: 0}), {
+        name: 'parse',
+        storage: {
+          ...storage,
+          getItem: () => (stage === 'json' ? '{broken' : raw),
         },
-      ],
-    });
-    handles.push(handle);
-    await expect(handle.rehydrate()).rejects.toBeInstanceOf(Error);
-    await handle.hydrated;
-    expect(handle.getSnapshot()).toMatchObject({
-      isHydrated: true,
-      lastError: {operation: 'parse'},
-    });
-    expect(onError).toHaveBeenCalledTimes(1);
-    await expect(handle.rehydrate()).rejects.toBeInstanceOf(Error);
-    expect(onError).toHaveBeenCalledTimes(2);
-  });
+        skipHydration: true,
+        onError,
+        version: 1,
+        migrate: (value) => {
+          if (stage === 'migration') throw failure;
+          return value;
+        },
+        merge: (value) => {
+          if (stage === 'merge') throw failure;
+          return value;
+        },
+        properties: [
+          {
+            key: 'count',
+            serialize: (value) => value,
+            deserialize: (value) => {
+              if (stage === 'transform') throw failure;
+              return Number(value);
+            },
+          },
+        ],
+      });
+      handles.push(handle);
+      await expect(handle.rehydrate()).rejects.toBeInstanceOf(Error);
+      await handle.hydrated;
+      expect(handle.getSnapshot()).toMatchObject({
+        isHydrated: true,
+        lastError: {operation: 'parse'},
+      });
+      expect(onError).toHaveBeenCalledTimes(1);
+      await expect(handle.rehydrate()).rejects.toBeInstanceOf(Error);
+      expect(onError).toHaveBeenCalledTimes(2);
+    },
+  );
 
   test('reports serialization failures and preserves the original error if onError throws', async () => {
     const failure = new Error('serialize');

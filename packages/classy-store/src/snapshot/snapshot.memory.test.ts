@@ -27,29 +27,26 @@ const arrayCases: {
 ];
 
 describe('snapshot cache ownership', () => {
-  test.each(
-    arrayCases,
-  )('releases the obsolete untracked clone when $description', ({
-    value,
-    mutate,
-    expected,
-  }) => {
-    const store = createClassyStore({value, stable: {label: 'unchanged'}});
-    const initial = snapshot(store);
+  test.each(arrayCases)(
+    'releases the obsolete untracked clone when $description',
+    ({value, mutate, expected}) => {
+      const store = createClassyStore({value, stable: {label: 'unchanged'}});
+      const initial = snapshot(store);
 
-    mutate(store.value);
-    const current = snapshot(store);
+      mutate(store.value);
+      const current = snapshot(store);
 
-    // A new owner must not receive the obsolete deep-clone cache entry that
-    // belonged to this array before it acquired a tracked/versioned snapshot.
-    const newOwner = createClassyStore({value});
-    expect(snapshot(newOwner).value).toEqual(expected);
-    expect(current.value).toEqual(expected);
-    expect(current.stable).toBe(initial.stable);
-    expect(snapshot(store)).toBe(current);
-    expect(initial.value).toEqual([{count: 1}]);
-    expect(Object.isFrozen(current.value)).toBe(true);
-  });
+      // A new owner must not receive the obsolete deep-clone cache entry that
+      // belonged to this array before it acquired a tracked/versioned snapshot.
+      const newOwner = createClassyStore({value});
+      expect(snapshot(newOwner).value).toEqual(expected);
+      expect(current.value).toEqual(expected);
+      expect(current.stable).toBe(initial.stable);
+      expect(snapshot(store)).toBe(current);
+      expect(initial.value).toEqual([{count: 1}]);
+      expect(Object.isFrozen(current.value)).toBe(true);
+    },
+  );
 
   test('releases the obsolete untracked clone when a plain object becomes tracked', () => {
     const value = {nested: {count: 1}, unchanged: {label: 'shared'}};

@@ -14,29 +14,29 @@ iterations per operation per page. See [methodology](./README.md) for limits.
 Values are median milliseconds, baseline → optimized. Parent updates change
 a prop used by every consumer; single-value updates change only one consumer.
 
-| Workload | Subscription | Compiler | Mount | Parent update | Single update | Ten writes |
-|---|---|---|---:|---:|---:|---:|
-| form | selector | off | 24.9 → 25.1 | 3.6 → 3.5 | 0.5 → 0.5 | 1.4 → 1.4 |
-| form | selector | on | 25.6 → 26.0 | 3.8 → 3.7 | 0.5 → 0.5 | 1.4 → 1.4 |
-| form | tracked | off | 114.9 → 29.3 | 87.1 → 5.2 | 0.7 → 0.7 | 3.3 → 2.1 |
-| form | tracked | on | 115.2 → 31.3 | 87.3 → 5.7 | 0.7 → 0.7 | 3.2 → 2.2 |
-| list | selector | off | 17.1 → 16.9 | 3.8 → 4.0 | 0.5 → 0.5 | 1.4 → 1.4 |
-| list | selector | on | 17.1 → 17.3 | 3.9 → 4.0 | 0.5 → 0.5 | 1.4 → 1.4 |
-| list | tracked | off | 105.5 → 21.5 | 86.7 → 5.6 | 0.7 → 0.7 | 3.1 → 2.1 |
-| list | tracked | on | 107.4 → 22.9 | 86.7 → 6.3 | 0.7 → 0.7 | 3.1 → 2.2 |
+| Workload | Subscription | Compiler |        Mount | Parent update | Single update | Ten writes |
+| -------- | ------------ | -------- | -----------: | ------------: | ------------: | ---------: |
+| form     | selector     | off      |  24.9 → 25.1 |     3.6 → 3.5 |     0.5 → 0.5 |  1.4 → 1.4 |
+| form     | selector     | on       |  25.6 → 26.0 |     3.8 → 3.7 |     0.5 → 0.5 |  1.4 → 1.4 |
+| form     | tracked      | off      | 114.9 → 29.3 |    87.1 → 5.2 |     0.7 → 0.7 |  3.3 → 2.1 |
+| form     | tracked      | on       | 115.2 → 31.3 |    87.3 → 5.7 |     0.7 → 0.7 |  3.2 → 2.2 |
+| list     | selector     | off      |  17.1 → 16.9 |     3.8 → 4.0 |     0.5 → 0.5 |  1.4 → 1.4 |
+| list     | selector     | on       |  17.1 → 17.3 |     3.9 → 4.0 |     0.5 → 0.5 |  1.4 → 1.4 |
+| list     | tracked      | off      | 105.5 → 21.5 |    86.7 → 5.6 |     0.7 → 0.7 |  3.1 → 2.1 |
+| list     | tracked      | on       | 107.4 → 22.9 |    86.7 → 6.3 |     0.7 → 0.7 |  3.1 → 2.2 |
 
 ## 200 consumers
 
-| Workload | Subscription | Compiler | Mount | Parent update |
-|---|---|---|---:|---:|
-| form | selector | off | 9.0 → 8.7 | 0.8 → 0.7 |
-| form | selector | on | 9.8 → 9.6 | 0.8 → 0.7 |
-| form | tracked | off | 14.8 → 10.4 | 4.9 → 1.0 |
-| form | tracked | on | 15.0 → 11.0 | 4.9 → 1.0 |
-| list | selector | off | 8.1 → 7.9 | 0.8 → 0.8 |
-| list | selector | on | 8.7 → 8.9 | 0.8 → 0.8 |
-| list | tracked | off | 13.6 → 10.3 | 4.8 → 1.1 |
-| list | tracked | on | 13.6 → 10.3 | 4.9 → 1.2 |
+| Workload | Subscription | Compiler |       Mount | Parent update |
+| -------- | ------------ | -------- | ----------: | ------------: |
+| form     | selector     | off      |   9.0 → 8.7 |     0.8 → 0.7 |
+| form     | selector     | on       |   9.8 → 9.6 |     0.8 → 0.7 |
+| form     | tracked      | off      | 14.8 → 10.4 |     4.9 → 1.0 |
+| form     | tracked      | on       | 15.0 → 11.0 |     4.9 → 1.0 |
+| list     | selector     | off      |   8.1 → 7.9 |     0.8 → 0.8 |
+| list     | selector     | on       |   8.7 → 8.9 |     0.8 → 0.8 |
+| list     | tracked      | off      | 13.6 → 10.3 |     4.8 → 1.1 |
+| list     | tracked      | on       | 13.6 → 10.3 |     4.9 → 1.2 |
 
 ## Interpretation
 

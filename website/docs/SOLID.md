@@ -47,7 +47,10 @@ class FormStore {
     this.text = text;
   }
   replaceItems() {
-    this.items = [{id: 1, label: 'Updated'}, {id: 2, label: 'Second'}];
+    this.items = [
+      {id: 1, label: 'Updated'},
+      {id: 2, label: 'Second'},
+    ];
   }
 }
 
@@ -74,8 +77,12 @@ export function Form() {
           onInput={(event) => formStore.setText(event.currentTarget.value)}
         />
       </label>
-      <p>{uppercase()} ({state().length} characters)</p>
-      <button type="button" onClick={handleReset}>Reset</button>
+      <p>
+        {uppercase()} ({state().length} characters)
+      </p>
+      <button type="button" onClick={handleReset}>
+        Reset
+      </button>
       <button type="button" onClick={() => formStore.replaceItems()}>
         Replace items
       </button>

@@ -73,8 +73,10 @@ const persistence = persist(labelStore, {
         const labels = reactiveMap<string, string>();
         for (const entry of stored) {
           if (
-            !Array.isArray(entry) || entry.length !== 2 ||
-            typeof entry[0] !== 'string' || typeof entry[1] !== 'string'
+            !Array.isArray(entry) ||
+            entry.length !== 2 ||
+            typeof entry[0] !== 'string' ||
+            typeof entry[1] !== 'string'
           ) {
             throw new Error('Invalid label entry');
           }

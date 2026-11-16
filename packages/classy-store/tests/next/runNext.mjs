@@ -22,6 +22,12 @@ const require = createRequire(import.meta.url);
 const manifest = JSON.parse(
   await readFile(join(packageDirectory, 'package.json'), 'utf8'),
 );
+const exampleManifest = JSON.parse(
+  await readFile(
+    resolve(packageDirectory, '../../examples/nextjs/package.json'),
+    'utf8',
+  ),
+);
 const consumer = process.env.NEXT_TEST_DIRECTORY
   ? resolve(process.env.NEXT_TEST_DIRECTORY)
   : await mkdtemp(join(tmpdir(), 'classy-store-next-'));
@@ -112,7 +118,7 @@ async function stop(child) {
 }
 
 const dependencies = {
-  next: '16.4.2',
+  next: exampleManifest.dependencies.next,
   react: manifest.devDependencies.react,
   'react-dom': manifest.devDependencies['react-dom'],
   'babel-plugin-react-compiler':

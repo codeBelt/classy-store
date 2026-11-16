@@ -86,165 +86,161 @@ async function mountConsumers(
 }
 
 describe('large controlled forms', () => {
-  test.each(
-    fieldCases,
-  )('$description commits only fields with changed values', async ({
-    Component,
-  }) => {
-    const {store, commits, readInput} = await mountConsumers(
-      Component,
-      formSize,
-      'form',
-    );
-    await act(async () => {
-      store.ignored++;
-      store.rows[0].title = 'Unread row';
-      store.fields[137].value = 'Field 137';
-    });
-    expect(commits).toEqual([]);
+  test.each(fieldCases)(
+    '$description commits only fields with changed values',
+    async ({Component}) => {
+      const {store, commits, readInput} = await mountConsumers(
+        Component,
+        formSize,
+        'form',
+      );
+      await act(async () => {
+        store.ignored++;
+        store.rows[0].title = 'Unread row';
+        store.fields[137].value = 'Field 137';
+      });
+      expect(commits).toEqual([]);
 
-    await act(async () => {
-      store.fields[137].value = 'Typed value';
-    });
-    expect(commits).toEqual([137]);
-    expect(readInput(137)).toBe('Typed value');
-    expect(readInput(136)).toBe('Field 136');
+      await act(async () => {
+        store.fields[137].value = 'Typed value';
+      });
+      expect(commits).toEqual([137]);
+      expect(readInput(137)).toBe('Typed value');
+      expect(readInput(136)).toBe('Field 136');
 
-    commits.length = 0;
-    await act(async () => {
-      store.fields[137].value = 'Typed value';
-    });
-    expect(commits).toEqual([]);
+      commits.length = 0;
+      await act(async () => {
+        store.fields[137].value = 'Typed value';
+      });
+      expect(commits).toEqual([]);
 
-    await act(async () => {
+      await act(async () => {
+        for (const index of [1, 64, 128, 255]) {
+          store.fields[index].value = `Updated ${index}`;
+        }
+      });
+      expect([...commits].sort((left, right) => left - right)).toEqual([
+        1, 64, 128, 255,
+      ]);
       for (const index of [1, 64, 128, 255]) {
-        store.fields[index].value = `Updated ${index}`;
+        expect(readInput(index)).toBe(`Updated ${index}`);
       }
-    });
-    expect([...commits].sort((left, right) => left - right)).toEqual([
-      1, 64, 128, 255,
-    ]);
-    for (const index of [1, 64, 128, 255]) {
-      expect(readInput(index)).toBe(`Updated ${index}`);
-    }
-  });
+    },
+  );
 
-  test.each(
-    fieldCases,
-  )('$description preserves one-field updates after parent and local renders', async ({
-    Component,
-  }) => {
-    const {store, commits, render, clickLocal, readInput, readConsumer} =
-      await mountConsumers(Component, formSize, 'form');
-    await act(async () => render('Parent'));
-    expect(commits).toHaveLength(formSize);
-    expect(readConsumer(137)?.textContent).toContain('Parent 137');
-    commits.length = 0;
+  test.each(fieldCases)(
+    '$description preserves one-field updates after parent and local renders',
+    async ({Component}) => {
+      const {store, commits, render, clickLocal, readInput, readConsumer} =
+        await mountConsumers(Component, formSize, 'form');
+      await act(async () => render('Parent'));
+      expect(commits).toHaveLength(formSize);
+      expect(readConsumer(137)?.textContent).toContain('Parent 137');
+      commits.length = 0;
 
-    await act(async () => clickLocal(137));
-    expect(commits).toEqual([137]);
-    expect(readConsumer(137)?.textContent).toContain('Local 1');
-    commits.length = 0;
+      await act(async () => clickLocal(137));
+      expect(commits).toEqual([137]);
+      expect(readConsumer(137)?.textContent).toContain('Local 1');
+      commits.length = 0;
 
-    await act(async () => {
-      store.fields[137].value = 'After memoized render';
-    });
-    expect(commits).toEqual([137]);
-    expect(readInput(137)).toBe('After memoized render');
-    commits.length = 0;
-    await act(async () => {
-      store.ignored++;
-    });
-    expect(commits).toEqual([]);
-  });
+      await act(async () => {
+        store.fields[137].value = 'After memoized render';
+      });
+      expect(commits).toEqual([137]);
+      expect(readInput(137)).toBe('After memoized render');
+      commits.length = 0;
+      await act(async () => {
+        store.ignored++;
+      });
+      expect(commits).toEqual([]);
+    },
+  );
 });
 
 describe('large lists', () => {
-  test.each(
-    rowCases,
-  )('$description keeps row updates isolated through removal and remount', async ({
-    Component,
-  }) => {
-    const {store, commits, render, readOutput, root, container} =
-      await mountConsumers(Component, listSize, 'list');
-    await act(async () => {
-      store.ignored++;
-      store.fields[0].value = 'Unread field';
-      store.rows[400].title = 'Row 400';
-    });
-    expect(commits).toEqual([]);
+  test.each(rowCases)(
+    '$description keeps row updates isolated through removal and remount',
+    async ({Component}) => {
+      const {store, commits, render, readOutput, root, container} =
+        await mountConsumers(Component, listSize, 'list');
+      await act(async () => {
+        store.ignored++;
+        store.fields[0].value = 'Unread field';
+        store.rows[400].title = 'Row 400';
+      });
+      expect(commits).toEqual([]);
 
-    await act(async () => {
-      store.rows[400].title = 'Updated';
-      store.rows[400].count = 900;
-    });
-    expect(commits).toEqual([400]);
-    expect(readOutput(400)).toBe('Initial:Updated:900');
-    expect(readOutput(399)).toBe('Initial:Row 399:399');
+      await act(async () => {
+        store.rows[400].title = 'Updated';
+        store.rows[400].count = 900;
+      });
+      expect(commits).toEqual([400]);
+      expect(readOutput(400)).toBe('Initial:Updated:900');
+      expect(readOutput(399)).toBe('Initial:Row 399:399');
 
-    await act(async () => render('Initial', listSize / 2));
-    commits.length = 0;
-    await act(async () => {
-      store.rows[400].title = 'While unmounted';
-    });
-    expect(commits).toEqual([]);
-    expect(readOutput(400)).toBeUndefined();
-    await act(async () => {
-      store.rows[100].count++;
-    });
-    expect(commits).toEqual([100]);
-    expect(readOutput(100)).toBe('Initial:Row 100:101');
+      await act(async () => render('Initial', listSize / 2));
+      commits.length = 0;
+      await act(async () => {
+        store.rows[400].title = 'While unmounted';
+      });
+      expect(commits).toEqual([]);
+      expect(readOutput(400)).toBeUndefined();
+      await act(async () => {
+        store.rows[100].count++;
+      });
+      expect(commits).toEqual([100]);
+      expect(readOutput(100)).toBe('Initial:Row 100:101');
 
-    await act(async () => render());
-    expect(readOutput(400)).toBe('Initial:While unmounted:900');
-    commits.length = 0;
-    await act(async () => {
-      store.rows[400].count++;
-    });
-    expect(commits).toEqual([400]);
-    expect(readOutput(400)).toBe('Initial:While unmounted:901');
+      await act(async () => render());
+      expect(readOutput(400)).toBe('Initial:While unmounted:900');
+      commits.length = 0;
+      await act(async () => {
+        store.rows[400].count++;
+      });
+      expect(commits).toEqual([400]);
+      expect(readOutput(400)).toBe('Initial:While unmounted:901');
 
-    await act(async () => root.unmount());
-    mounted.delete(root);
-    container.remove();
-    commits.length = 0;
-    await act(async () => {
-      store.rows[100].title = 'No mounted consumers';
-      store.rows[400].count++;
-    });
-    expect(commits).toEqual([]);
-  });
+      await act(async () => root.unmount());
+      mounted.delete(root);
+      container.remove();
+      commits.length = 0;
+      await act(async () => {
+        store.rows[100].title = 'No mounted consumers';
+        store.rows[400].count++;
+      });
+      expect(commits).toEqual([]);
+    },
+  );
 
-  test.each(
-    rowCases,
-  )('$description retains memoized reads without waking sibling rows', async ({
-    Component,
-  }) => {
-    const {store, commits, render, clickLocal, readOutput} =
-      await mountConsumers(Component, listSize, 'list');
-    await act(async () => render('Parent'));
-    expect(commits).toHaveLength(listSize);
-    commits.length = 0;
+  test.each(rowCases)(
+    '$description retains memoized reads without waking sibling rows',
+    async ({Component}) => {
+      const {store, commits, render, clickLocal, readOutput} =
+        await mountConsumers(Component, listSize, 'list');
+      await act(async () => render('Parent'));
+      expect(commits).toHaveLength(listSize);
+      commits.length = 0;
 
-    await act(async () => clickLocal(400));
-    expect(commits).toEqual([400]);
-    commits.length = 0;
-    await act(async () => {
-      store.rows[400].title = 'After local render';
-    });
-    expect(commits).toEqual([400]);
-    expect(readOutput(400)).toBe('Parent:After local render:400');
+      await act(async () => clickLocal(400));
+      expect(commits).toEqual([400]);
+      commits.length = 0;
+      await act(async () => {
+        store.rows[400].title = 'After local render';
+      });
+      expect(commits).toEqual([400]);
+      expect(readOutput(400)).toBe('Parent:After local render:400');
 
-    commits.length = 0;
-    await act(async () => {
-      store.rows[400].count = 401;
-    });
-    expect(commits).toEqual([400]);
-    expect(readOutput(400)).toBe('Parent:After local render:401');
-    commits.length = 0;
-    await act(async () => {
-      store.ignored++;
-    });
-    expect(commits).toEqual([]);
-  });
+      commits.length = 0;
+      await act(async () => {
+        store.rows[400].count = 401;
+      });
+      expect(commits).toEqual([400]);
+      expect(readOutput(400)).toBe('Parent:After local render:401');
+      commits.length = 0;
+      await act(async () => {
+        store.ignored++;
+      });
+      expect(commits).toEqual([]);
+    },
+  );
 });

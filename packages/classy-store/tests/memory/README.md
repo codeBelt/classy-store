@@ -23,13 +23,13 @@ and the report records which functions were compiled.
 
 ## Scenarios
 
-| Scenario | Work performed each cycle | Expected ownership |
-| --- | --- | --- |
-| `mount` | Unmount the React root and mount a new scoped store. | Previous mounts release their stores and data. |
-| `reset` | Change the scoped component's key within the existing root. | Retired component instances release their stores and data. |
-| `replace` | Replace the collection while carrying its previous last row into the new first slot. | The live collection keeps that shared row; older generations must not form an accumulating history through tracking caches. |
-| `truncate` | Populate and read live row proxies, then set array length to zero. Refill with varying lengths. | Removed indices release child proxies; shrinking refills cannot hide stale high-index caches. |
-| `detached` | Keep one row proxy, replace its store's collection, then unmount. | The held row and its collection marker intentionally survive; its former store must be collectible. |
+| Scenario   | Work performed each cycle                                                                       | Expected ownership                                                                                                          |
+| ---------- | ----------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `mount`    | Unmount the React root and mount a new scoped store.                                            | Previous mounts release their stores and data.                                                                              |
+| `reset`    | Change the scoped component's key within the existing root.                                     | Retired component instances release their stores and data.                                                                  |
+| `replace`  | Replace the collection while carrying its previous last row into the new first slot.            | The live collection keeps that shared row; older generations must not form an accumulating history through tracking caches. |
+| `truncate` | Populate and read live row proxies, then set array length to zero. Refill with varying lengths. | Removed indices release child proxies; shrinking refills cannot hide stale high-index caches.                               |
+| `detached` | Keep one row proxy, replace its store's collection, then unmount.                               | The held row and its collection marker intentionally survive; its former store must be collectible.                         |
 
 The first four scenarios finish each measurement batch with a mounted consumer.
 The runner checks displayed values as well as memory. The detached scenario

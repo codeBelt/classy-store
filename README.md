@@ -40,7 +40,7 @@ import {useClassyStore} from '@codebelt/classy-store/react';
 
 // 1. Plain class — fields are state, getters are computed values, the class is the type
 class CartStore {
-  items: { name: string; price: number; qty: number }[] = [];
+  items: {name: string; price: number; qty: number}[] = [];
 
   // Computed: auto-memoized, only recalculates when items change
   get total() {
@@ -48,7 +48,7 @@ class CartStore {
   }
 
   add(name: string, price: number) {
-    this.items.push({ name, price, qty: 1 });
+    this.items.push({name, price, qty: 1});
   }
 }
 
@@ -62,7 +62,9 @@ function CartTotal() {
 }
 
 function AddButton() {
-  return <button onClick={() => cartStore.add('Widget', 9.99)}>Add item</button>;
+  return (
+    <button onClick={() => cartStore.add('Widget', 9.99)}>Add item</button>
+  );
 }
 ```
 
@@ -78,19 +80,19 @@ property reads; changes to time or external variables do not invalidate their ca
 
 ## Choosing an API
 
-| What you need | API |
-| --- | --- |
-| Create shared state from a class or object | `createClassyStore(instance)` |
-| Render store data in React | `useClassyStore(store)` or `useClassyStore(store, selector)` |
-| Create a store owned by a component | `useLocalStore(factory)` |
-| Bind a reusable hook to an existing store | `createStoreHook(store)` |
-| Render undo/redo availability or pause state | `useHistoryStatus(history)` |
-| Render persistence hydration, expiry, or errors | `usePersistStatus(handle)` |
-| Prepare matching initial data for SSR/hydration | `prepareStoreForHydration(store)` |
-| Read state outside React or observe mutations | `snapshot(store)`, `subscribe(store, listener)`, `subscribeKey(store, key, listener)` |
-| Persist state, record history, or inspect it in DevTools | `persist(store, options)`, `withHistory(store)`, `devtools(store)` |
-| Track changes inside Map-like or Set-like collections | `reactiveMap()`, `reactiveSet()` |
-| Compare selector results one level deep | `shallowEqual(previous, next)` |
+| What you need                                            | API                                                                                   |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Create shared state from a class or object               | `createClassyStore(instance)`                                                         |
+| Render store data in React                               | `useClassyStore(store)` or `useClassyStore(store, selector)`                          |
+| Create a store owned by a component                      | `useLocalStore(factory)`                                                              |
+| Bind a reusable hook to an existing store                | `createStoreHook(store)`                                                              |
+| Render undo/redo availability or pause state             | `useHistoryStatus(history)`                                                           |
+| Render persistence hydration, expiry, or errors          | `usePersistStatus(handle)`                                                            |
+| Prepare matching initial data for SSR/hydration          | `prepareStoreForHydration(store)`                                                     |
+| Read state outside React or observe mutations            | `snapshot(store)`, `subscribe(store, listener)`, `subscribeKey(store, key, listener)` |
+| Persist state, record history, or inspect it in DevTools | `persist(store, options)`, `withHistory(store)`, `devtools(store)`                    |
+| Track changes inside Map-like or Set-like collections    | `reactiveMap()`, `reactiveSet()`                                                      |
+| Compare selector results one level deep                  | `shallowEqual(previous, next)`                                                        |
 
 `useClassyStore` is the starting point for React components. The two status hooks
 are optional: use them only when displaying metadata from an existing history or
@@ -161,13 +163,13 @@ bun add @codebelt/classy-store
 
 Framework peers are optional; install only what your application uses.
 
-| Framework | Supported peer range |
-|-----------|----------------------|
-| React | `^18.0.0 \|\| ^19.0.0` |
-| Vue | `^3.2.0` |
-| Svelte | `^4.0.0 \|\| ^5.0.0` |
-| Angular | `^22.0.0` |
-| Solid | `2.0.0-rc.18` (exact prerelease) |
+| Framework | Supported peer range             |
+| --------- | -------------------------------- |
+| React     | `^18.0.0 \|\| ^19.0.0`           |
+| Vue       | `^3.2.0`                         |
+| Svelte    | `^4.0.0 \|\| ^5.0.0`             |
+| Angular   | `^22.0.0`                        |
+| Solid     | `2.0.0-rc.18` (exact prerelease) |
 
 Use matching `react` and `react-dom` versions for React applications. These
 ranges exclude untested future majors. Development dependency pins are separate

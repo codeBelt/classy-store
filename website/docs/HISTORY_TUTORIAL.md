@@ -12,10 +12,10 @@ import {createClassyStore} from '@codebelt/classy-store';
 class DrawingStore {
   color = '#000000';
   strokeWidth = 2;
-  points: { x: number; y: number }[] = [];
+  points: {x: number; y: number}[] = [];
 
   addPoint(x: number, y: number) {
-    this.points = [...this.points, { x, y }];
+    this.points = [...this.points, {x, y}];
   }
 
   setColor(color: string) {
@@ -117,29 +117,29 @@ Snapshots are readonly and cached until a status field changes. `pause()` and `r
 ```ts
 function withHistory<T extends object>(
   proxyStore: T,
-  options?: { limit?: number },
+  options?: {limit?: number},
 ): HistoryHandle;
 ```
 
 ### Options
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `limit` | `number` | `100` | Maximum snapshots retained, including the current state; use a positive integer |
+| Option  | Type     | Default | Description                                                                     |
+| ------- | -------- | ------- | ------------------------------------------------------------------------------- |
+| `limit` | `number` | `100`   | Maximum snapshots retained, including the current state; use a positive integer |
 
 ### HistoryHandle
 
-| Property/Method | Type | Description |
-|-----------------|------|-------------|
-| `undo()` | `() => void` | Restore the previous state |
-| `redo()` | `() => void` | Restore the next state (after an undo) |
-| `canUndo` | `readonly boolean` | Whether there is a previous state |
-| `canRedo` | `readonly boolean` | Whether there is a next state |
-| `pause()` | `() => void` | Stop recording history entries |
-| `resume()` | `() => void` | Resume recording history entries |
-| `dispose()` | `() => void` | Unsubscribe and clean up |
-| `getSnapshot()` | `() => HistoryStatus` | Cached current status |
-| `getServerSnapshot()` | `() => HistoryStatus` | Initial status for SSR/hydration |
+| Property/Method       | Type                                   | Description                                      |
+| --------------------- | -------------------------------------- | ------------------------------------------------ |
+| `undo()`              | `() => void`                           | Restore the previous state                       |
+| `redo()`              | `() => void`                           | Restore the next state (after an undo)           |
+| `canUndo`             | `readonly boolean`                     | Whether there is a previous state                |
+| `canRedo`             | `readonly boolean`                     | Whether there is a next state                    |
+| `pause()`             | `() => void`                           | Stop recording history entries                   |
+| `resume()`            | `() => void`                           | Resume recording history entries                 |
+| `dispose()`           | `() => void`                           | Unsubscribe and clean up                         |
+| `getSnapshot()`       | `() => HistoryStatus`                  | Cached current status                            |
+| `getServerSnapshot()` | `() => HistoryStatus`                  | Initial status for SSR/hydration                 |
 | `subscribe(listener)` | `(listener: () => void) => () => void` | Observe status changes; returns listener cleanup |
 
 ## How It Works
@@ -189,7 +189,7 @@ class EditorStore {
 }
 
 const editorStore = createClassyStore(new EditorStore());
-const history = withHistory(editorStore, { limit: 200 });
+const history = withHistory(editorStore, {limit: 200});
 
 // Cmd+Z / Ctrl+Z
 document.addEventListener('keydown', (e) => {
@@ -247,7 +247,7 @@ class SpreadsheetStore {
   cells: Record<string, string> = {};
 
   setCell(id: string, value: string) {
-    this.cells = { ...this.cells, [id]: value };
+    this.cells = {...this.cells, [id]: value};
   }
 }
 
@@ -269,7 +269,7 @@ function pasteBlock(data: Record<string, string>) {
 For memory-sensitive applications, set a lower limit:
 
 ```ts
-const history = withHistory(canvasStore, { limit: 50 });
+const history = withHistory(canvasStore, {limit: 50});
 
 // Only the last 50 states are kept.
 // Older entries are shifted off the front of the stack.
@@ -313,7 +313,10 @@ const persistence = persist(todoStore, {name: 'todos', storage: localStorage});
 // Make the restored data the initial undo state. Check status for read failures.
 await persistence.hydrated;
 if (persistence.getSnapshot().lastError) {
-  console.error('Could not restore saved todos', persistence.getSnapshot().lastError);
+  console.error(
+    'Could not restore saved todos',
+    persistence.getSnapshot().lastError,
+  );
 }
 
 // Undo/redo in memory (resets on page reload).
@@ -335,7 +338,7 @@ import {devtools, withHistory} from '@codebelt/classy-store/utils';
 
 const store = createClassyStore(new MyStore());
 
-const disconnect = devtools(store, { name: 'MyStore' });
+const disconnect = devtools(store, {name: 'MyStore'});
 const history = withHistory(store);
 
 // DevTools receives batched updates, including undo/redo restores.
@@ -348,16 +351,16 @@ history.dispose();
 
 ## Quick Reference
 
-| What you want | How to do it |
-|---|---|
-| Add undo/redo | `const h = withHistory(store)` |
-| Undo | `h.undo()` |
-| Redo | `h.redo()` |
-| Check if undoable | `h.canUndo` |
-| Check if redoable | `h.canRedo` |
-| Limit history size | `withHistory(store, { limit: 50 })` |
-| Record one undo step | Make synchronous edits in one turn; history records after the microtask flush |
-| Temporarily stop recording | `h.pause()`; keep paused until those notifications flush, then call `h.resume()` |
-| Render history status in React | `useHistoryStatus(h)` |
-| Stop tracking | `h.dispose()` |
-| Undo all | `while (h.canUndo) h.undo()` |
+| What you want                  | How to do it                                                                     |
+| ------------------------------ | -------------------------------------------------------------------------------- |
+| Add undo/redo                  | `const h = withHistory(store)`                                                   |
+| Undo                           | `h.undo()`                                                                       |
+| Redo                           | `h.redo()`                                                                       |
+| Check if undoable              | `h.canUndo`                                                                      |
+| Check if redoable              | `h.canRedo`                                                                      |
+| Limit history size             | `withHistory(store, { limit: 50 })`                                              |
+| Record one undo step           | Make synchronous edits in one turn; history records after the microtask flush    |
+| Temporarily stop recording     | `h.pause()`; keep paused until those notifications flush, then call `h.resume()` |
+| Render history status in React | `useHistoryStatus(h)`                                                            |
+| Stop tracking                  | `h.dispose()`                                                                    |
+| Undo all                       | `while (h.canUndo) h.undo()`                                                     |

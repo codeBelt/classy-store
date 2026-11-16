@@ -42,13 +42,13 @@ bun add @codebelt/classy-store
 
 All framework peer dependencies are optional — install only what your project uses:
 
-| Framework | Peer Dependency | Import |
-|-----------|----------------|--------|
-| React | `react ^18.0.0 \|\| ^19.0.0` | `@codebelt/classy-store/react` |
-| Vue | `vue ^3.2.0` | `@codebelt/classy-store/vue` |
-| Svelte | `svelte ^4.0.0 \|\| ^5.0.0` | `@codebelt/classy-store/svelte` |
-| Solid 2 RC | `solid-js 2.0.0-rc.18` (exact) | `@codebelt/classy-store/solid` |
-| Angular | `@angular/core ^22.0.0` | `@codebelt/classy-store/angular` |
+| Framework  | Peer Dependency                | Import                           |
+| ---------- | ------------------------------ | -------------------------------- |
+| React      | `react ^18.0.0 \|\| ^19.0.0`   | `@codebelt/classy-store/react`   |
+| Vue        | `vue ^3.2.0`                   | `@codebelt/classy-store/vue`     |
+| Svelte     | `svelte ^4.0.0 \|\| ^5.0.0`    | `@codebelt/classy-store/svelte`  |
+| Solid 2 RC | `solid-js 2.0.0-rc.18` (exact) | `@codebelt/classy-store/solid`   |
+| Angular    | `@angular/core ^22.0.0`        | `@codebelt/classy-store/angular` |
 
 These ranges include stable releases within the listed majors and exclude
 untested future majors. Solid remains pinned to its exact tested prerelease.
@@ -75,7 +75,7 @@ class TodoStore {
   get filtered() {
     if (this.filter === 'all') return this.todos;
     return this.todos.filter((todo) =>
-        this.filter === 'done' ? todo.done : !todo.done,
+      this.filter === 'done' ? todo.done : !todo.done,
     );
   }
 
@@ -135,19 +135,19 @@ function AddButton() {
 
 ## Choosing an API
 
-| What you need | API |
-| --- | --- |
-| Create shared state from a class or object | `createClassyStore(instance)` |
-| Render store data in React | `useClassyStore(store)` or `useClassyStore(store, selector)` |
-| Create a store owned by a component | `useLocalStore(factory)` |
-| Bind a reusable hook to an existing store | `createStoreHook(store)` |
-| Render undo/redo availability or pause state | `useHistoryStatus(history)` |
-| Render persistence hydration, expiry, or errors | `usePersistStatus(handle)` |
-| Prepare matching initial data for SSR/hydration | `prepareStoreForHydration(store)` |
-| Read state outside React or observe mutations | `snapshot(store)`, `subscribe(store, listener)`, `subscribeKey(store, key, listener)` |
-| Persist state, record history, or inspect it in DevTools | `persist(store, options)`, `withHistory(store)`, `devtools(store)` |
-| Track changes inside Map-like or Set-like collections | `reactiveMap()`, `reactiveSet()` |
-| Compare selector results one level deep | `shallowEqual(previous, next)` |
+| What you need                                            | API                                                                                   |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Create shared state from a class or object               | `createClassyStore(instance)`                                                         |
+| Render store data in React                               | `useClassyStore(store)` or `useClassyStore(store, selector)`                          |
+| Create a store owned by a component                      | `useLocalStore(factory)`                                                              |
+| Bind a reusable hook to an existing store                | `createStoreHook(store)`                                                              |
+| Render undo/redo availability or pause state             | `useHistoryStatus(history)`                                                           |
+| Render persistence hydration, expiry, or errors          | `usePersistStatus(handle)`                                                            |
+| Prepare matching initial data for SSR/hydration          | `prepareStoreForHydration(store)`                                                     |
+| Read state outside React or observe mutations            | `snapshot(store)`, `subscribe(store, listener)`, `subscribeKey(store, key, listener)` |
+| Persist state, record history, or inspect it in DevTools | `persist(store, options)`, `withHistory(store)`, `devtools(store)`                    |
+| Track changes inside Map-like or Set-like collections    | `reactiveMap()`, `reactiveSet()`                                                      |
+| Compare selector results one level deep                  | `shallowEqual(previous, next)`                                                        |
 
 `useClassyStore` is the starting point for React components. The two status hooks
 are optional: use them only when displaying metadata from an existing history or
@@ -157,17 +157,17 @@ persistence handle. They do not create those handles or subscribe to store data.
 
 Import from the entry that owns the API. Core, collections, and utilities do not depend on React.
 
-| Import path | Runtime exports | Public types |
-| --- | --- | --- |
-| `@codebelt/classy-store` | `createClassyStore`, `snapshot`, `subscribe`, `shallowEqual` | `Snapshot`, `SubscribeOptions` |
-| `@codebelt/classy-store/react` | `useClassyStore`, `useLocalStore`, `createStoreHook`, `useHistoryStatus`, `usePersistStatus` | `UseClassyStoreSelectorOptions` |
-| `@codebelt/classy-store/react/server` | `prepareStoreForHydration` | — |
-| `@codebelt/classy-store/collections` | `reactiveMap`, `reactiveSet` | `ReactiveMap`, `ReactiveSet` |
-| `@codebelt/classy-store/utils` | `persist`, `withHistory`, `subscribeKey`, `devtools` | `PersistOptions`, `PersistHandle`, `PersistStatus`, `PersistOperation`, `PropertyTransform`, `StorageAdapter`, `HistoryOptions`, `HistoryHandle`, `HistoryStatus`, `DevtoolsOptions`, `SubscribeOptions` |
-| `@codebelt/classy-store/vue` | `useClassyStore` | — |
-| `@codebelt/classy-store/svelte` | `toSvelteStore` | `ClassyReadable` |
-| `@codebelt/classy-store/solid` | `useClassyStore` | — |
-| `@codebelt/classy-store/angular` | `injectStore` | — |
+| Import path                           | Runtime exports                                                                              | Public types                                                                                                                                                                                             |
+| ------------------------------------- | -------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@codebelt/classy-store`              | `createClassyStore`, `snapshot`, `subscribe`, `shallowEqual`                                 | `Snapshot`, `SubscribeOptions`                                                                                                                                                                           |
+| `@codebelt/classy-store/react`        | `useClassyStore`, `useLocalStore`, `createStoreHook`, `useHistoryStatus`, `usePersistStatus` | `UseClassyStoreSelectorOptions`                                                                                                                                                                          |
+| `@codebelt/classy-store/react/server` | `prepareStoreForHydration`                                                                   | —                                                                                                                                                                                                        |
+| `@codebelt/classy-store/collections`  | `reactiveMap`, `reactiveSet`                                                                 | `ReactiveMap`, `ReactiveSet`                                                                                                                                                                             |
+| `@codebelt/classy-store/utils`        | `persist`, `withHistory`, `subscribeKey`, `devtools`                                         | `PersistOptions`, `PersistHandle`, `PersistStatus`, `PersistOperation`, `PropertyTransform`, `StorageAdapter`, `HistoryOptions`, `HistoryHandle`, `HistoryStatus`, `DevtoolsOptions`, `SubscribeOptions` |
+| `@codebelt/classy-store/vue`          | `useClassyStore`                                                                             | —                                                                                                                                                                                                        |
+| `@codebelt/classy-store/svelte`       | `toSvelteStore`                                                                              | `ClassyReadable`                                                                                                                                                                                         |
+| `@codebelt/classy-store/solid`        | `useClassyStore`                                                                             | —                                                                                                                                                                                                        |
+| `@codebelt/classy-store/angular`      | `injectStore`                                                                                | —                                                                                                                                                                                                        |
 
 `ReactiveMap` and `ReactiveSet` are exported as types; construct values with the
 factory functions. The React entry carries `use client`. Import hydration
@@ -272,10 +272,14 @@ Auto-tracking requires native `WeakRef` support (ES2021). Tracking dependencies 
 import {shallowEqual} from '@codebelt/classy-store';
 import {useClassyStore} from '@codebelt/classy-store/react';
 
-const userData = useClassyStore(myStore, (state) => ({
-  name: state.user.name,
-  role: state.user.role,
-}), {isEqual: shallowEqual});
+const userData = useClassyStore(
+  myStore,
+  (state) => ({
+    name: state.user.name,
+    role: state.user.role,
+  }),
+  {isEqual: shallowEqual},
+);
 ```
 
 **Controlled input timing:**
@@ -305,7 +309,11 @@ import type {HistoryHandle} from '@codebelt/classy-store/utils';
 
 function UndoButton({history}: {history: HistoryHandle}) {
   const {canUndo} = useHistoryStatus(history);
-  return <button disabled={!canUndo} onClick={history.undo}>Undo</button>;
+  return (
+    <button disabled={!canUndo} onClick={history.undo}>
+      Undo
+    </button>
+  );
 }
 ```
 
@@ -362,7 +370,9 @@ import {useLocalStore, useClassyStore} from '@codebelt/classy-store/react';
 
 class CounterStore {
   count = 0;
-  increment() { this.count++; }
+  increment() {
+    this.count++;
+  }
 }
 
 function Counter() {
@@ -391,9 +401,13 @@ class CatalogPageStore {
   items: string[] = [];
   loading = false;
 
-  get count() { return this.items.length; }
+  get count() {
+    return this.items.length;
+  }
 
-  addItem(item: string) { this.items.push(item); }
+  addItem(item: string) {
+    this.items.push(item);
+  }
 }
 
 const catalogStore = createClassyStore(new CatalogPageStore());
@@ -412,7 +426,13 @@ function ItemCount() {
 // Auto-tracked mode
 function ItemList() {
   const snap = useCatalogStore();
-  return <ul>{snap.items.map((item) => <li key={item}>{item}</li>)}</ul>;
+  return (
+    <ul>
+      {snap.items.map((item) => (
+        <li key={item}>{item}</li>
+      ))}
+    </ul>
+  );
 }
 
 // Custom equality
@@ -557,7 +577,12 @@ import {reactiveMap, reactiveSet} from '@codebelt/classy-store/collections';
 Tree-shakeable utilities are available via a separate entry point:
 
 ```typescript
-import {persist, devtools, subscribeKey, withHistory} from '@codebelt/classy-store/utils';
+import {
+  persist,
+  devtools,
+  subscribeKey,
+  withHistory,
+} from '@codebelt/classy-store/utils';
 ```
 
 ### `persist(store, options)`
@@ -639,15 +664,23 @@ class BaseStore {
   loading = false;
   error: string | null = null;
 
-  get hasError() { return this.error !== null; }
-  setLoading(value: boolean) { this.loading = value; }
-  setError(msg: string | null) { this.error = msg; }
+  get hasError() {
+    return this.error !== null;
+  }
+  setLoading(value: boolean) {
+    this.loading = value;
+  }
+  setError(msg: string | null) {
+    this.error = msg;
+  }
 }
 
 class UserStore extends BaseStore {
   users: string[] = [];
 
-  get count() { return this.users.length; }
+  get count() {
+    return this.users.length;
+  }
 
   addUser(name: string) {
     this.users.push(name);
@@ -724,7 +757,7 @@ class Store {
     // Only runs when `items` or `filter` changes.
     // Accessing store.filtered multiple times returns the same reference.
     if (this.filter === 'all') return this.items;
-    return this.items.filter(item => item === this.filter);
+    return this.items.filter((item) => item === this.filter);
   }
 
   get filteredCount() {
@@ -780,12 +813,12 @@ Run `bun run test:react:compiler` for the installed-package matrix and `bun run 
 
 ## When to use each mode
 
-| Mode | Best for | How it works |
-|------|----------|--------------|
-| `useClassyStore(store, selector)` | Derived values, primitives, specific slices | Selector runs on snapshot, compared with `Object.is` |
-| `useClassyStore(store)` | Components reading many props, rapid prototyping | `proxy-compare` tracks reads automatically |
-| `useClassyStore(store, selector, {isEqual: shallowEqual})` | Selectors returning new objects/arrays | Shallow comparison prevents unnecessary re-renders |
-| `useClassyStore(store, selector)` | Controlled form fields | Always notifies React during the input event turn |
+| Mode                                                       | Best for                                         | How it works                                         |
+| ---------------------------------------------------------- | ------------------------------------------------ | ---------------------------------------------------- |
+| `useClassyStore(store, selector)`                          | Derived values, primitives, specific slices      | Selector runs on snapshot, compared with `Object.is` |
+| `useClassyStore(store)`                                    | Components reading many props, rapid prototyping | `proxy-compare` tracks reads automatically           |
+| `useClassyStore(store, selector, {isEqual: shallowEqual})` | Selectors returning new objects/arrays           | Shallow comparison prevents unnecessary re-renders   |
+| `useClassyStore(store, selector)`                          | Controlled form fields                           | Always notifies React during the input event turn    |
 
 ## Comparison with other libraries
 
@@ -802,7 +835,7 @@ size is not the amount of JavaScript delivered to the browser.
 
 I wanted state management that feels like writing plain TypeScript.
 
-- **A class is the store.** Define fields, methods, and getters — that's your state, your actions, and your derived values. The class *is* the type. TypeScript infers everything automatically.
+- **A class is the store.** Define fields, methods, and getters — that's your state, your actions, and your derived values. The class _is_ the type. TypeScript infers everything automatically.
 - **Getters are computed values.** Write `get filtered()` and it's memoized with dependency tracking out of the box. It caches until a dependency changes.
 - **Framework bindings that feel native.** React's `useClassyStore`, Vue's `useClassyStore` (shallow ref), Svelte's `toSvelteStore`, Solid's `useClassyStore` (signal getter), Angular's `injectStore` — each integration matches the framework's reactive idioms.
 - **Call methods directly.** `todoStore.addTodo('Buy milk')` — a real object with real methods, callable from anywhere.
@@ -836,13 +869,13 @@ Version 0.8.0 adds observable history and persistence status and simplifies the 
 
 ## Required updates
 
-| Previous usage | Use in 0.8.0 |
-| --- | --- |
-| `persistence.unsubscribe()` | `persistence.dispose()` |
-| Import `prepareStoreForHydration` from `/react` | Import it from `@codebelt/classy-store/react/server`, on both server and client |
-| Import `getVersion` from the root entry | Use `subscribe()` for notifications or compare `snapshot()` references |
-| Assume explicit persistence calls always resolve | Handle rejected promises from `save()`, `clear()`, and `rehydrate()` |
-| Transform a property's value as a union of all store properties | Match `serialize` and `deserialize` to the property selected by `key` |
+| Previous usage                                                  | Use in 0.8.0                                                                    |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `persistence.unsubscribe()`                                     | `persistence.dispose()`                                                         |
+| Import `prepareStoreForHydration` from `/react`                 | Import it from `@codebelt/classy-store/react/server`, on both server and client |
+| Import `getVersion` from the root entry                         | Use `subscribe()` for notifications or compare `snapshot()` references          |
+| Assume explicit persistence calls always resolve                | Handle rejected promises from `save()`, `clear()`, and `rehydrate()`            |
+| Transform a property's value as a union of all store properties | Match `serialize` and `deserialize` to the property selected by `key`           |
 
 ## Dispose persistence handles
 
@@ -1068,7 +1101,7 @@ A store is any class instance wrapped with `createClassyStore()`. State lives as
 import {createClassyStore} from '@codebelt/classy-store';
 
 class TodoStore {
-  items: { id: number; text: string; done: boolean }[] = [];
+  items: {id: number; text: string; done: boolean}[] = [];
   filter: 'all' | 'active' | 'done' = 'all';
 
   get remaining() {
@@ -1076,7 +1109,8 @@ class TodoStore {
   }
 
   get filtered() {
-    if (this.filter === 'active') return this.items.filter((item) => !item.done);
+    if (this.filter === 'active')
+      return this.items.filter((item) => !item.done);
     if (this.filter === 'done') return this.items.filter((item) => item.done);
     return this.items;
   }
@@ -1149,7 +1183,9 @@ Without `shallowEqual` — `.filter()` creates a new array every time the snapsh
 import {useClassyStore} from '@codebelt/classy-store/react';
 
 // ❌ New array reference every snapshot → unnecessary re-renders
-const active = useClassyStore(todoStore, (state) => state.items.filter((item) => !item.done));
+const active = useClassyStore(todoStore, (state) =>
+  state.items.filter((item) => !item.done),
+);
 ```
 
 With `shallowEqual` — compares the array contents, not the reference:
@@ -1227,14 +1263,14 @@ class FormStore {
   count = 0;
 
   submit(name: string, email: string) {
-    this.name = name;       // immediately notifies React
-    this.email = email;     // immediately notifies React
-    this.submitted = true;  // React batches renders in an event handler
+    this.name = name; // immediately notifies React
+    this.email = email; // immediately notifies React
+    this.submitted = true; // React batches renders in an event handler
   }
 
   incrementMany(n: number) {
     for (let i = 0; i < n; i++) {
-      this.count++;         // each write notifies React
+      this.count++; // each write notifies React
     }
   }
 }
@@ -1314,7 +1350,7 @@ import {createClassyStore} from '@codebelt/classy-store';
 import {reactiveMap} from '@codebelt/classy-store/collections';
 
 class UserStore {
-  users = reactiveMap<string, { name: string; role: string }>();
+  users = reactiveMap<string, {name: string; role: string}>();
 
   get count() {
     return this.users.size;
@@ -1334,7 +1370,7 @@ export const userStore = createClassyStore(new UserStore());
 
 `ReactiveMap` and `ReactiveSet` provide Map-like and Set-like methods backed by arrays. They are not native collections or exact substitutes for native identity and iterator semantics. See the [collection behavior](https://codebelt.github.io/classy-store/docs/REACTIVE_COLLECTIONS_TUTORIAL#collection-behavior).
 
-> **When to use:** Whenever you'd reach for `Map` or `Set` inside a store. You *can* use native `Map`/`Set`, but only the reference is reactive — mutations like `.set()` or `.add()` won't trigger updates. You'd have to replace the entire Map/Set (e.g., `this.users = new Map(this.users)`) to notify subscribers. `reactiveMap()` and `reactiveSet()` avoid that by making individual operations reactive.
+> **When to use:** Whenever you'd reach for `Map` or `Set` inside a store. You _can_ use native `Map`/`Set`, but only the reference is reactive — mutations like `.set()` or `.add()` won't trigger updates. You'd have to replace the entire Map/Set (e.g., `this.users = new Map(this.users)`) to notify subscribers. `reactiveMap()` and `reactiveSet()` avoid that by making individual operations reactive.
 
 ## Class Inheritance
 
@@ -1361,14 +1397,14 @@ class BaseStore {
 }
 
 class UserStore extends BaseStore {
-  users: { id: string; name: string }[] = [];
+  users: {id: string; name: string}[] = [];
 
   get activeCount() {
     return this.users.length;
   }
 
   async fetchUsers() {
-    this.setLoading(true);       // base method — reactive
+    this.setLoading(true); // base method — reactive
     this.setError(null);
     try {
       const res = await fetch('/api/users');
@@ -1399,12 +1435,12 @@ Async methods work naturally. React is notified as each field changes, and pendi
 
 ```ts
 class PostStore {
-  posts: { id: number; title: string }[] = [];
+  posts: {id: number; title: string}[] = [];
   loading = false;
   error: string | null = null;
 
   async fetchPosts() {
-    this.loading = true;   // notify React that loading started
+    this.loading = true; // notify React that loading started
     this.error = null;
     try {
       const res = await fetch('/api/posts');
@@ -1434,8 +1470,12 @@ import {useLocalStore, useClassyStore} from '@codebelt/classy-store/react';
 
 class CounterStore {
   count = 0;
-  get doubled() { return this.count * 2; }
-  increment() { this.count++; }
+  get doubled() {
+    return this.count * 2;
+  }
+  increment() {
+    this.count++;
+  }
 }
 
 function Counter() {
@@ -1460,8 +1500,12 @@ import {persist} from '@codebelt/classy-store/utils';
 class FormStore {
   name = '';
   email = '';
-  setName(v: string) { this.name = v; }
-  setEmail(v: string) { this.email = v; }
+  setName(v: string) {
+    this.name = v;
+  }
+  setEmail(v: string) {
+    this.email = v;
+  }
 }
 
 function EditProfile() {
@@ -1470,14 +1514,23 @@ function EditProfile() {
   const snap = useClassyStore(store);
 
   useEffect(() => {
-    const handle = persist(store, { storage: localStorage, name: 'edit-profile-draft' });
+    const handle = persist(store, {
+      storage: localStorage,
+      name: 'edit-profile-draft',
+    });
     return () => handle.dispose();
   }, [store]);
 
   return (
     <form>
-      <input value={snap.name} onChange={(e) => store.setName(e.target.value)} />
-      <input value={snap.email} onChange={(e) => store.setEmail(e.target.value)} />
+      <input
+        value={snap.name}
+        onChange={(e) => store.setName(e.target.value)}
+      />
+      <input
+        value={snap.email}
+        onChange={(e) => store.setEmail(e.target.value)}
+      />
     </form>
   );
 }
@@ -1537,7 +1590,7 @@ const data = useCatalogStore(
 
 ### Mutate through methods, not from components
 
-While you *can* write `counterStore.count = 5` directly from a component, you shouldn't. Centralizing mutations in store methods keeps your logic in one place and makes it easier to find, refactor, and test.
+While you _can_ write `counterStore.count = 5` directly from a component, you shouldn't. Centralizing mutations in store methods keeps your logic in one place and makes it easier to find, refactor, and test.
 
 ```ts
 // ✅ Good — mutation logic lives in the store
@@ -1952,21 +2005,22 @@ All internal bookkeeping is stored in a `WeakMap<proxy, StoreInternal>`:
 
 ```typescript
 type StoreInternal = {
-  target: object;                           // Raw class instance
-  version: number;                          // Monotonically increasing
-  batchedListeners: Set<() => void>;        // Subscribers notified once per microtask
-  syncListeners: Set<() => void>;           // Subscribers notified immediately per mutation
-  childProxies: Map<string|symbol, object>; // Cached child proxies
-  childInternals: Map<string|symbol, StoreInternal>;
-  parent: StoreInternal | null;             // For version propagation
-  notifyScheduled: boolean;                 // Batch dedup flag
-  computedCache: Map<string|symbol, ComputedEntry>; // Memoized getter cache
+  target: object; // Raw class instance
+  version: number; // Monotonically increasing
+  batchedListeners: Set<() => void>; // Subscribers notified once per microtask
+  syncListeners: Set<() => void>; // Subscribers notified immediately per mutation
+  childProxies: Map<string | symbol, object>; // Cached child proxies
+  childInternals: Map<string | symbol, StoreInternal>;
+  parent: StoreInternal | null; // For version propagation
+  notifyScheduled: boolean; // Batch dedup flag
+  computedCache: Map<string | symbol, ComputedEntry>; // Memoized getter cache
 };
 ```
 
 ### Proxy Traps
 
 **SET trap:**
+
 1. Compare old and new values with `Object.is` — noop if equal
 2. Forward the write to the raw target via `Reflect.set`
 3. After a successful write, detach the old child proxy and clear the bound-method cache. Array length truncation detaches removed children, including partial truncation when a non-configurable index rejects the requested length. An otherwise failed write preserves the old connection.
@@ -1974,6 +2028,7 @@ type StoreInternal = {
 5. Notify sync listeners immediately, then schedule batched listeners via `queueMicrotask` (deduped)
 
 **GET trap (priority order):**
+
 1. **Memoized getter detection** — walk prototype chain with `Object.getOwnPropertyDescriptor`. If a getter is found, call `evaluateComputed()` which checks dependency validity and returns the cached result or re-evaluates with dependency tracking.
 2. **Method binding** — if value is a function, bind to proxy so `this.count++` in methods goes through the SET trap. Bound methods are cached.
 3. **Nested state** — if `canProxy()` accepts it (plain object, array, or a class such as the library's reactive collections using the internal opt-in), lazily wrap it in a cached child proxy. Record a dependency if a getter is currently being tracked.
@@ -2091,7 +2146,9 @@ Snapshots preserve the prototype chain and install lazy-memoizing getters on eac
 ```typescript
 class Store {
   count = 5;
-  get doubled() { return this.count * 2; }
+  get doubled() {
+    return this.count * 2;
+  }
 }
 
 const snap = snapshot(createClassyStore(new Store()));
@@ -2123,6 +2180,7 @@ flowchart TD
 ```
 
 **Dependency types:**
+
 - **Sub-tree dep** (`kind: 'version'`): the getter read a nested object/array. Validated by comparing `internal.version` — O(1) per dep.
 - **Value dep** (`kind: 'value'`): a primitive or opaque value read. Validation checks property existence and `Object.is(target[prop], recordedValue)`.
 - **Computed dep** (`kind: 'computed'`): a read of another computed getter. Validation checks that getter's cached result and dependencies recursively.
@@ -2152,12 +2210,14 @@ flowchart TD
 ```
 
 **Cross-snapshot mechanism:**
+
 1. First evaluation: a lightweight tracking Proxy records which `this` properties the getter reads and their values.
 2. On subsequent snapshots: for each recorded property, check `Object.is(currentSnap[prop], previousValue)`.
 3. Structural sharing guarantees that unchanged sub-trees have the same reference — so if `this.todos` hasn't changed, the reference comparison passes and the cached result is returned.
 4. For getters reading other getters (e.g., `get filteredCount() { return this.filtered.length; }`): the inner getter is itself memoized, so it returns a stable reference, which the outer getter's dep check recognizes as unchanged.
 
 **Impact on `useClassyStore`:** The existing hook benefits automatically — no changes needed:
+
 - **Selector mode:** `useClassyStore(store, (state) => state.filtered)` gets a stable reference from the memoized snapshot getter. `Object.is` correctly detects "no change" without `shallowEqual`.
 - **Auto-tracked mode:** `proxy-compare`'s `isChanged` gets stable references from snapshot getters, reducing false positives.
 
@@ -2203,6 +2263,7 @@ sequenceDiagram
 ```
 
 **Equality chain:**
+
 1. Same store, selector, equality function, and snapshot reference? → reuse the cached result (O(1))
 2. Run selector → compare result with `Object.is` (or `options.isEqual`)
 3. Same result → return previous reference (no re-render)
@@ -2232,6 +2293,7 @@ The adapter follows the operation-record/Set layout of the pinned `proxy-compare
 Snapshot creation marks only library-created snapshot nodes with `markToTrack`, including class and null-prototype objects. This enables field tracking without altering opaque leaves such as native maps and dates. Nodes containing object-valued symbol fields use whole-node comparison to avoid a frozen-symbol limitation in `proxy-compare` 3; updates remain reactive with coarser render filtering.
 
 **How `proxy-compare` works:**
+
 - `createProxy(snapshot, affected)` records properties read into the render's map; committed records are retained separately with weak snapshot keys.
 - `isChanged(previousSnapshot, nextSnapshot, affected)` checks whether a tracked property differs.
 - Unchanged tracked properties suppress subscription-driven renders; `snapshot()` retains its existing identity cache and structural sharing.
@@ -2304,6 +2366,7 @@ ES6 Proxy supports intercepting property creation, deletion, and arbitrary key a
 ### Why `queueMicrotask` for batching?
 
 `queueMicrotask` runs after the current synchronous code but before the next paint/timer. For ordinary subscribers, this means:
+
 - Multiple mutations in the same event handler → 1 notification
 - Array `push` (which triggers multiple SET traps) → 1 notification
 - Delivery runs at the microtask checkpoint without waiting for an animation frame
@@ -2319,6 +2382,7 @@ Without structural sharing, `Object.is(prevSelector, nextSelector)` would always
 ### Why `useSyncExternalStore` instead of `useState` + `useEffect`?
 
 `useSyncExternalStore` is React's official API for external stores. It:
+
 - Prevents tearing (concurrent mode safe)
 - Integrates with React's scheduler
 - Works with server-side rendering (via `getServerSnapshot`)
@@ -2327,6 +2391,7 @@ Without structural sharing, `Object.is(prevSelector, nextSelector)` would always
 ### Why `WeakMap` for internal state?
 
 Storing internals in a `WeakMap<proxy, StoreInternal>` instead of on the proxy itself:
+
 - Doesn't pollute the user's object with library metadata
 - Allows garbage collection when the store is no longer referenced
 - Prevents conflicts with user-defined properties
@@ -2345,19 +2410,19 @@ No special handling is needed — three mechanisms in the existing design make i
 
 ## Performance Characteristics
 
-| Operation | Complexity | Notes |
-|-----------|-----------|-------|
-| Data property read | Prototype lookup plus lazy wrapping | Getter detection walks the prototype chain; existing child proxies are reused |
-| Property write | O(store depth), plus notifications | Versions bump to the root; array truncation also inspects tracked children |
-| Notification | O(listeners), plus callback work | React checks run per mutation; snapshot, selector, and render costs are additional |
-| Getter (cache hit) | Depends on recorded dependencies | Nested computed dependencies are validated recursively |
-| Getter (cache miss) | O(getter body) | Re-evaluates with dep tracking |
-| Snapshot (cache hit) | O(1) | Version check only |
-| Snapshot (cache miss) | Proportional to visited fields/elements | Rebuilds changed containers and scans their entries; unchanged child snapshots are reused |
-| Snapshot getter (same snap) | O(1) | Per-snapshot cache hit |
-| Snapshot getter (cross-snap) | O(deps) | Reference comparison via structural sharing |
-| Selector equality | O(1) for primitives | `Object.is` check |
-| Auto-track diff | Depends on tracked operations | Nested reads, enumeration, and whole-node comparisons can require more work |
+| Operation                    | Complexity                              | Notes                                                                                     |
+| ---------------------------- | --------------------------------------- | ----------------------------------------------------------------------------------------- |
+| Data property read           | Prototype lookup plus lazy wrapping     | Getter detection walks the prototype chain; existing child proxies are reused             |
+| Property write               | O(store depth), plus notifications      | Versions bump to the root; array truncation also inspects tracked children                |
+| Notification                 | O(listeners), plus callback work        | React checks run per mutation; snapshot, selector, and render costs are additional        |
+| Getter (cache hit)           | Depends on recorded dependencies        | Nested computed dependencies are validated recursively                                    |
+| Getter (cache miss)          | O(getter body)                          | Re-evaluates with dep tracking                                                            |
+| Snapshot (cache hit)         | O(1)                                    | Version check only                                                                        |
+| Snapshot (cache miss)        | Proportional to visited fields/elements | Rebuilds changed containers and scans their entries; unchanged child snapshots are reused |
+| Snapshot getter (same snap)  | O(1)                                    | Per-snapshot cache hit                                                                    |
+| Snapshot getter (cross-snap) | O(deps)                                 | Reference comparison via structural sharing                                               |
+| Selector equality            | O(1) for primitives                     | `Object.is` check                                                                         |
+| Auto-track diff              | Depends on tracked operations           | Nested reads, enumeration, and whole-node comparisons can require more work               |
 
 ---
 SOURCE: https://codebelt.github.io/classy-store/docs/DEVTOOLS_TUTORIAL
@@ -2458,10 +2523,10 @@ function devtools<T extends object>(
 
 ### Options
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `name` | `string` | `'ClassyStore'` | Display name in the DevTools panel |
-| `enabled` | `boolean` | `true` | Set to `false` to disable (returns a noop) |
+| Option    | Type      | Default         | Description                                |
+| --------- | --------- | --------------- | ------------------------------------------ |
+| `name`    | `string`  | `'ClassyStore'` | Display name in the DevTools panel         |
+| `enabled` | `boolean` | `true`          | Set to `false` to disable (returns a noop) |
 
 ### Return value
 
@@ -2570,12 +2635,12 @@ DevTools dispatch commands are not implemented.
 
 ## Quick Reference
 
-| What you want | How to do it |
-|---|---|
-| Connect a store | `devtools(store, {name: 'MyStore'})` |
-| Disconnect | `const dispose = devtools(...); dispose()` |
-| Disable in production | `enabled: import.meta.env.DEV` |
-| Multiple stores | Call `devtools()` once per store with unique names |
+| What you want         | How to do it                                          |
+| --------------------- | ----------------------------------------------------- |
+| Connect a store       | `devtools(store, {name: 'MyStore'})`                  |
+| Disconnect            | `const dispose = devtools(...); dispose()`            |
+| Disable in production | `enabled: import.meta.env.DEV`                        |
+| Multiple stores       | Call `devtools()` once per store with unique names    |
 | Use without extension | Works safely — returns a noop if extension is missing |
 
 ---
@@ -2596,10 +2661,10 @@ import {createClassyStore} from '@codebelt/classy-store';
 class DrawingStore {
   color = '#000000';
   strokeWidth = 2;
-  points: { x: number; y: number }[] = [];
+  points: {x: number; y: number}[] = [];
 
   addPoint(x: number, y: number) {
-    this.points = [...this.points, { x, y }];
+    this.points = [...this.points, {x, y}];
   }
 
   setColor(color: string) {
@@ -2701,29 +2766,29 @@ Snapshots are readonly and cached until a status field changes. `pause()` and `r
 ```ts
 function withHistory<T extends object>(
   proxyStore: T,
-  options?: { limit?: number },
+  options?: {limit?: number},
 ): HistoryHandle;
 ```
 
 ### Options
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `limit` | `number` | `100` | Maximum snapshots retained, including the current state; use a positive integer |
+| Option  | Type     | Default | Description                                                                     |
+| ------- | -------- | ------- | ------------------------------------------------------------------------------- |
+| `limit` | `number` | `100`   | Maximum snapshots retained, including the current state; use a positive integer |
 
 ### HistoryHandle
 
-| Property/Method | Type | Description |
-|-----------------|------|-------------|
-| `undo()` | `() => void` | Restore the previous state |
-| `redo()` | `() => void` | Restore the next state (after an undo) |
-| `canUndo` | `readonly boolean` | Whether there is a previous state |
-| `canRedo` | `readonly boolean` | Whether there is a next state |
-| `pause()` | `() => void` | Stop recording history entries |
-| `resume()` | `() => void` | Resume recording history entries |
-| `dispose()` | `() => void` | Unsubscribe and clean up |
-| `getSnapshot()` | `() => HistoryStatus` | Cached current status |
-| `getServerSnapshot()` | `() => HistoryStatus` | Initial status for SSR/hydration |
+| Property/Method       | Type                                   | Description                                      |
+| --------------------- | -------------------------------------- | ------------------------------------------------ |
+| `undo()`              | `() => void`                           | Restore the previous state                       |
+| `redo()`              | `() => void`                           | Restore the next state (after an undo)           |
+| `canUndo`             | `readonly boolean`                     | Whether there is a previous state                |
+| `canRedo`             | `readonly boolean`                     | Whether there is a next state                    |
+| `pause()`             | `() => void`                           | Stop recording history entries                   |
+| `resume()`            | `() => void`                           | Resume recording history entries                 |
+| `dispose()`           | `() => void`                           | Unsubscribe and clean up                         |
+| `getSnapshot()`       | `() => HistoryStatus`                  | Cached current status                            |
+| `getServerSnapshot()` | `() => HistoryStatus`                  | Initial status for SSR/hydration                 |
 | `subscribe(listener)` | `(listener: () => void) => () => void` | Observe status changes; returns listener cleanup |
 
 ## How It Works
@@ -2773,7 +2838,7 @@ class EditorStore {
 }
 
 const editorStore = createClassyStore(new EditorStore());
-const history = withHistory(editorStore, { limit: 200 });
+const history = withHistory(editorStore, {limit: 200});
 
 // Cmd+Z / Ctrl+Z
 document.addEventListener('keydown', (e) => {
@@ -2831,7 +2896,7 @@ class SpreadsheetStore {
   cells: Record<string, string> = {};
 
   setCell(id: string, value: string) {
-    this.cells = { ...this.cells, [id]: value };
+    this.cells = {...this.cells, [id]: value};
   }
 }
 
@@ -2853,7 +2918,7 @@ function pasteBlock(data: Record<string, string>) {
 For memory-sensitive applications, set a lower limit:
 
 ```ts
-const history = withHistory(canvasStore, { limit: 50 });
+const history = withHistory(canvasStore, {limit: 50});
 
 // Only the last 50 states are kept.
 // Older entries are shifted off the front of the stack.
@@ -2897,7 +2962,10 @@ const persistence = persist(todoStore, {name: 'todos', storage: localStorage});
 // Make the restored data the initial undo state. Check status for read failures.
 await persistence.hydrated;
 if (persistence.getSnapshot().lastError) {
-  console.error('Could not restore saved todos', persistence.getSnapshot().lastError);
+  console.error(
+    'Could not restore saved todos',
+    persistence.getSnapshot().lastError,
+  );
 }
 
 // Undo/redo in memory (resets on page reload).
@@ -2919,7 +2987,7 @@ import {devtools, withHistory} from '@codebelt/classy-store/utils';
 
 const store = createClassyStore(new MyStore());
 
-const disconnect = devtools(store, { name: 'MyStore' });
+const disconnect = devtools(store, {name: 'MyStore'});
 const history = withHistory(store);
 
 // DevTools receives batched updates, including undo/redo restores.
@@ -2932,19 +3000,19 @@ history.dispose();
 
 ## Quick Reference
 
-| What you want | How to do it |
-|---|---|
-| Add undo/redo | `const h = withHistory(store)` |
-| Undo | `h.undo()` |
-| Redo | `h.redo()` |
-| Check if undoable | `h.canUndo` |
-| Check if redoable | `h.canRedo` |
-| Limit history size | `withHistory(store, { limit: 50 })` |
-| Record one undo step | Make synchronous edits in one turn; history records after the microtask flush |
-| Temporarily stop recording | `h.pause()`; keep paused until those notifications flush, then call `h.resume()` |
-| Render history status in React | `useHistoryStatus(h)` |
-| Stop tracking | `h.dispose()` |
-| Undo all | `while (h.canUndo) h.undo()` |
+| What you want                  | How to do it                                                                     |
+| ------------------------------ | -------------------------------------------------------------------------------- |
+| Add undo/redo                  | `const h = withHistory(store)`                                                   |
+| Undo                           | `h.undo()`                                                                       |
+| Redo                           | `h.redo()`                                                                       |
+| Check if undoable              | `h.canUndo`                                                                      |
+| Check if redoable              | `h.canRedo`                                                                      |
+| Limit history size             | `withHistory(store, { limit: 50 })`                                              |
+| Record one undo step           | Make synchronous edits in one turn; history records after the microtask flush    |
+| Temporarily stop recording     | `h.pause()`; keep paused until those notifications flush, then call `h.resume()` |
+| Render history status in React | `useHistoryStatus(h)`                                                            |
+| Stop tracking                  | `h.dispose()`                                                                    |
+| Undo all                       | `while (h.canUndo) h.undo()`                                                     |
 
 ---
 SOURCE: https://codebelt.github.io/classy-store/docs/PERSIST_ARCHITECTURE
@@ -3019,21 +3087,21 @@ tsdown.config.ts                # 'src/utils/index.ts' in entry array
 
 Each `persist()` call creates a closure with the following internal state:
 
-| Variable | Type | Purpose |
-|---|---|---|
-| `disposed` | `boolean` | Guards against writes after `dispose()` |
-| `hydrating` | `boolean` | Suppresses auto-saves while applying restored state and flushing its notification |
-| `debounceTimer` | `ReturnType<typeof setTimeout> \| null` | Active debounce timer (cancelled on save/clear/dispose or accepted hydration) |
-| `storageQueue` | `Promise<void> \| undefined` | Orders this handle's writes/removals and lets reads wait for prior operations |
-| `hydrationRequest` | `number` | Rejects read results superseded by newer requests or storage events |
-| `clearedVersion` | `number \| undefined` | Suppresses a pre-clear mutation's pending batched auto-save |
-| `hydratedFlag` | `boolean` | Synchronous hydration status |
-| `expiredFlag` | `boolean` | Set to `true` when hydration encounters expired data |
-| `lastError` | `PersistStatus['lastError']` | Latest reported failure; cleared after a successful operation |
-| `resolveHydrated` | `() => void` | Resolves the `hydrated` promise |
-| `resolvedProps` | `Array<{key, transform?}>` | Normalized property list with optional transforms |
-| `transformMap` | `Map<string, PropertyTransform>` | Fast lookup from key to transform |
-| `propKeys` | `string[]` | Flat list of property keys to persist |
+| Variable           | Type                                    | Purpose                                                                           |
+| ------------------ | --------------------------------------- | --------------------------------------------------------------------------------- |
+| `disposed`         | `boolean`                               | Guards against writes after `dispose()`                                           |
+| `hydrating`        | `boolean`                               | Suppresses auto-saves while applying restored state and flushing its notification |
+| `debounceTimer`    | `ReturnType<typeof setTimeout> \| null` | Active debounce timer (cancelled on save/clear/dispose or accepted hydration)     |
+| `storageQueue`     | `Promise<void> \| undefined`            | Orders this handle's writes/removals and lets reads wait for prior operations     |
+| `hydrationRequest` | `number`                                | Rejects read results superseded by newer requests or storage events               |
+| `clearedVersion`   | `number \| undefined`                   | Suppresses a pre-clear mutation's pending batched auto-save                       |
+| `hydratedFlag`     | `boolean`                               | Synchronous hydration status                                                      |
+| `expiredFlag`      | `boolean`                               | Set to `true` when hydration encounters expired data                              |
+| `lastError`        | `PersistStatus['lastError']`            | Latest reported failure; cleared after a successful operation                     |
+| `resolveHydrated`  | `() => void`                            | Resolves the `hydrated` promise                                                   |
+| `resolvedProps`    | `Array<{key, transform?}>`              | Normalized property list with optional transforms                                 |
+| `transformMap`     | `Map<string, PropertyTransform>`        | Fast lookup from key to transform                                                 |
+| `propKeys`         | `string[]`                              | Flat list of property keys to persist                                             |
 
 Bookkeeping is per handle. Handles on the same store still observe each other's applied mutations, and handles using the same storage key can overwrite one another. Their queues do not coordinate with each other.
 
@@ -3097,6 +3165,7 @@ The `version` field is always present (default `0`). The `state` field contains 
 ## Restore Flow (Hydration)
 
 Triggered in three scenarios:
+
 1. **Auto-hydration on init** (unless `skipHydration: true`)
 2. **Manual rehydrate** via `handle.rehydrate()`
 3. **Cross-tab sync** via `window.storage` event
@@ -3135,10 +3204,10 @@ batched subscription notification has run, with cleanup in `finally`.
 
 ### Merge Strategies
 
-| Strategy | Behavior |
-|---|---|
+| Strategy              | Behavior                                                                                 |
+| --------------------- | ---------------------------------------------------------------------------------------- |
 | `'shallow'` (default) | `{ ...current, ...persisted }` — stored keys overwrite, missing keys keep current values |
-| Custom `fn` | `fn(persisted, current)` -- full control. Enables deep merge or selective overrides. |
+| Custom `fn`           | `fn(persisted, current)` -- full control. Enables deep merge or selective overrides.     |
 
 The public merge option accepts `shallow` or a function. Shallow merging replaces each stored top-level property, including its nested value; use a custom function to combine nested data.
 
@@ -3170,6 +3239,7 @@ sequenceDiagram
 ```
 
 Key properties of `window.storage`:
+
 - For `localStorage`, fires in **other** same-origin tabs (not the tab that wrote). The hydration guard prevents echo writes and loops.
 - Cross-tab delivery uses `localStorage`. `sessionStorage` events are limited to same-tab contexts sharing the area; async adapters do not emit these browser events.
 - The event payload includes `key`, `oldValue`, `newValue`, and `storageArea`.
@@ -3189,6 +3259,7 @@ Key properties of `window.storage`:
 ```
 
 After `dispose()`:
+
 - Store mutations no longer trigger writes to storage.
 - Cross-tab changes to the storage key are ignored.
 - `save()`, `clear()`, and `rehydrate()` reject without starting new work.
@@ -3197,18 +3268,18 @@ After `dispose()`:
 
 ## PersistHandle API
 
-| Method/Property | Behavior |
-|---|---|
-| `dispose()` | Idempotent cleanup: cancel debounce and listeners, publish disposed status, ignore pending reads and skip unstarted writes. |
-| `hydrated` | Resolves when a hydration attempt settles, including failure or a superseded read. Inspect `lastError` for reported failures. |
-| `isHydrated` | Readonly getter; true after a hydration attempt settles. |
-| `isExpired` | Readonly getter; true when hydration found expired data. Re-evaluated by `rehydrate()`. |
-| `save()` | Cancel debounce, capture current state, and enqueue its write. |
-| `clear()` | Cancel pending auto-saves and enqueue removal after earlier writes. |
-| `rehydrate()` | Read after prior writes, apply if still current, and await expired-data removal when enabled. |
-| `getSnapshot()` | Cached readonly `PersistStatus`: hydration, expiry, disposal, and latest error. |
-| `getServerSnapshot()` | Initial status for server rendering and hydration. |
-| `subscribe(listener)` | Synchronous status subscription; returns listener cleanup. |
+| Method/Property       | Behavior                                                                                                                      |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `dispose()`           | Idempotent cleanup: cancel debounce and listeners, publish disposed status, ignore pending reads and skip unstarted writes.   |
+| `hydrated`            | Resolves when a hydration attempt settles, including failure or a superseded read. Inspect `lastError` for reported failures. |
+| `isHydrated`          | Readonly getter; true after a hydration attempt settles.                                                                      |
+| `isExpired`           | Readonly getter; true when hydration found expired data. Re-evaluated by `rehydrate()`.                                       |
+| `save()`              | Cancel debounce, capture current state, and enqueue its write.                                                                |
+| `clear()`             | Cancel pending auto-saves and enqueue removal after earlier writes.                                                           |
+| `rehydrate()`         | Read after prior writes, apply if still current, and await expired-data removal when enabled.                                 |
+| `getSnapshot()`       | Cached readonly `PersistStatus`: hydration, expiry, disposal, and latest error.                                               |
+| `getServerSnapshot()` | Initial status for server rendering and hydration.                                                                            |
+| `subscribe(listener)` | Synchronous status subscription; returns listener cleanup.                                                                    |
 
 Explicit operations reject with the original failure after reporting it through `onError` and status. Automatic operations catch reported failures at their background entry points. Decoding, transform, migration, and merge errors use the `parse` operation. The internal queue absorbs rejections so later writes still run. Calls on disposed handles reject; explicit queued operations cancelled by disposal also reject without invoking the adapter.
 
@@ -3226,6 +3297,7 @@ graph LR
 ```
 
 `persist` has no React runtime dependency. Its public contracts live in `persist.types.ts` and are exported by `utils/index.ts`. Transform types use `Snapshot` from the public core `types.ts`. Runtime helpers include:
+
 - `subscribe()` -- to listen for store mutations
 - Internal `getVersion()` -- to reject stale reads and suppress pre-clear auto-saves
 - `snapshot()` -- to read cached state for serialization
@@ -3235,15 +3307,15 @@ graph LR
 
 ## Performance Characteristics
 
-| Operation | Complexity | Notes |
-|---|---|---|
-| Property resolution | O(keys) | Once at init, not per-save |
-| Save | Depends on state size and transforms | Snapshot work + selected-field traversal + JSON serialization + adapter I/O |
-| Debounce scheduling | O(1) per notification | Timer reset; serialization and write happen when it fires |
-| Hydration | Depends on payload and restored state | Parse + user callbacks + mutable cloning + assignments and notifications |
-| Cross-tab sync | Same state-application costs as hydration | Uses the event payload, with a current-value check |
-| `save()` | Same serialization costs as auto-save | Captures immediately, then waits for queued adapter work |
-| `dispose()` | Depends on status listeners | Cancels timer/subscriptions and publishes final status |
+| Operation           | Complexity                                | Notes                                                                       |
+| ------------------- | ----------------------------------------- | --------------------------------------------------------------------------- |
+| Property resolution | O(keys)                                   | Once at init, not per-save                                                  |
+| Save                | Depends on state size and transforms      | Snapshot work + selected-field traversal + JSON serialization + adapter I/O |
+| Debounce scheduling | O(1) per notification                     | Timer reset; serialization and write happen when it fires                   |
+| Hydration           | Depends on payload and restored state     | Parse + user callbacks + mutable cloning + assignments and notifications    |
+| Cross-tab sync      | Same state-application costs as hydration | Uses the event payload, with a current-value check                          |
+| `save()`            | Same serialization costs as auto-save     | Captures immediately, then waits for queued adapter work                    |
+| `dispose()`         | Depends on status listeners               | Cancels timer/subscriptions and publishes final status                      |
 
 ## Design Decisions
 
@@ -3267,22 +3339,22 @@ Class getters are derived/computed values that recompute from persisted data pro
 
 Debounce waits for a quiet period after the last mutation. Throttle writes at regular intervals. For persistence, debounce is more appropriate: it coalesces bursts of mutations (like typing) into a single write, while throttle would write mid-burst with potentially incomplete state. `save()` provides the escape hatch for "write right now" scenarios.
 
-| Group | What's covered |
-|---|---|
-| Basic round-trip | Save/restore, versioned envelope, getter exclusion, method exclusion |
-| Properties option | Persist specific properties, restore only specified properties |
-| Per-property transforms | Date round-trip, ReactiveMap round-trip |
-| Debounce | Coalescing, save bypass |
-| Version migration | Migration call, version match skip |
-| Merge strategies | Shallow or custom function |
-| skipHydration | No auto-hydrate, manual rehydrate, promise resolution |
-| Dispose | Stop writes, cancel debounce |
-| Save/clear/rehydrate | Immediate write, remove data, in-memory preservation, re-read |
-| Hydration state | Promise instance, resolution timing |
-| Async storage | Async write, async hydrate |
-| Cross-tab sync | Correct key, wrong key, post-disposal, disabled |
-| expireIn / TTL | Normal hydration, expired skip, clearOnExpire, default leave-in-storage, cross-tab reject, no-expiresAt envelope, TTL reset on write, rehydrate re-check |
-| Edge cases | Empty storage, corrupted JSON, invalid envelope, no-storage error, multiple persists |
+| Group                   | What's covered                                                                                                                                           |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Basic round-trip        | Save/restore, versioned envelope, getter exclusion, method exclusion                                                                                     |
+| Properties option       | Persist specific properties, restore only specified properties                                                                                           |
+| Per-property transforms | Date round-trip, ReactiveMap round-trip                                                                                                                  |
+| Debounce                | Coalescing, save bypass                                                                                                                                  |
+| Version migration       | Migration call, version match skip                                                                                                                       |
+| Merge strategies        | Shallow or custom function                                                                                                                               |
+| skipHydration           | No auto-hydrate, manual rehydrate, promise resolution                                                                                                    |
+| Dispose                 | Stop writes, cancel debounce                                                                                                                             |
+| Save/clear/rehydrate    | Immediate write, remove data, in-memory preservation, re-read                                                                                            |
+| Hydration state         | Promise instance, resolution timing                                                                                                                      |
+| Async storage           | Async write, async hydrate                                                                                                                               |
+| Cross-tab sync          | Correct key, wrong key, post-disposal, disabled                                                                                                          |
+| expireIn / TTL          | Normal hydration, expired skip, clearOnExpire, default leave-in-storage, cross-tab reject, no-expiresAt envelope, TTL reset on write, rehydrate re-check |
+| Edge cases              | Empty storage, corrupted JSON, invalid envelope, no-storage error, multiple persists                                                                     |
 
 ---
 SOURCE: https://codebelt.github.io/classy-store/docs/PERSIST_TUTORIAL
@@ -3363,7 +3435,7 @@ By default, `persist()` selects string-keyed data fields from the initial snapsh
 persist(todoStore, {
   storage: localStorage,
   name: 'todo-store',
-  properties: ['todos'],  // Only persist todos, not filter
+  properties: ['todos'], // Only persist todos, not filter
 });
 ```
 
@@ -3385,37 +3457,37 @@ Here is a quick overview of every configuration option and handle method. You wo
 import {persist} from '@codebelt/classy-store/utils';
 
 const handle = persist(todoStore, {
-  name: 'TodoStore',         // Unique storage key (required)
-  properties: ['todos'],     // Omit for initial data fields; [] persists no properties
-  storage: localStorage,     // Required adapter with getItem/setItem/removeItem; no default
-  debounce: 500,             // Coalesce rapid mutations into one write, in ms (default: 0)
-  version: 0,                // Schema version number; triggers migrate when mismatched (default: 0)
+  name: 'TodoStore', // Unique storage key (required)
+  properties: ['todos'], // Omit for initial data fields; [] persists no properties
+  storage: localStorage, // Required adapter with getItem/setItem/removeItem; no default
+  debounce: 500, // Coalesce rapid mutations into one write, in ms (default: 0)
+  version: 0, // Schema version number; triggers migrate when mismatched (default: 0)
   migrate: (state, oldVersion) => state, // Return the migrated state when versions differ
-  merge: 'shallow',          // How to merge persisted state on hydration: 'shallow' | custom function
-  skipHydration: false,      // Set true to wait for a manual handle.rehydrate() call
-  syncTabs: true,            // Opt in to localStorage tab updates (default: false)
-  expireIn: 1000,            // TTL in ms; expired data is skipped on hydration. Resets on every write
-  clearOnExpire: false,      // Auto-remove storage key when expired data is found (default: false)
+  merge: 'shallow', // How to merge persisted state on hydration: 'shallow' | custom function
+  skipHydration: false, // Set true to wait for a manual handle.rehydrate() call
+  syncTabs: true, // Opt in to localStorage tab updates (default: false)
+  expireIn: 1000, // TTL in ms; expired data is skipped on hydration. Resets on every write
+  clearOnExpire: false, // Auto-remove storage key when expired data is found (default: false)
   onError: (error, operation) => console.error(operation, error),
 });
 
-handle.isHydrated;           // Whether a hydration attempt has settled, including failures
-handle.isExpired;            // Expiry observed since init or the latest explicit rehydrate()
-await handle.hydrated;       // An attempt settled; inspect getSnapshot().lastError
-handle.getSnapshot();       // Current readonly status
+handle.isHydrated; // Whether a hydration attempt has settled, including failures
+handle.isExpired; // Expiry observed since init or the latest explicit rehydrate()
+await handle.hydrated; // An attempt settled; inspect getSnapshot().lastError
+handle.getSnapshot(); // Current readonly status
 handle.getServerSnapshot(); // Initial status for SSR/hydration
 const stopStatus = handle.subscribe(() => console.log(handle.getSnapshot()));
 
 try {
-  await handle.save();       // Save now, bypassing debounce
-  await handle.clear();      // Remove stored data; keep in-memory state
-  await handle.rehydrate();  // Read storage again
+  await handle.save(); // Save now, bypassing debounce
+  await handle.clear(); // Remove stored data; keep in-memory state
+  await handle.rehydrate(); // Read storage again
 } catch (error) {
   console.error('Explicit persistence operation failed', error);
 }
 
-stopStatus();               // Remove only this status listener
-handle.dispose();           // Stop persistence and release its resources
+stopStatus(); // Remove only this status listener
+handle.dispose(); // Stop persistence and release its resources
 ```
 
 ---
@@ -3444,10 +3516,10 @@ persist(userStore, {
   name: 'user-store',
   storage: localStorage,
   properties: [
-    'name',  // plain key -- string, no transform needed
+    'name', // plain key -- string, no transform needed
     {
       key: 'birthdate',
-      serialize: (date) => date.toISOString(),            // Date → string
+      serialize: (date) => date.toISOString(), // Date → string
       deserialize: (stored) => {
         if (typeof stored !== 'string') throw new Error('Expected a birthdate');
         const date = new Date(stored);
@@ -3473,7 +3545,7 @@ persist(userStore, {
 
 On restore, `deserialize` converts the ISO string back into a `Date` object before assigning it to `userStore.birthdate`.
 
-*(If you need to persist `Map` or `Set` objects, see the [Reactive Collections Tutorial](https://codebelt.github.io/classy-store/docs/REACTIVE_COLLECTIONS_TUTORIAL).)*
+_(If you need to persist `Map` or `Set` objects, see the [Reactive Collections Tutorial](https://codebelt.github.io/classy-store/docs/REACTIVE_COLLECTIONS_TUTORIAL).)_
 
 ### `storage`
 
@@ -3502,7 +3574,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const handle = persist(todoStore, {
   name: 'todo-store',
   storage: AsyncStorage,
-  syncTabs: false,  // no window.storage in React Native
+  syncTabs: false, // no window.storage in React Native
 });
 
 await handle.hydrated;
@@ -3583,7 +3655,7 @@ Use `expireIn` to stamp a time-to-live (in milliseconds) on saved data. Hydratio
 persist(sessionStore, {
   storage: localStorage,
   name: 'session',
-  expireIn: 900_000,  // 15 minutes
+  expireIn: 900_000, // 15 minutes
 });
 ```
 
@@ -3618,7 +3690,7 @@ persist(sessionStore, {
   storage: localStorage,
   name: 'session',
   expireIn: 900_000,
-  clearOnExpire: true,  // Remove key from storage when expired
+  clearOnExpire: true, // Remove key from storage when expired
 });
 ```
 
@@ -3683,7 +3755,7 @@ For stores that mutate frequently (form inputs, drag positions, real-time data),
 persist(formStore, {
   storage: localStorage,
   name: 'form-draft',
-  debounce: 500,  // Wait for 500ms without a new store notification
+  debounce: 500, // Wait for 500ms without a new store notification
 });
 
 // Rapid mutations:
@@ -3737,7 +3809,7 @@ Imagine your store adds a new `tags` property, but old persisted data only has `
 class TodoStore {
   filter: 'all' | 'active' | 'done' = 'all';
   todos: {text: string; done: boolean}[] = [];
-  tags: string[] = ['work', 'personal'];  // new property with defaults
+  tags: string[] = ['work', 'personal']; // new property with defaults
 }
 
 // Old persisted data in storage (no `tags` key):
@@ -3767,12 +3839,13 @@ persist(todoStore, {
   name: 'todo-store',
   merge: (persisted, current) => {
     return {
-      ...current,             // start with the current selected fields
-      ...persisted,           // overwrite with stored values
-      tags: [                 // custom: combine stored + default tags
+      ...current, // start with the current selected fields
+      ...persisted, // overwrite with stored values
+      tags: [
+        // custom: combine stored + default tags
         ...new Set([
-          ...(persisted.tags as string[] ?? []),
-          ...(current.tags as string[] ?? []),
+          ...((persisted.tags as string[]) ?? []),
+          ...((current.tags as string[]) ?? []),
         ]),
       ],
     };
@@ -3958,7 +4031,8 @@ const handle = persist(appStore, {
       key: 'lastLogin',
       serialize: (date) => date.toISOString(),
       deserialize: (stored) => {
-        if (typeof stored !== 'string') throw new Error('Expected a login date');
+        if (typeof stored !== 'string')
+          throw new Error('Expected a login date');
         const date = new Date(stored);
         if (Number.isNaN(date.getTime())) throw new Error('Invalid login date');
         return date;
@@ -3984,28 +4058,28 @@ console.log(`Welcome back! Theme: ${appStore.theme}`);
 
 Catch failures from explicit `save()`, `clear()`, and `rehydrate()` calls. Reading `isHydrated` or awaiting `hydrated` only confirms an attempt settled; inspect status for errors.
 
-| Feature | Code Example |
-|---|---|
-| **Persist everything** | `persist(myStore, {name: 'key', storage: localStorage})` |
-| **Persist specific properties** | `properties: ['count', 'name']` |
-| **Handle Dates & Objects** | Supply a property transform with a serializer and a validating deserializer |
+| Feature                         | Code Example                                                                                                                                     |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Persist everything**          | `persist(myStore, {name: 'key', storage: localStorage})`                                                                                         |
+| **Persist specific properties** | `properties: ['count', 'name']`                                                                                                                  |
+| **Handle Dates & Objects**      | Supply a property transform with a serializer and a validating deserializer                                                                      |
 | **Handle reactive collections** | Serialize entries/values and deserialize with `reactiveMap()` / `reactiveSet()`; see the [collections guide](https://codebelt.github.io/classy-store/docs/REACTIVE_COLLECTIONS_TUTORIAL) |
-| **Use sessionStorage** | `storage: sessionStorage` |
-| **Use AsyncStorage** | `storage: AsyncStorage, syncTabs: false` |
-| **Disable cross-tab sync** | `syncTabs: false` |
-| **Expire payload after time**| `expireIn: 900_000` |
-| **Auto-clear expired data** | `clearOnExpire: true` |
-| **SSR & manual hydration** | `skipHydration: true` + `handle.rehydrate()` |
-| **Debounce storage writes**| `debounce: 500` |
-| **Migrate schema versions**| `version: 2, migrate: (state, old) => { ... }` |
-| **Merge strategy** | `merge: 'shallow'` or a custom `(persisted, current) => merged` function |
-| **Check hydration** | `handle.isHydrated` |
-| **Wait for hydration** | `await handle.hydrated` |
-| **Clear stored data** | `await handle.clear()` |
-| **Force immediate save** | `await handle.save()` |
-| **Re-hydrate manually** | `await handle.rehydrate()` |
-| **Stop persisting** | `handle.dispose()` |
-| **Check if data expired** | `handle.isExpired` |
+| **Use sessionStorage**          | `storage: sessionStorage`                                                                                                                        |
+| **Use AsyncStorage**            | `storage: AsyncStorage, syncTabs: false`                                                                                                         |
+| **Disable cross-tab sync**      | `syncTabs: false`                                                                                                                                |
+| **Expire payload after time**   | `expireIn: 900_000`                                                                                                                              |
+| **Auto-clear expired data**     | `clearOnExpire: true`                                                                                                                            |
+| **SSR & manual hydration**      | `skipHydration: true` + `handle.rehydrate()`                                                                                                     |
+| **Debounce storage writes**     | `debounce: 500`                                                                                                                                  |
+| **Migrate schema versions**     | `version: 2, migrate: (state, old) => { ... }`                                                                                                   |
+| **Merge strategy**              | `merge: 'shallow'` or a custom `(persisted, current) => merged` function                                                                         |
+| **Check hydration**             | `handle.isHydrated`                                                                                                                              |
+| **Wait for hydration**          | `await handle.hydrated`                                                                                                                          |
+| **Clear stored data**           | `await handle.clear()`                                                                                                                           |
+| **Force immediate save**        | `await handle.save()`                                                                                                                            |
+| **Re-hydrate manually**         | `await handle.rehydrate()`                                                                                                                       |
+| **Stop persisting**             | `handle.dispose()`                                                                                                                               |
+| **Check if data expired**       | `handle.isExpired`                                                                                                                               |
 
 ---
 SOURCE: https://codebelt.github.io/classy-store/docs/REACTIVE_COLLECTIONS_TUTORIAL
@@ -4086,8 +4160,10 @@ const persistence = persist(labelStore, {
         const labels = reactiveMap<string, string>();
         for (const entry of stored) {
           if (
-            !Array.isArray(entry) || entry.length !== 2 ||
-            typeof entry[0] !== 'string' || typeof entry[1] !== 'string'
+            !Array.isArray(entry) ||
+            entry.length !== 2 ||
+            typeof entry[0] !== 'string' ||
+            typeof entry[1] !== 'string'
           ) {
             throw new Error('Invalid label entry');
           }
@@ -4185,12 +4261,12 @@ React defines the supported [serializable prop types](https://react.dev/referenc
 
 ## Package boundaries
 
-| Entry | App Router use |
-| --- | --- |
-| `@codebelt/classy-store` | Core store creation and snapshots in server or client modules. |
-| `@codebelt/classy-store/collections` | Reactive collections in server or client modules. |
-| `@codebelt/classy-store/utils` | Server-safe imports; configure browser storage and effects inside Client Components. |
-| `@codebelt/classy-store/react` | Client hooks. The published ESM and CommonJS entries carry `use client`. |
+| Entry                                 | App Router use                                                                                             |
+| ------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `@codebelt/classy-store`              | Core store creation and snapshots in server or client modules.                                             |
+| `@codebelt/classy-store/collections`  | Reactive collections in server or client modules.                                                          |
+| `@codebelt/classy-store/utils`        | Server-safe imports; configure browser storage and effects inside Client Components.                       |
+| `@codebelt/classy-store/react`        | Client hooks. The published ESM and CommonJS entries carry `use client`.                                   |
 | `@codebelt/classy-store/react/server` | `prepareStoreForHydration` without importing React hooks; safe in Server Components and ordinary SSR code. |
 
 Components that use hooks still need their own client boundary. Do not call
@@ -4230,7 +4306,10 @@ Construct and prepare it inside the Client Component:
 
 import {useClassyStore, useLocalStore} from '@codebelt/classy-store/react';
 import {prepareStoreForHydration} from '@codebelt/classy-store/react/server';
-import {type ProfileData, ProfileStore} from '../../stores/profile/profile.store';
+import {
+  type ProfileData,
+  ProfileStore,
+} from '../../stores/profile/profile.store';
 
 export function ProfileEditor({initialData}: {initialData: ProfileData}) {
   const store = prepareStoreForHydration(
@@ -4243,7 +4322,9 @@ export function ProfileEditor({initialData}: {initialData: ProfileData}) {
       <input
         aria-label="Name"
         value={state.name}
-        onChange={(event) => { store.name = event.target.value; }}
+        onChange={(event) => {
+          store.name = event.target.value;
+        }}
       />
       <button type="button" onClick={() => store.recordVisit()}>
         Visits: {state.visits}
@@ -4295,7 +4376,8 @@ mean the instance was destroyed. See [Next.js state preservation](https://nextjs
 ## Tested package consumer
 
 Run `bun run test:react:next` from the repository root. It installs the package
-tarball into an isolated Next.js 16.4.2 / React 19.3.1 app and runs clean
+tarball into an isolated app using the example's Next.js version and the library's
+development React version, then runs clean
 production Turbopack builds with React Compiler off and on. Tests verify the
 actual compiler-generated selector and tracking functions, request isolation,
 real inputs, streamed response ordering, delayed hydration without replacing
@@ -4308,8 +4390,9 @@ does not establish compatibility with every Next.js version, bundler, or
 Cache Components configuration.
 
 Next App Router can supply its own React runtime. The test evidence records the
-actual browser `React.version`; this Next.js version uses
-`19.3.0-canary-278794d7-20261002`, while the installed React package is 19.3.1.
+actual browser `React.version` separately from the installed package versions.
+Consult the generated compiler evidence and `test-results/next/report.json` for
+the versions exercised by a particular run.
 
 ---
 SOURCE: https://codebelt.github.io/classy-store/docs/REACT_SCOPING
@@ -4338,8 +4421,12 @@ export class EditorStore {
     this.body = initialData.body;
   }
 
-  setTitle(title: string) { this.title = title; }
-  setBody(body: string) { this.body = body; }
+  setTitle(title: string) {
+    this.title = title;
+  }
+  setBody(body: string) {
+    this.body = body;
+  }
 }
 ```
 
@@ -4386,7 +4473,11 @@ type Props = {
   persistence?: {name: string; storage: StorageAdapter};
 };
 
-export function EditorStoreProvider({initialData, children, persistence}: Props) {
+export function EditorStoreProvider({
+  initialData,
+  children,
+  persistence,
+}: Props) {
   const store = prepareStoreForHydration(
     useLocalStore(() => new EditorStore(initialData)),
   );
@@ -4401,7 +4492,11 @@ export function EditorStoreProvider({initialData, children, persistence}: Props)
       properties: ['title', 'body'],
       skipHydration: true,
     });
-    void handle.rehydrate().catch((error) => console.error('Could not restore persisted state', error));
+    void handle
+      .rehydrate()
+      .catch((error) =>
+        console.error('Could not restore persisted state', error),
+      );
     return () => handle.dispose();
   }, [store, name, storage]);
 
@@ -4425,7 +4520,12 @@ import {useEditorStore} from '../../hooks/useEditorStore';
 export function EditorTitle() {
   const store = useEditorStore();
   const title = useClassyStore(store, (state) => state.title);
-  return <input value={title} onChange={(event) => store.setTitle(event.target.value)} />;
+  return (
+    <input
+      value={title}
+      onChange={(event) => store.setTitle(event.target.value)}
+    />
+  );
 }
 ```
 
@@ -4441,19 +4541,19 @@ Auto-tracking also works: `const state = useClassyStore(useEditorStore())`. Read
   initialData={documentData}
 >
   <EditorTitle />
-</EditorStoreProvider>
+</EditorStoreProvider>;
 ```
 
 Change `documentId` when moving to a different document; increment `revision` for an explicit reset. A key change remounts the provider's whole subtree, including nested providers. Resetting a nested provider leaves its parent and siblings intact.
 
-| Event | Store and effect behavior |
-| --- | --- |
-| Parent render or changed `initialData`, same key | Preserve the existing store and edits |
-| Provider key changes | Create a new store and clean up the old subtree |
-| Nested provider | Consumers inside it use its independent store |
-| Storage name or adapter changes | Keep the store; detach old persistence and load from the new configuration |
-| Persistence removed | Keep current state and stop persistence |
-| Provider unmounts | React releases its store reference and effect cleanup detaches persistence |
+| Event                                            | Store and effect behavior                                                  |
+| ------------------------------------------------ | -------------------------------------------------------------------------- |
+| Parent render or changed `initialData`, same key | Preserve the existing store and edits                                      |
+| Provider key changes                             | Create a new store and clean up the old subtree                            |
+| Nested provider                                  | Consumers inside it use its independent store                              |
+| Storage name or adapter changes                  | Keep the store; detach old persistence and load from the new configuration |
+| Persistence removed                              | Keep current state and stop persistence                                    |
+| Provider unmounts                                | React releases its store reference and effect cleanup detaches persistence |
 
 A reset does **not** clear saved data. If the new provider uses the same persistence key, it restores that saved draft. To clear it, stop new edits and await the active handle's `clear()` before disposing that handle and remounting. `clear()` orders removal after earlier writes and invalidates pending reads. If the provider hides its handle, expose an application reset command that performs this sequence. Disposing first and calling the adapter's `removeItem()` directly can race with an already-issued async write. Coordinate any other handles using the same key. Use distinct storage keys for independent documents or users.
 
@@ -4561,7 +4661,11 @@ export function PersistedProfile({initialData}: {initialData: ProfileData}) {
       storage: localStorage,
       skipHydration: true,
     });
-    void persistence.rehydrate().catch((error) => console.error('Could not restore persisted state', error));
+    void persistence
+      .rehydrate()
+      .catch((error) =>
+        console.error('Could not restore persisted state', error),
+      );
     return () => persistence.dispose();
   }, [store]);
 
@@ -4636,7 +4740,10 @@ class FormStore {
     this.text = text;
   }
   replaceItems() {
-    this.items = [{id: 1, label: 'Updated'}, {id: 2, label: 'Second'}];
+    this.items = [
+      {id: 1, label: 'Updated'},
+      {id: 2, label: 'Second'},
+    ];
   }
 }
 
@@ -4663,8 +4770,12 @@ export function Form() {
           onInput={(event) => formStore.setText(event.currentTarget.value)}
         />
       </label>
-      <p>{uppercase()} ({state().length} characters)</p>
-      <button type="button" onClick={handleReset}>Reset</button>
+      <p>
+        {uppercase()} ({state().length} characters)
+      </p>
+      <button type="button" onClick={handleReset}>
+        Reset
+      </button>
       <button type="button" onClick={() => formStore.replaceItems()}>
         Replace items
       </button>
@@ -4789,13 +4900,13 @@ function subscribeKey<T extends object, K extends keyof T & keyof Snapshot<T>>(
 ): () => void;
 ```
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `proxyStore` | `T` | A reactive proxy created by `createClassyStore()` |
-| `key` | `keyof T` | The property to watch |
-| `callback` | `(value, previousValue) => void` | Called when the watched property changes |
-| `options` | `SubscribeOptions` | Optional `{sync: true}` for immediate notifications; otherwise batched |
-| **Returns** | `() => void` | Unsubscribe function |
+| Parameter    | Type                             | Description                                                            |
+| ------------ | -------------------------------- | ---------------------------------------------------------------------- |
+| `proxyStore` | `T`                              | A reactive proxy created by `createClassyStore()`                      |
+| `key`        | `keyof T`                        | The property to watch                                                  |
+| `callback`   | `(value, previousValue) => void` | Called when the watched property changes                               |
+| `options`    | `SubscribeOptions`               | Optional `{sync: true}` for immediate notifications; otherwise batched |
+| **Returns**  | `() => void`                     | Unsubscribe function                                                   |
 
 The callback is not called when you subscribe. It receives the current and previous snapshot values when the watched key changes. By default, several synchronous writes coalesce into one callback with the final value; passing `{sync: true}` as the fourth argument observes each change. Import `Snapshot` from the root entry and `SubscribeOptions` from the root or utilities entry.
 
@@ -4816,9 +4927,9 @@ Because `snapshot()` uses structural sharing, unchanged sub-trees return the sam
 ```ts
 class AuthStore {
   token: string | null = null;
-  user: { name: string; role: string } | null = null;
+  user: {name: string; role: string} | null = null;
 
-  login(token: string, user: { name: string; role: string }) {
+  login(token: string, user: {name: string; role: string}) {
     this.token = token;
     this.user = user;
   }
@@ -4880,7 +4991,7 @@ subscribeKey(playerStore, 'track', (track) => {
 
 ```ts
 class CartStore {
-  items: { id: string; qty: number }[] = [];
+  items: {id: string; qty: number}[] = [];
   coupon: string | null = null;
 
   get total() {
@@ -4888,7 +4999,7 @@ class CartStore {
   }
 
   addItem(id: string) {
-    this.items.push({ id, qty: 1 });
+    this.items.push({id, qty: 1});
   }
 
   applyCoupon(code: string) {
@@ -4900,18 +5011,18 @@ const cartStore = createClassyStore(new CartStore());
 
 // Only log when coupon changes — not on every item add
 subscribeKey(cartStore, 'coupon', (coupon, prev) => {
-  analytics.track('coupon_changed', { from: prev, to: coupon });
+  analytics.track('coupon_changed', {from: prev, to: coupon});
 });
 ```
 
 ## subscribeKey vs subscribe
 
-| | `subscribe()` | `subscribeKey()` |
-|---|---|---|
-| Fires on | Batched store changes by default | Changed watched snapshot value after a notification |
-| Callback args | `()` (no arguments) | `(value, previousValue)` |
-| Use case | General side effects | Property-specific reactions |
-| Additional work | Invoke listeners | Read a snapshot and compare the watched value per notification |
+|                 | `subscribe()`                    | `subscribeKey()`                                               |
+| --------------- | -------------------------------- | -------------------------------------------------------------- |
+| Fires on        | Batched store changes by default | Changed watched snapshot value after a notification            |
+| Callback args   | `()` (no arguments)              | `(value, previousValue)`                                       |
+| Use case        | General side effects             | Property-specific reactions                                    |
+| Additional work | Invoke listeners                 | Read a snapshot and compare the watched value per notification |
 
 Use `subscribe()` when you need to react to any change. Use `subscribeKey()` when you only care about one property and want to avoid running your callback unnecessarily.
 
@@ -4934,9 +5045,9 @@ Each subscription is independent — they don't interfere with each other.
 
 ## Quick Reference
 
-| What you want | How to do it |
-|---|---|
-| Watch a single property | `subscribeKey(store, 'key', (val, prev) => { ... })` |
-| Stop watching | `const unsub = subscribeKey(...); unsub()` |
-| Watch multiple properties | Call `subscribeKey()` once per key |
-| Get both old and new value | Callback receives `(value, previousValue)` |
+| What you want              | How to do it                                         |
+| -------------------------- | ---------------------------------------------------- |
+| Watch a single property    | `subscribeKey(store, 'key', (val, prev) => { ... })` |
+| Stop watching              | `const unsub = subscribeKey(...); unsub()`           |
+| Watch multiple properties  | Call `subscribeKey()` once per key                   |
+| Get both old and new value | Callback receives `(value, previousValue)`           |

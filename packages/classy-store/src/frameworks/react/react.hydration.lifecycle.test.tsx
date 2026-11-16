@@ -309,42 +309,41 @@ describe('prepareStoreForHydration lifecycle', () => {
       update: false,
       equality: true,
     },
-  ])('retains equal selection identity across hydration for $description', async ({
-    prepare,
-    update,
-    equality,
-  }) => {
-    const serverStore = createClassyStore(new HydrationQaStore('initial'));
-    const clientStore = createClassyStore(new HydrationQaStore('initial'));
-    if (prepare) {
-      prepareStoreForHydration(serverStore);
-      prepareStoreForHydration(clientStore);
-    }
-    if (update) clientStore.count++;
-    const container = createContainer(
-      renderToString(<HydrationQaView store={serverStore} />),
-    );
-    const onCommit = mock((_value: Selection) => {});
-    const isEqual = (previous: Selection, next: Selection) =>
-      previous.label === next.label;
-    const onRecoverableError = mock(() => {});
-    await act(async () => {
-      const root = hydrateRoot(
-        container,
-        <HydrationQaView
-          store={clientStore}
-          isEqual={equality ? isEqual : undefined}
-          onCommit={onCommit}
-        />,
-        {onRecoverableError},
+  ])(
+    'retains equal selection identity across hydration for $description',
+    async ({prepare, update, equality}) => {
+      const serverStore = createClassyStore(new HydrationQaStore('initial'));
+      const clientStore = createClassyStore(new HydrationQaStore('initial'));
+      if (prepare) {
+        prepareStoreForHydration(serverStore);
+        prepareStoreForHydration(clientStore);
+      }
+      if (update) clientStore.count++;
+      const container = createContainer(
+        renderToString(<HydrationQaView store={serverStore} />),
       );
-      mounted.set(root, container);
-    });
+      const onCommit = mock((_value: Selection) => {});
+      const isEqual = (previous: Selection, next: Selection) =>
+        previous.label === next.label;
+      const onRecoverableError = mock(() => {});
+      await act(async () => {
+        const root = hydrateRoot(
+          container,
+          <HydrationQaView
+            store={clientStore}
+            isEqual={equality ? isEqual : undefined}
+            onCommit={onCommit}
+          />,
+          {onRecoverableError},
+        );
+        mounted.set(root, container);
+      });
 
-    expect(onRecoverableError).not.toHaveBeenCalled();
-    expect(container.textContent).toBe('initial');
-    expect(onCommit).toHaveBeenCalledTimes(1);
-  });
+      expect(onRecoverableError).not.toHaveBeenCalled();
+      expect(container.textContent).toBe('initial');
+      expect(onCommit).toHaveBeenCalledTimes(1);
+    },
+  );
 
   test('retains tracked snapshot identity when only unread state changes before hydration', async () => {
     const serverStore = prepareStoreForHydration(
