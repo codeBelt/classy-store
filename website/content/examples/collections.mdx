@@ -1,0 +1,21 @@
+---
+title: "Collections"
+description: "Add users to a reactive map and tags to a reactive set. Watch their entries and counts update."
+---
+
+import {DemoContainer} from '@/examples/components/DemoContainer';
+import {CollectionsDemo} from '@/examples/demos/collections/CollectionsDemo';
+
+## Reactive Collections
+
+reactiveMap() and reactiveSet() provide Map/Set semantics that the proxy can track.
+
+<DemoContainer labels={["Store", "Component"]} demo={<CollectionsDemo />}>
+
+<include>../../examples/stores/collectionStore.ts</include>
+
+<include>../../examples/demos/collections/CollectionsDemo.tsx#counts</include>
+
+</DemoContainer>
+
+Create collections with `reactiveMap()` and `reactiveSet()` so the store can observe mutations.

@@ -1,0 +1,23 @@
+---
+title: "shallowEqual"
+description: "Compare component render counts when a selector returns an object with unchanged values."
+---
+
+import {DemoContainer} from '@/examples/components/DemoContainer';
+import {ShallowEqualDemo} from '@/examples/demos/shallow-equal/ShallowEqualDemo';
+
+## shallowEqual in Action
+
+Both selectors return an object with the first and last name. Change an unrelated setting to compare their render counts.
+
+<DemoContainer labels={["Store", "Selector"]} demo={<ShallowEqualDemo />}>
+
+<include>../../examples/stores/shallowEqualStore.ts</include>
+
+<include>../../examples/demos/shallow-equal/ShallowEqualDemo.tsx#selectors</include>
+
+</DemoContainer>
+
+**API** · `shallowEqual<T>(a: T, b: T): boolean` from `@codebelt/classy-store`.
+
+Use the `isEqual` option when a selector builds a new object or array. For a getter that returns an object, check its snapshot identity before choosing an equality function.

@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Examples · Classy Store</title>
+  <meta name="robots" content="noindex">
+  <script>
+    const routes = new Set(['reactivity', 'collections', 'snapshots', 'use-local-store', 'scoped-stores',
+      'persist', 'history', 'devtools', 'subscribe-key', 'shallow-equal']);
+    const slug = location.hash.replace(/^#\//, '').replace(/\/$/, '');
+    const target = new URL('../examples/', location.href);
+    if (routes.has(slug)) target.pathname += `${slug}/`;
+    target.search = location.search;
+    location.replace(target.href);
+  </script>
+</head>
+<body><a href="../examples/">Open the interactive examples</a></body>
+</html>

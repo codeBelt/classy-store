@@ -1,0 +1,23 @@
+---
+title: "DevTools"
+description: "Inspect counter actions and store snapshots with the Redux DevTools extension."
+---
+
+import {DemoContainer} from '@/examples/components/DemoContainer';
+import {DevtoolsDemo} from '@/examples/demos/devtools/DevtoolsDemo';
+
+## Redux DevTools Integration
+
+Connect any store to Redux DevTools for state inspection and time-travel debugging.
+
+<DemoContainer labels={["Store", "Usage"]} demo={<DevtoolsDemo />}>
+
+<include>../../examples/demos/devtools/DevtoolsDemo.tsx#counter</include>
+
+<include>../../examples/demos/devtools/DevtoolsDemo.tsx#connect</include>
+
+</DemoContainer>
+
+**API** · `devtools(store, options?): () => void` from `@codebelt/classy-store/utils`.
+
+Call the disposer in effect cleanup to disconnect the component. The `name` option identifies the store in Redux DevTools.

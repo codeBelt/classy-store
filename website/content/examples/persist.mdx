@@ -1,0 +1,41 @@
+---
+title: "Persist"
+description: "Save preferences and notes to local storage, reload the page, and inspect the restored state."
+---
+
+import {DemoContainer} from '@/examples/components/DemoContainer';
+import {SimplePersistDemo} from '@/examples/demos/persist/SimplePersistDemo';
+import {KitchenSinkPersistDemo} from '@/examples/demos/persist/KitchenSinkPersistDemo';
+import {PersistenceProvider, StorageReady} from '@/examples/stores/persistence-context';
+
+<PersistenceProvider>
+
+## Simple Persist
+
+Change a preference, then refresh to restore it.
+
+<DemoContainer labels={["Store", "Persistence"]} demo={<StorageReady><SimplePersistDemo /></StorageReady>}>
+
+<include>../../examples/stores/persistStores.ts#preferences</include>
+
+<include>../../examples/stores/persistStores.ts#save-preferences</include>
+
+</DemoContainer>
+
+## Kitchen Sink Persist
+
+Add notes and tags, change their order, and inspect the saved data.
+
+<DemoContainer labels={["Store", "Persistence"]} demo={<StorageReady><KitchenSinkPersistDemo /></StorageReady>}>
+
+<include>../../examples/stores/persistStores.ts#notes</include>
+
+<include>../../examples/stores/persistStores.ts#save-notes</include>
+
+</DemoContainer>
+
+</PersistenceProvider>
+
+**API** · `persist(store, options): PersistHandle` from `@codebelt/classy-store/utils`.
+
+The simple example stores plain preferences. The notes example also serializes and restores dates, reactive maps, and reactive sets.

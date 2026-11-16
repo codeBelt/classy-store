@@ -1,54 +1,22 @@
 # Classy Store documentation
 
-The published documentation uses Docusaurus in this `website/` directory.
-Documentation pages live in `docs/`; `sidebars.ts` controls navigation.
-The main project README is `../README.md`.
+Edit pages in `website/content/docs/` and use `meta.json` there to order the sidebar. Set each page’s title and description in its frontmatter. Link between sources with relative Markdown links such as `./REACT_SSR.md`. Published paths and heading fragments are used by npm and earlier release notes.
 
-## Install
-
-Install the workspace dependencies from the repository root, then the website's
-separate dependencies:
-
-```sh
-bun install --frozen-lockfile
-cd website
-bun install --frozen-lockfile
-```
-
-## Develop
+The homepage, docs, and interactive examples use one Next.js dev server and static export. Edit example pages in `website/content/examples/` and their live React controls in `website/examples/`. Code fences inside each example are highlighted at build time and share the guide theme.
 
 From the repository root:
 
 ```sh
-bun run build
+bun install --cwd website --frozen-lockfile
 bun run docs:dev
 ```
 
-This builds the React demos and starts Docusaurus. Changes to documentation pages
-reload during development.
-
-## Validate and build
-
-From the repository root:
+The dev server serves the site at <http://localhost:3000>. To verify the GitHub Pages export locally, run these commands from the repository root.
 
 ```sh
-bun run build
 bun run docs:build
+(cd website && bunx playwright install chromium)
+bun run docs:test
 ```
 
-The docs command rebuilds the demos, regenerates the full machine-readable docs,
-and builds the static site in `website/build/`. Docusaurus checks links during
-the build. To preview the result, run `bun run serve` from `website/`.
-
-## Machine-readable documentation
-
-- `static/llms.txt` is the navigation index; update it when adding a guide.
-- `static/llms-full.txt` is generated from every Markdown page in `docs/`.
-  Do not edit the generated file directly. Run `bun run docs:llms` from
-  `website/` to refresh it without a full build.
-
-## Deployment
-
-The `Deploy Docs` GitHub Actions workflow builds and deploys to GitHub Pages when
-relevant changes reach `main`. It also supports manual workflow dispatch. A local
-build does not deploy the site or publish the npm package.
+The tests serve `website/out/` under `/classy-store/`. They require Python 3 and Chromium. The export includes all 11 native example pages, the legacy demo bookmark redirect, the shared search index, per-page Markdown, `llms.txt`, and `llms-full.txt`. The Docs workflow checks pull requests and publishes the tested export from `main`.

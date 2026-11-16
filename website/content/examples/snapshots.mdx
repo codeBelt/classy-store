@@ -1,0 +1,21 @@
+---
+title: "Snapshots"
+description: "Compare successive snapshots and see which branches retain their references after an edit."
+---
+
+import {DemoContainer} from '@/examples/components/DemoContainer';
+import {StructuralSharingDemo} from '@/examples/demos/snapshots/StructuralSharingDemo';
+
+## Structural Sharing Explorer
+
+Visualize snapshot reference identity. Cyan marks a shared reference; amber marks a new one.
+
+<DemoContainer labels={["Store", "Component"]} demo={<StructuralSharingDemo />}>
+
+<include>../../examples/stores/documentStore.ts</include>
+
+<include>../../examples/demos/snapshots/StructuralSharingDemo.tsx#reference-tree</include>
+
+</DemoContainer>
+
+Unchanged branches retain their references. Compare them with `===` to see structural sharing.

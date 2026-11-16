@@ -1,17 +1,20 @@
-name: Deploy Docs
+name: Docs
 on:
   workflow_dispatch:
+  pull_request:
+    branches: [main]
   push:
     branches: [main]
     paths:
+      - ".github/workflows/docs.yml"
       - "website/**"
       - "packages/**"
-      - "examples/**"
+      - "package.json"
+      - "bun.lock"
       - "README.md"
 
 permissions:
-  pages: write
-  id-token: write
+  contents: read
 
 jobs:
   build:
@@ -24,17 +27,22 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: "1.4.3"
-      - run: bun install --frozen-lockfile
-      - run: bun run build
-      - run: bun run demos:build
-      - run: cd website && bun install --frozen-lockfile
-      - run: cd website && bun run build
+      - run: bun install --cwd website --frozen-lockfile
+      - run: bun run docs:build
+      - run: bunx playwright install --with-deps chromium
+        working-directory: website
+      - run: bun run docs:test
       - uses: actions/upload-pages-artifact@v5
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         with:
-          path: website/build
+          path: website/out
 
   deploy:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     needs: build
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

@@ -100,7 +100,7 @@ property reads; changes to time or external variables do not invalidate their ca
 are optional: use them only when displaying metadata from an existing history or
 persistence handle. They do not create those handles or subscribe to store data.
 
-See the [API reference and import paths](https://codebelt.github.io/classy-store/docs/#package-entry-points) for signatures, public types, and lifecycle details.
+See the [API reference and import paths](https://codebelt.github.io/classy-store/docs/API_REFERENCE/#package-entry-points) for signatures, public types, and lifecycle details.
 
 ## React integration
 
@@ -123,13 +123,13 @@ For server-rendered React apps, call `prepareStoreForHydration(store)` from `@co
 
 For Next.js App Router, construct stores inside Client Providers from serializable initial data. Use `@codebelt/classy-store/react/server` when preparing a store in server-only code. See the [App Router guide](https://codebelt.github.io/classy-store/docs/REACT_NEXT) for package boundaries, streaming, and navigation.
 
-Selector and auto-tracked hooks are tested in React Compiler consumers on React 18 and 19. Auto-tracking preserves reads used by memoized calculations and children; no compiler opt-out is required. See [compiler compatibility](https://codebelt.github.io/classy-store/docs/#react-compiler-compatibility) for scope and render-filtering behavior.
+Selector and auto-tracked hooks are tested in React Compiler consumers on React 18 and 19. Auto-tracking preserves reads used by memoized calculations and children; no compiler opt-out is required. See [compiler compatibility](https://codebelt.github.io/classy-store/docs/API_REFERENCE/#react-compiler-compatibility) for scope and render-filtering behavior.
 
 Auto-tracked React subscriptions require native `WeakRef` support (ES2021) so tracking dependencies do not keep obsolete snapshots alive.
 
 For independent forms, nested editors, and request-scoped state, see the [typed context example](https://codebelt.github.io/classy-store/docs/REACT_SCOPING). Providers own their store instances and effects; React keys control intentional resets.
 
-Most components only need `useClassyStore(store)` to render application data. Use [`useHistoryStatus(history)`](https://codebelt.github.io/classy-store/docs/#usehistorystatushistory) for undo/redo controls and recording status, or [`usePersistStatus(handle)`](https://codebelt.github.io/classy-store/docs/#usepersiststatushandle) for hydration, expiry, and persistence errors. Both hooks come from `@codebelt/classy-store/react` and update even when store data is unchanged. Manual `save()`, `clear()`, and `rehydrate()` calls reject on failure after reporting through status and `onError`. Handle these promises in event handlers; automatic persistence reports failures without producing unhandled rejections.
+Most components only need `useClassyStore(store)` to render application data. Use [`useHistoryStatus(history)`](https://codebelt.github.io/classy-store/docs/API_REFERENCE/#usehistorystatushistory) for undo/redo controls and recording status, or [`usePersistStatus(handle)`](https://codebelt.github.io/classy-store/docs/API_REFERENCE/#usepersiststatushandle) for hydration, expiry, and persistence errors. Both hooks come from `@codebelt/classy-store/react` and update even when store data is unchanged. Manual `save()`, `clear()`, and `rehydrate()` calls reject on failure after reporting through status and `onError`. Handle these promises in event handlers; automatic persistence reports failures without producing unhandled rejections.
 
 ## Angular 22 integration
 

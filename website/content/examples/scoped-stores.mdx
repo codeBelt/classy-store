@@ -1,0 +1,18 @@
+---
+title: "Scoped stores"
+description: "Edit independent drafts, re-render their parent, and reset an editor with a new provider key."
+---
+
+import {ScopedStoresDemo} from '@/examples/demos/scoped-store/components/scopedStoresDemo/ScopedStoresDemo';
+
+## Independent editors
+
+<ScopedStoresDemo />
+
+Context chooses the instance and `useClassyStore` subscribes to its values. Changing the provider key starts a fresh draft.
+
+## Editor provider
+
+Each editor owns the store created by its provider. This is the provider used by the live example.
+
+<include>../../examples/demos/scoped-store/store/components/editorStoreProvider/EditorStoreProvider.tsx</include>

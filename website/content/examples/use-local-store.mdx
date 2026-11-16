@@ -1,0 +1,23 @@
+---
+title: "useLocalStore"
+description: "Increment three independent counters created from the same class with useLocalStore."
+---
+
+import {DemoContainer} from '@/examples/components/DemoContainer';
+import {LocalCounterDemo} from '@/examples/demos/local-store/LocalCounterDemo';
+
+## Component-Scoped Counters
+
+Each counter creates its own store on mount. Its React subscription ends on unmount.
+
+<DemoContainer labels={["Store", "Component"]} demo={<LocalCounterDemo />}>
+
+<include>../../examples/stores/localStoreExamples.ts</include>
+
+<include>../../examples/demos/local-store/LocalCounterDemo.tsx</include>
+
+</DemoContainer>
+
+**API** · `useLocalStore<T>(factory: () => T): T` from `@codebelt/classy-store/react`.
+
+Each component instance owns a store. Unmounting the component releases that instance.

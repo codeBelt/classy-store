@@ -1,0 +1,173 @@
+'use client';
+
+import {subscribe} from '@codebelt/classy-store';
+import {useClassyStore, useHistoryStatus} from '@codebelt/classy-store/react';
+import {useEffect, useState} from 'react';
+import {SignalTrace} from '@/signal/instruments';
+import {Button} from '../../components/Button';
+import {RenderBadge} from '../../components/RenderBadge';
+import {useRenderCount} from '../../hooks/useRenderCount';
+import {history, textEditorStore} from '../../stores/historyStore';
+
+function TitleEditor() {
+  const title = useClassyStore(textEditorStore, (state) => state.title);
+  const renders = useRenderCount();
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-1.5">
+        <span className="text-xs text-zinc-400 uppercase tracking-wide">
+          Title
+        </span>
+        <RenderBadge count={renders} />
+      </div>
+      <input
+        aria-label="Title"
+        type="text"
+        value={title}
+        onChange={(e) => textEditorStore.setTitle(e.target.value)}
+        className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-200 outline-none focus:border-indigo-500/50"
+      />
+    </div>
+  );
+}
+
+function ContentEditor() {
+  const content = useClassyStore(textEditorStore, (state) => state.content);
+  const renders = useRenderCount();
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-1.5">
+        <span className="text-xs text-zinc-400 uppercase tracking-wide">
+          Content
+        </span>
+        <RenderBadge count={renders} />
+      </div>
+      <textarea
+        aria-label="Content"
+        value={content}
+        onChange={(e) => textEditorStore.setContent(e.target.value)}
+        rows={4}
+        className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-200 outline-none focus:border-indigo-500/50 resize-none"
+      />
+    </div>
+  );
+}
+
+function documentLength() {
+  return textEditorStore.title.length + textEditorStore.content.length;
+}
+
+function DocumentTrace() {
+  const [samples, setSamples] = useState(() => [documentLength()]);
+  useEffect(
+    () =>
+      subscribe(textEditorStore, () => {
+        const next = documentLength();
+        setSamples((prev) => [...prev.slice(-23), next]);
+      }),
+    [],
+  );
+  return (
+    <div className="lab-display">
+      <SignalTrace samples={samples} />
+      <output>
+        Document length · {samples[samples.length - 1]} characters
+      </output>
+    </div>
+  );
+}
+
+// #region controls
+function HistoryControls() {
+  const status = useHistoryStatus(history);
+  const paused = status.isPaused;
+  const renders = useRenderCount();
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-3">
+        <span className="recording-state" data-paused={paused}>
+          {paused ? 'Paused' : 'Recording'}
+        </span>
+        <RenderBadge count={renders} />
+      </div>
+      <div className="flex flex-wrap gap-2 mb-3">
+        <Button
+          size="sm"
+          onClick={() => history.undo()}
+          disabled={!status.canUndo}
+          className="disabled:opacity-30"
+        >
+          Undo
+        </Button>
+        <Button
+          size="sm"
+          onClick={() => history.redo()}
+          disabled={!status.canRedo}
+          className="disabled:opacity-30"
+        >
+          Redo
+        </Button>
+        <Button
+          size="sm"
+          variant={paused ? 'danger' : 'secondary'}
+          onClick={() => {
+            if (paused) {
+              history.resume();
+            } else {
+              history.pause();
+            }
+          }}
+        >
+          {paused ? 'Resume' : 'Pause'}
+        </Button>
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={() => textEditorStore.reset()}
+        >
+          Reset
+        </Button>
+      </div>
+      <div className="flex items-center gap-4 text-xs text-zinc-500">
+        <span>
+          Can undo:{' '}
+          <span
+            className={status.canUndo ? 'text-emerald-400' : 'text-zinc-600'}
+          >
+            {String(status.canUndo)}
+          </span>
+        </span>
+        <span>
+          Can redo:{' '}
+          <span
+            className={status.canRedo ? 'text-emerald-400' : 'text-zinc-600'}
+          >
+            {String(status.canRedo)}
+          </span>
+        </span>
+        {paused && (
+          <span className="text-amber-400 font-medium">
+            Recording paused — edits are not recorded
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+// #endregion controls
+
+export function UndoRedoDemo() {
+  return (
+    <div className="flex flex-col gap-4">
+      <TitleEditor />
+      <ContentEditor />
+      <div className="lab-transport">
+        <DocumentTrace />
+        <HistoryControls />
+      </div>
+    </div>
+  );
+}

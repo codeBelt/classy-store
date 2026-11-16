@@ -17,7 +17,7 @@ const packageDirectory = resolve(fixturesDirectory, '../..');
 const scopingFixturesDirectory = resolve(fixturesDirectory, '../scoping');
 const scopedExampleDirectory = resolve(
   packageDirectory,
-  '../../examples/react/src/demos/scoped-store/store',
+  '../../website/examples/demos/scoped-store/store',
 );
 const scopingTestFiles = readdirSync(scopingFixturesDirectory)
   .filter((filename) => filename.endsWith('.test.tsx'))

@@ -10,10 +10,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```
 packages/classy-store/src/
-├── core/core.ts                   # Layer 1: Write Proxy — createClassyStore(), subscribe(), getVersion()
+├── core/core.ts                   # Layer 1: Write Proxy — createClassyStore(), subscribe()
 ├── snapshot/snapshot.ts           # Layer 2: Immutable snapshots — snapshot(), structural sharing
 ├── types.ts                       # Snapshot<T>, StoreInternal, DepEntry, ComputedEntry
-├── index.ts                       # Main barrel: createClassyStore, snapshot, subscribe, getVersion, shallowEqual
+├── index.ts                       # Main barrel: createClassyStore, snapshot, subscribe, shallowEqual
 ├── collections/collections.ts     # ReactiveMap and ReactiveSet (array-backed Map/Set emulation)
 ├── collections/index.ts           # Collections barrel: reactiveMap, reactiveSet, ReactiveMap, ReactiveSet
 ├── frameworks/
@@ -31,9 +31,10 @@ packages/classy-store/src/
     ├── equality/equality.ts       # shallowEqual
     └── internal/internal.ts       # isPlainObject, canProxy, findGetterDescriptor, PROXYABLE
 
-website/                           # Docusaurus documentation site
-website/docs/                      # .md source for all doc pages
-website/static/                    # Served verbatim at site root (llms.txt, llms-full.txt, etc.)
+website/                           # Fumadocs static site (Next.js)
+website/content/docs/                      # .md source for all doc pages
+website/examples/                  # Live React controls used by the MDX example pages
+website/public/                    # Static assets and old demo bookmark redirect
 
 examples/                          # Framework demo examples
 ```
@@ -52,8 +53,8 @@ bun run lint:fix     # Auto-fix Biome lint issues
 bun run typecheck    # TypeScript type check without emit
 bun run checkall     # lint + test + typecheck (full CI check)
 
-bun run docs:dev     # Start Docusaurus dev server at http://localhost:3000/classy-store/
-bun run docs:build   # Build docs site to website/build/
+bun run docs:dev     # Start Fumadocs at http://localhost:3000
+bun run docs:build   # Export the GitHub Pages site to website/out/
 ```
 
 Run from `packages/classy-store/`:
@@ -106,20 +107,8 @@ Enforced by Biome 2.4.0 (`biome.json` at repo root):
 
 ## Package Export Entry Points
 
-| Import path                          | Contents                                                                                    |
-| ------------------------------------ | ------------------------------------------------------------------------------------------- |
-| `@codebelt/classy-store`             | `createClassyStore`, `snapshot`, `subscribe`, `getVersion`, `shallowEqual`, `Snapshot` type |
-| `@codebelt/classy-store/collections` | `reactiveMap`, `reactiveSet`, `ReactiveMap` type, `ReactiveSet` type                        |
-| `@codebelt/classy-store/react`       | `useClassyStore`, `useLocalStore`, `createStoreHook`                                        |
-| `@codebelt/classy-store/vue`         | `useClassyStore` (ShallowRef)                                                               |
-| `@codebelt/classy-store/svelte`      | `toSvelteStore` (ClassyReadable)                                                            |
-| `@codebelt/classy-store/solid`       | `useClassyStore` (signal getter)                                                            |
-| `@codebelt/classy-store/angular`     | `injectStore` (Signal)                                                                      |
-| `@codebelt/classy-store/utils`       | `persist`, `devtools`, `subscribeKey`, `withHistory`                                        |
+The [API reference](website/content/docs/API_REFERENCE.md) lists the public entry points, signatures, and lifecycle details.
 
 ## LLM Documentation Files
 
-- `website/static/llms.txt` — navigation index (served at `/classy-store/llms.txt`)
-- `website/static/llms-full.txt` — all docs concatenated (served at `/classy-store/llms-full.txt`)
-
-These follow the [llms.txt standard](https://llmstxt.org/).
+Fumadocs generates `llms.txt`, `llms-full.txt`, and per-page Markdown from the sources used for the HTML. The [website guide](website/README.md) describes local development and export checks.

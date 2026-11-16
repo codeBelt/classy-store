@@ -1,7 +1,7 @@
 # Scoped React context checks
 
 These tests exercise the editor context example in
-`examples/react/src/demos/scoped-store/store` against the published package shape.
+`website/examples/demos/scoped-store/store` against the published package shape.
 The compatibility runner copies that directory unchanged into each temporary
 consumer as `example/`, alongside these fixtures and the React-version-aware
 `reactAct.ts` helper. The `./example/...` imports intentionally resolve only in

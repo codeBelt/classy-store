@@ -1,0 +1,34 @@
+---
+title: "Reactivity"
+description: "Use selectors to isolate renders, compare individual updates with a batched update, and fetch posts asynchronously."
+---
+
+import {DemoContainer} from '@/examples/components/DemoContainer';
+import {ReactiveFundamentalsDemo} from '@/examples/demos/reactivity/ReactiveFundamentalsDemo';
+import {AsyncDemo} from '@/examples/demos/reactivity/AsyncDemo';
+
+## Reactive Fundamentals
+
+Change a channel to watch its subscribers update. The batch control uses its own counter.
+
+<DemoContainer labels={["Store", "Component"]} demo={<ReactiveFundamentalsDemo />}>
+
+<include>../../examples/stores/counterStore.ts</include>
+
+<include>../../examples/demos/reactivity/ReactiveFundamentalsDemo.tsx#selectors</include>
+
+</DemoContainer>
+
+## Async Data Fetching
+
+Loading and result subscribers update on either side of the asynchronous request.
+
+<DemoContainer labels={["Store", "Component"]} demo={<AsyncDemo />}>
+
+<include>../../examples/stores/postStore.ts</include>
+
+<include>../../examples/demos/reactivity/AsyncDemo.tsx#posts</include>
+
+</DemoContainer>
+
+Use a selector to subscribe to one field. Changing the name leaves the count subscriber alone.

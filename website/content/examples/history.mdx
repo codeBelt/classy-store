@@ -1,0 +1,23 @@
+---
+title: "History"
+description: "Edit a document, undo and redo changes, and pause or resume history recording."
+---
+
+import {DemoContainer} from '@/examples/components/DemoContainer';
+import {UndoRedoDemo} from '@/examples/demos/history/UndoRedoDemo';
+
+## Undo / Redo Editor
+
+withHistory() adds undo/redo via snapshot stack. Use pause()/resume() to control recording and useHistoryStatus() to render its status.
+
+<DemoContainer labels={["Store", "Usage"]} demo={<UndoRedoDemo />}>
+
+<include>../../examples/stores/historyStore.ts</include>
+
+<include>../../examples/demos/history/UndoRedoDemo.tsx#controls</include>
+
+</DemoContainer>
+
+**API** · `withHistory(store, options?): HistoryHandle` from `@codebelt/classy-store/utils`.
+
+Use `pause()` to skip recording edits and `resume()` to record subsequent changes.

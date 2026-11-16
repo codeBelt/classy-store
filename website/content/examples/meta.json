@@ -1,0 +1,19 @@
+{
+  "title": "Examples",
+  "pages": [
+    "index",
+    "---Core---",
+    "reactivity",
+    "collections",
+    "snapshots",
+    "---React---",
+    "use-local-store",
+    "scoped-stores",
+    "---Utilities---",
+    "persist",
+    "history",
+    "devtools",
+    "subscribe-key",
+    "shallow-equal"
+  ]
+}

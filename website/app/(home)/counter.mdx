@@ -1,0 +1,12 @@
+```ts title="counter.ts"
+import {createClassyStore, snapshot} from '@codebelt/classy-store';
+
+class Counter {
+  count = 0;
+  increment() { this.count++; }
+}
+
+const counter = createClassyStore(new Counter());
+counter.increment();
+snapshot(counter).count; // 1
+```
