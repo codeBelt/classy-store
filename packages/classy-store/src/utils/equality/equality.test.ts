@@ -58,6 +58,13 @@ describe('shallowEqual', () => {
 
   // ── Array equality ──────────────────────────────────────────────────────
 
+  it('distinguishes arrays from records with the same keys in either order', () => {
+    expect(shallowEqual([], {})).toBe(false);
+    expect(shallowEqual({}, [])).toBe(false);
+    expect(shallowEqual<unknown>(['a'], {0: 'a'})).toBe(false);
+    expect(shallowEqual<unknown>({0: 'a'}, ['a'])).toBe(false);
+  });
+
   it('returns true for shallow-equal arrays', () => {
     expect(shallowEqual([1, 'a', true], [1, 'a', true])).toBe(true);
   });

@@ -1,5 +1,32 @@
 const objectProto = Object.getPrototypeOf({});
 
+/** An array index is a canonical unsigned integer key below the maximum array length. */
+export function getArrayIndex(key: string | symbol): number | undefined {
+  if (typeof key !== 'string') return undefined;
+  const index = Number(key);
+  if (
+    Number.isInteger(index) &&
+    index >= 0 &&
+    index < 2 ** 32 - 1 &&
+    String(index) === key
+  )
+    return index;
+  return undefined;
+}
+
+/** Visit only present indices, including non-enumerable ones. Keep trailing holes. */
+export function mapOwnArrayElements<T, U>(
+  source: readonly T[],
+  project: (value: T, key: string) => U,
+): U[] {
+  const result = new Array<U>(source.length);
+  for (const key of Object.getOwnPropertyNames(source)) {
+    const index = getArrayIndex(key);
+    if (index !== undefined) result[index] = project(source[index], key);
+  }
+  return result;
+}
+
 /**
  * Symbol that class instances can use to opt-in to deep proxying.
  * Classes with `static [PROXYABLE] = true` will be wrapped by the store proxy

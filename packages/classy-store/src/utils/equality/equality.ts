@@ -17,13 +17,14 @@ export function shallowEqual<T>(a: T, b: T): boolean {
     return false;
   }
 
-  if (Array.isArray(a) && Array.isArray(b)) {
-    if (a.length !== b.length) return false;
+  if (Array.isArray(a)) {
+    if (!Array.isArray(b) || a.length !== b.length) return false;
     for (let i = 0; i < a.length; i++) {
       if (!Object.is(a[i], b[i])) return false;
     }
     return true;
   }
+  if (Array.isArray(b)) return false;
 
   const keysA = Object.keys(a);
   const keysB = Object.keys(b);

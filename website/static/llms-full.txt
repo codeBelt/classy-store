@@ -489,7 +489,7 @@ const unsubSync = subscribe(
 
 ### `shallowEqual(a, b)`
 
-Compares primitives with `Object.is`, arrays by length and elements, and other objects by their own enumerable string keys and values. Use it for selectors returning plain records or arrays when one-level equality matches the UI's needs. It does not compare prototypes, symbol keys, or native `Map`/`Set`/`Date` contents; different instances with no enumerable keys can compare equal.
+Compares primitives with `Object.is`, arrays by length and elements, and other objects by their own enumerable string keys and values. Comparing an array with a record returns `false`, even when both are empty. Use it for selectors returning plain records or arrays when one-level equality matches the UI's needs. It does not compare prototypes, symbol keys, or native `Map`/`Set`/`Date` contents; different instances with no enumerable keys can compare equal.
 
 ### `reactiveMap<K, V>(initial?)`
 
@@ -726,6 +726,8 @@ function PushToggle() {
 ```
 
 ### Array operations
+
+Snapshots preserve sparse array length and holes. Assigning `undefined` to an empty slot creates an own element that appears in `Object.keys()`.
 
 Arrays support all standard operations — `push`, `splice`, `pop`, `shift`, index assignment, etc. Ordinary subscribers receive one microtask notification for consecutive mutations:
 

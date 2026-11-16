@@ -1,3 +1,5 @@
+import {mapOwnArrayElements} from '../../../../utils/internal/internal';
+
 const readonlyTarget: ProxyHandler<object> = {
   set: () => false,
   deleteProperty: () => false,
@@ -12,6 +14,18 @@ const readonlyTarget: ProxyHandler<object> = {
  * unreachable snapshots and their backing copies be collected together.
  */
 export class SnapshotTargetCache extends WeakMap<object, unknown> {
+  override get(key: object): unknown {
+    const cached = super.get(key);
+    if (cached || !Array.isArray(key) || !Object.isFrozen(key)) return cached;
+
+    // proxy-compare uses Array.from for its backing copy, which fills holes.
+    // Supply the sparse copy before it creates a reader's tracking proxy.
+    const copy = mapOwnArrayElements(key, (value) => value);
+    const entry = [key, new Proxy(copy, readonlyTarget)];
+    super.set(key, entry);
+    return entry;
+  }
+
   override set(key: object, value: unknown): this {
     // proxy-compare 3's target-cache entries are [original, optional copy].
     // Getter results can be mutable: never cache their descriptor decisions.

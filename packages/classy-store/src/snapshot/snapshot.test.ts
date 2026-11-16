@@ -213,6 +213,29 @@ describe('snapshot()', () => {
   // ── Array snapshots ───────────────────────────────────────────────────────
 
   describe('array snapshots', () => {
+    it('preserves holes, explicit undefined elements, and trailing length across edits', () => {
+      const items = new Array<{id: number} | undefined>(6);
+      items[2] = undefined;
+      items[4] = {id: 1};
+      const store = createClassyStore({items});
+      const before = snapshot(store).items;
+
+      expect(before).toHaveLength(6);
+      expect(Object.keys(before)).toEqual(['2', '4']);
+      expect(before[2]).toBeUndefined();
+      expect(Object.isFrozen(before)).toBe(true);
+      expect(Object.isFrozen(before[4])).toBe(true);
+
+      store.items[0] = undefined;
+      Reflect.deleteProperty(store.items, '2');
+      const after = snapshot(store.items);
+      expect(after).toHaveLength(6);
+      expect(Object.keys(after)).toEqual(['0', '4']);
+      expect(0 in before).toBe(false);
+      expect(2 in after).toBe(false);
+      expect(after[4]).toBe(before[4]);
+    });
+
     it('array push is reflected in new snapshot', async () => {
       const s = createClassyStore({items: ['a', 'b']});
       const snap1 = snapshot(s);

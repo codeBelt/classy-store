@@ -1,5 +1,9 @@
 import type {SubscribeOptions} from '../types';
-import {canProxy, findPropertyDescriptor} from '../utils/internal/internal';
+import {
+  canProxy,
+  findPropertyDescriptor,
+  getArrayIndex,
+} from '../utils/internal/internal';
 import type {DepEntry} from './core.types';
 import {StoreInternal} from './ownership';
 
@@ -229,16 +233,8 @@ function detachTruncatedChildren(
   length: number,
 ): void {
   for (const prop of internal.childInternals.keys()) {
-    if (typeof prop !== 'string') continue;
-    const index = Number(prop);
-    if (
-      Number.isInteger(index) &&
-      index >= length &&
-      index < 2 ** 32 - 1 &&
-      String(index) === prop
-    ) {
-      internal.detach(prop);
-    }
+    const index = getArrayIndex(prop);
+    if (index !== undefined && index >= length) internal.detach(prop);
   }
 }
 

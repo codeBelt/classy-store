@@ -1,4 +1,5 @@
 import {describe, expect, it, mock} from 'bun:test';
+import {snapshot} from '../snapshot/snapshot';
 import {createClassyStore, getVersion, subscribe} from './core';
 
 /** Helper: flush the queueMicrotask-based batching. */
@@ -8,6 +9,25 @@ describe('createClassyStore() — core reactivity', () => {
   // ── Primitive mutations ───────────────────────────────────────────────────
 
   describe('primitive mutations', () => {
+    it('creates a missing property assigned undefined and notifies exactly once', () => {
+      const store = createClassyStore<{optional?: string}>({});
+      const before = snapshot(store);
+      const changed = mock(() => {});
+      const stop = subscribe(store, changed, {sync: true});
+
+      store.optional = undefined;
+      const after = snapshot(store);
+      expect(Object.hasOwn(store, 'optional')).toBe(true);
+      expect(Object.hasOwn(after, 'optional')).toBe(true);
+      expect(Object.hasOwn(before, 'optional')).toBe(false);
+      expect(after.optional).toBeUndefined();
+
+      store.optional = undefined;
+      expect(snapshot(store)).toBe(after);
+      expect(changed).toHaveBeenCalledTimes(1);
+      stop();
+    });
+
     it('reads initial values through the proxy', () => {
       const s = createClassyStore({count: 0, name: 'hello'});
       expect(s.count).toBe(0);

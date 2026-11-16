@@ -2,6 +2,7 @@ import {markToTrack} from 'proxy-compare';
 import {getInternal} from '../core/core';
 import type {StoreInternal} from '../core/ownership';
 import type {Snapshot} from '../types';
+import {mapOwnArrayElements} from '../utils/internal/internal';
 
 // ── Caches ────────────────────────────────────────────────────────────────────
 
@@ -252,15 +253,9 @@ function createSnapshotRecursive<T extends object>(
   let snap: Record<string | symbol, unknown> | unknown[];
 
   if (Array.isArray(target)) {
-    snap = [];
-    for (let i = 0; i < target.length; i++) {
-      (snap as unknown[])[i] = snapshotValue(
-        target[i],
-        internal,
-        String(i),
-        inProgress,
-      );
-    }
+    snap = mapOwnArrayElements(target, (value, key) =>
+      snapshotValue(value, internal, key, inProgress),
+    );
   } else {
     // Preserve the prototype chain and install memoized getters on the snapshot.
     snap = Object.create(Object.getPrototypeOf(target));
