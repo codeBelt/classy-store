@@ -5,7 +5,6 @@
  *
  * @module @codebelt/classy-store
  */
-export {createClassyStore, subscribe} from './core/core';
-export {snapshot} from './snapshot/snapshot';
+export {createClassyStore, snapshot, subscribe} from './storeRuntime';
 export type {Snapshot, SubscribeOptions} from './types';
 export {shallowEqual} from './utils/equality/equality';

@@ -23,7 +23,7 @@ Components that use hooks still need their own client boundary. Do not call
 `useClassyStore`, `useLocalStore`, or `createStoreHook` in a Server Component.
 Preparing a store in an RSC module does not transfer that store or its capture
 to the browser; initialize and prepare the browser counterpart separately.
-The `/react/server` helper and `/react` hooks share a capture cache within each module graph. Preparation is exported only from `/react/server`.
+The `/react/server` helper and `/react` hooks from the same package installation share the captured snapshot, including when one is loaded with `import` and the other with `require()`. Preparation is exported only from `/react/server`.
 
 ## A route-owned store
 

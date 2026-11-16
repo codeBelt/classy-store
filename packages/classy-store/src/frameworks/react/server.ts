@@ -1,6 +1,4 @@
-import {getInternal} from '../../core/core';
-import {snapshot} from '../../snapshot/snapshot';
-import {hydrationSnapshots} from './utils/hydrationSnapshots/hydrationSnapshots';
+import {getInternal, hydrationSnapshots, snapshot} from '../../storeRuntime';
 
 /**
  * Capture the initial snapshot used for server rendering and client hydration.

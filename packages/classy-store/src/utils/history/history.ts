@@ -1,5 +1,4 @@
-import {subscribe} from '../../core/core';
-import {snapshot} from '../../snapshot/snapshot';
+import {snapshot, subscribe} from '../../storeRuntime';
 import type {Snapshot} from '../../types';
 import {cloneSnapshotValue} from '../cloneSnapshot/cloneSnapshot';
 import {findGetterDescriptor} from '../internal/internal';

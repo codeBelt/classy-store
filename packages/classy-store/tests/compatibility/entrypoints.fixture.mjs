@@ -3,8 +3,9 @@ import {createRequire} from 'node:module';
 
 const require = createRequire(import.meta.url);
 const mode = process.argv[2];
-const load =
-  mode === 'require' ? (name) => require(name) : (name) => import(name);
+const importModule = (name) => import(name);
+const load = mode === 'require' ? require : importModule;
+const loadOtherFormat = mode === 'require' ? importModule : require;
 const coreEntry = await load('@codebelt/classy-store');
 const {createClassyStore, snapshot, subscribe} = coreEntry;
 assert.equal('getVersion' in coreEntry, false);
@@ -18,7 +19,7 @@ assert.equal('prepareStoreForHydration' in reactEntry, false);
 const {prepareStoreForHydration} = await load(
   '@codebelt/classy-store/react/server',
 );
-const {persist, withHistory} = await load('@codebelt/classy-store/utils');
+const {persist} = await load('@codebelt/classy-store/utils');
 const React = await load('react');
 const {renderToString} = await load('react-dom/server');
 
@@ -47,10 +48,19 @@ assert.equal(snapshot(store).count, 2);
 assert.ok(Object.isFrozen(snapshot(store).nested));
 unsubscribe();
 
+// In import mode a CommonJS utility receives an ESM-created store.
+// Require mode exercises the inverse dependency boundary.
+const {withHistory} = await loadOtherFormat('@codebelt/classy-store/utils');
 const history = withHistory(store);
+const otherCore = await loadOtherFormat('@codebelt/classy-store');
+assert.equal(otherCore.snapshot(store), snapshot(store));
 store.nested.label = 'later';
 await Promise.resolve();
+assert.equal(history.canUndo, true);
 history.undo();
+assert.equal(snapshot(store).nested.label, 'updated');
+history.redo();
+assert.equal(store.nested.label, 'later');
 store.nested.label = 'editable';
 assert.equal(store.nested.label, 'editable');
 history.dispose();
@@ -91,7 +101,13 @@ const preparedStore = createClassyStore({
   count: 4,
   nested: {label: 'prepared'},
 });
-assert.equal(prepareStoreForHydration(preparedStore), preparedStore);
+const otherServer = await loadOtherFormat(
+  '@codebelt/classy-store/react/server',
+);
+assert.equal(
+  otherServer.prepareStoreForHydration(preparedStore),
+  preparedStore,
+);
 const usePreparedStore = createStoreHook(preparedStore);
 preparedStore.count = 7;
 preparedStore.nested.label = 'live';
@@ -109,4 +125,6 @@ assert.equal(
 );
 assert.equal(snapshot(preparedStore).count, 7);
 assert.equal(preparedStore.nested.label, 'live');
-console.log(`Node ${mode} exports and SSR passed with React ${React.version}`);
+console.log(
+  `Node ${mode} exports, mixed utilities, and SSR passed with React ${React.version}`,
+);

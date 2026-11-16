@@ -203,12 +203,18 @@ try {
       ],
       consumerDirectory,
     );
-    for (const mode of ['import', 'require']) {
-      run(
-        process.execPath,
-        ['entrypoints.fixture.mjs', mode],
-        consumerDirectory,
-      );
+    const nodeFlags = [[]];
+    if (process.features.require_module) {
+      nodeFlags.push(['--no-experimental-require-module']);
+    }
+    for (const flags of nodeFlags) {
+      for (const mode of ['import', 'require']) {
+        run(
+          process.execPath,
+          [...flags, 'entrypoints.fixture.mjs', mode],
+          consumerDirectory,
+        );
+      }
     }
     run(
       bunExecutable,

@@ -1,4 +1,4 @@
-import {getInternal} from '../../../../core/core';
+import {getInternal} from '../../../../storeRuntime';
 import type {Snapshot} from '../../../../types';
 import {useClassyStore} from '../../hooks/useClassyStore/useClassyStore';
 import type {UseClassyStoreSelectorOptions} from '../../hooks/useClassyStore/useClassyStore.types';

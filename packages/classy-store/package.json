@@ -107,6 +107,13 @@
       }
     }
   },
+  "imports": {
+    "#store-runtime": {
+      "module-sync": "./dist/storeRuntime.mjs",
+      "node": "./dist/storeRuntime.cjs",
+      "default": "./dist/storeRuntime.mjs"
+    }
+  },
   "files": [
     "dist",
     "README.md"

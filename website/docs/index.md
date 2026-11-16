@@ -160,6 +160,10 @@ Import from the entry that owns the API. Core, collections, and utilities do not
 | `@codebelt/classy-store/solid`        | `useClassyStore`                                                                             | —                                                                                                                                                                                                        |
 | `@codebelt/classy-store/angular`      | `injectStore`                                                                                | —                                                                                                                                                                                                        |
 
+ESM and CommonJS callers using the same package installation can pass stores
+between them. For example, a utility loaded with `require('@codebelt/classy-store/utils')`
+can call `withHistory(store)` on a store created by an ESM import.
+
 `ReactiveMap` and `ReactiveSet` are exported as types; construct values with the
 factory functions. The React entry carries `use client`. Import hydration
 preparation from `/react/server` in both server code and client modules.

@@ -1,4 +1,4 @@
-import {originalSnapshotAccessor} from '../../snapshot/snapshot';
+import {originalSnapshotAccessor} from '../../storeRuntime';
 import {canProxy} from '../internal/internal';
 
 /** Restore proxyable snapshot data as mutable objects, preserving prototypes. */

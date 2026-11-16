@@ -1,5 +1,4 @@
-import {getVersion, subscribe} from '../../core/core';
-import {snapshot} from '../../snapshot/snapshot';
+import {getVersion, snapshot, subscribe} from '../../storeRuntime';
 import {cloneSnapshotValue} from '../cloneSnapshot/cloneSnapshot';
 import {findGetterDescriptor} from '../internal/internal';
 import {createUtilityStatus} from '../utilityStatus/utilityStatus';

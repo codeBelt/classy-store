@@ -1,9 +1,13 @@
-import {createProxy, isChanged} from 'proxy-compare';
 import {useEffect, useMemo, useRef, useSyncExternalStore} from 'react';
-import {subscribe as coreSubscribe, getInternal} from '../../../../core/core';
-import {snapshot} from '../../../../snapshot/snapshot';
+import {
+  subscribe as coreSubscribe,
+  createProxy,
+  getInternal,
+  hydrationSnapshots,
+  isChanged,
+  snapshot,
+} from '../../../../storeRuntime';
 import type {Snapshot} from '../../../../types';
-import {hydrationSnapshots} from '../../utils/hydrationSnapshots/hydrationSnapshots';
 import {SnapshotTargetCache} from '../../utils/snapshotTargetCache/snapshotTargetCache';
 import {TrackingReadMap} from '../../utils/trackingReadMap/trackingReadMap';
 import type {
