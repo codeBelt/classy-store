@@ -1,5 +1,6 @@
 import {afterEach, describe, expect, mock, test} from 'bun:test';
 import {createClassyStore, subscribe} from '../../core/core';
+import {subscribeKey} from '../subscribe-key/subscribe-key';
 import {persist} from './persist';
 import type {PersistHandle} from './persist.types';
 
@@ -22,6 +23,119 @@ afterEach(() => {
 });
 
 describe('persist async operation ordering', () => {
+  for (const trigger of ['initial', 'manual', 'storage']) {
+    for (const storedLabel of [false, true]) {
+      test.each([false, true])(
+        `${trigger} restore preserves a subscriber's label edit (stored=${storedLabel}, labelFirst=%s)`,
+        async (labelFirst) => {
+          const store = createClassyStore(
+            labelFirst
+              ? {label: 'pending', count: 0, tail: 0}
+              : {count: 0, label: 'pending', tail: 0},
+          );
+          const record = JSON.stringify({
+            version: 0,
+            state: {
+              count: 1,
+              ...(storedLabel ? {label: 'disk'} : {}),
+              tail: 2,
+            },
+          });
+          const write = mock((_key: string, _value: string) => {});
+          const stop = subscribeKey(
+            store,
+            'count',
+            () => {
+              store.label = 'ready';
+            },
+            {sync: true},
+          );
+          const handle = persist(store, {
+            name: 'draft',
+            skipHydration: trigger !== 'initial',
+            syncTabs: trigger === 'storage',
+            storage: {
+              getItem: () => record,
+              setItem: write,
+              removeItem: () => {},
+            },
+          });
+          handles.push(handle);
+          try {
+            if (trigger === 'storage') {
+              globalThis.dispatchEvent(
+                new StorageEvent('storage', {key: 'draft', newValue: record}),
+              );
+            } else if (trigger === 'manual') {
+              await handle.rehydrate();
+            } else {
+              await handle.hydrated;
+            }
+            await tick();
+            expect(store.label).toBe('ready');
+            expect(write).toHaveBeenCalledTimes(1);
+            expect(JSON.parse(write.mock.calls[0][1]).state).toEqual({
+              count: 1,
+              label: 'ready',
+              tail: 2,
+            });
+          } finally {
+            stop();
+          }
+        },
+      );
+    }
+  }
+
+  test('custom merge preserves nested edits and a deleted field while restoring other fields', async () => {
+    const store = createClassyStore<{
+      count: number;
+      preferences: {label: string};
+      flag?: boolean;
+      tail: number;
+    }>({
+      count: 0,
+      preferences: {label: 'pending'},
+      flag: undefined,
+      tail: 0,
+    });
+    const record = JSON.stringify({
+      version: 0,
+      state: {count: 1, preferences: {label: 'disk'}, flag: true, tail: 2},
+    });
+    const write = mock((_key: string, _value: string) => {});
+    const stop = subscribeKey(
+      store,
+      'count',
+      () => {
+        store.preferences.label = 'ready';
+        delete store.flag;
+      },
+      {sync: true},
+    );
+    const handle = persist(store, {
+      name: 'draft',
+      skipHydration: true,
+      storage: {getItem: () => record, setItem: write, removeItem: () => {}},
+      merge: (stored, current) => ({...current, ...stored}),
+    });
+    handles.push(handle);
+    try {
+      await handle.rehydrate();
+      await tick();
+      expect(store.preferences.label).toBe('ready');
+      expect(Object.hasOwn(store, 'flag')).toBe(false);
+      expect(write).toHaveBeenCalledTimes(1);
+      expect(JSON.parse(write.mock.calls[0][1]).state).toEqual({
+        count: 1,
+        preferences: {label: 'ready'},
+        tail: 2,
+      });
+    } finally {
+      stop();
+    }
+  });
+
   test('publishes expiry while asynchronous removal is still pending', async () => {
     const removal = deferred<void>();
     const started = deferred<void>();

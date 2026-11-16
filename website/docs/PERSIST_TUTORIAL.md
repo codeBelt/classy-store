@@ -263,8 +263,7 @@ data and save it, as the logout example does above.
 An event whose value has already been replaced in its storage area is ignored.
 This prevents a delayed event from rolling a newer local save back in the UI.
 Accepted remote updates cancel pending debounced auto-saves and do not write
-the restored state back to storage. If a subscriber edits the restored values,
-persistence saves those edits.
+the restored state back to storage. Synchronous subscribers can also edit a different field during restoration. Their local change wins for that top-level field in either declaration order, and persistence saves the resulting state. This applies to initial hydration, manual `rehydrate()`, and accepted storage events.
 
 ### Overlapping async operations
 

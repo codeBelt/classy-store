@@ -34,6 +34,8 @@ ES6 Proxy · useSyncExternalStore · proxy-compare
 
 ## Installation
 
+For the upgrade from 0.10.x and framework support in 0.11.0, see the [0.11.0 release notes](https://codebelt.github.io/classy-store/docs/UPGRADING_0_11).
+
 Upgrading from 0.7.x? Read the [0.8.0 upgrade guide](https://codebelt.github.io/classy-store/docs/UPGRADING_0_8) for public API changes and persistence error handling. From 0.6.x or earlier, also follow the [0.7.0 upgrade guide](https://codebelt.github.io/classy-store/docs/UPGRADING_0_7).
 
 ```bash
@@ -42,13 +44,13 @@ bun add @codebelt/classy-store
 
 All framework peer dependencies are optional — install only what your project uses:
 
-| Framework  | Peer Dependency                | Import                           |
-| ---------- | ------------------------------ | -------------------------------- |
-| React      | `react ^18.0.0 \|\| ^19.0.0`   | `@codebelt/classy-store/react`   |
-| Vue        | `vue ^3.2.0`                   | `@codebelt/classy-store/vue`     |
-| Svelte     | `svelte ^4.0.0 \|\| ^5.0.0`    | `@codebelt/classy-store/svelte`  |
-| Solid 2 RC | `solid-js 2.0.0-rc.18` (exact) | `@codebelt/classy-store/solid`   |
-| Angular    | `@angular/core ^22.0.0`        | `@codebelt/classy-store/angular` |
+| Framework         | Peer Dependency                | Import                           |
+| ----------------- | ------------------------------ | -------------------------------- |
+| React             | `react ^18.0.0 \|\| ^19.0.0`   | `@codebelt/classy-store/react`   |
+| Vue               | `vue ^3.2.0`                   | `@codebelt/classy-store/vue`     |
+| Svelte            | `svelte ^4.0.0 \|\| ^5.0.0`    | `@codebelt/classy-store/svelte`  |
+| Solid 2 (preview) | `solid-js 2.0.0-rc.18` (exact) | `@codebelt/classy-store/solid`   |
+| Angular           | `@angular/core ^22.0.0`        | `@codebelt/classy-store/angular` |
 
 These ranges include stable releases within the listed majors and exclude
 untested future majors. Solid remains pinned to its exact tested prerelease.
@@ -489,7 +491,7 @@ const unsubSync = subscribe(
 
 ### `shallowEqual(a, b)`
 
-Compares primitives with `Object.is`, arrays by length and elements, and other objects by their own enumerable string keys and values. Comparing an array with a record returns `false`, even when both are empty. Use it for selectors returning plain records or arrays when one-level equality matches the UI's needs. It does not compare prototypes, symbol keys, or native `Map`/`Set`/`Date` contents; different instances with no enumerable keys can compare equal.
+Compares primitives with `Object.is`, arrays by length, occupied indices and element values, and other objects by their own enumerable string keys and values. A hole and an explicit `undefined` element compare differently. Comparing an array with a record returns `false`, even when both are empty. Use it for selectors returning plain records or arrays when one-level equality matches the UI's needs. It does not compare prototypes, symbol keys, or native `Map`/`Set`/`Date` contents; different instances with no enumerable keys can compare equal.
 
 ### `reactiveMap<K, V>(initial?)`
 
@@ -866,6 +868,27 @@ This library wouldn't exist without the ideas pioneered by these projects. Each 
 **[Claude 4.6 Opus](https://anthropic.com)** — Let's be real: this library was designed, architected, implemented, tested, and documented almost entirely by Claude 4.6 Opus (Anthropic) via [Cursor](https://cursor.com). From the three-layer proxy architecture to the memoized computed getters with dependency tracking, the cross-snapshot caching strategy, and tests — it was all pair-programmed with an AI that never gets tired of writing Proxy traps. The human brought the vision, the taste, and the "no, make it better" energy. Claude brought the code.
 
 ---
+SOURCE: https://codebelt.github.io/classy-store/docs/UPGRADING_0_11
+---
+
+# Classy Store 0.11.0 release notes
+
+Applications upgrading from 0.10.x can keep their existing store definitions and public imports. This minor release supports React 18 and 19, Vue 3 starting at 3.2, Svelte 4 and 5, and Angular 22. The npm package includes the MIT license.
+
+## Framework support
+
+**The Solid adapter is in preview.** Applications using `@codebelt/classy-store/solid` must pin `solid-js` to exactly `2.0.0-rc.18`. Browser applications must also pin `@solidjs/web` to `2.0.0-rc.18`. Check the adapter's peer requirement before upgrading Solid. [Solid integration guide](https://codebelt.github.io/classy-store/docs/SOLID)
+
+**Angular supports all stable 22.x releases** through the optional `@angular/core` peer range `^22.0.0`. The library's development dependencies and example use Angular `22.2.6`. Keep your application's Angular runtime and compiler packages on matching versions. [Angular integration guide](https://codebelt.github.io/classy-store/docs/ANGULAR)
+
+## Changes since 0.10.x
+
+- Retained rows stay reactive after reordering or filtering. An edit to a shared object updates every owning path.
+- Snapshots preserve sparse array holes, own JSON `__proto__` keys, and object-literal getters. Nested writes made by class setters reach subscribers. `shallowEqual` distinguishes arrays from records and a missing array slot from an element containing `undefined`.
+- Persistence preserves and saves subscriber edits to other selected fields during a restore, regardless of field declaration order. Existing 0.10.x records use the same envelope. Keep your persistence schema version when only the library version changes.
+- ESM and CommonJS callers can pass a store between entry points from the same installed copy, including when using history utilities or preparing React hydration.
+
+---
 SOURCE: https://codebelt.github.io/classy-store/docs/UPGRADING_0_8
 ---
 
@@ -1181,7 +1204,7 @@ const todos = useClassyStore(todoStore, (state) => state.items);
 
 The problem shows up when your selector **derives a new value** — calling `.filter()`, `.map()`, or using object spread always allocates a new array or object, even when the underlying data hasn't changed. `Object.is` sees a different reference and triggers a re-render.
 
-`shallowEqual` compares one level deep: array length and elements, or an object's own enumerable string keys and values, using `Object.is`. Use it for plain records and arrays. It does not inspect prototypes, symbol keys, or native `Map`/`Set`/`Date` contents, so it is not a general equality function for those values.
+`shallowEqual` compares one level deep: array length, occupied indices, and element values, or an object's own enumerable string keys and values, using `Object.is`. Use it for plain records and arrays. It does not inspect prototypes, symbol keys, or native `Map`/`Set`/`Date` contents, so it is not a general equality function for those values.
 
 Without `shallowEqual` — `.filter()` creates a new array every time the snapshot updates, even if the todo items haven't changed:
 
@@ -1636,11 +1659,31 @@ The same limitation applies to methods bound to the raw instance in its construc
 
 ### Keep computed getters pure
 
-Compute getters from explicit store property reads. Changes to `Date.now()`, random values, or external variables do not invalidate a cached getter. In-place mutation of opaque values does not invalidate it either. If time affects a computed value, store a timestamp and update that field explicitly. Property enumeration or `in` checks alone are not tracked getter dependencies.
+Compute getters from explicit store property reads. Changes to `Date.now()`, random values, or external variables do not invalidate a cached getter. In-place mutation of opaque values does not invalidate it either. If time affects a computed value, store a timestamp and update that field explicitly. In a snapshot getter, `Object.keys(this)` can return an empty array on the first read, and `key in this` can miss a field. The getter receiver tracks direct property reads. For dynamic keys, put the fields in a plain record and read that record explicitly:
+
+```ts
+class FormStore {
+  fields: Record<string, string> = {name: ''};
+
+  get fieldNames() {
+    return Object.keys(this.fields);
+  }
+}
+```
+
+### Initialize with mutable data
+
+The live store wraps nested plain objects with proxies. If a frozen input contains an object-valued, non-writable and non-configurable property, JavaScript requires that property to return its original object. Even reading `store.profile.details` can then throw a `TypeError`. For plain, structured-cloneable input, make a mutable copy before creating the store:
+
+```ts
+const profile = Object.freeze({details: {name: 'Ada'}});
+const store = createClassyStore({profile: structuredClone(profile)});
+store.profile.details.name = 'Grace';
+```
 
 ### Keep mutations inside the proxy
 
-Create the store once for its owner and use the returned proxy. Mutating the raw instance, using `Object.defineProperty` to change state, or sharing a raw child object across independent stores bypasses the intended assignment/deletion tracking. Use ordinary fields, arrays, and separate data ownership for each store. Circular references in traversed state are rejected by `snapshot()`.
+Create the store once for its owner and use the returned proxy. Mutating the raw instance or using `Object.defineProperty` to change state bypasses assignment/deletion tracking. When stores share a child, edit it through a store proxy to notify its owners. Circular references in traversed state are rejected by `snapshot()`.
 
 ### Don't destructure the store outside `useClassyStore`
 
@@ -1717,8 +1760,8 @@ optional `@angular/core` peer set to `^22.0.0`. Angular 21 and earlier, Angular 
 and prereleases are outside this support range. Keep your application's Angular
 runtime and compiler packages aligned to the same release.
 
-Development dependencies and the example stay pinned to Angular `22.2.3`; the
-example uses matching CLI/build/compiler packages and TypeScript `6.0.3`.
+The library and example pin the Angular framework and compiler to `22.2.6`.
+The example uses Angular CLI and build tools `22.2.7` with TypeScript `6.0.3`.
 Compatibility checks install the packed library into isolated consumers using
 Angular `22.0.0` and `22.2.3`, compile the shared fixture with each version's
 compiler, and test timing, inputs, computed values, keyed lists, zoneless
@@ -3109,7 +3152,7 @@ Triggered by `subscribe(proxy, callback)` firing after each batched mutation:
 
 ```
 1. subscribe callback fires
-2. if disposed, applying hydration, or this version was cleared → return
+2. if disposed or this revision was already saved, restored, or explicitly cleared → return
 3. if debounce > 0:
      cancel existing timer
      schedule new timer → goto step 4 after delay
@@ -3176,7 +3219,7 @@ the handle remains active. A newer read/save/clear/storage event changes the
 request number; a local edit changes the store version. Obsolete results and
 read errors are ignored. A restore records the revision attributable to its direct field assignments.
 The batched save skips that revision. Additional writes by synchronous or
-batched subscribers advance the revision and are saved.
+batched subscribers advance the revision and are saved. If a synchronous subscriber edits a pending top-level field, a snapshot comparison detects changes to its presence or value, including nested edits. The restore skips that field and continues applying the others.
 
 ```
 1. JSON.parse(raw) → envelope
@@ -3190,12 +3233,12 @@ batched subscribers advance the revision and are saved.
      state = migrate(state, envelope.version)
 5. for each stored state key:
      if transform exists → state[key] = transform.deserialize(state[key])
-6. Build currentState from snapshot (only propKeys)
+6. For a custom merge, build currentState from the baseline snapshot (only propKeys)
 7. Apply merge strategy:
-     'shallow': { ...currentState, ...persistedState }
+     'shallow': apply the stored fields only
      custom function: merge(persistedState, currentState)
 8. for each key in propKeys:
-     if key in mergedState → proxy[key] = cloneSnapshotValue(mergedState[key])
+     if key is present in mergedState and still pending → proxy[key] = cloneSnapshotValue(mergedState[key])
      (goes through SET trap → reactivity → batched notification)
 9. Initial/manual read completion marks hydratedFlag and resolves hydrated.
    Storage-event application alone does not mark hydration settled.
@@ -3203,10 +3246,10 @@ batched subscribers advance the revision and are saved.
 
 ### Merge Strategies
 
-| Strategy              | Behavior                                                                                 |
-| --------------------- | ---------------------------------------------------------------------------------------- |
-| `'shallow'` (default) | `{ ...current, ...persisted }` — stored keys overwrite, missing keys keep current values |
-| Custom `fn`           | `fn(persisted, current)` -- full control. Enables deep merge or selective overrides.     |
+| Strategy              | Behavior                                                                                                 |
+| --------------------- | -------------------------------------------------------------------------------------------------------- |
+| `'shallow'` (default) | `{ ...current, ...persisted }` — stored keys overwrite, missing keys keep their live values and identity |
+| Custom `fn`           | `fn(persisted, current)` -- full control. Enables deep merge or selective overrides.                     |
 
 The public merge option accepts `shallow` or a function. Shallow merging replaces each stored top-level property, including its nested value; use a custom function to combine nested data.
 
@@ -3624,8 +3667,7 @@ data and save it, as the logout example does above.
 An event whose value has already been replaced in its storage area is ignored.
 This prevents a delayed event from rolling a newer local save back in the UI.
 Accepted remote updates cancel pending debounced auto-saves and do not write
-the restored state back to storage. If a subscriber edits the restored values,
-persistence saves those edits.
+the restored state back to storage. Synchronous subscribers can also edit a different field during restoration. Their local change wins for that top-level field in either declaration order, and persistence saves the resulting state. This applies to initial hydration, manual `rehydrate()`, and accepted storage events.
 
 ### Overlapping async operations
 
@@ -4693,7 +4735,7 @@ SOURCE: https://codebelt.github.io/classy-store/docs/SOLID
 
 # Solid 2 integration
 
-The `/solid` adapter targets **Solid 2.0.0-rc.18 only**. Solid 2 is a release
+The `/solid` adapter is **in preview** and targets **Solid 2.0.0-rc.18 only**. Solid 2 is a release
 candidate, so pin this exact version. Solid 1 is no longer supported by this
 adapter. The import and return shape stay the same:
 
@@ -4711,7 +4753,7 @@ npm install @codebelt/classy-store solid-js@2.0.0-rc.18 @solidjs/web@2.0.0-rc.18
 ```
 
 The repository example uses `@solidjs/vite-plugin@3.0.0-next.51`,
-`@solidjs/compiler@2.0.0-rc.18`, and Vite `8.3.5`. The Vite plugin requires
+`@solidjs/compiler@2.0.0-rc.18`, and Vite `8.3.8`. The Vite plugin requires
 Node.js 22.12 or later. Use `@solidjs/web` for DOM imports and
 `jsxImportSource: "@solidjs/web"` in TypeScript configuration. Replace the
 Solid 1 `vite-plugin-solid` package with `@solidjs/vite-plugin`.

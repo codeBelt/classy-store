@@ -17,6 +17,7 @@ node packages/classy-store/tests/compatibility/runCompatibility.mjs 18.0.0 19.3.
 
 Each consumer verifies:
 
+- The installed tarball includes a `LICENSE` file that matches the repository's MIT license byte for byte.
 - Node ESM and CommonJS exports, including server rendering without a browser global, shared state across the core, React, and utilities entry points, and an idempotent prepared hydration snapshot that remains stable after live mutations.
 - Mixed loaders in one Node process. A CommonJS history utility records, undoes, and redoes edits to an ESM-created store, and the inverse pairing works too. Both formats return the same cached snapshot and share React's prepared hydration baseline. Node versions with synchronous ESM loading run the fixture a second time with that feature disabled to exercise the CommonJS runtime fallback.
 - Strict Mode mounting, selector changes, store switching, synchronous multi-property React updates, and ordinary batched subscriptions against the installed package.

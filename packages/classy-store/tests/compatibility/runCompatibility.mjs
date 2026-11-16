@@ -1,3 +1,4 @@
+import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
 import {
   cpSync,
@@ -202,6 +203,13 @@ try {
         '--package-lock=false',
       ],
       consumerDirectory,
+    );
+    assert.deepEqual(
+      readFileSync(
+        join(consumerDirectory, 'node_modules/@codebelt/classy-store/LICENSE'),
+      ),
+      readFileSync(resolve(packageDirectory, '../../LICENSE')),
+      'The installed tarball must contain the repository MIT license',
     );
     const nodeFlags = [[]];
     if (process.features.require_module) {

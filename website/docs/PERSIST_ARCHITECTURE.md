@@ -90,7 +90,7 @@ Triggered by `subscribe(proxy, callback)` firing after each batched mutation:
 
 ```
 1. subscribe callback fires
-2. if disposed, applying hydration, or this version was cleared → return
+2. if disposed or this revision was already saved, restored, or explicitly cleared → return
 3. if debounce > 0:
      cancel existing timer
      schedule new timer → goto step 4 after delay
@@ -157,7 +157,7 @@ the handle remains active. A newer read/save/clear/storage event changes the
 request number; a local edit changes the store version. Obsolete results and
 read errors are ignored. A restore records the revision attributable to its direct field assignments.
 The batched save skips that revision. Additional writes by synchronous or
-batched subscribers advance the revision and are saved.
+batched subscribers advance the revision and are saved. If a synchronous subscriber edits a pending top-level field, a snapshot comparison detects changes to its presence or value, including nested edits. The restore skips that field and continues applying the others.
 
 ```
 1. JSON.parse(raw) → envelope
@@ -171,12 +171,12 @@ batched subscribers advance the revision and are saved.
      state = migrate(state, envelope.version)
 5. for each stored state key:
      if transform exists → state[key] = transform.deserialize(state[key])
-6. Build currentState from snapshot (only propKeys)
+6. For a custom merge, build currentState from the baseline snapshot (only propKeys)
 7. Apply merge strategy:
-     'shallow': { ...currentState, ...persistedState }
+     'shallow': apply the stored fields only
      custom function: merge(persistedState, currentState)
 8. for each key in propKeys:
-     if key in mergedState → proxy[key] = cloneSnapshotValue(mergedState[key])
+     if key is present in mergedState and still pending → proxy[key] = cloneSnapshotValue(mergedState[key])
      (goes through SET trap → reactivity → batched notification)
 9. Initial/manual read completion marks hydratedFlag and resolves hydrated.
    Storage-event application alone does not mark hydration settled.
@@ -184,10 +184,10 @@ batched subscribers advance the revision and are saved.
 
 ### Merge Strategies
 
-| Strategy              | Behavior                                                                                 |
-| --------------------- | ---------------------------------------------------------------------------------------- |
-| `'shallow'` (default) | `{ ...current, ...persisted }` — stored keys overwrite, missing keys keep current values |
-| Custom `fn`           | `fn(persisted, current)` -- full control. Enables deep merge or selective overrides.     |
+| Strategy              | Behavior                                                                                                 |
+| --------------------- | -------------------------------------------------------------------------------------------------------- |
+| `'shallow'` (default) | `{ ...current, ...persisted }` — stored keys overwrite, missing keys keep their live values and identity |
+| Custom `fn`           | `fn(persisted, current)` -- full control. Enables deep merge or selective overrides.                     |
 
 The public merge option accepts `shallow` or a function. Shallow merging replaces each stored top-level property, including its nested value; use a custom function to combine nested data.
 

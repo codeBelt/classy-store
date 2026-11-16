@@ -507,10 +507,12 @@ describe('persist()', () => {
         opaque,
       });
       const beforeHydration = snapshot(store);
+      const retainedUsers = store.users;
       const handle = persist(store, {name: 'test', storage});
 
       try {
         await handle.hydrated;
+        expect(store.users).toBe(retainedUsers);
         expect(store.profile).toBeInstanceOf(Profile);
         expect(store.profile.greeting).toBe('Hello, Alice');
         expect(store.users.size).toBe(1);

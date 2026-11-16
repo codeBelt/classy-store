@@ -25,6 +25,8 @@ ES6 Proxy · useSyncExternalStore · proxy-compare
 
 ## Installation
 
+For the upgrade from 0.10.x and framework support in 0.11.0, see the [0.11.0 release notes](./UPGRADING_0_11.md).
+
 Upgrading from 0.7.x? Read the [0.8.0 upgrade guide](./UPGRADING_0_8.md) for public API changes and persistence error handling. From 0.6.x or earlier, also follow the [0.7.0 upgrade guide](./UPGRADING_0_7.md).
 
 ```bash
@@ -33,13 +35,13 @@ bun add @codebelt/classy-store
 
 All framework peer dependencies are optional — install only what your project uses:
 
-| Framework  | Peer Dependency                | Import                           |
-| ---------- | ------------------------------ | -------------------------------- |
-| React      | `react ^18.0.0 \|\| ^19.0.0`   | `@codebelt/classy-store/react`   |
-| Vue        | `vue ^3.2.0`                   | `@codebelt/classy-store/vue`     |
-| Svelte     | `svelte ^4.0.0 \|\| ^5.0.0`    | `@codebelt/classy-store/svelte`  |
-| Solid 2 RC | `solid-js 2.0.0-rc.18` (exact) | `@codebelt/classy-store/solid`   |
-| Angular    | `@angular/core ^22.0.0`        | `@codebelt/classy-store/angular` |
+| Framework         | Peer Dependency                | Import                           |
+| ----------------- | ------------------------------ | -------------------------------- |
+| React             | `react ^18.0.0 \|\| ^19.0.0`   | `@codebelt/classy-store/react`   |
+| Vue               | `vue ^3.2.0`                   | `@codebelt/classy-store/vue`     |
+| Svelte            | `svelte ^4.0.0 \|\| ^5.0.0`    | `@codebelt/classy-store/svelte`  |
+| Solid 2 (preview) | `solid-js 2.0.0-rc.18` (exact) | `@codebelt/classy-store/solid`   |
+| Angular           | `@angular/core ^22.0.0`        | `@codebelt/classy-store/angular` |
 
 These ranges include stable releases within the listed majors and exclude
 untested future majors. Solid remains pinned to its exact tested prerelease.
@@ -480,7 +482,7 @@ const unsubSync = subscribe(
 
 ### `shallowEqual(a, b)`
 
-Compares primitives with `Object.is`, arrays by length and elements, and other objects by their own enumerable string keys and values. Comparing an array with a record returns `false`, even when both are empty. Use it for selectors returning plain records or arrays when one-level equality matches the UI's needs. It does not compare prototypes, symbol keys, or native `Map`/`Set`/`Date` contents; different instances with no enumerable keys can compare equal.
+Compares primitives with `Object.is`, arrays by length, occupied indices and element values, and other objects by their own enumerable string keys and values. A hole and an explicit `undefined` element compare differently. Comparing an array with a record returns `false`, even when both are empty. Use it for selectors returning plain records or arrays when one-level equality matches the UI's needs. It does not compare prototypes, symbol keys, or native `Map`/`Set`/`Date` contents; different instances with no enumerable keys can compare equal.
 
 ### `reactiveMap<K, V>(initial?)`
 

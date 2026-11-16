@@ -721,6 +721,27 @@ describe('Unmount safety', () => {
 describe('shallowEqual as useClassyStore isEqual — integration', () => {
   afterEach(teardown);
 
+  it('renders both transitions between a hole and an explicit undefined slot', () => {
+    const store = createClassyStore({rows: new Array<undefined>(1)});
+    function Slot() {
+      const rows = useClassyStore(store, (state) => state.rows, {
+        isEqual: shallowEqual,
+      });
+      return <span>{0 in rows ? 'present' : 'hole'}</span>;
+    }
+    setup();
+    render(<Slot />);
+    expect(container.textContent).toBe('hole');
+    act(() => {
+      store.rows[0] = undefined;
+    });
+    expect(container.textContent).toBe('present');
+    act(() => {
+      Reflect.deleteProperty(store.rows, '0');
+    });
+    expect(container.textContent).toBe('hole');
+  });
+
   it('prevents re-render when shallow values are unchanged', async () => {
     const s = createClassyStore(new TestStore());
     const renderCount = mock(() => {});

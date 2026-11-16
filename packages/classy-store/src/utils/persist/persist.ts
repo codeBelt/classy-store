@@ -279,6 +279,7 @@ export function persist<T extends object>(
     }
 
     const startVersion = getVersion(proxyStore);
+    const baseline = snapshot(proxyStore) as Record<string, unknown>;
     let {state} = envelope;
 
     // Version migration.
@@ -294,38 +295,49 @@ export function persist<T extends object>(
       }
     }
 
-    // Build current state for merge.
-    const currentSnap = snapshot(proxyStore) as Record<string, unknown>;
-    const currentState = Object.fromEntries(
-      propKeys.map((key) => [key, currentSnap[key]]),
+    // A shallow restore writes only stored fields. Omitted defaults keep their
+    // live identity, including edits made while other fields are restored.
+    const merged =
+      typeof merge === 'function'
+        ? merge(
+            state,
+            Object.fromEntries(propKeys.map((key) => [key, baseline[key]])),
+          )
+        : state;
+    const pending = new Set(
+      propKeys.filter((key) => Object.hasOwn(merged, key)),
     );
+    const clones = new WeakMap<object, object>();
+    let expectedVersion = startVersion;
 
-    // Merge strategy.
-    let merged: Record<string, unknown>;
-    if (typeof merge === 'function') {
-      merged = merge(state, currentState);
-    } else {
-      // 'shallow': persisted values overwrite current, but properties not
-      // in storage keep their current (default) value.
-      merged = {...currentState, ...state};
+    // A subscriber can edit or delete a different field before its turn.
+    // Snapshot identity catches nested edits as well as top-level replacements.
+    function discardEditedFields() {
+      const live = snapshot(proxyStore) as Record<string, unknown>;
+      for (const key of pending) {
+        if (
+          Object.hasOwn(live, key) !== Object.hasOwn(baseline, key) ||
+          !Object.is(live[key], baseline[key])
+        )
+          pending.delete(key);
+      }
     }
 
-    // Merged defaults may still reference frozen snapshot branches. Restore
-    // mutable copies without changing snapshots retained by callers or merges.
-    const clones = new WeakMap<object, object>();
-    // Each direct data-field assignment advances this store by at most one.
-    // Additional revisions belong to user code (e.g. a synchronous subscriber
-    // normalizing a field). Those edits must still reach storage.
-    let expectedVersion = startVersion;
     try {
-      for (const key of propKeys) {
-        if (!Object.hasOwn(merged, key)) continue;
+      if (getVersion(proxyStore) !== startVersion) discardEditedFields();
+      for (const key of pending) {
+        pending.delete(key);
         const before = getVersion(proxyStore);
         (proxyStore as Record<string, unknown>)[key] = cloneSnapshotValue(
           merged[key],
           clones,
         );
-        if (getVersion(proxyStore) !== before) expectedVersion++;
+        const after = getVersion(proxyStore);
+        if (after === before) continue;
+        expectedVersion++;
+        // A direct data-field assignment adds one revision. Any additional
+        // revision came from user code and must survive the rest of this pass.
+        if (after > before + 1 && pending.size) discardEditedFields();
       }
     } finally {
       skipAutoSaveVersion = expectedVersion;

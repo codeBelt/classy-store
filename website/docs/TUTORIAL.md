@@ -118,7 +118,7 @@ const todos = useClassyStore(todoStore, (state) => state.items);
 
 The problem shows up when your selector **derives a new value** — calling `.filter()`, `.map()`, or using object spread always allocates a new array or object, even when the underlying data hasn't changed. `Object.is` sees a different reference and triggers a re-render.
 
-`shallowEqual` compares one level deep: array length and elements, or an object's own enumerable string keys and values, using `Object.is`. Use it for plain records and arrays. It does not inspect prototypes, symbol keys, or native `Map`/`Set`/`Date` contents, so it is not a general equality function for those values.
+`shallowEqual` compares one level deep: array length, occupied indices, and element values, or an object's own enumerable string keys and values, using `Object.is`. Use it for plain records and arrays. It does not inspect prototypes, symbol keys, or native `Map`/`Set`/`Date` contents, so it is not a general equality function for those values.
 
 Without `shallowEqual` — `.filter()` creates a new array every time the snapshot updates, even if the todo items haven't changed:
 
@@ -573,11 +573,31 @@ The same limitation applies to methods bound to the raw instance in its construc
 
 ### Keep computed getters pure
 
-Compute getters from explicit store property reads. Changes to `Date.now()`, random values, or external variables do not invalidate a cached getter. In-place mutation of opaque values does not invalidate it either. If time affects a computed value, store a timestamp and update that field explicitly. Property enumeration or `in` checks alone are not tracked getter dependencies.
+Compute getters from explicit store property reads. Changes to `Date.now()`, random values, or external variables do not invalidate a cached getter. In-place mutation of opaque values does not invalidate it either. If time affects a computed value, store a timestamp and update that field explicitly. In a snapshot getter, `Object.keys(this)` can return an empty array on the first read, and `key in this` can miss a field. The getter receiver tracks direct property reads. For dynamic keys, put the fields in a plain record and read that record explicitly:
+
+```ts
+class FormStore {
+  fields: Record<string, string> = {name: ''};
+
+  get fieldNames() {
+    return Object.keys(this.fields);
+  }
+}
+```
+
+### Initialize with mutable data
+
+The live store wraps nested plain objects with proxies. If a frozen input contains an object-valued, non-writable and non-configurable property, JavaScript requires that property to return its original object. Even reading `store.profile.details` can then throw a `TypeError`. For plain, structured-cloneable input, make a mutable copy before creating the store:
+
+```ts
+const profile = Object.freeze({details: {name: 'Ada'}});
+const store = createClassyStore({profile: structuredClone(profile)});
+store.profile.details.name = 'Grace';
+```
 
 ### Keep mutations inside the proxy
 
-Create the store once for its owner and use the returned proxy. Mutating the raw instance, using `Object.defineProperty` to change state, or sharing a raw child object across independent stores bypasses the intended assignment/deletion tracking. Use ordinary fields, arrays, and separate data ownership for each store. Circular references in traversed state are rejected by `snapshot()`.
+Create the store once for its owner and use the returned proxy. Mutating the raw instance or using `Object.defineProperty` to change state bypasses assignment/deletion tracking. When stores share a child, edit it through a store proxy to notify its owners. Circular references in traversed state are rejected by `snapshot()`.
 
 ### Don't destructure the store outside `useClassyStore`
 
