@@ -551,14 +551,63 @@ describe('snapshot()', () => {
     });
 
     it('throws on a circular reference inside an untracked nested plain object', () => {
-      // An untracked path triggers when a plain nested object has never been
-      // read through the proxy (no child internal exists), so snapshot() goes
-      // through deepFreezeClone for it. We freeze the snapshot at the root
-      // BEFORE accessing inner refs, so `outer` is untracked at that point.
+      // The cycle must be detected even before the first nested proxy read.
       const inner: {self: unknown} = {self: null};
       inner.self = inner;
       const s = createClassyStore({outer: {nested: inner}});
       expect(() => snapshot(s)).toThrow(/circular reference/);
     });
+  });
+});
+
+describe('snapshot data properties and accessors', () => {
+  it('preserves an own JSON __proto__ key without changing snapshot prototypes', () => {
+    const data = JSON.parse(
+      '{"__proto__":{"admin":true},"profile":{"__proto__":{"admin":true}}}',
+    );
+    const store = createClassyStore(data);
+    const snap = snapshot(store);
+    for (const record of [snap, snap.profile]) {
+      expect(Object.getPrototypeOf(record)).toBe(Object.prototype);
+      expect(Object.hasOwn(record, '__proto__')).toBe(true);
+      expect(record.admin).toBeUndefined();
+      expect(
+        Object.getOwnPropertyDescriptor(record, '__proto__')?.value.admin,
+      ).toBe(true);
+    }
+  });
+
+  it('runs a class setter through the proxy and refreshes nested snapshots', () => {
+    class Form {
+      user = {name: 'before'};
+      get name() {
+        return this.user.name;
+      }
+      set name(value: string) {
+        this.user.name = value;
+      }
+    }
+    const store = createClassyStore(new Form());
+    const old = snapshot(store);
+    expect(store.name).toBe('before');
+    store.name = 'after';
+    expect(snapshot(store).user.name).toBe('after');
+    expect(snapshot(store).name).toBe('after');
+    expect(old.name).toBe('before');
+  });
+
+  it('memoizes object-literal getters on the immutable snapshot', () => {
+    const store = createClassyStore({
+      count: 2,
+      get result() {
+        return {total: this.count * 10};
+      },
+    });
+    const old = snapshot(store);
+    expect(old.result).toEqual({total: 20});
+    expect(old.result).toBe(old.result);
+    store.count++;
+    expect(snapshot(store).result).toEqual({total: 30});
+    expect(old.result.total).toBe(20);
   });
 });

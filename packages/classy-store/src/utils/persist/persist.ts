@@ -118,13 +118,12 @@ export function persist<T extends object>(
   // ── Mutable state shared by handle closures ─────────────────────────────
 
   let disposed = false;
-  let hydrating = false;
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
   let hydratedFlag = false;
   let expiredFlag = false;
   let hydrationRequest = 0;
   let storageQueue: Promise<void> | undefined;
-  let clearedVersion: number | undefined;
+  let skipAutoSaveVersion: number | undefined;
   let lastError: PersistStatus['lastError'] = null;
   const readStatus = (): PersistStatus => ({
     isHydrated: hydratedFlag,
@@ -196,7 +195,7 @@ export function persist<T extends object>(
   /** Serialize the current store state into a JSON string (versioned envelope). */
   function serializeState(): string {
     const snap = snapshot(proxyStore) as Record<string, unknown>;
-    const state: Record<string, unknown> = {};
+    const state: Record<string, unknown> = Object.create(null);
 
     for (const key of propKeys) {
       let value = snap[key];
@@ -231,9 +230,12 @@ export function persist<T extends object>(
 
   /** Schedule a debounced write (or write immediately if debounce is 0). */
   function scheduleWrite(): void {
-    if (disposed || hydrating) return;
-    // clear() can run before a mutation's batched notification is delivered.
-    if (getVersion(proxyStore) === clearedVersion) return;
+    if (disposed) return;
+    // A preceding subscriber can edit during a batch, scheduling a second
+    // notification for a revision this handle has already queued for saving.
+    const current = getVersion(proxyStore);
+    if (current === skipAutoSaveVersion) return;
+    skipAutoSaveVersion = current;
 
     if (debounceMs <= 0) {
       // Background writes already report failures through status and onError.
@@ -277,6 +279,7 @@ export function persist<T extends object>(
       return true;
     }
 
+    const startVersion = getVersion(proxyStore);
     let {state} = envelope;
 
     // Version migration.
@@ -294,10 +297,9 @@ export function persist<T extends object>(
 
     // Build current state for merge.
     const currentSnap = snapshot(proxyStore) as Record<string, unknown>;
-    const currentState: Record<string, unknown> = {};
-    for (const key of propKeys) {
-      currentState[key] = currentSnap[key];
-    }
+    const currentState = Object.fromEntries(
+      propKeys.map((key) => [key, currentSnap[key]]),
+    );
 
     // Merge strategy.
     let merged: Record<string, unknown>;
@@ -312,14 +314,22 @@ export function persist<T extends object>(
     // Merged defaults may still reference frozen snapshot branches. Restore
     // mutable copies without changing snapshots retained by callers or merges.
     const clones = new WeakMap<object, object>();
-    // Apply to store proxy (goes through SET traps → reactivity).
-    for (const key of propKeys) {
-      if (key in merged) {
+    // Each direct data-field assignment advances this store by at most one.
+    // Additional revisions belong to user code (e.g. a synchronous subscriber
+    // normalizing a field). Those edits must still reach storage.
+    let expectedVersion = startVersion;
+    try {
+      for (const key of propKeys) {
+        if (!Object.hasOwn(merged, key)) continue;
+        const before = getVersion(proxyStore);
         (proxyStore as Record<string, unknown>)[key] = cloneSnapshotValue(
           merged[key],
           clones,
         );
+        if (getVersion(proxyStore) !== before) expectedVersion++;
       }
+    } finally {
+      skipAutoSaveVersion = expectedVersion;
     }
     return false;
   }
@@ -353,33 +363,22 @@ export function persist<T extends object>(
         clearTimeout(debounceTimer);
         debounceTimer = null;
       }
-      hydrating = true;
-      let removal: Promise<void> | undefined;
+      let expired: boolean;
       try {
-        // Parse/transform/merge failures belong to this read's decoding stage.
-        // Handle reporting here so thrown callbacks cannot be reported twice.
-        let expired: boolean;
-        try {
-          expired = applyPersistedState(raw);
-        } catch (error) {
-          fail(error, 'parse');
-        }
-        if (expired && clearOnExpire) {
-          removal = enqueueStorageMutation(
-            () => storage.removeItem(name),
-            'remove',
-          );
-        } else {
-          succeeded();
-        }
-      } finally {
-        // Keep the batched notification from writing restored state back.
-        await new Promise<void>((resolve) => queueMicrotask(resolve));
-        hydrating = false;
+        expired = applyPersistedState(raw);
+      } catch (error) {
+        fail(error, 'parse');
       }
-      // Adapter I/O must not suppress auto-saves for later local edits.
-      status.update(readStatus());
-      if (removal) await removal;
+      if (expired && clearOnExpire) {
+        const removal = enqueueStorageMutation(
+          () => storage.removeItem(name),
+          'remove',
+        );
+        status.update(readStatus());
+        await removal;
+      } else {
+        succeeded();
+      }
     } else {
       succeeded();
     }
@@ -405,7 +404,6 @@ export function persist<T extends object>(
     }
     // Suppress writes triggered by mutations from this apply, otherwise
     // tabs ping-pong storage events forever.
-    hydrating = true;
     try {
       if (applyPersistedState(event.newValue) && clearOnExpire) {
         void enqueueStorageMutation(
@@ -418,10 +416,6 @@ export function persist<T extends object>(
       }
     } catch (error) {
       reportError(error, 'parse');
-    } finally {
-      queueMicrotask(() => {
-        hydrating = false;
-      });
     }
   }
 
@@ -486,7 +480,7 @@ export function persist<T extends object>(
     async clear() {
       assertActive();
       hydrationRequest++;
-      clearedVersion = getVersion(proxyStore);
+      skipAutoSaveVersion = getVersion(proxyStore);
       if (debounceTimer !== null) {
         clearTimeout(debounceTimer);
         debounceTimer = null;

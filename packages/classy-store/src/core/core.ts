@@ -1,14 +1,13 @@
 import type {SubscribeOptions} from '../types';
-import {canProxy, findGetterDescriptor} from '../utils/internal/internal';
-import type {DepEntry, StoreInternal} from './core.types';
+import {canProxy, findPropertyDescriptor} from '../utils/internal/internal';
+import type {DepEntry} from './core.types';
+import {StoreInternal} from './ownership';
 
 // ── Global state ──────────────────────────────────────────────────────────────
 
-/** Global version counter shared across all stores. */
-let globalVersion = 0;
-
 /** Maps every store proxy → its internal bookkeeping. */
 const internalsMap = new WeakMap<object, StoreInternal>();
+const targetNodes = new WeakMap<object, StoreInternal>();
 
 // ── Dependency tracking for computed getters ──────────────────────────────────
 
@@ -51,7 +50,7 @@ function recordDep(
       kind: 'version',
       internal: childInternal,
       version: childInternal.version,
-      parentTarget: internal.target,
+      parent: internal,
       prop,
     });
   } else {
@@ -86,9 +85,7 @@ function areDepsValid(deps: DepEntry[]): boolean {
       // If the property was replaced entirely (e.g., store.items = newArray),
       // the old child internal is detached and its version never changes.
       // This check catches that case.
-      if (
-        !Object.is(Reflect.get(dep.parentTarget, dep.prop), dep.internal.target)
-      )
+      if (dep.parent.childInternals.get(dep.prop) !== dep.internal)
         return false;
       if (dep.internal.version !== dep.version) return false;
     } else if (dep.kind === 'computed') {
@@ -162,6 +159,7 @@ export function getInternal(proxy: object): StoreInternal {
   const internal = internalsMap.get(proxy);
   if (!internal)
     throw new Error('@codebelt/classy-store: object is not a store proxy');
+  internal.resumeScope();
   return internal;
 }
 
@@ -175,54 +173,54 @@ export function getInternal(proxy: object): StoreInternal {
  * children keep their old version, so the snapshot cache returns the same frozen ref.
  */
 function notifyMutation(internal: StoreInternal): void {
-  let current: StoreInternal | null = internal;
-  while (current) {
-    current.version = ++globalVersion;
-    current = current.parent;
+  const owners = internal.ancestors();
+  // Invalidate every path before any synchronous subscriber reads a snapshot.
+  for (const node of owners) node.version++;
+  deliver(owners, 'syncListeners');
+  for (const node of owners) {
+    if (!node.batchedListeners.size) continue;
+    if (!pendingNotifications.size) queueMicrotask(flushNotifications);
+    pendingNotifications.add(node);
   }
+}
 
-  const root = getRoot(internal);
-  for (const listener of Array.from(root.syncListeners)) {
+const pendingNotifications = new Set<StoreInternal>();
+
+function flushNotifications(): void {
+  const owners = new Set(pendingNotifications);
+  pendingNotifications.clear();
+  deliver(owners, 'batchedListeners');
+}
+
+function deliver(
+  owners: Set<StoreInternal>,
+  kind: 'syncListeners' | 'batchedListeners',
+): void {
+  const listeners = new Set<() => void>();
+  for (const node of owners) {
+    for (const listener of node[kind].values()) listeners.add(listener);
+  }
+  for (const listener of listeners) {
     try {
       listener();
-    } catch (e) {
-      console.error(e);
+    } catch (error) {
+      console.error(error);
     }
   }
-
-  if (root.batchedListeners.size === 0) return;
-
-  if (!root.notifyScheduled) {
-    root.notifyScheduled = true;
-    queueMicrotask(() => {
-      root.notifyScheduled = false;
-      for (const listener of Array.from(root.batchedListeners)) {
-        try {
-          listener();
-        } catch (e) {
-          console.error(e);
-        }
-      }
-    });
-  }
 }
 
-/** Walk the parent chain to find the root StoreInternal (the notification hub). */
-function getRoot(internal: StoreInternal): StoreInternal {
-  let current = internal;
-  while (current.parent) {
-    current = current.parent;
-  }
-  return current;
-}
-
-/** Release a removed subtree's link to its former owner. */
-function detachChild(internal: StoreInternal, prop: string | symbol): void {
-  const child = internal.childInternals.get(prop);
-  if (!child) return;
-  child.parent = null;
-  internal.childProxies.delete(prop);
-  internal.childInternals.delete(prop);
+function linkChild(
+  owner: StoreInternal,
+  key: string | symbol,
+  value: unknown,
+  pending?: StoreInternal[],
+): StoreInternal | undefined {
+  if (typeof value !== 'object' || value === null) return;
+  const child =
+    internalsMap.get(value) ??
+    (canProxy(value) ? createNode(value, pending) : undefined);
+  if (child) owner.attach(key, child);
+  return child;
 }
 
 /** Native array length writes remove indices without invoking DELETE traps. */
@@ -239,40 +237,17 @@ function detachTruncatedChildren(
       index < 2 ** 32 - 1 &&
       String(index) === prop
     ) {
-      detachChild(internal, prop);
+      internal.detach(prop);
     }
   }
 }
 
 // ── Create proxy (recursive) ──────────────────────────────────────────────────
 
-/**
- * Create an ES6 Proxy around `target` with SET/GET/DELETE traps.
- *
- * This is the core of the library's reactivity. The proxy intercepts:
- * - **SET**: compares old/new with `Object.is`, cleans up child proxies on replacement,
- *   forwards the write, and notifies subscribers.
- * - **GET**: detects class getters (memoized), binds methods to the proxy, lazily wraps
- *   nested objects/arrays in child proxies, and records dependencies for computed getters.
- * - **DELETE**: cleans up child proxies and notifies subscribers.
- *
- * Nested objects are recursively wrapped on first access (lazy deep proxy).
- */
-function createStoreProxy<T extends object>(
-  target: T,
-  parent: StoreInternal | null,
-): T {
-  const internal: StoreInternal = {
-    target,
-    version: ++globalVersion,
-    batchedListeners: new Set(),
-    syncListeners: new Set(),
-    childProxies: new Map(),
-    childInternals: new Map(),
-    parent,
-    notifyScheduled: false,
-    computedCache: new Map(),
-  };
+/** Register one write proxy for the target and index its outgoing data edges. */
+function createNode(target: object, pending?: StoreInternal[]): StoreInternal {
+  const existing = targetNodes.get(target) ?? internalsMap.get(target);
+  if (existing) return existing;
 
   /** Cache for bound methods so we return the same reference each time. */
   const boundMethods = new Map<
@@ -281,10 +256,23 @@ function createStoreProxy<T extends object>(
   >();
 
   const proxy = new Proxy(target, {
-    set(_target, prop, value, _receiver) {
+    set(_target, prop, value, receiver) {
+      internal.resumeScope();
+      const descriptor = findPropertyDescriptor(_target, prop);
+      if (descriptor && !('value' in descriptor)) {
+        // Setters perform their own writes. Use the proxy as `this` so nested
+        // mutations invalidate their actual owners and notify just once.
+        return Reflect.set(_target, prop, value, receiver);
+      }
       const oldValue = Reflect.get(_target, prop);
-      if (Object.is(oldValue, value)) return true; // noop — same value
-
+      const previousChild = internal.childInternals.get(prop);
+      if (
+        Object.hasOwn(_target, prop) &&
+        (Object.is(oldValue, value) ||
+          (previousChild &&
+            (previousChild.proxy === value || previousChild.target === value)))
+      )
+        return true;
       const oldLength =
         Array.isArray(_target) && prop === 'length'
           ? _target.length
@@ -300,7 +288,16 @@ function createStoreProxy<T extends object>(
       if (!written && !truncated) return false;
 
       // Keep the old child connected when a property rejects the write.
-      if (written) detachChild(internal, prop);
+      if (written) {
+        const own = Object.getOwnPropertyDescriptor(_target, prop);
+        if (
+          !own ||
+          !('value' in own) ||
+          !linkChild(internal, prop, own.value)
+        ) {
+          internal.detach(prop);
+        }
+      }
 
       // Drop any cached bound method — the previous binding is dead now.
       boundMethods.delete(prop);
@@ -310,8 +307,9 @@ function createStoreProxy<T extends object>(
     },
 
     get(_target, prop, receiver) {
+      internal.resumeScope();
       // 1. Check for getters on the prototype chain (computed values).
-      const getterDesc = findGetterDescriptor(_target, prop);
+      const getterDesc = findPropertyDescriptor(_target, prop);
       if (getterDesc?.get) {
         // Memoized: evaluate with dependency tracking, return cached if deps unchanged.
         const value = evaluateComputed(
@@ -341,29 +339,19 @@ function createStoreProxy<T extends object>(
         return bound;
       }
 
-      // 3. Nested plain objects/arrays: lazy-wrap in a child proxy.
-      if (canProxy(value)) {
-        let childProxy = internal.childProxies.get(prop);
-        if (!childProxy) {
-          childProxy = createStoreProxy(value as object, internal);
-          internal.childProxies.set(prop, childProxy);
-          const childInternal = internalsMap.get(childProxy) as StoreInternal;
-          internal.childInternals.set(prop, childInternal);
-        }
-        // Record dependency AFTER ensuring child proxy/internal exists.
-        recordDep(internal, prop, value);
-        return childProxy;
-      }
-
-      // 4. Primitives — record dependency and return.
+      // Own data edges are indexed before a retained alias can be mutated.
+      // An inherited data property becomes an edge on its first proxy read.
+      const child =
+        internal.childInternals.get(prop) ?? linkChild(internal, prop, value);
       recordDep(internal, prop, value);
-      return value;
+      return child ? child.proxy : value;
     },
 
     deleteProperty(_target, prop) {
+      internal.resumeScope();
       const deleted = Reflect.deleteProperty(_target, prop);
       if (deleted) {
-        detachChild(internal, prop);
+        internal.detach(prop);
         boundMethods.delete(prop);
         notifyMutation(internal);
       }
@@ -371,8 +359,23 @@ function createStoreProxy<T extends object>(
     },
   });
 
+  const internal = new StoreInternal(target, proxy);
   internalsMap.set(proxy, internal);
-  return proxy;
+  targetNodes.set(target, internal);
+  // Index each raw object once. A work list also permits deep input graphs
+  // and cycles without invoking getters or recursing during construction.
+  if (pending) {
+    pending.push(internal);
+  } else {
+    const nodes = [internal];
+    for (const owner of nodes) {
+      for (const key of Reflect.ownKeys(owner.target)) {
+        const desc = Object.getOwnPropertyDescriptor(owner.target, key);
+        if (desc && 'value' in desc) linkChild(owner, key, desc.value, nodes);
+      }
+    }
+  }
+  return internal;
 }
 
 // ── Public API ────────────────────────────────────────────────────────────────
@@ -395,7 +398,10 @@ function createStoreProxy<T extends object>(
  * ```
  */
 export function createClassyStore<T extends object>(instance: T): T {
-  return createStoreProxy(instance, null);
+  const node = createNode(instance);
+  node.isStoreRoot = true;
+  node.resumeScope();
+  return node.proxy as T;
 }
 
 /**
@@ -416,11 +422,30 @@ export function subscribe(
   const internal = getInternal(proxy);
   // Always subscribe on the root so notifications fire regardless of
   // whether the user subscribes to the root proxy or a child proxy.
-  const root = getRoot(internal);
-  const listeners = options?.sync ? root.syncListeners : root.batchedListeners;
-  listeners.add(callback);
+  const roots = [...internal.ancestors()].filter(
+    (node) => node.isStoreRoot || node.parents.size === 0,
+  );
+  // Cyclic stores still support mutation subscriptions, although snapshot()
+  // rejects cycles. Keep a subscription anchor inside a rootless cycle.
+  if (!roots.length) roots.push(internal);
+  if (roots.some((root) => root !== internal)) {
+    internal.subscriptionRoots ??= new Set();
+    internal.subscriptionRoots.add(roots);
+  }
+  const sets = roots.map((root) =>
+    options?.sync ? root.syncListeners : root.batchedListeners,
+  );
+  // One registration spanning several owners delivers once. Separate calls on
+  // independent stores retain their own registrations for the same function.
+  const notify = () => callback();
+  const key = roots.length === 1 ? callback : notify;
+  for (const listeners of sets) {
+    if (!listeners.has(key)) listeners.set(key, notify);
+  }
   return () => {
-    listeners.delete(callback);
+    internal.subscriptionRoots?.delete(roots);
+    for (const listeners of sets) listeners.delete(key);
+    for (const root of roots) root.suspendIfDetached();
   };
 }
 

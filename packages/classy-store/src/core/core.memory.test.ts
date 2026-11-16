@@ -21,8 +21,10 @@ describe('createClassyStore subtree lifecycle', () => {
     expect(rootListener).not.toHaveBeenCalled();
     expect(retiredListener).toHaveBeenCalledTimes(1);
     expect(getVersion(store)).toBe(rootVersion);
-    expect(getInternal(section).parent).toBeNull();
-    expect(getInternal(row).parent).toBe(getInternal(section));
+    expect(getInternal(section).parents.size).toBe(0);
+    expect(getInternal(row).parents.get(getInternal(section).reference)).toBe(
+      1,
+    );
     expect(snapshot(section).row.value).toBe(3);
     expect(store.section.row.value).toBe(2);
     unsubscribeRoot();
@@ -41,7 +43,7 @@ describe('createClassyStore subtree lifecycle', () => {
     expect(store.rows[1]).not.toBe(retiredRow);
     expect(store.rows[1].value).toBe(3);
     expect(snapshot(store).rows).toEqual([{value: 1}, {value: 3}]);
-    expect(getInternal(retiredRow).parent).toBeNull();
+    expect(getInternal(retiredRow).parents.size).toBe(0);
   });
 
   test('partial array truncation prunes removed children and reports the actual mutation', () => {
@@ -57,8 +59,8 @@ describe('createClassyStore subtree lifecycle', () => {
 
     expect(store.rows.length).toBe(2);
     expect(store.rows[1]).toBe(retainedRow);
-    expect(getInternal(retiredRow).parent).toBeNull();
-    expect(getInternal(store.rows).childProxies.has('3')).toBe(false);
+    expect(getInternal(retiredRow).parents.size).toBe(0);
+    expect(getInternal(store.rows).childInternals.has('3')).toBe(false);
     expect(listener).toHaveBeenCalledTimes(1);
     expect(snapshot(store).rows).toEqual([{value: 0}, {value: 1}]);
     unsubscribe();

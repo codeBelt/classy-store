@@ -1,5 +1,5 @@
 import {afterEach, describe, expect, mock, test} from 'bun:test';
-import {createClassyStore} from '../../core/core';
+import {createClassyStore, subscribe} from '../../core/core';
 import {persist} from './persist';
 import type {PersistHandle} from './persist.types';
 
@@ -22,6 +22,81 @@ afterEach(() => {
 });
 
 describe('persist async operation ordering', () => {
+  test('publishes expiry while asynchronous removal is still pending', async () => {
+    const removal = deferred<void>();
+    const started = deferred<void>();
+    const handle = persist(createClassyStore({count: 0}), {
+      name: 'draft',
+      skipHydration: true,
+      clearOnExpire: true,
+      storage: {
+        getItem: () =>
+          JSON.stringify({version: 0, state: {count: 1}, expiresAt: 0}),
+        setItem: () => {},
+        removeItem() {
+          started.resolve();
+          return removal.promise;
+        },
+      },
+    });
+    handles.push(handle);
+    const hydration = handle.rehydrate();
+    try {
+      await started.promise;
+      await tick();
+      expect(handle.getSnapshot().isExpired).toBe(true);
+    } finally {
+      removal.resolve();
+      await hydration;
+    }
+  });
+
+  test.each([
+    {sync: true, storageEvent: false, subscribeFirst: false},
+    {sync: false, storageEvent: false, subscribeFirst: true},
+    {sync: true, storageEvent: true, subscribeFirst: true},
+    {sync: false, storageEvent: true, subscribeFirst: false},
+  ])(
+    'saves subscriber edits once (sync=$sync, storageEvent=$storageEvent, subscribeFirst=$subscribeFirst)',
+    async ({sync, storageEvent, subscribeFirst}) => {
+      const store = createClassyStore({count: 0, other: 0});
+      const normalize = () => {
+        if (store.count === 1) store.count = 3;
+      };
+      let stop = subscribeFirst
+        ? subscribe(store, normalize, {sync})
+        : undefined;
+      const saved = JSON.stringify({version: 0, state: {count: 1, other: 2}});
+      const setItem = mock((_key: string, _value: string) => {});
+      const handle = persist(store, {
+        name: 'draft',
+        skipHydration: true,
+        syncTabs: storageEvent,
+        storage: {getItem: () => saved, setItem, removeItem: () => {}},
+      });
+      handles.push(handle);
+      stop ??= subscribe(store, normalize, {sync});
+      try {
+        if (storageEvent) {
+          globalThis.dispatchEvent(
+            new StorageEvent('storage', {key: 'draft', newValue: saved}),
+          );
+        } else {
+          await handle.rehydrate();
+        }
+        await tick();
+        expect(store.count).toBe(3);
+        expect(setItem).toHaveBeenCalledTimes(1);
+        expect(JSON.parse(setItem.mock.calls[0][1]).state).toEqual({
+          count: 3,
+          other: 2,
+        });
+      } finally {
+        stop();
+      }
+    },
+  );
+
   test.each([
     {description: 'successful', fails: false},
     {description: 'failed', fails: true},

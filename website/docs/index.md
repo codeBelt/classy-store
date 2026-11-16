@@ -219,7 +219,7 @@ const myStore = createClassyStore(new MyClass());
 
 - **Prototype methods** are automatically bound so `this` mutations go through the proxy; arrow-function fields cannot be rebound
 - **Getters** are automatically memoized — they only recompute when a dependency changes (like MobX `@computed`)
-- **Nested plain objects, arrays, and reactive collections** are lazily deep-proxied on first access; other nested class instances remain opaque
+- **Nested plain objects, arrays, and reactive collections** share a single proxy per object. Retained rows stay reactive after reordering or filtering. Other nested class instances remain opaque
 
 Keep the returned proxy as the mutable store. Writes to the original instance
 or raw nested objects bypass notifications and snapshot invalidation. See the

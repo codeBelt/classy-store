@@ -43,21 +43,24 @@ export function canProxy(value: unknown): value is object {
 }
 
 /**
- * Walk the prototype chain of `target` looking for a getter descriptor for `prop`.
- * Returns the first (most-derived) getter found, or `undefined` if none exists.
- *
- * Used by `core.ts` (GET trap) to detect class getters for memoized evaluation,
- * and by `snapshot.ts` to skip own-property copying for getter-backed keys.
+ * Look up the effective descriptor, respecting own and inherited data properties
+ * that shadow an accessor on a more distant prototype.
  */
-export function findGetterDescriptor(
+export function findPropertyDescriptor(
   target: object,
   prop: string | symbol,
 ): PropertyDescriptor | undefined {
   let proto: object | null = target;
   while (proto) {
     const desc = Object.getOwnPropertyDescriptor(proto, prop);
-    if (desc?.get) return desc;
+    if (desc) return desc;
     proto = Object.getPrototypeOf(proto);
   }
   return undefined;
+}
+
+/** Return the effective getter, respecting a nearer data property. */
+export function findGetterDescriptor(target: object, prop: string | symbol) {
+  const descriptor = findPropertyDescriptor(target, prop);
+  return descriptor?.get ? descriptor : undefined;
 }

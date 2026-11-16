@@ -67,21 +67,20 @@ tsdown.config.ts                # 'src/utils/index.ts' in entry array
 
 Each `persist()` call creates a closure with the following internal state:
 
-| Variable           | Type                                    | Purpose                                                                           |
-| ------------------ | --------------------------------------- | --------------------------------------------------------------------------------- |
-| `disposed`         | `boolean`                               | Guards against writes after `dispose()`                                           |
-| `hydrating`        | `boolean`                               | Suppresses auto-saves while applying restored state and flushing its notification |
-| `debounceTimer`    | `ReturnType<typeof setTimeout> \| null` | Active debounce timer (cancelled on save/clear/dispose or accepted hydration)     |
-| `storageQueue`     | `Promise<void> \| undefined`            | Orders this handle's writes/removals and lets reads wait for prior operations     |
-| `hydrationRequest` | `number`                                | Rejects read results superseded by newer requests or storage events               |
-| `clearedVersion`   | `number \| undefined`                   | Suppresses a pre-clear mutation's pending batched auto-save                       |
-| `hydratedFlag`     | `boolean`                               | Synchronous hydration status                                                      |
-| `expiredFlag`      | `boolean`                               | Set to `true` when hydration encounters expired data                              |
-| `lastError`        | `PersistStatus['lastError']`            | Latest reported failure; cleared after a successful operation                     |
-| `resolveHydrated`  | `() => void`                            | Resolves the `hydrated` promise                                                   |
-| `resolvedProps`    | `Array<{key, transform?}>`              | Normalized property list with optional transforms                                 |
-| `transformMap`     | `Map<string, PropertyTransform>`        | Fast lookup from key to transform                                                 |
-| `propKeys`         | `string[]`                              | Flat list of property keys to persist                                             |
+| Variable              | Type                                    | Purpose                                                                       |
+| --------------------- | --------------------------------------- | ----------------------------------------------------------------------------- |
+| `disposed`            | `boolean`                               | Guards against writes after `dispose()`                                       |
+| `debounceTimer`       | `ReturnType<typeof setTimeout> \| null` | Active debounce timer (cancelled on save/clear/dispose or accepted hydration) |
+| `storageQueue`        | `Promise<void> \| undefined`            | Orders this handle's writes/removals and lets reads wait for prior operations |
+| `hydrationRequest`    | `number`                                | Rejects read results superseded by newer requests or storage events           |
+| `skipAutoSaveVersion` | `number \| undefined`                   | Skips a restored, cleared, or already scheduled revision                      |
+| `hydratedFlag`        | `boolean`                               | Synchronous hydration status                                                  |
+| `expiredFlag`         | `boolean`                               | Set to `true` when hydration encounters expired data                          |
+| `lastError`           | `PersistStatus['lastError']`            | Latest reported failure; cleared after a successful operation                 |
+| `resolveHydrated`     | `() => void`                            | Resolves the `hydrated` promise                                               |
+| `resolvedProps`       | `Array<{key, transform?}>`              | Normalized property list with optional transforms                             |
+| `transformMap`        | `Map<string, PropertyTransform>`        | Fast lookup from key to transform                                             |
+| `propKeys`            | `string[]`                              | Flat list of property keys to persist                                         |
 
 Bookkeeping is per handle. Handles on the same store still observe each other's applied mutations, and handles using the same storage key can overwrite one another. Their queues do not coordinate with each other.
 
@@ -156,8 +155,9 @@ Async reads first wait for prior writes/removals. They capture a request number
 and the store version, and only apply their result if both are still current and
 the handle remains active. A newer read/save/clear/storage event changes the
 request number; a local edit changes the store version. Obsolete results and
-read errors are ignored. Applying hydration suppresses echo writes until the
-batched subscription notification has run, with cleanup in `finally`.
+read errors are ignored. A restore records the revision attributable to its direct field assignments.
+The batched save skips that revision. Additional writes by synchronous or
+batched subscribers advance the revision and are saved.
 
 ```
 1. JSON.parse(raw) → envelope
@@ -279,7 +279,7 @@ graph LR
 `persist` has no React runtime dependency. Its public contracts live in `persist.types.ts` and are exported by `utils/index.ts`. Transform types use `Snapshot` from the public core `types.ts`. Runtime helpers include:
 
 - `subscribe()` -- to listen for store mutations
-- Internal `getVersion()` -- to reject stale reads and suppress pre-clear auto-saves
+- Internal `getVersion()` -- to reject stale reads and identify restored or cleared revisions
 - `snapshot()` -- to read cached state for serialization
 - `findGetterDescriptor()` -- to detect class getters during property resolution
 - `createUtilityStatus()` -- to cache and publish utility status

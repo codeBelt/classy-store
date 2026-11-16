@@ -74,6 +74,29 @@ describe('cloneSnapshotValue', () => {
     expect(source).toHaveLength(5);
   });
 
+  it('restores own getters and setters when cloning a nested snapshot', () => {
+    const store = createClassyStore({
+      record: {
+        count: 2,
+        get value() {
+          return this.count;
+        },
+        set value(n: number) {
+          this.count = n;
+        },
+      },
+    });
+    const old = snapshot(store);
+    const record = cloneSnapshotValue(
+      old.record,
+      new WeakMap(),
+    ) as typeof store.record;
+    record.value = 5;
+    expect(record.count).toBe(5);
+    expect(record.value).toBe(5);
+    expect(old.record.value).toBe(2);
+  });
+
   it('restores live prototype getters from memoized snapshots', () => {
     class Profile {
       static [PROXYABLE] = true;

@@ -1,8 +1,7 @@
 import {markToTrack} from 'proxy-compare';
 import {getInternal} from '../core/core';
-import type {StoreInternal} from '../core/core.types';
+import type {StoreInternal} from '../core/ownership';
 import type {Snapshot} from '../types';
-import {canProxy, findGetterDescriptor} from '../utils/internal/internal';
 
 // ── Caches ────────────────────────────────────────────────────────────────────
 
@@ -13,13 +12,6 @@ import {canProxy, findGetterDescriptor} from '../utils/internal/internal';
 const snapshotCache = new WeakMap<object, [version: number, snap: object]>();
 
 /**
- * Cache for untracked nested objects (never accessed through the proxy).
- * Key: the raw mutable object → frozen deep clone.
- * Safe because untracked objects can't be mutated through the proxy.
- */
-const untrackedCache = new WeakMap<object, object>();
-
-/**
  * Per-snapshot, per-getter cache. Ensures repeated access to the same getter
  * on the same frozen snapshot returns the identical reference.
  */
@@ -28,12 +20,15 @@ const snapshotGetterCache = new WeakMap<
   Map<string | symbol, unknown>
 >();
 
-// Restoration must distinguish generated memoization getters from user accessors.
-const memoizedSnapshotGetters = new WeakSet<() => unknown>();
+// A mutable restore needs the user's own descriptor, or the inherited getter
+// already present on the clone's prototype.
+const originalAccessors = new WeakMap<
+  () => unknown,
+  PropertyDescriptor | null
+>();
 
-/** Internal helper for restoring live prototype getters from a snapshot. */
-export function isMemoizedSnapshotGetter(getter: (() => unknown) | undefined) {
-  return getter !== undefined && memoizedSnapshotGetters.has(getter);
+export function originalSnapshotAccessor(getter: (() => unknown) | undefined) {
+  return getter && originalAccessors.get(getter);
 }
 
 // ── Cross-snapshot getter memoization ─────────────────────────────────────────
@@ -183,132 +178,44 @@ function markSnapshotForTracking(value: object): void {
   markToTrack(value, !hasObjectSymbol);
 }
 
-/**
- * Resolve a single property value into its snapshot equivalent.
- *
- * - If the key has a tracked child internal → recurse (version-cached, structural sharing).
- * - If the value is a nested plain object/array without tracking → deep-clone & freeze (cached by identity).
- * - Otherwise → return the value as-is (primitive, Date, Map, function, etc.).
- */
+/** Return the versioned snapshot for a data edge, or its opaque/primitive value. */
 function snapshotValue(
   value: unknown,
-  parentInternal: StoreInternal,
+  parent: StoreInternal,
   key: string | symbol,
   inProgress: WeakSet<object>,
 ): unknown {
-  const childInternal = parentInternal.childInternals.get(key);
-  if (childInternal) {
-    return createSnapshotRecursive(
-      childInternal.target,
-      childInternal,
-      inProgress,
-    );
-  }
-  if (canProxy(value)) {
-    return deepFreezeClone(value as object, inProgress);
-  }
-  return value;
+  const child = parent.childInternals.get(key);
+  return child
+    ? createSnapshotRecursive(child.target, child, inProgress)
+    : value;
 }
 
-/**
- * Deep-clone and freeze a plain object or array that is NOT tracked by a proxy.
- * Cached by raw object identity for structural sharing across snapshots.
- */
-function deepFreezeClone(value: object, inProgress: WeakSet<object>): object {
-  const cached = untrackedCache.get(value);
-  if (cached) return cached;
-  if (inProgress.has(value)) {
-    throw new Error(
-      '@codebelt/classy-store: circular reference detected in snapshot',
-    );
-  }
-  inProgress.add(value);
-
-  let clone: Record<string | symbol, unknown> | unknown[];
-
-  if (Array.isArray(value)) {
-    clone = [];
-    for (let i = 0; i < value.length; i++) {
-      const item = value[i];
-      (clone as unknown[])[i] = canProxy(item)
-        ? deepFreezeClone(item as object, inProgress)
-        : item;
-    }
-  } else {
-    clone = Object.create(Object.getPrototypeOf(value));
-    for (const key of Reflect.ownKeys(value)) {
-      const desc = Object.getOwnPropertyDescriptor(value, key);
-      if (!desc || !('value' in desc)) continue;
-      const item = desc.value;
-      (clone as Record<string | symbol, unknown>)[key] = canProxy(item)
-        ? deepFreezeClone(item as object, inProgress)
-        : item;
-    }
-  }
-
-  // Class and null-prototype snapshots need an explicit opt-in for read tracking.
-  // Only cloned state is marked; opaque leaves retain their existing behavior.
-  markSnapshotForTracking(clone);
-  Object.freeze(clone);
-  untrackedCache.set(value, clone);
-  inProgress.delete(value);
-  return clone;
-}
-
-/**
- * Collect all getter descriptors from the prototype chain of `target`.
- * Returns an array of [propertyName, getterFunction] pairs.
- *
- * Only includes getters defined on the prototype (class getters), not on the
- * instance itself. When a getter is overridden in a subclass, the most-derived
- * version wins (we walk from the instance's direct prototype upward and skip
- * keys already seen).
- */
-function collectGetters(
-  target: object,
-): Array<[string | symbol, () => unknown]> {
-  const getters: Array<[string | symbol, () => unknown]> = [];
+/** Install the nearest accessor for each key without invoking user code. */
+function installMemoizedGetters(snap: object, target: object): void {
   const seen = new Set<string | symbol>();
-  let proto: object | null = Object.getPrototypeOf(target);
+  let proto: object | null = target;
   while (proto && proto !== Object.prototype) {
     for (const key of Reflect.ownKeys(proto)) {
-      if (key === 'constructor') continue;
-      if (seen.has(key)) continue; // most-derived version already collected
-      const desc = Object.getOwnPropertyDescriptor(proto, key);
-      if (desc?.get) {
-        getters.push([key, desc.get]);
-        seen.add(key);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const descriptor = Object.getOwnPropertyDescriptor(proto, key);
+      if (!descriptor || 'value' in descriptor) continue;
+      const getter = descriptor.get;
+      function memoizedGetter(this: object) {
+        return getter
+          ? evaluateSnapshotGetter(this, target, key, getter)
+          : undefined;
       }
+      const own = proto === target;
+      originalAccessors.set(memoizedGetter, own ? descriptor : null);
+      Object.defineProperty(snap, key, {
+        get: memoizedGetter,
+        enumerable: own ? descriptor.enumerable : true,
+        configurable: true,
+      });
     }
     proto = Object.getPrototypeOf(proto);
-  }
-  return getters;
-}
-
-/**
- * Install lazy-memoizing getters on a snapshot object.
- *
- * Each getter uses cross-snapshot memoization:
- * - Tracks which `this` properties the getter reads on first evaluation.
- * - On subsequent snapshots, if those properties are structurally the same
- *   (thanks to structural sharing), the previous result is returned.
- * - Within the same snapshot, repeated accesses always return the same ref.
- */
-function installMemoizedGetters(
-  snap: Record<string | symbol, unknown>,
-  target: object,
-): void {
-  const getters = collectGetters(target);
-  for (const [key, getterFn] of getters) {
-    function memoizedGetter(this: object) {
-      return evaluateSnapshotGetter(this, target, key, getterFn);
-    }
-    memoizedSnapshotGetters.add(memoizedGetter);
-    Object.defineProperty(snap, key, {
-      get: memoizedGetter,
-      enumerable: true,
-      configurable: true, // required so Object.freeze can make it non-configurable
-    });
   }
 }
 
@@ -317,7 +224,7 @@ function installMemoizedGetters(
  *
  * Each node checks its version-stamped cache first (O(1) hit). On a miss,
  * it builds a new frozen object by recursing into child internals (tracked
- * sub-trees) and deep-cloning untracked nested objects. Unchanged children
+ * sub-trees). Unchanged children
  * return the same cached reference, achieving structural sharing -- the key
  * to efficient `Object.is` equality in selectors.
  *
@@ -329,9 +236,6 @@ function createSnapshotRecursive<T extends object>(
   internal: StoreInternal,
   inProgress: WeakSet<object> = new WeakSet(),
 ): T {
-  // Lazy proxy creation promotes previously untracked data to versioned caching.
-  // Its obsolete deep clone must not retain removed data for the live target.
-  untrackedCache.delete(target);
   // Cache hit: version unchanged → return the same frozen snapshot reference.
   const cached = snapshotCache.get(target);
   if (cached && cached[0] === internal.version) {
@@ -361,18 +265,15 @@ function createSnapshotRecursive<T extends object>(
     // Preserve the prototype chain and install memoized getters on the snapshot.
     snap = Object.create(Object.getPrototypeOf(target));
     for (const key of Reflect.ownKeys(target)) {
-      // Skip prototype getters — they re-evaluate via the preserved prototype.
-      if (findGetterDescriptor(target, key)?.get) continue;
-
       const desc = Object.getOwnPropertyDescriptor(target, key);
       if (!desc || !('value' in desc)) continue;
-
-      (snap as Record<string | symbol, unknown>)[key] = snapshotValue(
-        desc.value,
-        internal,
-        key,
-        inProgress,
-      );
+      // Assignment can call an inherited setter (including Object.prototype.__proto__).
+      Object.defineProperty(snap, key, {
+        value: snapshotValue(desc.value, internal, key, inProgress),
+        enumerable: desc.enumerable,
+        configurable: true,
+        writable: true,
+      });
     }
 
     // Install lazy-memoizing getters with cross-snapshot caching.
