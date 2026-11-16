@@ -1,0 +1,31 @@
+{
+  "title": "Classy Store",
+  "pages": [
+    "index",
+    "API_REFERENCE",
+    "---Frameworks---",
+    "TUTORIAL",
+    "REACT_SCOPING",
+    "REACT_SSR",
+    "REACT_NEXT",
+    "VUE",
+    "SVELTE",
+    "SOLID",
+    "ANGULAR",
+    "---Task guides---",
+    "PATTERNS",
+    "REACTIVE_COLLECTIONS_TUTORIAL",
+    "PERSIST_TUTORIAL",
+    "HISTORY_TUTORIAL",
+    "SUBSCRIBE_KEY_TUTORIAL",
+    "DEVTOOLS_TUTORIAL",
+    "---Upgrading---",
+    "UPGRADING_0_11",
+    "UPGRADING_0_8",
+    "UPGRADING_0_7",
+    "---Architecture---",
+    "ARCHITECTURE",
+    "PERSIST_ARCHITECTURE",
+    "ABOUT"
+  ]
+}
