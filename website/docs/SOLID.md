@@ -1,6 +1,6 @@
 # Solid 2 integration
 
-The `/solid` adapter targets **Solid 2.0.0-rc.18 only**. Solid 2 is a release
+The `/solid` adapter is **in preview** and targets **Solid 2.0.0-rc.18 only**. Solid 2 is a release
 candidate, so pin this exact version. Solid 1 is no longer supported by this
 adapter. The import and return shape stay the same:
 
@@ -18,7 +18,7 @@ npm install @codebelt/classy-store solid-js@2.0.0-rc.18 @solidjs/web@2.0.0-rc.18
 ```
 
 The repository example uses `@solidjs/vite-plugin@3.0.0-next.51`,
-`@solidjs/compiler@2.0.0-rc.18`, and Vite `8.3.5`. The Vite plugin requires
+`@solidjs/compiler@2.0.0-rc.18`, and Vite `8.3.8`. The Vite plugin requires
 Node.js 22.12 or later. Use `@solidjs/web` for DOM imports and
 `jsxImportSource: "@solidjs/web"` in TypeScript configuration. Replace the
 Solid 1 `vite-plugin-solid` package with `@solidjs/vite-plugin`.
@@ -47,7 +47,10 @@ class FormStore {
     this.text = text;
   }
   replaceItems() {
-    this.items = [{id: 1, label: 'Updated'}, {id: 2, label: 'Second'}];
+    this.items = [
+      {id: 1, label: 'Updated'},
+      {id: 2, label: 'Second'},
+    ];
   }
 }
 
@@ -74,8 +77,12 @@ export function Form() {
           onInput={(event) => formStore.setText(event.currentTarget.value)}
         />
       </label>
-      <p>{uppercase()} ({state().length} characters)</p>
-      <button type="button" onClick={handleReset}>Reset</button>
+      <p>
+        {uppercase()} ({state().length} characters)
+      </p>
+      <button type="button" onClick={handleReset}>
+        Reset
+      </button>
       <button type="button" onClick={() => formStore.replaceItems()}>
         Replace items
       </button>

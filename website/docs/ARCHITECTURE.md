@@ -15,11 +15,11 @@ flowchart TB
   subgraph layer1 ["Layer 1: Write Proxy (core.ts)"]
     storeFn["createClassyStore(instance)"]
     SetTrap["SET trap: forward write → bump version → notify subscribers"]
-    GetTrap["GET trap: return value, bind methods, lazy-wrap nested objects, memoize getters"]
+    GetTrap["GET trap: return value, bind methods, reuse nested proxies, memoize getters"]
     DeleteTrap["DELETE trap: same as SET"]
     Batch["queueMicrotask: coalesce synchronous mutations → 1 notification"]
     SyncNotify["sync listeners: notify immediately per mutation"]
-    DeepProxy["Lazy deep proxy: nested objects/arrays wrapped on first access"]
+    DeepProxy["Ownership graph: one node per reactive object"]
   end
 
   subgraph layer2 ["Layer 2: Snapshot (snapshot.ts)"]
@@ -75,7 +75,8 @@ packages/classy-store/
 │   ├── types.ts                         # Public Snapshot<T> and SubscribeOptions
 │   ├── core/
 │   │   ├── core.ts                      # Write proxies, subscriptions, computed getters
-│   │   ├── core.types.ts                # Internal dependency and store bookkeeping types
+│   │   ├── core.types.ts                # Computed dependency types
+│   │   ├── ownership.ts                 # Shared nodes, parent links, detached subtrees
 │   │   ├── core.computed.test.ts        # Write-proxy getter memoization
 │   │   └── core.ownership.test.ts       # Child ownership and subscription cleanup
 │   ├── snapshot/
@@ -169,42 +170,39 @@ sequenceDiagram
 
 ### Internal State Storage
 
-All internal bookkeeping is stored in a `WeakMap<proxy, StoreInternal>`:
+The core uses weak maps to find a node by its raw object or its proxy. Each node
+has a version, its outgoing property edges, and a count of edges from each
+owner. Creating a store or assigning a new graph indexes its own data fields
+without evaluating accessors. Reordering a list or assigning a filtered array
+reuses the nodes for retained rows.
 
-```typescript
-type StoreInternal = {
-  target: object;                           // Raw class instance
-  version: number;                          // Monotonically increasing
-  batchedListeners: Set<() => void>;        // Subscribers notified once per microtask
-  syncListeners: Set<() => void>;           // Subscribers notified immediately per mutation
-  childProxies: Map<string|symbol, object>; // Cached child proxies
-  childInternals: Map<string|symbol, StoreInternal>;
-  parent: StoreInternal | null;             // For version propagation
-  notifyScheduled: boolean;                 // Batch dedup flag
-  computedCache: Map<string|symbol, ComputedEntry>; // Memoized getter cache
-};
-```
+A mutation increments each reachable owner's version once before subscribers
+run. An unobserved container that loses its last owner releases its outgoing
+notification links. If a caller uses that detached container again, its saved
+child versions identify edits to shared rows made while it was detached.
 
 ### Proxy Traps
 
 **SET trap:**
+
 1. Compare old and new values with `Object.is` — noop if equal
-2. Forward the write to the raw target via `Reflect.set`
+2. Forward data writes to the raw target. Invoke accessors with the store proxy as their receiver so setter mutations use the same write path.
 3. After a successful write, detach the old child proxy and clear the bound-method cache. Array length truncation detaches removed children, including partial truncation when a non-configurable index rejects the requested length. An otherwise failed write preserves the old connection.
 4. Bump version for this node and all ancestors
 5. Notify sync listeners immediately, then schedule batched listeners via `queueMicrotask` (deduped)
 
 **GET trap (priority order):**
+
 1. **Memoized getter detection** — walk prototype chain with `Object.getOwnPropertyDescriptor`. If a getter is found, call `evaluateComputed()` which checks dependency validity and returns the cached result or re-evaluates with dependency tracking.
 2. **Method binding** — if value is a function, bind to proxy so `this.count++` in methods goes through the SET trap. Bound methods are cached.
-3. **Nested state** — if `canProxy()` accepts it (plain object, array, or a class such as the library's reactive collections using the internal opt-in), lazily wrap it in a cached child proxy. Record a dependency if a getter is currently being tracked.
+3. **Nested state** — if `canProxy()` accepts it (plain object, array, or a class such as the library's reactive collections using the internal opt-in), return its canonical child proxy. Record a dependency if a getter is currently being tracked.
 4. **Primitives and opaque values** — return as-is and record a value dependency when a getter is being tracked.
 
 **DELETE trap:** Attempt `Reflect.deleteProperty` first. On success, detach the child, clear the bound-method cache, bump versions, and notify. A failed deletion preserves the connection.
 
 ### Batching via `queueMicrotask`
 
-Array operations like `push()` trigger multiple SET traps (element + length). For ordinary listeners, a dirty flag + `queueMicrotask` coalesces these mutations into one notification:
+Array operations like `push()` trigger multiple SET traps (element + length). For ordinary listeners, a set of pending owners and one microtask coalesce these mutations into one notification:
 
 ```
 store.items.push('a')
@@ -245,7 +243,7 @@ When a nested property mutates, versions bump from the mutated node up to the ro
 
 ```mermaid
 graph TD
-  Root["Root (v=10 → v=13)"] --> User["user (v=11 → v=12)"]
+  Root["Root (v=10 → v=11)"] --> User["user (v=11 → v=12)"]
   Root --> Settings["settings (v=5, unchanged)"]
   User --> Name["name = 'Bob' (mutation here, v=12)"]
   User --> Age["age = 30 (unchanged)"]
@@ -269,11 +267,8 @@ flowchart TD
   CreateSnap --> IterateKeys["For each own key"]
   IterateKeys --> CheckChild{"Has child\ninternal?"}
   CheckChild -->|Yes| Recurse["Recurse: createSnapshotRecursive(child)"]
-  CheckChild -->|No| CheckProxy{"canProxy(value)?"}
-  CheckProxy -->|Yes| DeepClone["deepFreezeClone (cached by identity)"]
-  CheckProxy -->|No| CopyValue["Copy primitive or opaque reference"]
-  Recurse --> AssignProp["Assign to snapshot"]
-  DeepClone --> AssignProp
+  CheckChild -->|No| CopyValue["Copy primitive or opaque reference"]
+  Recurse --> AssignProp["Define own data property"]
   CopyValue --> AssignProp
   AssignProp --> IterateKeys
   IterateKeys -->|Done| Freeze["Object.freeze(snapshot)"]
@@ -281,13 +276,13 @@ flowchart TD
   Cache --> Return["Return frozen snapshot"]
 ```
 
-### Two Cache Strategies
+### Snapshot cache
 
-1. **Tracked sub-trees** (`snapshotCache` — `WeakMap<rawTarget, [version, frozenSnap]>`):
-   Objects that have been accessed through the proxy have a `StoreInternal` with version tracking. The snapshot recurses into them and uses version-stamped caching for structural sharing.
-
-2. **Untracked sub-trees** (`untrackedCache` — `WeakMap<rawObject, frozenClone>`):
-   Supported objects not yet accessed through the proxy are cloned and frozen, with a cache keyed by raw identity. Correctness assumes callers mutate through the store proxy. Promotion to a versioned child removes the obsolete untracked cache entry. Raw-object mutation bypasses invalidation and is unsupported.
+Each reactive object has one versioned snapshot shared across all paths to
+that object. Snapshots copy own data properties, including JSON keys named
+`__proto__`, and preserve the prototype. Own accessors and class getters read
+against that snapshot. Mutate state through the live store proxy to invalidate
+the affected versions.
 
 ### Structural Sharing Example
 
@@ -312,7 +307,9 @@ Snapshots preserve the prototype chain and install lazy-memoizing getters on eac
 ```typescript
 class Store {
   count = 5;
-  get doubled() { return this.count * 2; }
+  get doubled() {
+    return this.count * 2;
+  }
 }
 
 const snap = snapshot(createClassyStore(new Store()));
@@ -344,6 +341,7 @@ flowchart TD
 ```
 
 **Dependency types:**
+
 - **Sub-tree dep** (`kind: 'version'`): the getter read a nested object/array. Validated by comparing `internal.version` — O(1) per dep.
 - **Value dep** (`kind: 'value'`): a primitive or opaque value read. Validation checks property existence and `Object.is(target[prop], recordedValue)`.
 - **Computed dep** (`kind: 'computed'`): a read of another computed getter. Validation checks that getter's cached result and dependencies recursively.
@@ -373,12 +371,14 @@ flowchart TD
 ```
 
 **Cross-snapshot mechanism:**
+
 1. First evaluation: a lightweight tracking Proxy records which `this` properties the getter reads and their values.
 2. On subsequent snapshots: for each recorded property, check `Object.is(currentSnap[prop], previousValue)`.
 3. Structural sharing guarantees that unchanged sub-trees have the same reference — so if `this.todos` hasn't changed, the reference comparison passes and the cached result is returned.
 4. For getters reading other getters (e.g., `get filteredCount() { return this.filtered.length; }`): the inner getter is itself memoized, so it returns a stable reference, which the outer getter's dep check recognizes as unchanged.
 
 **Impact on `useClassyStore`:** The existing hook benefits automatically — no changes needed:
+
 - **Selector mode:** `useClassyStore(store, (state) => state.filtered)` gets a stable reference from the memoized snapshot getter. `Object.is` correctly detects "no change" without `shallowEqual`.
 - **Auto-tracked mode:** `proxy-compare`'s `isChanged` gets stable references from snapshot getters, reducing false positives.
 
@@ -424,6 +424,7 @@ sequenceDiagram
 ```
 
 **Equality chain:**
+
 1. Same store, selector, equality function, and snapshot reference? → reuse the cached result (O(1))
 2. Run selector → compare result with `Object.is` (or `options.isEqual`)
 3. Same result → return previous reference (no re-render)
@@ -453,6 +454,7 @@ The adapter follows the operation-record/Set layout of the pinned `proxy-compare
 Snapshot creation marks only library-created snapshot nodes with `markToTrack`, including class and null-prototype objects. This enables field tracking without altering opaque leaves such as native maps and dates. Nodes containing object-valued symbol fields use whole-node comparison to avoid a frozen-symbol limitation in `proxy-compare` 3; updates remain reactive with coarser render filtering.
 
 **How `proxy-compare` works:**
+
 - `createProxy(snapshot, affected)` records properties read into the render's map; committed records are retained separately with weak snapshot keys.
 - `isChanged(previousSnapshot, nextSnapshot, affected)` checks whether a tracked property differs.
 - Unchanged tracked properties suppress subscription-driven renders; `snapshot()` retains its existing identity cache and structural sharing.
@@ -525,6 +527,7 @@ ES6 Proxy supports intercepting property creation, deletion, and arbitrary key a
 ### Why `queueMicrotask` for batching?
 
 `queueMicrotask` runs after the current synchronous code but before the next paint/timer. For ordinary subscribers, this means:
+
 - Multiple mutations in the same event handler → 1 notification
 - Array `push` (which triggers multiple SET traps) → 1 notification
 - Delivery runs at the microtask checkpoint without waiting for an animation frame
@@ -540,6 +543,7 @@ Without structural sharing, `Object.is(prevSelector, nextSelector)` would always
 ### Why `useSyncExternalStore` instead of `useState` + `useEffect`?
 
 `useSyncExternalStore` is React's official API for external stores. It:
+
 - Prevents tearing (concurrent mode safe)
 - Integrates with React's scheduler
 - Works with server-side rendering (via `getServerSnapshot`)
@@ -548,6 +552,7 @@ Without structural sharing, `Object.is(prevSelector, nextSelector)` would always
 ### Why `WeakMap` for internal state?
 
 Storing internals in a `WeakMap<proxy, StoreInternal>` instead of on the proxy itself:
+
 - Doesn't pollute the user's object with library metadata
 - Allows garbage collection when the store is no longer referenced
 - Prevents conflicts with user-defined properties
@@ -566,16 +571,16 @@ No special handling is needed — three mechanisms in the existing design make i
 
 ## Performance Characteristics
 
-| Operation | Complexity | Notes |
-|-----------|-----------|-------|
-| Data property read | Prototype lookup plus lazy wrapping | Getter detection walks the prototype chain; existing child proxies are reused |
-| Property write | O(store depth), plus notifications | Versions bump to the root; array truncation also inspects tracked children |
-| Notification | O(listeners), plus callback work | React checks run per mutation; snapshot, selector, and render costs are additional |
-| Getter (cache hit) | Depends on recorded dependencies | Nested computed dependencies are validated recursively |
-| Getter (cache miss) | O(getter body) | Re-evaluates with dep tracking |
-| Snapshot (cache hit) | O(1) | Version check only |
-| Snapshot (cache miss) | Proportional to visited fields/elements | Rebuilds changed containers and scans their entries; unchanged child snapshots are reused |
-| Snapshot getter (same snap) | O(1) | Per-snapshot cache hit |
-| Snapshot getter (cross-snap) | O(deps) | Reference comparison via structural sharing |
-| Selector equality | O(1) for primitives | `Object.is` check |
-| Auto-track diff | Depends on tracked operations | Nested reads, enumeration, and whole-node comparisons can require more work |
+| Operation                    | Complexity                                   | Notes                                                                                     |
+| ---------------------------- | -------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| Data property read           | Prototype lookup and proxy lookup            | Getter detection walks the prototype chain and existing child proxies are reused          |
+| Property write               | O(reachable owner edges), plus notifications | New values are indexed on attachment. Array truncation also inspects indexed children.    |
+| Notification                 | O(listeners), plus callback work             | React checks run per mutation; snapshot, selector, and render costs are additional        |
+| Getter (cache hit)           | Depends on recorded dependencies             | Nested computed dependencies are validated recursively                                    |
+| Getter (cache miss)          | O(getter body)                               | Re-evaluates with dep tracking                                                            |
+| Snapshot (cache hit)         | O(1)                                         | Version check only                                                                        |
+| Snapshot (cache miss)        | Proportional to visited fields/elements      | Rebuilds changed containers and scans their entries; unchanged child snapshots are reused |
+| Snapshot getter (same snap)  | O(1)                                         | Per-snapshot cache hit                                                                    |
+| Snapshot getter (cross-snap) | O(deps)                                      | Reference comparison via structural sharing                                               |
+| Selector equality            | O(1) for primitives                          | `Object.is` check                                                                         |
+| Auto-track diff              | Depends on tracked operations                | Nested reads, enumeration, and whole-node comparisons can require more work               |

@@ -668,45 +668,46 @@ describe('useClassyStore — selector edge cases', () => {
   it.each([
     {description: 'direct hook', bound: false},
     {description: 'bound hook', bound: true},
-  ])('updates prop-dependent selectors without a store mutation ($description)', async ({
-    bound,
-  }) => {
-    const store = createClassyStore({names: ['Alice', 'Bob']});
-    const useStore = createStoreHook(store);
+  ])(
+    'updates prop-dependent selectors without a store mutation ($description)',
+    async ({bound}) => {
+      const store = createClassyStore({names: ['Alice', 'Bob']});
+      const useStore = createStoreHook(store);
 
-    function DirectDisplay({index}: {index: number}) {
-      const name = useClassyStore(store, (state) => state.names[index]);
-      return <div>{name}</div>;
-    }
+      function DirectDisplay({index}: {index: number}) {
+        const name = useClassyStore(store, (state) => state.names[index]);
+        return <div>{name}</div>;
+      }
 
-    function BoundDisplay({index}: {index: number}) {
-      const name = useStore((state) => state.names[index]);
-      return <div>{name}</div>;
-    }
+      function BoundDisplay({index}: {index: number}) {
+        const name = useStore((state) => state.names[index]);
+        return <div>{name}</div>;
+      }
 
-    const Display = bound ? BoundDisplay : DirectDisplay;
-    setup();
-    const root = createRoot(container);
+      const Display = bound ? BoundDisplay : DirectDisplay;
+      setup();
+      const root = createRoot(container);
 
-    try {
-      act(() => root.render(<Display index={0} />));
-      expect(container.textContent).toBe('Alice');
+      try {
+        act(() => root.render(<Display index={0} />));
+        expect(container.textContent).toBe('Alice');
 
-      act(() => root.render(<Display index={1} />));
-      expect(container.textContent).toBe('Bob');
+        act(() => root.render(<Display index={1} />));
+        expect(container.textContent).toBe('Bob');
 
-      await act(async () => {
-        store.names[1] = 'Bobby';
-        await flush();
-      });
-      expect(container.textContent).toBe('Bobby');
+        await act(async () => {
+          store.names[1] = 'Bobby';
+          await flush();
+        });
+        expect(container.textContent).toBe('Bobby');
 
-      act(() => root.render(<Display index={0} />));
-      expect(container.textContent).toBe('Alice');
-    } finally {
-      act(() => root.unmount());
-    }
-  });
+        act(() => root.render(<Display index={0} />));
+        expect(container.textContent).toBe('Alice');
+      } finally {
+        act(() => root.unmount());
+      }
+    },
+  );
 
   it('reevaluates the selection when the equality function changes', async () => {
     const store = createClassyStore({count: 0});

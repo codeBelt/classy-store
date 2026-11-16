@@ -5,6 +5,7 @@ const outputFile = new URL('../static/llms-full.txt', import.meta.url);
 const docsUrl = 'https://codebelt.github.io/classy-store/docs/';
 const introduction = [
   'index.md',
+  'UPGRADING_0_11.md',
   'UPGRADING_0_8.md',
   'UPGRADING_0_7.md',
   'TUTORIAL.md',

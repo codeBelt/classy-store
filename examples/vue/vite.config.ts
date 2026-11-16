@@ -9,21 +9,21 @@ export default defineConfig({
       {
         find: '@codebelt/classy-store/vue',
         replacement: path.resolve(
-          __dirname,
+          import.meta.dirname,
           '../../packages/classy-store/src/frameworks/vue/vue.ts',
         ),
       },
       {
         find: '@codebelt/classy-store/utils',
         replacement: path.resolve(
-          __dirname,
+          import.meta.dirname,
           '../../packages/classy-store/src/utils/index.ts',
         ),
       },
       {
         find: '@codebelt/classy-store',
         replacement: path.resolve(
-          __dirname,
+          import.meta.dirname,
           '../../packages/classy-store/src/index.ts',
         ),
       },

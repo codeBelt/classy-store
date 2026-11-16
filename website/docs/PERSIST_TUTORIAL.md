@@ -73,7 +73,7 @@ By default, `persist()` selects string-keyed data fields from the initial snapsh
 persist(todoStore, {
   storage: localStorage,
   name: 'todo-store',
-  properties: ['todos'],  // Only persist todos, not filter
+  properties: ['todos'], // Only persist todos, not filter
 });
 ```
 
@@ -95,37 +95,37 @@ Here is a quick overview of every configuration option and handle method. You wo
 import {persist} from '@codebelt/classy-store/utils';
 
 const handle = persist(todoStore, {
-  name: 'TodoStore',         // Unique storage key (required)
-  properties: ['todos'],     // Omit for initial data fields; [] persists no properties
-  storage: localStorage,     // Required adapter with getItem/setItem/removeItem; no default
-  debounce: 500,             // Coalesce rapid mutations into one write, in ms (default: 0)
-  version: 0,                // Schema version number; triggers migrate when mismatched (default: 0)
+  name: 'TodoStore', // Unique storage key (required)
+  properties: ['todos'], // Omit for initial data fields; [] persists no properties
+  storage: localStorage, // Required adapter with getItem/setItem/removeItem; no default
+  debounce: 500, // Coalesce rapid mutations into one write, in ms (default: 0)
+  version: 0, // Schema version number; triggers migrate when mismatched (default: 0)
   migrate: (state, oldVersion) => state, // Return the migrated state when versions differ
-  merge: 'shallow',          // How to merge persisted state on hydration: 'shallow' | custom function
-  skipHydration: false,      // Set true to wait for a manual handle.rehydrate() call
-  syncTabs: true,            // Opt in to localStorage tab updates (default: false)
-  expireIn: 1000,            // TTL in ms; expired data is skipped on hydration. Resets on every write
-  clearOnExpire: false,      // Auto-remove storage key when expired data is found (default: false)
+  merge: 'shallow', // How to merge persisted state on hydration: 'shallow' | custom function
+  skipHydration: false, // Set true to wait for a manual handle.rehydrate() call
+  syncTabs: true, // Opt in to localStorage tab updates (default: false)
+  expireIn: 1000, // TTL in ms; expired data is skipped on hydration. Resets on every write
+  clearOnExpire: false, // Auto-remove storage key when expired data is found (default: false)
   onError: (error, operation) => console.error(operation, error),
 });
 
-handle.isHydrated;           // Whether a hydration attempt has settled, including failures
-handle.isExpired;            // Expiry observed since init or the latest explicit rehydrate()
-await handle.hydrated;       // An attempt settled; inspect getSnapshot().lastError
-handle.getSnapshot();       // Current readonly status
+handle.isHydrated; // Whether a hydration attempt has settled, including failures
+handle.isExpired; // Expiry observed since init or the latest explicit rehydrate()
+await handle.hydrated; // An attempt settled; inspect getSnapshot().lastError
+handle.getSnapshot(); // Current readonly status
 handle.getServerSnapshot(); // Initial status for SSR/hydration
 const stopStatus = handle.subscribe(() => console.log(handle.getSnapshot()));
 
 try {
-  await handle.save();       // Save now, bypassing debounce
-  await handle.clear();      // Remove stored data; keep in-memory state
-  await handle.rehydrate();  // Read storage again
+  await handle.save(); // Save now, bypassing debounce
+  await handle.clear(); // Remove stored data; keep in-memory state
+  await handle.rehydrate(); // Read storage again
 } catch (error) {
   console.error('Explicit persistence operation failed', error);
 }
 
-stopStatus();               // Remove only this status listener
-handle.dispose();           // Stop persistence and release its resources
+stopStatus(); // Remove only this status listener
+handle.dispose(); // Stop persistence and release its resources
 ```
 
 ---
@@ -154,10 +154,10 @@ persist(userStore, {
   name: 'user-store',
   storage: localStorage,
   properties: [
-    'name',  // plain key -- string, no transform needed
+    'name', // plain key -- string, no transform needed
     {
       key: 'birthdate',
-      serialize: (date) => date.toISOString(),            // Date → string
+      serialize: (date) => date.toISOString(), // Date → string
       deserialize: (stored) => {
         if (typeof stored !== 'string') throw new Error('Expected a birthdate');
         const date = new Date(stored);
@@ -183,7 +183,7 @@ persist(userStore, {
 
 On restore, `deserialize` converts the ISO string back into a `Date` object before assigning it to `userStore.birthdate`.
 
-*(If you need to persist `Map` or `Set` objects, see the [Reactive Collections Tutorial](./REACTIVE_COLLECTIONS_TUTORIAL.md).)*
+_(If you need to persist `Map` or `Set` objects, see the [Reactive Collections Tutorial](./REACTIVE_COLLECTIONS_TUTORIAL.md).)_
 
 ### `storage`
 
@@ -212,7 +212,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const handle = persist(todoStore, {
   name: 'todo-store',
   storage: AsyncStorage,
-  syncTabs: false,  // no window.storage in React Native
+  syncTabs: false, // no window.storage in React Native
 });
 
 await handle.hydrated;
@@ -263,7 +263,7 @@ data and save it, as the logout example does above.
 An event whose value has already been replaced in its storage area is ignored.
 This prevents a delayed event from rolling a newer local save back in the UI.
 Accepted remote updates cancel pending debounced auto-saves and do not write
-the restored state back to storage.
+the restored state back to storage. Synchronous subscribers can also edit a different field during restoration. Their local change wins for that top-level field in either declaration order, and persistence saves the resulting state. This applies to initial hydration, manual `rehydrate()`, and accepted storage events.
 
 ### Overlapping async operations
 
@@ -293,7 +293,7 @@ Use `expireIn` to stamp a time-to-live (in milliseconds) on saved data. Hydratio
 persist(sessionStore, {
   storage: localStorage,
   name: 'session',
-  expireIn: 900_000,  // 15 minutes
+  expireIn: 900_000, // 15 minutes
 });
 ```
 
@@ -328,7 +328,7 @@ persist(sessionStore, {
   storage: localStorage,
   name: 'session',
   expireIn: 900_000,
-  clearOnExpire: true,  // Remove key from storage when expired
+  clearOnExpire: true, // Remove key from storage when expired
 });
 ```
 
@@ -393,7 +393,7 @@ For stores that mutate frequently (form inputs, drag positions, real-time data),
 persist(formStore, {
   storage: localStorage,
   name: 'form-draft',
-  debounce: 500,  // Wait for 500ms without a new store notification
+  debounce: 500, // Wait for 500ms without a new store notification
 });
 
 // Rapid mutations:
@@ -447,7 +447,7 @@ Imagine your store adds a new `tags` property, but old persisted data only has `
 class TodoStore {
   filter: 'all' | 'active' | 'done' = 'all';
   todos: {text: string; done: boolean}[] = [];
-  tags: string[] = ['work', 'personal'];  // new property with defaults
+  tags: string[] = ['work', 'personal']; // new property with defaults
 }
 
 // Old persisted data in storage (no `tags` key):
@@ -477,12 +477,13 @@ persist(todoStore, {
   name: 'todo-store',
   merge: (persisted, current) => {
     return {
-      ...current,             // start with the current selected fields
-      ...persisted,           // overwrite with stored values
-      tags: [                 // custom: combine stored + default tags
+      ...current, // start with the current selected fields
+      ...persisted, // overwrite with stored values
+      tags: [
+        // custom: combine stored + default tags
         ...new Set([
-          ...(persisted.tags as string[] ?? []),
-          ...(current.tags as string[] ?? []),
+          ...((persisted.tags as string[]) ?? []),
+          ...((current.tags as string[]) ?? []),
         ]),
       ],
     };
@@ -668,7 +669,8 @@ const handle = persist(appStore, {
       key: 'lastLogin',
       serialize: (date) => date.toISOString(),
       deserialize: (stored) => {
-        if (typeof stored !== 'string') throw new Error('Expected a login date');
+        if (typeof stored !== 'string')
+          throw new Error('Expected a login date');
         const date = new Date(stored);
         if (Number.isNaN(date.getTime())) throw new Error('Invalid login date');
         return date;
@@ -694,25 +696,25 @@ console.log(`Welcome back! Theme: ${appStore.theme}`);
 
 Catch failures from explicit `save()`, `clear()`, and `rehydrate()` calls. Reading `isHydrated` or awaiting `hydrated` only confirms an attempt settled; inspect status for errors.
 
-| Feature | Code Example |
-|---|---|
-| **Persist everything** | `persist(myStore, {name: 'key', storage: localStorage})` |
-| **Persist specific properties** | `properties: ['count', 'name']` |
-| **Handle Dates & Objects** | Supply a property transform with a serializer and a validating deserializer |
+| Feature                         | Code Example                                                                                                                                     |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Persist everything**          | `persist(myStore, {name: 'key', storage: localStorage})`                                                                                         |
+| **Persist specific properties** | `properties: ['count', 'name']`                                                                                                                  |
+| **Handle Dates & Objects**      | Supply a property transform with a serializer and a validating deserializer                                                                      |
 | **Handle reactive collections** | Serialize entries/values and deserialize with `reactiveMap()` / `reactiveSet()`; see the [collections guide](./REACTIVE_COLLECTIONS_TUTORIAL.md) |
-| **Use sessionStorage** | `storage: sessionStorage` |
-| **Use AsyncStorage** | `storage: AsyncStorage, syncTabs: false` |
-| **Disable cross-tab sync** | `syncTabs: false` |
-| **Expire payload after time**| `expireIn: 900_000` |
-| **Auto-clear expired data** | `clearOnExpire: true` |
-| **SSR & manual hydration** | `skipHydration: true` + `handle.rehydrate()` |
-| **Debounce storage writes**| `debounce: 500` |
-| **Migrate schema versions**| `version: 2, migrate: (state, old) => { ... }` |
-| **Merge strategy** | `merge: 'shallow'` or a custom `(persisted, current) => merged` function |
-| **Check hydration** | `handle.isHydrated` |
-| **Wait for hydration** | `await handle.hydrated` |
-| **Clear stored data** | `await handle.clear()` |
-| **Force immediate save** | `await handle.save()` |
-| **Re-hydrate manually** | `await handle.rehydrate()` |
-| **Stop persisting** | `handle.dispose()` |
-| **Check if data expired** | `handle.isExpired` |
+| **Use sessionStorage**          | `storage: sessionStorage`                                                                                                                        |
+| **Use AsyncStorage**            | `storage: AsyncStorage, syncTabs: false`                                                                                                         |
+| **Disable cross-tab sync**      | `syncTabs: false`                                                                                                                                |
+| **Expire payload after time**   | `expireIn: 900_000`                                                                                                                              |
+| **Auto-clear expired data**     | `clearOnExpire: true`                                                                                                                            |
+| **SSR & manual hydration**      | `skipHydration: true` + `handle.rehydrate()`                                                                                                     |
+| **Debounce storage writes**     | `debounce: 500`                                                                                                                                  |
+| **Migrate schema versions**     | `version: 2, migrate: (state, old) => { ... }`                                                                                                   |
+| **Merge strategy**              | `merge: 'shallow'` or a custom `(persisted, current) => merged` function                                                                         |
+| **Check hydration**             | `handle.isHydrated`                                                                                                                              |
+| **Wait for hydration**          | `await handle.hydrated`                                                                                                                          |
+| **Clear stored data**           | `await handle.clear()`                                                                                                                           |
+| **Force immediate save**        | `await handle.save()`                                                                                                                            |
+| **Re-hydrate manually**         | `await handle.rehydrate()`                                                                                                                       |
+| **Stop persisting**             | `handle.dispose()`                                                                                                                               |
+| **Check if data expired**       | `handle.isExpired`                                                                                                                               |

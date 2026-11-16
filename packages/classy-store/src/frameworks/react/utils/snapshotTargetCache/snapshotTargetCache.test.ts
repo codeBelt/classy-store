@@ -3,19 +3,46 @@ import {createProxy, isChanged} from 'proxy-compare';
 import {SnapshotTargetCache} from './snapshotTargetCache';
 
 describe('SnapshotTargetCache', () => {
+  test('tracks membership without filling holes in frozen arrays', () => {
+    const items = new Array<number | undefined>(4);
+    items[1] = undefined;
+    const source = Object.freeze(items);
+    const cache = new SnapshotTargetCache();
+    for (let reader = 0; reader < 2; reader++) {
+      const reads = new WeakMap();
+      const tracked = createProxy(source, reads, new WeakMap(), cache);
+      expect(tracked.length).toBe(4);
+      expect(0 in tracked).toBe(false);
+      expect(Object.hasOwn(tracked, 1)).toBe(true);
+
+      const next = source.slice();
+      next[3] = 3;
+      expect(isChanged(source, next, reads)).toBe(false);
+      next[0] = undefined;
+      expect(isChanged(source, next, reads)).toBe(true);
+    }
+  });
+
   test('scans a shared frozen list once across hundreds of independent readers', () => {
     const items = Object.freeze(
       Array.from({length: 1000}, (_, index) => Object.freeze({value: index})),
     );
     const source = Object.freeze({items});
     const cache = new SnapshotTargetCache();
+    const ownNames = Object.getOwnPropertyNames;
     const descriptors = Object.getOwnPropertyDescriptors;
     let listScans = 0;
+    const namesSpy = spyOn(Object, 'getOwnPropertyNames').mockImplementation(
+      (target) => {
+        if (target === items) listScans += 1;
+        return ownNames(target);
+      },
+    );
     const descriptorSpy = spyOn(
       Object,
       'getOwnPropertyDescriptors',
     ).mockImplementation((target) => {
-      if (target === items) listScans += 1;
+      if (target === items) listScans++;
       return descriptors(target);
     });
     try {
@@ -29,6 +56,7 @@ describe('SnapshotTargetCache', () => {
       expect(listScans).toBe(1);
     } finally {
       descriptorSpy.mockRestore();
+      namesSpy.mockRestore();
     }
   });
 

@@ -10,63 +10,84 @@ const tick = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 // ── Tests ────────────────────────────────────────────────────────────────────
 
 describe('withHistory', () => {
-  it.each([
-    {description: 'undo', operation: 'undo' as const},
-    {description: 'redo', operation: 'redo' as const},
-  ])('keeps nested state editable after $description without changing history', async ({
-    operation,
-  }) => {
-    const store = createClassyStore({
-      items: [{name: 'initial'}],
-      details: {nested: {count: 0}},
-    });
-    const history = withHistory(store);
-
+  it('retains redo on an explicit store when only its outer owner changes', async () => {
+    const editor = createClassyStore({text: 'before'});
+    const app = createClassyStore({editor, tab: 'first'});
+    const history = withHistory(editor);
     try {
-      store.items[0].name = 'recorded';
-      store.details.nested.count = 1;
+      app.editor.text = 'after';
       await tick();
-
       history.undo();
       await tick();
-      if (operation === 'redo') {
-        history.redo();
-        await tick();
-      }
-      const restored = snapshot(store);
-      const restoredName = operation === 'undo' ? 'initial' : 'recorded';
-      const restoredCount = operation === 'undo' ? 0 : 1;
-
-      store.items.push({name: 'added'});
-      store.items[0].name = 'edited';
-      store.details.nested.count = 2;
+      expect(history.canRedo).toBe(true);
+      app.tab = 'second';
       await tick();
-
-      expect(snapshot(store).items).toEqual([
-        {name: 'edited'},
-        {name: 'added'},
-      ]);
-      expect(store.details.nested.count).toBe(2);
-      expect(restored.items).toEqual([{name: restoredName}]);
-      expect(restored.details.nested.count).toBe(restoredCount);
-      expect(history.canRedo).toBe(false);
-
-      history.undo();
-      await tick();
-      expect(snapshot(store).items).toEqual([{name: restoredName}]);
-      expect(store.details.nested.count).toBe(restoredCount);
-
+      expect(history.canRedo).toBe(true);
       history.redo();
-      await tick();
-      expect(snapshot(store).items).toEqual([
-        {name: 'edited'},
-        {name: 'added'},
-      ]);
-      expect(store.details.nested.count).toBe(2);
+      expect(editor.text).toBe('after');
     } finally {
       history.dispose();
     }
   });
+
+  it.each([
+    {description: 'undo', operation: 'undo' as const},
+    {description: 'redo', operation: 'redo' as const},
+  ])(
+    'keeps nested state editable after $description without changing history',
+    async ({operation}) => {
+      const store = createClassyStore({
+        items: [{name: 'initial'}],
+        details: {nested: {count: 0}},
+      });
+      const history = withHistory(store);
+
+      try {
+        store.items[0].name = 'recorded';
+        store.details.nested.count = 1;
+        await tick();
+
+        history.undo();
+        await tick();
+        if (operation === 'redo') {
+          history.redo();
+          await tick();
+        }
+        const restored = snapshot(store);
+        const restoredName = operation === 'undo' ? 'initial' : 'recorded';
+        const restoredCount = operation === 'undo' ? 0 : 1;
+
+        store.items.push({name: 'added'});
+        store.items[0].name = 'edited';
+        store.details.nested.count = 2;
+        await tick();
+
+        expect(snapshot(store).items).toEqual([
+          {name: 'edited'},
+          {name: 'added'},
+        ]);
+        expect(store.details.nested.count).toBe(2);
+        expect(restored.items).toEqual([{name: restoredName}]);
+        expect(restored.details.nested.count).toBe(restoredCount);
+        expect(history.canRedo).toBe(false);
+
+        history.undo();
+        await tick();
+        expect(snapshot(store).items).toEqual([{name: restoredName}]);
+        expect(store.details.nested.count).toBe(restoredCount);
+
+        history.redo();
+        await tick();
+        expect(snapshot(store).items).toEqual([
+          {name: 'edited'},
+          {name: 'added'},
+        ]);
+        expect(store.details.nested.count).toBe(2);
+      } finally {
+        history.dispose();
+      }
+    },
+  );
 
   it('preserves reactive collection methods and getters after restoration', async () => {
     const date = new Date('2026-01-01');

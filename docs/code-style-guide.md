@@ -4,36 +4,36 @@
 
 ### File Placement
 
-| Code Type | Location |
-|-----------|----------|
-| React component | `components/pages/`, `components/shared/`, or `components/ui/` |
-| API logic | `services/{provider}/{service}/` |
-| Reusable function | `utils/{utilName}/` |
-| React hook | `hooks/use{HookName}/` |
-| Third-party config | `libs/{libraryName}/` |
+| Code Type          | Location                                                       |
+| ------------------ | -------------------------------------------------------------- |
+| React component    | `components/pages/`, `components/shared/`, or `components/ui/` |
+| API logic          | `services/{provider}/{service}/`                               |
+| Reusable function  | `utils/{utilName}/`                                            |
+| React hook         | `hooks/use{HookName}/`                                         |
+| Third-party config | `libs/{libraryName}/`                                          |
 
 ### File Extensions
 
-| Extension | Purpose |
-|-----------|---------|
-| `.ts{x}` | Main code (use `.tsx` only when file contains JSX) |
-| `.test.ts` | Tests |
-| `.types.ts` | TypeScript types |
-| `.utils.ts{x}` | Helper functions |
-| `.utils.test.ts` | Tests for utility functions |
-| `.schemas.ts` | Zod validation schemas |
-| `.schemas.test.ts` | Tests for schemas |
-| `.constants.ts{x}` | Static objects and constants |
+| Extension          | Purpose                                            |
+| ------------------ | -------------------------------------------------- |
+| `.ts{x}`           | Main code (use `.tsx` only when file contains JSX) |
+| `.test.ts`         | Tests                                              |
+| `.types.ts`        | TypeScript types                                   |
+| `.utils.ts{x}`     | Helper functions                                   |
+| `.utils.test.ts`   | Tests for utility functions                        |
+| `.schemas.ts`      | Zod validation schemas                             |
+| `.schemas.test.ts` | Tests for schemas                                  |
+| `.constants.ts{x}` | Static objects and constants                       |
 
 ### Naming Conventions
 
-| Context | Convention | Example |
-|---------|------------|---------|
-| Component folders | camelCase | `userCard/` |
-| Component files | PascalCase | `UserCard.tsx` |
-| Everything else | camelCase | `httpClient.ts` |
-| Variables/params | Descriptive (no single chars) | `event` not `e` |
-| Constants | camelCase | `maxRetries` not `MAX_RETRIES` |
+| Context           | Convention                    | Example                        |
+| ----------------- | ----------------------------- | ------------------------------ |
+| Component folders | camelCase                     | `userCard/`                    |
+| Component files   | PascalCase                    | `UserCard.tsx`                 |
+| Everything else   | camelCase                     | `httpClient.ts`                |
+| Variables/params  | Descriptive (no single chars) | `event` not `e`                |
+| Constants         | camelCase                     | `maxRetries` not `MAX_RETRIES` |
 
 ### Exports
 
@@ -127,7 +127,9 @@ export const maxNameLength = 30;
 import {maxNameLength} from './UserCard.constants';
 
 export function formatUserName(name: string): string {
-  return name.length > maxNameLength ? `${name.slice(0, maxNameLength)}...` : name;
+  return name.length > maxNameLength
+    ? `${name.slice(0, maxNameLength)}...`
+    : name;
 }
 ```
 
@@ -318,17 +320,17 @@ announcementsPage/
 
 ## Common Mistakes
 
-| Wrong | Right |
-|-------|-------|
-| `interface Props {...}` | `type Props = {...}` |
-| `export type Props` | `type Props` (no export) |
-| Types in component file | Move to `.types.ts` (except Props) |
-| `utils/dateUtils/dateUtils.ts` | `utils/date/date.ts` |
-| `const MAX_RETRIES = 3` | `const maxRetries = 3` |
-| `(e) => handleClick(e)` | `(event) => handleClick(event)` |
-| Constants in component | Extract to `.constants.ts` |
-| Helpers in component | Extract to `.utils.ts` |
-| Multiple components per file | One component per file |
-| Barrel files (`index.ts`) | Direct imports from modules |
-| Default exports | Named exports |
-| Re-exporting types/values | Import directly from source file |
+| Wrong                          | Right                              |
+| ------------------------------ | ---------------------------------- |
+| `interface Props {...}`        | `type Props = {...}`               |
+| `export type Props`            | `type Props` (no export)           |
+| Types in component file        | Move to `.types.ts` (except Props) |
+| `utils/dateUtils/dateUtils.ts` | `utils/date/date.ts`               |
+| `const MAX_RETRIES = 3`        | `const maxRetries = 3`             |
+| `(e) => handleClick(e)`        | `(event) => handleClick(event)`    |
+| Constants in component         | Extract to `.constants.ts`         |
+| Helpers in component           | Extract to `.utils.ts`             |
+| Multiple components per file   | One component per file             |
+| Barrel files (`index.ts`)      | Direct imports from modules        |
+| Default exports                | Named exports                      |
+| Re-exporting types/values      | Import directly from source file   |

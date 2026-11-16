@@ -86,7 +86,11 @@ export function PersistedProfile({initialData}: {initialData: ProfileData}) {
       storage: localStorage,
       skipHydration: true,
     });
-    void persistence.rehydrate().catch((error) => console.error('Could not restore persisted state', error));
+    void persistence
+      .rehydrate()
+      .catch((error) =>
+        console.error('Could not restore persisted state', error),
+      );
     return () => persistence.dispose();
   }, [store]);
 

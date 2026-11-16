@@ -1,4 +1,4 @@
-import {isMemoizedSnapshotGetter} from '../../snapshot/snapshot';
+import {originalSnapshotAccessor} from '../../storeRuntime';
 import {canProxy} from '../internal/internal';
 
 /** Restore proxyable snapshot data as mutable objects, preserving prototypes. */
@@ -24,12 +24,13 @@ export function cloneSnapshotValue(
     const descriptor = Object.getOwnPropertyDescriptor(value, key);
     if (!descriptor) continue;
     if (!('value' in descriptor)) {
-      // Snapshot getters cache frozen values; use the original prototype getters.
-      if (isMemoizedSnapshotGetter(descriptor.get)) {
-        continue;
+      const original = originalSnapshotAccessor(descriptor.get);
+      if (original !== null) {
+        Object.defineProperty(clone, key, {
+          ...(original ?? descriptor),
+          configurable: true,
+        });
       }
-      // Custom persistence merges and transforms can supply their own accessors.
-      Object.defineProperty(clone, key, {...descriptor, configurable: true});
       continue;
     }
     Object.defineProperty(clone, key, {

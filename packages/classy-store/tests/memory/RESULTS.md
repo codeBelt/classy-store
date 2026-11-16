@@ -10,16 +10,16 @@ These are **live constructor-instance counts after forced GC**, not heap-byte
 estimates. See [the methodology](./README.md) for controls and reproduction.
 Arrows below compare the two checkpoints within one run.
 
-| Workload / retained object | Before: 25 → 50 cycles | After: 25 → 50 cycles |
-| --- | ---: | ---: |
-| Repeated mounts: stores / collection generations | 1 / 1 → 1 / 1 | 1 / 1 → 1 / 1 |
-| Keyed resets: stores / collection generations | 1 / 1 → 1 / 1 | 1 / 1 → 1 / 1 |
-| Rolling replacement, auto-tracking: collection generations | 26 → 51 | 3 → 3 |
-| Rolling replacement, stable object selector: collection generations | 3 → 3 | 2 → 2 |
-| Rolling replacement, primitive selector, Compiler off: collection generations | 3 → 3 | 2 → 2 |
-| Rolling replacement, primitive selector, Compiler on: collection generations | 2 → 2 | 2 → 2 |
-| Truncation and shrinking refills: collection generations | 26 → 51 | 0 → 0 |
-| Held detached rows: former stores | 25 → 50 | 0 → 0 |
+| Workload / retained object                                                    | Before: 25 → 50 cycles | After: 25 → 50 cycles |
+| ----------------------------------------------------------------------------- | ---------------------: | --------------------: |
+| Repeated mounts: stores / collection generations                              |          1 / 1 → 1 / 1 |         1 / 1 → 1 / 1 |
+| Keyed resets: stores / collection generations                                 |          1 / 1 → 1 / 1 |         1 / 1 → 1 / 1 |
+| Rolling replacement, auto-tracking: collection generations                    |                26 → 51 |                 3 → 3 |
+| Rolling replacement, stable object selector: collection generations           |                  3 → 3 |                 2 → 2 |
+| Rolling replacement, primitive selector, Compiler off: collection generations |                  3 → 3 |                 2 → 2 |
+| Rolling replacement, primitive selector, Compiler on: collection generations  |                  2 → 2 |                 2 → 2 |
+| Truncation and shrinking refills: collection generations                      |                26 → 51 |                 0 → 0 |
+| Held detached rows: former stores                                             |                25 → 50 |                 0 → 0 |
 
 Except where explicitly separated, results were identical with Compiler off
 and on, and across all applicable selector modes. Detached rows deliberately

@@ -1,5 +1,4 @@
-import {getVersion, subscribe} from '../../core/core';
-import {snapshot} from '../../snapshot/snapshot';
+import {getVersion, snapshot, subscribe} from '../../storeRuntime';
 import {cloneSnapshotValue} from '../cloneSnapshot/cloneSnapshot';
 import {findGetterDescriptor} from '../internal/internal';
 import {createUtilityStatus} from '../utilityStatus/utilityStatus';
@@ -118,12 +117,12 @@ export function persist<T extends object>(
   // ── Mutable state shared by handle closures ─────────────────────────────
 
   let disposed = false;
-  let hydrating = false;
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
   let hydratedFlag = false;
   let expiredFlag = false;
   let hydrationRequest = 0;
   let storageQueue: Promise<void> | undefined;
+  let skipAutoSaveVersion: number | undefined;
   let clearedVersion: number | undefined;
   let lastError: PersistStatus['lastError'] = null;
   const readStatus = (): PersistStatus => ({
@@ -196,7 +195,7 @@ export function persist<T extends object>(
   /** Serialize the current store state into a JSON string (versioned envelope). */
   function serializeState(): string {
     const snap = snapshot(proxyStore) as Record<string, unknown>;
-    const state: Record<string, unknown> = {};
+    const state: Record<string, unknown> = Object.create(null);
 
     for (const key of propKeys) {
       let value = snap[key];
@@ -231,9 +230,12 @@ export function persist<T extends object>(
 
   /** Schedule a debounced write (or write immediately if debounce is 0). */
   function scheduleWrite(): void {
-    if (disposed || hydrating) return;
-    // clear() can run before a mutation's batched notification is delivered.
-    if (getVersion(proxyStore) === clearedVersion) return;
+    if (disposed) return;
+    // A preceding subscriber can edit during a batch, scheduling a second
+    // notification for a revision this handle has already queued for saving.
+    const current = getVersion(proxyStore);
+    if (current === skipAutoSaveVersion || current === clearedVersion) return;
+    skipAutoSaveVersion = current;
 
     if (debounceMs <= 0) {
       // Background writes already report failures through status and onError.
@@ -277,6 +279,8 @@ export function persist<T extends object>(
       return true;
     }
 
+    const startVersion = getVersion(proxyStore);
+    const baseline = snapshot(proxyStore) as Record<string, unknown>;
     let {state} = envelope;
 
     // Version migration.
@@ -292,34 +296,56 @@ export function persist<T extends object>(
       }
     }
 
-    // Build current state for merge.
-    const currentSnap = snapshot(proxyStore) as Record<string, unknown>;
-    const currentState: Record<string, unknown> = {};
-    for (const key of propKeys) {
-      currentState[key] = currentSnap[key];
-    }
-
-    // Merge strategy.
-    let merged: Record<string, unknown>;
-    if (typeof merge === 'function') {
-      merged = merge(state, currentState);
-    } else {
-      // 'shallow': persisted values overwrite current, but properties not
-      // in storage keep their current (default) value.
-      merged = {...currentState, ...state};
-    }
-
-    // Merged defaults may still reference frozen snapshot branches. Restore
-    // mutable copies without changing snapshots retained by callers or merges.
+    // A shallow restore writes only stored fields. Omitted defaults keep their
+    // live identity, including edits made while other fields are restored.
+    const merged =
+      typeof merge === 'function'
+        ? merge(
+            state,
+            Object.fromEntries(propKeys.map((key) => [key, baseline[key]])),
+          )
+        : state;
+    const pending = new Set(
+      propKeys.filter((key) => Object.hasOwn(merged, key)),
+    );
     const clones = new WeakMap<object, object>();
-    // Apply to store proxy (goes through SET traps → reactivity).
-    for (const key of propKeys) {
-      if (key in merged) {
+    let expectedVersion = startVersion;
+
+    // A subscriber can edit or delete a different field before its turn.
+    // Snapshot identity catches nested edits as well as top-level replacements.
+    function discardEditedFields() {
+      const live = snapshot(proxyStore) as Record<string, unknown>;
+      for (const key of pending) {
+        if (
+          Object.hasOwn(live, key) !== Object.hasOwn(baseline, key) ||
+          !Object.is(live[key], baseline[key])
+        )
+          pending.delete(key);
+      }
+    }
+
+    try {
+      if (getVersion(proxyStore) !== startVersion) discardEditedFields();
+      for (const key of pending) {
+        pending.delete(key);
+        const before = getVersion(proxyStore);
         (proxyStore as Record<string, unknown>)[key] = cloneSnapshotValue(
           merged[key],
           clones,
         );
+        const after = getVersion(proxyStore);
+        if (after === before) continue;
+        expectedVersion++;
+        // Applying another stored field after clear() is still part of this
+        // restore. A later subscriber/user edit has its own revision.
+        if (clearedVersion === before && after === before + 1)
+          clearedVersion = after;
+        // A direct data-field assignment adds one revision. Any additional
+        // revision came from user code and must survive the rest of this pass.
+        if (after > before + 1 && pending.size) discardEditedFields();
       }
+    } finally {
+      skipAutoSaveVersion = expectedVersion;
     }
     return false;
   }
@@ -353,33 +379,22 @@ export function persist<T extends object>(
         clearTimeout(debounceTimer);
         debounceTimer = null;
       }
-      hydrating = true;
-      let removal: Promise<void> | undefined;
+      let expired: boolean;
       try {
-        // Parse/transform/merge failures belong to this read's decoding stage.
-        // Handle reporting here so thrown callbacks cannot be reported twice.
-        let expired: boolean;
-        try {
-          expired = applyPersistedState(raw);
-        } catch (error) {
-          fail(error, 'parse');
-        }
-        if (expired && clearOnExpire) {
-          removal = enqueueStorageMutation(
-            () => storage.removeItem(name),
-            'remove',
-          );
-        } else {
-          succeeded();
-        }
-      } finally {
-        // Keep the batched notification from writing restored state back.
-        await new Promise<void>((resolve) => queueMicrotask(resolve));
-        hydrating = false;
+        expired = applyPersistedState(raw);
+      } catch (error) {
+        fail(error, 'parse');
       }
-      // Adapter I/O must not suppress auto-saves for later local edits.
-      status.update(readStatus());
-      if (removal) await removal;
+      if (expired && clearOnExpire) {
+        const removal = enqueueStorageMutation(
+          () => storage.removeItem(name),
+          'remove',
+        );
+        status.update(readStatus());
+        await removal;
+      } else {
+        succeeded();
+      }
     } else {
       succeeded();
     }
@@ -405,7 +420,6 @@ export function persist<T extends object>(
     }
     // Suppress writes triggered by mutations from this apply, otherwise
     // tabs ping-pong storage events forever.
-    hydrating = true;
     try {
       if (applyPersistedState(event.newValue) && clearOnExpire) {
         void enqueueStorageMutation(
@@ -418,10 +432,6 @@ export function persist<T extends object>(
       }
     } catch (error) {
       reportError(error, 'parse');
-    } finally {
-      queueMicrotask(() => {
-        hydrating = false;
-      });
     }
   }
 

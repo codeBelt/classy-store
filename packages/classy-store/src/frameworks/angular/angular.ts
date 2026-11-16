@@ -1,6 +1,5 @@
 import {DestroyRef, inject, type Signal, signal} from '@angular/core';
-import {getInternal, subscribe} from '../../core/core';
-import {snapshot} from '../../snapshot/snapshot';
+import {getInternal, snapshot, subscribe} from '../../storeRuntime';
 import type {Snapshot} from '../../types';
 
 export function injectStore<T extends object>(

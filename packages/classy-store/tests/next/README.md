@@ -12,16 +12,17 @@ installs it into a separate consumer directory, and runs production Next.js buil
 and Chromium tests with React Compiler off and on. This uses the published package
 entrypoints, without source aliases, workspace links, or `transpilePackages`.
 
-The consumer pins Next.js 16.4.2 and uses the React, React DOM, and Compiler versions
-declared in the library's development dependencies. It uses Turbopack and explicitly
+The consumer uses the Next.js version declared in `examples/nextjs/package.json`
+and the React, React DOM, and Compiler versions declared in the library's
+development dependencies. It uses Turbopack and explicitly
 sets `cacheComponents: false`. The tested navigation contract therefore includes
 route unmounts and resets. React Activity preservation with Cache Components enabled
 is a separate integration mode, not an assumption made by these tests.
 
 Next App Router can supply its own React runtime. The compiler-evidence JSON
 records the actual browser `React.version` separately from the installed package
-versions in `report.json`. In the current Next.js 16.4.2 matrix that runtime is
-`19.3.0-canary-278794d7-20261002`, while the installed React package is 19.3.1.
+versions in `report.json`. Use that generated evidence to identify the runtime
+tested by each dependency update.
 
 ## Checks
 

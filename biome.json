@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.4.0/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.6.8/schema.json",
   "vcs": {
     "enabled": true,
     "clientKind": "git",
@@ -27,7 +27,7 @@
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": true,
+      "preset": "recommended",
       "style": {
         "noImplicitBoolean": "error",
         "noInferrableTypes": "off",
@@ -71,6 +71,19 @@
     }
   },
   "overrides": [
+    {
+      "includes": [
+        "packages/classy-store/src/frameworks/react/**/*.test.tsx",
+        "packages/classy-store/src/frameworks/react/utils/createStoreHook/createStoreHook.ts"
+      ],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "noComponentHookFactories": "off"
+          }
+        }
+      }
+    },
     {
       "includes": [
         "**/frameworks/solid/**",
@@ -119,6 +132,11 @@
   "css": {
     "parser": {
       "tailwindDirectives": true
+    }
+  },
+  "markdown": {
+    "parser": {
+      "frontmatter": true
     }
   },
   "assist": {

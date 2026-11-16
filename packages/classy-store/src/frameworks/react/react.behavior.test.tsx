@@ -90,6 +90,29 @@ class TestStore {
   }
 }
 
+describe('retained row subscriptions', () => {
+  afterEach(teardown);
+  it('updates a mounted row after it moves to another root', () => {
+    const from = createClassyStore({rows: [{n: 0}]});
+    const to = createClassyStore({rows: [] as {n: number}[]});
+    const row = from.rows[0];
+    function Row() {
+      return <span>{useClassyStore(row, (s) => s.n)}</span>;
+    }
+    setup();
+    render(<Row />);
+    act(() => {
+      from.rows.pop();
+      to.rows.push(row);
+    });
+    act(() => {
+      row.n = 3;
+    });
+    expect(to.rows[0]).toBe(row);
+    expect(container.textContent).toBe('3');
+  });
+});
+
 // ── Block 1: Batching — multi-prop methods ──────────────────────────────────
 
 describe('Batching — multi-prop methods cause single re-render', () => {
@@ -720,6 +743,27 @@ describe('Unmount safety', () => {
 
 describe('shallowEqual as useClassyStore isEqual — integration', () => {
   afterEach(teardown);
+
+  it('renders both transitions between a hole and an explicit undefined slot', () => {
+    const store = createClassyStore({rows: new Array<undefined>(1)});
+    function Slot() {
+      const rows = useClassyStore(store, (state) => state.rows, {
+        isEqual: shallowEqual,
+      });
+      return <span>{0 in rows ? 'present' : 'hole'}</span>;
+    }
+    setup();
+    render(<Slot />);
+    expect(container.textContent).toBe('hole');
+    act(() => {
+      store.rows[0] = undefined;
+    });
+    expect(container.textContent).toBe('present');
+    act(() => {
+      Reflect.deleteProperty(store.rows, '0');
+    });
+    expect(container.textContent).toBe('hole');
+  });
 
   it('prevents re-render when shallow values are unchanged', async () => {
     const s = createClassyStore(new TestStore());

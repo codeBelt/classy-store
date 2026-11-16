@@ -12,11 +12,13 @@
 
 Visit the **[Documentation Website](https://codebelt.github.io/classy-store/)** for tutorials, API reference, and examples.
 
-## Upgrading to 0.8.0
+## Upgrading to 0.11.0
 
-Replace persistence `unsubscribe()` with `dispose()`, handle rejected promises from explicit persistence operations, and import hydration preparation from `@codebelt/classy-store/react/server`. The public `getVersion` export has been removed. New `useHistoryStatus` and `usePersistStatus` hooks keep utility metadata reactive in React.
+Applications upgrading from 0.10.x can keep their existing public imports. For behavior changes and framework support, see the [0.11.0 release notes](https://codebelt.github.io/classy-store/docs/UPGRADING_0_11).
 
-See the [0.8.0 upgrade guide](https://codebelt.github.io/classy-store/docs/UPGRADING_0_8) for required changes and examples. If upgrading from 0.6.x or earlier, also read the [0.7.0 upgrade guide](https://codebelt.github.io/classy-store/docs/UPGRADING_0_7).
+When upgrading from 0.7.x, replace persistence `unsubscribe()` with `dispose()`, handle rejected promises from explicit persistence operations, and import hydration preparation from `@codebelt/classy-store/react/server`. The `useHistoryStatus` and `usePersistStatus` hooks keep utility metadata reactive in React.
+
+See the [0.8.0 upgrade guide](https://codebelt.github.io/classy-store/docs/UPGRADING_0_8) for the removal of `getVersion` and migration examples. If upgrading from 0.6.x or earlier, also read the [0.7.0 upgrade guide](https://codebelt.github.io/classy-store/docs/UPGRADING_0_7).
 
 ## 🚀 Features
 
@@ -40,7 +42,7 @@ import {useClassyStore} from '@codebelt/classy-store/react';
 
 // 1. Plain class — fields are state, getters are computed values, the class is the type
 class CartStore {
-  items: { name: string; price: number; qty: number }[] = [];
+  items: {name: string; price: number; qty: number}[] = [];
 
   // Computed: auto-memoized, only recalculates when items change
   get total() {
@@ -48,7 +50,7 @@ class CartStore {
   }
 
   add(name: string, price: number) {
-    this.items.push({ name, price, qty: 1 });
+    this.items.push({name, price, qty: 1});
   }
 }
 
@@ -62,7 +64,9 @@ function CartTotal() {
 }
 
 function AddButton() {
-  return <button onClick={() => cartStore.add('Widget', 9.99)}>Add item</button>;
+  return (
+    <button onClick={() => cartStore.add('Widget', 9.99)}>Add item</button>
+  );
 }
 ```
 
@@ -78,19 +82,19 @@ property reads; changes to time or external variables do not invalidate their ca
 
 ## Choosing an API
 
-| What you need | API |
-| --- | --- |
-| Create shared state from a class or object | `createClassyStore(instance)` |
-| Render store data in React | `useClassyStore(store)` or `useClassyStore(store, selector)` |
-| Create a store owned by a component | `useLocalStore(factory)` |
-| Bind a reusable hook to an existing store | `createStoreHook(store)` |
-| Render undo/redo availability or pause state | `useHistoryStatus(history)` |
-| Render persistence hydration, expiry, or errors | `usePersistStatus(handle)` |
-| Prepare matching initial data for SSR/hydration | `prepareStoreForHydration(store)` |
-| Read state outside React or observe mutations | `snapshot(store)`, `subscribe(store, listener)`, `subscribeKey(store, key, listener)` |
-| Persist state, record history, or inspect it in DevTools | `persist(store, options)`, `withHistory(store)`, `devtools(store)` |
-| Track changes inside Map-like or Set-like collections | `reactiveMap()`, `reactiveSet()` |
-| Compare selector results one level deep | `shallowEqual(previous, next)` |
+| What you need                                            | API                                                                                   |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Create shared state from a class or object               | `createClassyStore(instance)`                                                         |
+| Render store data in React                               | `useClassyStore(store)` or `useClassyStore(store, selector)`                          |
+| Create a store owned by a component                      | `useLocalStore(factory)`                                                              |
+| Bind a reusable hook to an existing store                | `createStoreHook(store)`                                                              |
+| Render undo/redo availability or pause state             | `useHistoryStatus(history)`                                                           |
+| Render persistence hydration, expiry, or errors          | `usePersistStatus(handle)`                                                            |
+| Prepare matching initial data for SSR/hydration          | `prepareStoreForHydration(store)`                                                     |
+| Read state outside React or observe mutations            | `snapshot(store)`, `subscribe(store, listener)`, `subscribeKey(store, key, listener)` |
+| Persist state, record history, or inspect it in DevTools | `persist(store, options)`, `withHistory(store)`, `devtools(store)`                    |
+| Track changes inside Map-like or Set-like collections    | `reactiveMap()`, `reactiveSet()`                                                      |
+| Compare selector results one level deep                  | `shallowEqual(previous, next)`                                                        |
 
 `useClassyStore` is the starting point for React components. The two status hooks
 are optional: use them only when displaying metadata from an existing history or
@@ -130,7 +134,7 @@ Most components only need `useClassyStore(store)` to render application data. Us
 ## Angular 22 integration
 
 The `/angular` adapter supports **all stable Angular 22 releases** (`^22.0.0`).
-Development dependencies and the example stay pinned to `22.2.3`. Call `injectStore(store)`
+The library and example pin the Angular framework to `22.2.6`. Call `injectStore(store)`
 in a live Angular injection context to get a readonly snapshot signal. Store
 writes update the signal and dependent computed reads immediately; Angular
 schedules rendering, including in zoneless applications. The subscription is
@@ -140,7 +144,7 @@ for inputs, keyed lists, cleanup, and migration requirements.
 
 ## Solid 2 integration
 
-The `/solid` adapter targets **Solid 2.0.0-rc.18 only**; Solid 1 is no longer
+The `/solid` adapter is **in preview** and targets **Solid 2.0.0-rc.18 only**; Solid 1 is no longer
 supported. Pin `solid-js` and the browser renderer `@solidjs/web` to that exact
 release candidate. `useClassyStore(store)` returns an immutable snapshot accessor
 and requires a live component or `createRoot()` owner for automatic cleanup.
@@ -161,13 +165,13 @@ bun add @codebelt/classy-store
 
 Framework peers are optional; install only what your application uses.
 
-| Framework | Supported peer range |
-|-----------|----------------------|
-| React | `^18.0.0 \|\| ^19.0.0` |
-| Vue | `^3.2.0` |
-| Svelte | `^4.0.0 \|\| ^5.0.0` |
-| Angular | `^22.0.0` |
-| Solid | `2.0.0-rc.18` (exact prerelease) |
+| Framework       | Supported peer range             |
+| --------------- | -------------------------------- |
+| React           | `^18.0.0 \|\| ^19.0.0`           |
+| Vue             | `^3.2.0`                         |
+| Svelte          | `^4.0.0 \|\| ^5.0.0`             |
+| Angular         | `^22.0.0`                        |
+| Solid (preview) | `2.0.0-rc.18` (exact prerelease) |
 
 Use matching `react` and `react-dom` versions for React applications. These
 ranges exclude untested future majors. Development dependency pins are separate

@@ -4,13 +4,13 @@ Version 0.8.0 adds observable history and persistence status and simplifies the 
 
 ## Required updates
 
-| Previous usage | Use in 0.8.0 |
-| --- | --- |
-| `persistence.unsubscribe()` | `persistence.dispose()` |
-| Import `prepareStoreForHydration` from `/react` | Import it from `@codebelt/classy-store/react/server`, on both server and client |
-| Import `getVersion` from the root entry | Use `subscribe()` for notifications or compare `snapshot()` references |
-| Assume explicit persistence calls always resolve | Handle rejected promises from `save()`, `clear()`, and `rehydrate()` |
-| Transform a property's value as a union of all store properties | Match `serialize` and `deserialize` to the property selected by `key` |
+| Previous usage                                                  | Use in 0.8.0                                                                    |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `persistence.unsubscribe()`                                     | `persistence.dispose()`                                                         |
+| Import `prepareStoreForHydration` from `/react`                 | Import it from `@codebelt/classy-store/react/server`, on both server and client |
+| Import `getVersion` from the root entry                         | Use `subscribe()` for notifications or compare `snapshot()` references          |
+| Assume explicit persistence calls always resolve                | Handle rejected promises from `save()`, `clear()`, and `rehydrate()`            |
+| Transform a property's value as a union of all store properties | Match `serialize` and `deserialize` to the property selected by `key`           |
 
 ## Dispose persistence handles
 

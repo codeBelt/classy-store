@@ -1,6 +1,5 @@
 import {getCurrentScope, onScopeDispose, type Ref, shallowRef} from 'vue';
-import {getInternal, subscribe} from '../../core/core';
-import {snapshot} from '../../snapshot/snapshot';
+import {getInternal, snapshot, subscribe} from '../../storeRuntime';
 import type {Snapshot} from '../../types';
 
 /**

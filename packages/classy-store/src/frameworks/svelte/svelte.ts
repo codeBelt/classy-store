@@ -1,5 +1,8 @@
-import {subscribe as coreSubscribe, getInternal} from '../../core/core';
-import {snapshot} from '../../snapshot/snapshot';
+import {
+  subscribe as coreSubscribe,
+  getInternal,
+  snapshot,
+} from '../../storeRuntime';
 import type {Snapshot} from '../../types';
 
 export interface ClassyReadable<T> {

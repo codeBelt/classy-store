@@ -6,6 +6,7 @@
 
 ## Getting Started
 
+- [Classy Store 0.11.0 release notes](https://codebelt.github.io/classy-store/docs/UPGRADING_0_11): Upgrade from 0.10.x, framework support, and the Solid preview
 - [Upgrading to 0.8.0](https://codebelt.github.io/classy-store/docs/UPGRADING_0_8): Public API removals, persistence disposal and explicit errors, and React utility status hooks
 - [Upgrading to 0.7.0](https://codebelt.github.io/classy-store/docs/UPGRADING_0_7): Removed React timing options, native WeakRef requirement, SSR and Next.js setup, persistence changes, and release notes
 - [Introduction & API Reference](https://codebelt.github.io/classy-store/docs/): Full API
@@ -17,7 +18,7 @@
   controlled inputs without timing options, inheritance, async patterns, local stores
 
 - [Angular 22 integration](https://codebelt.github.io/classy-store/docs/ANGULAR): Stable Angular 22 support (^22.0.0), packed checks on 22.0.0 and 22.2.3, signal timing, zoneless inputs, computed values, keyed lists, and DestroyRef cleanup
-- [Solid 2 integration](https://codebelt.github.io/classy-store/docs/SOLID): Exact rc.18 requirement, inputs, computed values, keyed lists, native batching, flush, and owner cleanup
+- [Solid 2 integration](https://codebelt.github.io/classy-store/docs/SOLID): Preview adapter pinned to rc.18, inputs, computed values, keyed lists, native batching, flush, and owner cleanup
 
 ## Utilities
 

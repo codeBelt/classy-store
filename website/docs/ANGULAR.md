@@ -5,8 +5,8 @@ optional `@angular/core` peer set to `^22.0.0`. Angular 21 and earlier, Angular 
 and prereleases are outside this support range. Keep your application's Angular
 runtime and compiler packages aligned to the same release.
 
-Development dependencies and the example stay pinned to Angular `22.2.3`; the
-example uses matching CLI/build/compiler packages and TypeScript `6.0.3`.
+The library and example pin the Angular framework and compiler to `22.2.6`.
+The example uses Angular CLI and build tools `22.2.7` with TypeScript `6.0.3`.
 Compatibility checks install the packed library into isolated consumers using
 Angular `22.0.0` and `22.2.3`, compile the shared fixture with each version's
 compiler, and test timing, inputs, computed values, keyed lists, zoneless

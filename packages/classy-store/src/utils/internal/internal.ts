@@ -1,5 +1,32 @@
 const objectProto = Object.getPrototypeOf({});
 
+/** An array index is a canonical unsigned integer key below the maximum array length. */
+export function getArrayIndex(key: string | symbol): number | undefined {
+  if (typeof key !== 'string') return undefined;
+  const index = Number(key);
+  if (
+    Number.isInteger(index) &&
+    index >= 0 &&
+    index < 2 ** 32 - 1 &&
+    String(index) === key
+  )
+    return index;
+  return undefined;
+}
+
+/** Visit only present indices, including non-enumerable ones. Keep trailing holes. */
+export function mapOwnArrayElements<T, U>(
+  source: readonly T[],
+  project: (value: T, key: string) => U,
+): U[] {
+  const result = new Array<U>(source.length);
+  for (const key of Object.getOwnPropertyNames(source)) {
+    const index = getArrayIndex(key);
+    if (index !== undefined) result[index] = project(source[index], key);
+  }
+  return result;
+}
+
 /**
  * Symbol that class instances can use to opt-in to deep proxying.
  * Classes with `static [PROXYABLE] = true` will be wrapped by the store proxy
@@ -43,21 +70,24 @@ export function canProxy(value: unknown): value is object {
 }
 
 /**
- * Walk the prototype chain of `target` looking for a getter descriptor for `prop`.
- * Returns the first (most-derived) getter found, or `undefined` if none exists.
- *
- * Used by `core.ts` (GET trap) to detect class getters for memoized evaluation,
- * and by `snapshot.ts` to skip own-property copying for getter-backed keys.
+ * Look up the effective descriptor, respecting own and inherited data properties
+ * that shadow an accessor on a more distant prototype.
  */
-export function findGetterDescriptor(
+export function findPropertyDescriptor(
   target: object,
   prop: string | symbol,
 ): PropertyDescriptor | undefined {
   let proto: object | null = target;
   while (proto) {
     const desc = Object.getOwnPropertyDescriptor(proto, prop);
-    if (desc?.get) return desc;
+    if (desc) return desc;
     proto = Object.getPrototypeOf(proto);
   }
   return undefined;
+}
+
+/** Return the effective getter, respecting a nearer data property. */
+export function findGetterDescriptor(target: object, prop: string | symbol) {
+  const descriptor = findPropertyDescriptor(target, prop);
+  return descriptor?.get ? descriptor : undefined;
 }

@@ -1,6 +1,5 @@
 import {createSignal, getOwner, isDisposed, onCleanup} from 'solid-js';
-import {getInternal, subscribe} from '../../core/core';
-import {snapshot} from '../../snapshot/snapshot';
+import {getInternal, snapshot, subscribe} from '../../storeRuntime';
 import type {Snapshot} from '../../types';
 
 /**

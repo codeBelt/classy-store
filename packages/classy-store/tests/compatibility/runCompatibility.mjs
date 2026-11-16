@@ -1,3 +1,4 @@
+import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
 import {
   cpSync,
@@ -203,12 +204,25 @@ try {
       ],
       consumerDirectory,
     );
-    for (const mode of ['import', 'require']) {
-      run(
-        process.execPath,
-        ['entrypoints.fixture.mjs', mode],
-        consumerDirectory,
-      );
+    assert.deepEqual(
+      readFileSync(
+        join(consumerDirectory, 'node_modules/@codebelt/classy-store/LICENSE'),
+      ),
+      readFileSync(resolve(packageDirectory, '../../LICENSE')),
+      'The installed tarball must contain the repository MIT license',
+    );
+    const nodeFlags = [[]];
+    if (process.features.require_module) {
+      nodeFlags.push(['--no-experimental-require-module']);
+    }
+    for (const flags of nodeFlags) {
+      for (const mode of ['import', 'require']) {
+        run(
+          process.execPath,
+          [...flags, 'entrypoints.fixture.mjs', mode],
+          consumerDirectory,
+        );
+      }
     }
     run(
       bunExecutable,

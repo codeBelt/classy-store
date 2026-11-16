@@ -58,6 +58,52 @@ describe('shallowEqual', () => {
 
   // ── Array equality ──────────────────────────────────────────────────────
 
+  it('short-circuits a dense mismatch before enumerating array keys', () => {
+    const values = Array.from({length: 100_000}, (_, i) => i);
+    const changed = values.slice();
+    changed[0] = -1;
+    let scans = 0;
+    const observed = new Proxy(values, {
+      ownKeys(target) {
+        scans++;
+        return Reflect.ownKeys(target);
+      },
+    });
+    expect(shallowEqual(observed, changed)).toBe(false);
+    expect(scans).toBe(0);
+  });
+
+  it('compares own index membership as well as values in sparse arrays', () => {
+    const hole = new Array<undefined>(1);
+    expect(shallowEqual(hole, [undefined])).toBe(false);
+    expect(shallowEqual([undefined], hole)).toBe(false);
+    expect(shallowEqual(hole, new Array<undefined>(1))).toBe(true);
+    const first = new Array<undefined>(2);
+    const second = new Array<undefined>(2);
+    first[0] = undefined;
+    second[1] = undefined;
+    expect(shallowEqual(first, second)).toBe(false);
+    const left = new Array<number>(4);
+    const right = new Array<number>(4);
+    Object.defineProperty(left, '2', {value: 7});
+    right[2] = 7;
+    expect(
+      shallowEqual(
+        Object.assign(left, {label: 'left'}),
+        Object.assign(right, {label: 'right'}),
+      ),
+    ).toBe(true);
+    right[2] = 8;
+    expect(shallowEqual(left, right)).toBe(false);
+  });
+
+  it('distinguishes arrays from records with the same keys in either order', () => {
+    expect(shallowEqual([], {})).toBe(false);
+    expect(shallowEqual({}, [])).toBe(false);
+    expect(shallowEqual<unknown>(['a'], {0: 'a'})).toBe(false);
+    expect(shallowEqual<unknown>({0: 'a'}, ['a'])).toBe(false);
+  });
+
   it('returns true for shallow-equal arrays', () => {
     expect(shallowEqual([1, 'a', true], [1, 'a', true])).toBe(true);
   });

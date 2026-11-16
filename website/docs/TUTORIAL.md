@@ -44,7 +44,7 @@ A store is any class instance wrapped with `createClassyStore()`. State lives as
 import {createClassyStore} from '@codebelt/classy-store';
 
 class TodoStore {
-  items: { id: number; text: string; done: boolean }[] = [];
+  items: {id: number; text: string; done: boolean}[] = [];
   filter: 'all' | 'active' | 'done' = 'all';
 
   get remaining() {
@@ -52,7 +52,8 @@ class TodoStore {
   }
 
   get filtered() {
-    if (this.filter === 'active') return this.items.filter((item) => !item.done);
+    if (this.filter === 'active')
+      return this.items.filter((item) => !item.done);
     if (this.filter === 'done') return this.items.filter((item) => item.done);
     return this.items;
   }
@@ -117,7 +118,7 @@ const todos = useClassyStore(todoStore, (state) => state.items);
 
 The problem shows up when your selector **derives a new value** — calling `.filter()`, `.map()`, or using object spread always allocates a new array or object, even when the underlying data hasn't changed. `Object.is` sees a different reference and triggers a re-render.
 
-`shallowEqual` compares one level deep: array length and elements, or an object's own enumerable string keys and values, using `Object.is`. Use it for plain records and arrays. It does not inspect prototypes, symbol keys, or native `Map`/`Set`/`Date` contents, so it is not a general equality function for those values.
+`shallowEqual` compares one level deep: array length, occupied indices, and element values, or an object's own enumerable string keys and values, using `Object.is`. Use it for plain records and arrays. It does not inspect prototypes, symbol keys, or native `Map`/`Set`/`Date` contents, so it is not a general equality function for those values.
 
 Without `shallowEqual` — `.filter()` creates a new array every time the snapshot updates, even if the todo items haven't changed:
 
@@ -125,7 +126,9 @@ Without `shallowEqual` — `.filter()` creates a new array every time the snapsh
 import {useClassyStore} from '@codebelt/classy-store/react';
 
 // ❌ New array reference every snapshot → unnecessary re-renders
-const active = useClassyStore(todoStore, (state) => state.items.filter((item) => !item.done));
+const active = useClassyStore(todoStore, (state) =>
+  state.items.filter((item) => !item.done),
+);
 ```
 
 With `shallowEqual` — compares the array contents, not the reference:
@@ -203,14 +206,14 @@ class FormStore {
   count = 0;
 
   submit(name: string, email: string) {
-    this.name = name;       // immediately notifies React
-    this.email = email;     // immediately notifies React
-    this.submitted = true;  // React batches renders in an event handler
+    this.name = name; // immediately notifies React
+    this.email = email; // immediately notifies React
+    this.submitted = true; // React batches renders in an event handler
   }
 
   incrementMany(n: number) {
     for (let i = 0; i < n; i++) {
-      this.count++;         // each write notifies React
+      this.count++; // each write notifies React
     }
   }
 }
@@ -290,7 +293,7 @@ import {createClassyStore} from '@codebelt/classy-store';
 import {reactiveMap} from '@codebelt/classy-store/collections';
 
 class UserStore {
-  users = reactiveMap<string, { name: string; role: string }>();
+  users = reactiveMap<string, {name: string; role: string}>();
 
   get count() {
     return this.users.size;
@@ -310,7 +313,7 @@ export const userStore = createClassyStore(new UserStore());
 
 `ReactiveMap` and `ReactiveSet` provide Map-like and Set-like methods backed by arrays. They are not native collections or exact substitutes for native identity and iterator semantics. See the [collection behavior](./REACTIVE_COLLECTIONS_TUTORIAL.md#collection-behavior).
 
-> **When to use:** Whenever you'd reach for `Map` or `Set` inside a store. You *can* use native `Map`/`Set`, but only the reference is reactive — mutations like `.set()` or `.add()` won't trigger updates. You'd have to replace the entire Map/Set (e.g., `this.users = new Map(this.users)`) to notify subscribers. `reactiveMap()` and `reactiveSet()` avoid that by making individual operations reactive.
+> **When to use:** Whenever you'd reach for `Map` or `Set` inside a store. You _can_ use native `Map`/`Set`, but only the reference is reactive — mutations like `.set()` or `.add()` won't trigger updates. You'd have to replace the entire Map/Set (e.g., `this.users = new Map(this.users)`) to notify subscribers. `reactiveMap()` and `reactiveSet()` avoid that by making individual operations reactive.
 
 ## Class Inheritance
 
@@ -337,14 +340,14 @@ class BaseStore {
 }
 
 class UserStore extends BaseStore {
-  users: { id: string; name: string }[] = [];
+  users: {id: string; name: string}[] = [];
 
   get activeCount() {
     return this.users.length;
   }
 
   async fetchUsers() {
-    this.setLoading(true);       // base method — reactive
+    this.setLoading(true); // base method — reactive
     this.setError(null);
     try {
       const res = await fetch('/api/users');
@@ -375,12 +378,12 @@ Async methods work naturally. React is notified as each field changes, and pendi
 
 ```ts
 class PostStore {
-  posts: { id: number; title: string }[] = [];
+  posts: {id: number; title: string}[] = [];
   loading = false;
   error: string | null = null;
 
   async fetchPosts() {
-    this.loading = true;   // notify React that loading started
+    this.loading = true; // notify React that loading started
     this.error = null;
     try {
       const res = await fetch('/api/posts');
@@ -410,8 +413,12 @@ import {useLocalStore, useClassyStore} from '@codebelt/classy-store/react';
 
 class CounterStore {
   count = 0;
-  get doubled() { return this.count * 2; }
-  increment() { this.count++; }
+  get doubled() {
+    return this.count * 2;
+  }
+  increment() {
+    this.count++;
+  }
 }
 
 function Counter() {
@@ -436,8 +443,12 @@ import {persist} from '@codebelt/classy-store/utils';
 class FormStore {
   name = '';
   email = '';
-  setName(v: string) { this.name = v; }
-  setEmail(v: string) { this.email = v; }
+  setName(v: string) {
+    this.name = v;
+  }
+  setEmail(v: string) {
+    this.email = v;
+  }
 }
 
 function EditProfile() {
@@ -446,14 +457,23 @@ function EditProfile() {
   const snap = useClassyStore(store);
 
   useEffect(() => {
-    const handle = persist(store, { storage: localStorage, name: 'edit-profile-draft' });
+    const handle = persist(store, {
+      storage: localStorage,
+      name: 'edit-profile-draft',
+    });
     return () => handle.dispose();
   }, [store]);
 
   return (
     <form>
-      <input value={snap.name} onChange={(e) => store.setName(e.target.value)} />
-      <input value={snap.email} onChange={(e) => store.setEmail(e.target.value)} />
+      <input
+        value={snap.name}
+        onChange={(e) => store.setName(e.target.value)}
+      />
+      <input
+        value={snap.email}
+        onChange={(e) => store.setEmail(e.target.value)}
+      />
     </form>
   );
 }
@@ -513,7 +533,7 @@ const data = useCatalogStore(
 
 ### Mutate through methods, not from components
 
-While you *can* write `counterStore.count = 5` directly from a component, you shouldn't. Centralizing mutations in store methods keeps your logic in one place and makes it easier to find, refactor, and test.
+While you _can_ write `counterStore.count = 5` directly from a component, you shouldn't. Centralizing mutations in store methods keeps your logic in one place and makes it easier to find, refactor, and test.
 
 ```ts
 // ✅ Good — mutation logic lives in the store
@@ -553,11 +573,31 @@ The same limitation applies to methods bound to the raw instance in its construc
 
 ### Keep computed getters pure
 
-Compute getters from explicit store property reads. Changes to `Date.now()`, random values, or external variables do not invalidate a cached getter. In-place mutation of opaque values does not invalidate it either. If time affects a computed value, store a timestamp and update that field explicitly. Property enumeration or `in` checks alone are not tracked getter dependencies.
+Compute getters from explicit store property reads. Changes to `Date.now()`, random values, or external variables do not invalidate a cached getter. In-place mutation of opaque values does not invalidate it either. If time affects a computed value, store a timestamp and update that field explicitly. In a snapshot getter, `Object.keys(this)` can return an empty array on the first read, and `key in this` can miss a field. The getter receiver tracks direct property reads. For dynamic keys, put the fields in a plain record and read that record explicitly:
+
+```ts
+class FormStore {
+  fields: Record<string, string> = {name: ''};
+
+  get fieldNames() {
+    return Object.keys(this.fields);
+  }
+}
+```
+
+### Initialize with mutable data
+
+The live store wraps nested plain objects with proxies. If a frozen input contains an object-valued, non-writable and non-configurable property, JavaScript requires that property to return its original object. Even reading `store.profile.details` can then throw a `TypeError`. For plain, structured-cloneable input, make a mutable copy before creating the store:
+
+```ts
+const profile = Object.freeze({details: {name: 'Ada'}});
+const store = createClassyStore({profile: structuredClone(profile)});
+store.profile.details.name = 'Grace';
+```
 
 ### Keep mutations inside the proxy
 
-Create the store once for its owner and use the returned proxy. Mutating the raw instance, using `Object.defineProperty` to change state, or sharing a raw child object across independent stores bypasses the intended assignment/deletion tracking. Use ordinary fields, arrays, and separate data ownership for each store. Circular references in traversed state are rejected by `snapshot()`.
+Create the store once for its owner and use the returned proxy. Mutating the raw instance or using `Object.defineProperty` to change state bypasses assignment/deletion tracking. When stores share a child, edit it through a store proxy to notify its owners. Circular references in traversed state are rejected by `snapshot()`.
 
 ### Don't destructure the store outside `useClassyStore`
 

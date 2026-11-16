@@ -11,19 +11,19 @@ React defines the supported [serializable prop types](https://react.dev/referenc
 
 ## Package boundaries
 
-| Entry | App Router use |
-| --- | --- |
-| `@codebelt/classy-store` | Core store creation and snapshots in server or client modules. |
-| `@codebelt/classy-store/collections` | Reactive collections in server or client modules. |
-| `@codebelt/classy-store/utils` | Server-safe imports; configure browser storage and effects inside Client Components. |
-| `@codebelt/classy-store/react` | Client hooks. The published ESM and CommonJS entries carry `use client`. |
+| Entry                                 | App Router use                                                                                             |
+| ------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `@codebelt/classy-store`              | Core store creation and snapshots in server or client modules.                                             |
+| `@codebelt/classy-store/collections`  | Reactive collections in server or client modules.                                                          |
+| `@codebelt/classy-store/utils`        | Server-safe imports; configure browser storage and effects inside Client Components.                       |
+| `@codebelt/classy-store/react`        | Client hooks. The published ESM and CommonJS entries carry `use client`.                                   |
 | `@codebelt/classy-store/react/server` | `prepareStoreForHydration` without importing React hooks; safe in Server Components and ordinary SSR code. |
 
 Components that use hooks still need their own client boundary. Do not call
 `useClassyStore`, `useLocalStore`, or `createStoreHook` in a Server Component.
 Preparing a store in an RSC module does not transfer that store or its capture
 to the browser; initialize and prepare the browser counterpart separately.
-The `/react/server` helper and `/react` hooks share a capture cache within each module graph. Preparation is exported only from `/react/server`.
+The `/react/server` helper and `/react` hooks from the same package installation share the captured snapshot, including when one is loaded with `import` and the other with `require()`. Preparation is exported only from `/react/server`.
 
 ## A route-owned store
 
@@ -56,7 +56,10 @@ Construct and prepare it inside the Client Component:
 
 import {useClassyStore, useLocalStore} from '@codebelt/classy-store/react';
 import {prepareStoreForHydration} from '@codebelt/classy-store/react/server';
-import {type ProfileData, ProfileStore} from '../../stores/profile/profile.store';
+import {
+  type ProfileData,
+  ProfileStore,
+} from '../../stores/profile/profile.store';
 
 export function ProfileEditor({initialData}: {initialData: ProfileData}) {
   const store = prepareStoreForHydration(
@@ -69,7 +72,9 @@ export function ProfileEditor({initialData}: {initialData: ProfileData}) {
       <input
         aria-label="Name"
         value={state.name}
-        onChange={(event) => { store.name = event.target.value; }}
+        onChange={(event) => {
+          store.name = event.target.value;
+        }}
       />
       <button type="button" onClick={() => store.recordVisit()}>
         Visits: {state.visits}
@@ -121,7 +126,8 @@ mean the instance was destroyed. See [Next.js state preservation](https://nextjs
 ## Tested package consumer
 
 Run `bun run test:react:next` from the repository root. It installs the package
-tarball into an isolated Next.js 16.4.2 / React 19.3.1 app and runs clean
+tarball into an isolated app using the example's Next.js version and the library's
+development React version, then runs clean
 production Turbopack builds with React Compiler off and on. Tests verify the
 actual compiler-generated selector and tracking functions, request isolation,
 real inputs, streamed response ordering, delayed hydration without replacing
@@ -134,5 +140,6 @@ does not establish compatibility with every Next.js version, bundler, or
 Cache Components configuration.
 
 Next App Router can supply its own React runtime. The test evidence records the
-actual browser `React.version`; this Next.js version uses
-`19.3.0-canary-278794d7-20261002`, while the installed React package is 19.3.1.
+actual browser `React.version` separately from the installed package versions.
+Consult the generated compiler evidence and `test-results/next/report.json` for
+the versions exercised by a particular run.

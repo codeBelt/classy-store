@@ -1,5 +1,5 @@
 import {useState} from 'react';
-import {createClassyStore} from '../../../../core/core';
+import {createClassyStore} from '../../../../storeRuntime';
 
 /**
  * Create a component-scoped reactive store that lives for the lifetime of the

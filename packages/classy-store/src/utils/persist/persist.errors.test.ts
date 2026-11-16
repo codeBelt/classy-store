@@ -45,32 +45,34 @@ describe('persistence error propagation', () => {
       adapter: 'getItem',
       operation: 'read',
     },
-  ])('$description preserves a synchronous adapter failure when onError throws', async ({
-    method,
-    adapter,
-    operation,
-  }) => {
-    const failure = new Error('adapter failure');
-    const onError = mock(() => {
-      throw new Error('reporting failure');
-    });
-    const handle = persist(createClassyStore({count: 0}), {
-      name: 'qa-synchronous-error',
-      skipHydration: true,
-      storage: {
-        ...storage,
-        [adapter]: () => {
-          throw failure;
+  ])(
+    '$description preserves a synchronous adapter failure when onError throws',
+    async ({method, adapter, operation}) => {
+      const failure = new Error('adapter failure');
+      const onError = mock(() => {
+        throw new Error('reporting failure');
+      });
+      const handle = persist(createClassyStore({count: 0}), {
+        name: 'qa-synchronous-error',
+        skipHydration: true,
+        storage: {
+          ...storage,
+          [adapter]: () => {
+            throw failure;
+          },
         },
-      },
-      onError,
-    });
-    handles.push(handle);
-    await expect(handle[method]()).rejects.toBe(failure);
-    expect(onError).toHaveBeenCalledTimes(1);
-    expect(onError).toHaveBeenCalledWith(failure, operation);
-    expect(handle.getSnapshot().lastError).toEqual({error: failure, operation});
-  });
+        onError,
+      });
+      handles.push(handle);
+      await expect(handle[method]()).rejects.toBe(failure);
+      expect(onError).toHaveBeenCalledTimes(1);
+      expect(onError).toHaveBeenCalledWith(failure, operation);
+      expect(handle.getSnapshot().lastError).toEqual({
+        error: failure,
+        operation,
+      });
+    },
+  );
 
   test('an issued save rejects after disposal without reporting or starting queued work', async () => {
     const pending = deferred<void>();

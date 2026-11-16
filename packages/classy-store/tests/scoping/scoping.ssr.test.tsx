@@ -97,146 +97,154 @@ describe('scoped context server rendering and hydration', () => {
     expect(outerStores[0].title).toBe('Outer');
   });
 
-  test.each(
-    modes,
-  )('hydrates matching %s context state without replacing server DOM', async (mode) => {
-    const serverStores: EditorStore[] = [];
-    const clientStores: EditorStore[] = [];
-    const initialData = {title: 'Server', body: 'Request data'};
-    const container = document.createElement('div');
-    container.innerHTML = renderToString(
-      <ScopedSsrTree
-        initialData={initialData}
-        mode={mode}
-        onStore={(store) => serverStores.push(store)}
-      />,
-    );
-    document.body.appendChild(container);
-    const serverElement = container.querySelector('[data-scoped-value]');
-    const onRecoverableError = mock(() => {});
-    const onCommit = mock((value: string) => value);
-
-    await act(async () => {
-      const root = hydrateRoot(
-        container,
+  test.each(modes)(
+    'hydrates matching %s context state without replacing server DOM',
+    async (mode) => {
+      const serverStores: EditorStore[] = [];
+      const clientStores: EditorStore[] = [];
+      const initialData = {title: 'Server', body: 'Request data'};
+      const container = document.createElement('div');
+      container.innerHTML = renderToString(
         <ScopedSsrTree
           initialData={initialData}
           mode={mode}
-          onStore={(store) => clientStores.push(store)}
-          onCommit={onCommit}
+          onStore={(store) => serverStores.push(store)}
         />,
-        {onRecoverableError},
       );
-      mounted.set(root, container);
-    });
-    expect(onRecoverableError).not.toHaveBeenCalled();
-    expect(container.querySelector('[data-scoped-value]')).toBe(serverElement);
-    expect(serverElement?.textContent).toBe('Server|Request data');
-    expect(clientStores[0]).not.toBe(serverStores[0]);
-    expect(onCommit.mock.calls.map(([value]) => value)).toEqual([
-      'Server|Request data',
-    ]);
+      document.body.appendChild(container);
+      const serverElement = container.querySelector('[data-scoped-value]');
+      const onRecoverableError = mock(() => {});
+      const onCommit = mock((value: string) => value);
 
-    await act(async () => {
-      clientStores[0].setTitle('Client edit');
-      clientStores[0].setBody('Updated body');
-    });
-    expect(serverElement?.textContent).toBe('Client edit|Updated body');
-    expect(serverStores[0].title).toBe('Server');
-    expect(serverStores[0].body).toBe('Request data');
-  });
+      await act(async () => {
+        const root = hydrateRoot(
+          container,
+          <ScopedSsrTree
+            initialData={initialData}
+            mode={mode}
+            onStore={(store) => clientStores.push(store)}
+            onCommit={onCommit}
+          />,
+          {onRecoverableError},
+        );
+        mounted.set(root, container);
+      });
+      expect(onRecoverableError).not.toHaveBeenCalled();
+      expect(container.querySelector('[data-scoped-value]')).toBe(
+        serverElement,
+      );
+      expect(serverElement?.textContent).toBe('Server|Request data');
+      expect(clientStores[0]).not.toBe(serverStores[0]);
+      expect(onCommit.mock.calls.map(([value]) => value)).toEqual([
+        'Server|Request data',
+      ]);
 
-  test.each(
-    modes,
-  )('restores persistence before a delayed %s context consumer first hydrates', async (mode) => {
-    const initialData = {title: 'Server', body: 'Initial body'};
-    let serverStore!: EditorStore;
-    let clientStore!: EditorStore;
-    const container = document.createElement('div');
-    container.innerHTML = renderToString(
-      <ScopedSsrTree
-        initialData={initialData}
-        gate={createGate(true)}
-        mode={mode}
-        onStore={(store) => {
-          serverStore = store;
-        }}
-      />,
-    );
-    document.body.appendChild(container);
-    const serverElement = container.querySelector('[data-scoped-value]');
-    const gate = createGate();
-    const onRead = mock((value: string) => value);
-    const onCommit = mock((value: string) => value);
-    const onRecoverableError = mock(() => {});
-    const storage = {
-      getItem: mock(async () =>
-        JSON.stringify({
-          version: 0,
-          state: {title: 'Saved', body: 'Persisted body'},
-        }),
-      ),
-      setItem: mock(() => {}),
-      removeItem: mock(() => {}),
-    };
-    let root!: Root;
-    await act(async () => {
-      root = hydrateRoot(
-        container,
+      await act(async () => {
+        clientStores[0].setTitle('Client edit');
+        clientStores[0].setBody('Updated body');
+      });
+      expect(serverElement?.textContent).toBe('Client edit|Updated body');
+      expect(serverStores[0].title).toBe('Server');
+      expect(serverStores[0].body).toBe('Request data');
+    },
+  );
+
+  test.each(modes)(
+    'restores persistence before a delayed %s context consumer first hydrates',
+    async (mode) => {
+      const initialData = {title: 'Server', body: 'Initial body'};
+      let serverStore!: EditorStore;
+      let clientStore!: EditorStore;
+      const container = document.createElement('div');
+      container.innerHTML = renderToString(
         <ScopedSsrTree
           initialData={initialData}
-          gate={gate}
+          gate={createGate(true)}
           mode={mode}
-          persistence={{name: `delayed-${mode}`, storage}}
           onStore={(store) => {
-            clientStore = store;
+            serverStore = store;
           }}
-          onRead={onRead}
-          onCommit={onCommit}
         />,
-        {onRecoverableError},
       );
-      mounted.set(root, container);
-    });
+      document.body.appendChild(container);
+      const serverElement = container.querySelector('[data-scoped-value]');
+      const gate = createGate();
+      const onRead = mock((value: string) => value);
+      const onCommit = mock((value: string) => value);
+      const onRecoverableError = mock(() => {});
+      const storage = {
+        getItem: mock(async () =>
+          JSON.stringify({
+            version: 0,
+            state: {title: 'Saved', body: 'Persisted body'},
+          }),
+        ),
+        setItem: mock(() => {}),
+        removeItem: mock(() => {}),
+      };
+      let root!: Root;
+      await act(async () => {
+        root = hydrateRoot(
+          container,
+          <ScopedSsrTree
+            initialData={initialData}
+            gate={gate}
+            mode={mode}
+            persistence={{name: `delayed-${mode}`, storage}}
+            onStore={(store) => {
+              clientStore = store;
+            }}
+            onRead={onRead}
+            onCommit={onCommit}
+          />,
+          {onRecoverableError},
+        );
+        mounted.set(root, container);
+      });
 
-    // The provider owns persistence outside the suspended subtree. This proves
-    // restoration finished before the first context consumer's store read.
-    expect(storage.getItem).toHaveBeenCalledTimes(1);
-    expect(clientStore.title).toBe('Saved');
-    expect(clientStore.body).toBe('Persisted body');
-    expect(onRead).not.toHaveBeenCalled();
-    expect(onCommit).not.toHaveBeenCalled();
-    expect(serverElement?.textContent).toBe('Server|Initial body');
-    expect(container.querySelector('[data-scoped-value]')).toBe(serverElement);
+      // The provider owns persistence outside the suspended subtree. This proves
+      // restoration finished before the first context consumer's store read.
+      expect(storage.getItem).toHaveBeenCalledTimes(1);
+      expect(clientStore.title).toBe('Saved');
+      expect(clientStore.body).toBe('Persisted body');
+      expect(onRead).not.toHaveBeenCalled();
+      expect(onCommit).not.toHaveBeenCalled();
+      expect(serverElement?.textContent).toBe('Server|Initial body');
+      expect(container.querySelector('[data-scoped-value]')).toBe(
+        serverElement,
+      );
 
-    await act(async () => gate.release());
+      await act(async () => gate.release());
 
-    expect(onRecoverableError).not.toHaveBeenCalled();
-    expect(container.querySelector('[data-scoped-value]')).toBe(serverElement);
-    expect(serverElement?.textContent).toBe('Saved|Persisted body');
-    expect(onRead.mock.calls[0][0]).toBe('Server|Initial body');
-    expect(onCommit.mock.calls.map(([value]) => value)).toEqual([
-      'Server|Initial body',
-      'Saved|Persisted body',
-    ]);
-    expect(storage.setItem).not.toHaveBeenCalled();
-    expect(serverStore.title).toBe('Server');
-    expect(serverStore.body).toBe('Initial body');
+      expect(onRecoverableError).not.toHaveBeenCalled();
+      expect(container.querySelector('[data-scoped-value]')).toBe(
+        serverElement,
+      );
+      expect(serverElement?.textContent).toBe('Saved|Persisted body');
+      expect(onRead.mock.calls[0][0]).toBe('Server|Initial body');
+      expect(onCommit.mock.calls.map(([value]) => value)).toEqual([
+        'Server|Initial body',
+        'Saved|Persisted body',
+      ]);
+      expect(storage.setItem).not.toHaveBeenCalled();
+      expect(serverStore.title).toBe('Server');
+      expect(serverStore.body).toBe('Initial body');
 
-    await act(async () => {
-      clientStore.setTitle('Edited');
-      clientStore.setBody('Client body');
-    });
-    expect(serverElement?.textContent).toBe('Edited|Client body');
-    expect(storage.setItem).toHaveBeenCalledTimes(1);
+      await act(async () => {
+        clientStore.setTitle('Edited');
+        clientStore.setBody('Client body');
+      });
+      expect(serverElement?.textContent).toBe('Edited|Client body');
+      expect(storage.setItem).toHaveBeenCalledTimes(1);
 
-    const commitsBeforeUnmount = onCommit.mock.calls.length;
-    await act(async () => root.unmount());
-    mounted.delete(root);
-    container.remove();
-    clientStore.setTitle('Detached');
-    await Promise.resolve();
-    expect(storage.setItem).toHaveBeenCalledTimes(1);
-    expect(onCommit).toHaveBeenCalledTimes(commitsBeforeUnmount);
-  });
+      const commitsBeforeUnmount = onCommit.mock.calls.length;
+      await act(async () => root.unmount());
+      mounted.delete(root);
+      container.remove();
+      clientStore.setTitle('Detached');
+      await Promise.resolve();
+      expect(storage.setItem).toHaveBeenCalledTimes(1);
+      expect(onCommit).toHaveBeenCalledTimes(commitsBeforeUnmount);
+    },
+  );
 });

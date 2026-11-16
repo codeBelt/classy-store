@@ -56,13 +56,13 @@ function subscribeKey<T extends object, K extends keyof T & keyof Snapshot<T>>(
 ): () => void;
 ```
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `proxyStore` | `T` | A reactive proxy created by `createClassyStore()` |
-| `key` | `keyof T` | The property to watch |
-| `callback` | `(value, previousValue) => void` | Called when the watched property changes |
-| `options` | `SubscribeOptions` | Optional `{sync: true}` for immediate notifications; otherwise batched |
-| **Returns** | `() => void` | Unsubscribe function |
+| Parameter    | Type                             | Description                                                            |
+| ------------ | -------------------------------- | ---------------------------------------------------------------------- |
+| `proxyStore` | `T`                              | A reactive proxy created by `createClassyStore()`                      |
+| `key`        | `keyof T`                        | The property to watch                                                  |
+| `callback`   | `(value, previousValue) => void` | Called when the watched property changes                               |
+| `options`    | `SubscribeOptions`               | Optional `{sync: true}` for immediate notifications; otherwise batched |
+| **Returns**  | `() => void`                     | Unsubscribe function                                                   |
 
 The callback is not called when you subscribe. It receives the current and previous snapshot values when the watched key changes. By default, several synchronous writes coalesce into one callback with the final value; passing `{sync: true}` as the fourth argument observes each change. Import `Snapshot` from the root entry and `SubscribeOptions` from the root or utilities entry.
 
@@ -83,9 +83,9 @@ Because `snapshot()` uses structural sharing, unchanged sub-trees return the sam
 ```ts
 class AuthStore {
   token: string | null = null;
-  user: { name: string; role: string } | null = null;
+  user: {name: string; role: string} | null = null;
 
-  login(token: string, user: { name: string; role: string }) {
+  login(token: string, user: {name: string; role: string}) {
     this.token = token;
     this.user = user;
   }
@@ -147,7 +147,7 @@ subscribeKey(playerStore, 'track', (track) => {
 
 ```ts
 class CartStore {
-  items: { id: string; qty: number }[] = [];
+  items: {id: string; qty: number}[] = [];
   coupon: string | null = null;
 
   get total() {
@@ -155,7 +155,7 @@ class CartStore {
   }
 
   addItem(id: string) {
-    this.items.push({ id, qty: 1 });
+    this.items.push({id, qty: 1});
   }
 
   applyCoupon(code: string) {
@@ -167,18 +167,18 @@ const cartStore = createClassyStore(new CartStore());
 
 // Only log when coupon changes — not on every item add
 subscribeKey(cartStore, 'coupon', (coupon, prev) => {
-  analytics.track('coupon_changed', { from: prev, to: coupon });
+  analytics.track('coupon_changed', {from: prev, to: coupon});
 });
 ```
 
 ## subscribeKey vs subscribe
 
-| | `subscribe()` | `subscribeKey()` |
-|---|---|---|
-| Fires on | Batched store changes by default | Changed watched snapshot value after a notification |
-| Callback args | `()` (no arguments) | `(value, previousValue)` |
-| Use case | General side effects | Property-specific reactions |
-| Additional work | Invoke listeners | Read a snapshot and compare the watched value per notification |
+|                 | `subscribe()`                    | `subscribeKey()`                                               |
+| --------------- | -------------------------------- | -------------------------------------------------------------- |
+| Fires on        | Batched store changes by default | Changed watched snapshot value after a notification            |
+| Callback args   | `()` (no arguments)              | `(value, previousValue)`                                       |
+| Use case        | General side effects             | Property-specific reactions                                    |
+| Additional work | Invoke listeners                 | Read a snapshot and compare the watched value per notification |
 
 Use `subscribe()` when you need to react to any change. Use `subscribeKey()` when you only care about one property and want to avoid running your callback unnecessarily.
 
@@ -201,9 +201,9 @@ Each subscription is independent — they don't interfere with each other.
 
 ## Quick Reference
 
-| What you want | How to do it |
-|---|---|
-| Watch a single property | `subscribeKey(store, 'key', (val, prev) => { ... })` |
-| Stop watching | `const unsub = subscribeKey(...); unsub()` |
-| Watch multiple properties | Call `subscribeKey()` once per key |
-| Get both old and new value | Callback receives `(value, previousValue)` |
+| What you want              | How to do it                                         |
+| -------------------------- | ---------------------------------------------------- |
+| Watch a single property    | `subscribeKey(store, 'key', (val, prev) => { ... })` |
+| Stop watching              | `const unsub = subscribeKey(...); unsub()`           |
+| Watch multiple properties  | Call `subscribeKey()` once per key                   |
+| Get both old and new value | Callback receives `(value, previousValue)`           |
