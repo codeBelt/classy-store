@@ -58,6 +58,21 @@ describe('shallowEqual', () => {
 
   // ── Array equality ──────────────────────────────────────────────────────
 
+  it('short-circuits a dense mismatch before enumerating array keys', () => {
+    const values = Array.from({length: 100_000}, (_, i) => i);
+    const changed = values.slice();
+    changed[0] = -1;
+    let scans = 0;
+    const observed = new Proxy(values, {
+      ownKeys(target) {
+        scans++;
+        return Reflect.ownKeys(target);
+      },
+    });
+    expect(shallowEqual(observed, changed)).toBe(false);
+    expect(scans).toBe(0);
+  });
+
   it('compares own index membership as well as values in sparse arrays', () => {
     const hole = new Array<undefined>(1);
     expect(shallowEqual(hole, [undefined])).toBe(false);

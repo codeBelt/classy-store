@@ -471,6 +471,8 @@ const snap = snapshot(myStore);
 
 Low-level subscription API. Returns an unsubscribe function. By default, the callback fires once per batched mutation after the microtask flush. Pass `{sync: true}` to notify immediately on each mutation.
 
+A subscription to a store created by `createClassyStore()` observes its own subtree, even when another store contains it. A subscription to a child proxy also observes siblings within its nearest owning stores. Moving that child updates its subscription scope automatically.
+
 ```typescript
 import {subscribe} from '@codebelt/classy-store';
 
@@ -883,9 +885,9 @@ Applications upgrading from 0.10.x can keep their existing store definitions and
 
 ## Changes since 0.10.x
 
-- Retained rows stay reactive after reordering or filtering. An edit to a shared object updates every owning path.
+- Retained rows stay reactive after reordering or filtering. An edit to a shared object updates every owning path. Subscriptions follow a retained row across stores. An independently created editor keeps its own undo/redo history when embedded in a larger store.
 - Snapshots preserve sparse array holes, own JSON `__proto__` keys, and object-literal getters. Nested writes made by class setters reach subscribers. `shallowEqual` distinguishes arrays from records and a missing array slot from an element containing `undefined`.
-- Persistence preserves and saves subscriber edits to other selected fields during a restore, regardless of field declaration order. Existing 0.10.x records use the same envelope. Keep your persistence schema version when only the library version changes.
+- Persistence preserves and saves subscriber edits to other selected fields during a restore, regardless of field declaration order. Calling `clear()` from a restore subscriber removes the stored data until a later local edit. Existing 0.10.x records use the same envelope. Keep your persistence schema version when only the library version changes.
 - ESM and CommonJS callers can pass a store between entry points from the same installed copy, including when using history utilities or preparing React hydration.
 
 ---
@@ -3129,20 +3131,21 @@ tsdown.config.ts                # 'src/utils/index.ts' in entry array
 
 Each `persist()` call creates a closure with the following internal state:
 
-| Variable              | Type                                    | Purpose                                                                       |
-| --------------------- | --------------------------------------- | ----------------------------------------------------------------------------- |
-| `disposed`            | `boolean`                               | Guards against writes after `dispose()`                                       |
-| `debounceTimer`       | `ReturnType<typeof setTimeout> \| null` | Active debounce timer (cancelled on save/clear/dispose or accepted hydration) |
-| `storageQueue`        | `Promise<void> \| undefined`            | Orders this handle's writes/removals and lets reads wait for prior operations |
-| `hydrationRequest`    | `number`                                | Rejects read results superseded by newer requests or storage events           |
-| `skipAutoSaveVersion` | `number \| undefined`                   | Skips a restored, cleared, or already scheduled revision                      |
-| `hydratedFlag`        | `boolean`                               | Synchronous hydration status                                                  |
-| `expiredFlag`         | `boolean`                               | Set to `true` when hydration encounters expired data                          |
-| `lastError`           | `PersistStatus['lastError']`            | Latest reported failure; cleared after a successful operation                 |
-| `resolveHydrated`     | `() => void`                            | Resolves the `hydrated` promise                                               |
-| `resolvedProps`       | `Array<{key, transform?}>`              | Normalized property list with optional transforms                             |
-| `transformMap`        | `Map<string, PropertyTransform>`        | Fast lookup from key to transform                                             |
-| `propKeys`            | `string[]`                              | Flat list of property keys to persist                                         |
+| Variable              | Type                                    | Purpose                                                                           |
+| --------------------- | --------------------------------------- | --------------------------------------------------------------------------------- |
+| `disposed`            | `boolean`                               | Guards against writes after `dispose()`                                           |
+| `debounceTimer`       | `ReturnType<typeof setTimeout> \| null` | Active debounce timer (cancelled on save/clear/dispose or accepted hydration)     |
+| `storageQueue`        | `Promise<void> \| undefined`            | Orders this handle's writes/removals and lets reads wait for prior operations     |
+| `hydrationRequest`    | `number`                                | Rejects read results superseded by newer requests or storage events               |
+| `skipAutoSaveVersion` | `number \| undefined`                   | Skips a restored or already scheduled revision                                    |
+| `clearedVersion`      | `number \| undefined`                   | Suppresses writes through the last clear, including remaining restore assignments |
+| `hydratedFlag`        | `boolean`                               | Synchronous hydration status                                                      |
+| `expiredFlag`         | `boolean`                               | Set to `true` when hydration encounters expired data                              |
+| `lastError`           | `PersistStatus['lastError']`            | Latest reported failure; cleared after a successful operation                     |
+| `resolveHydrated`     | `() => void`                            | Resolves the `hydrated` promise                                                   |
+| `resolvedProps`       | `Array<{key, transform?}>`              | Normalized property list with optional transforms                                 |
+| `transformMap`        | `Map<string, PropertyTransform>`        | Fast lookup from key to transform                                                 |
+| `propKeys`            | `string[]`                              | Flat list of property keys to persist                                             |
 
 Bookkeeping is per handle. Handles on the same store still observe each other's applied mutations, and handles using the same storage key can overwrite one another. Their queues do not coordinate with each other.
 

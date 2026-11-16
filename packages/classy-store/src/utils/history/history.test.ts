@@ -10,6 +10,26 @@ const tick = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 // ── Tests ────────────────────────────────────────────────────────────────────
 
 describe('withHistory', () => {
+  it('retains redo on an explicit store when only its outer owner changes', async () => {
+    const editor = createClassyStore({text: 'before'});
+    const app = createClassyStore({editor, tab: 'first'});
+    const history = withHistory(editor);
+    try {
+      app.editor.text = 'after';
+      await tick();
+      history.undo();
+      await tick();
+      expect(history.canRedo).toBe(true);
+      app.tab = 'second';
+      await tick();
+      expect(history.canRedo).toBe(true);
+      history.redo();
+      expect(editor.text).toBe('after');
+    } finally {
+      history.dispose();
+    }
+  });
+
   it.each([
     {description: 'undo', operation: 'undo' as const},
     {description: 'redo', operation: 'redo' as const},

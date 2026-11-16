@@ -123,6 +123,7 @@ export function persist<T extends object>(
   let hydrationRequest = 0;
   let storageQueue: Promise<void> | undefined;
   let skipAutoSaveVersion: number | undefined;
+  let clearedVersion: number | undefined;
   let lastError: PersistStatus['lastError'] = null;
   const readStatus = (): PersistStatus => ({
     isHydrated: hydratedFlag,
@@ -233,7 +234,7 @@ export function persist<T extends object>(
     // A preceding subscriber can edit during a batch, scheduling a second
     // notification for a revision this handle has already queued for saving.
     const current = getVersion(proxyStore);
-    if (current === skipAutoSaveVersion) return;
+    if (current === skipAutoSaveVersion || current === clearedVersion) return;
     skipAutoSaveVersion = current;
 
     if (debounceMs <= 0) {
@@ -335,6 +336,10 @@ export function persist<T extends object>(
         const after = getVersion(proxyStore);
         if (after === before) continue;
         expectedVersion++;
+        // Applying another stored field after clear() is still part of this
+        // restore. A later subscriber/user edit has its own revision.
+        if (clearedVersion === before && after === before + 1)
+          clearedVersion = after;
         // A direct data-field assignment adds one revision. Any additional
         // revision came from user code and must survive the rest of this pass.
         if (after > before + 1 && pending.size) discardEditedFields();
@@ -491,7 +496,7 @@ export function persist<T extends object>(
     async clear() {
       assertActive();
       hydrationRequest++;
-      skipAutoSaveVersion = getVersion(proxyStore);
+      clearedVersion = getVersion(proxyStore);
       if (debounceTimer !== null) {
         clearTimeout(debounceTimer);
         debounceTimer = null;

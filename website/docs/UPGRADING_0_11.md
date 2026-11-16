@@ -10,7 +10,7 @@ Applications upgrading from 0.10.x can keep their existing store definitions and
 
 ## Changes since 0.10.x
 
-- Retained rows stay reactive after reordering or filtering. An edit to a shared object updates every owning path.
+- Retained rows stay reactive after reordering or filtering. An edit to a shared object updates every owning path. Subscriptions follow a retained row across stores. An independently created editor keeps its own undo/redo history when embedded in a larger store.
 - Snapshots preserve sparse array holes, own JSON `__proto__` keys, and object-literal getters. Nested writes made by class setters reach subscribers. `shallowEqual` distinguishes arrays from records and a missing array slot from an element containing `undefined`.
-- Persistence preserves and saves subscriber edits to other selected fields during a restore, regardless of field declaration order. Existing 0.10.x records use the same envelope. Keep your persistence schema version when only the library version changes.
+- Persistence preserves and saves subscriber edits to other selected fields during a restore, regardless of field declaration order. Calling `clear()` from a restore subscriber removes the stored data until a later local edit. Existing 0.10.x records use the same envelope. Keep your persistence schema version when only the library version changes.
 - ESM and CommonJS callers can pass a store between entry points from the same installed copy, including when using history utilities or preparing React hydration.

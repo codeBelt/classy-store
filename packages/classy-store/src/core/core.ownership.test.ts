@@ -61,6 +61,65 @@ describe('shared proxy ownership', () => {
     expect(snapshot(store).right.record.count).toBe(3);
   });
 
+  test('read-only shared data releases collected request owners without a child mutation', async () => {
+    const config = {currency: 'USD'};
+    const retained = createClassyStore({config});
+    const parents = getInternal(retained.config).parents;
+    for (let i = 0; i < 1000; i++)
+      snapshot(createClassyStore({config, request: i}));
+    for (let i = 0; i < 30 && parents.size > 1; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      Bun.gc(true);
+    }
+    expect(parents.size).toBe(1);
+    expect(retained.config.currency).toBe('USD');
+  });
+
+  test('a nested child follows its current sibling scope and detaches cleanly', () => {
+    const from = createClassyStore<{box?: {row: {n: number}}; other: number}>({
+      box: {row: {n: 0}},
+      other: 0,
+    });
+    const to = createClassyStore<{box?: {row: {n: number}}; other: number}>({
+      other: 0,
+    });
+    const box = from.box;
+    if (!box) throw new Error('Expected initial box');
+    const row = box.row;
+    const changed = mock(() => {});
+    const stop = subscribe(row, changed, {sync: true});
+    to.box = box;
+    delete from.box;
+    changed.mockClear();
+    from.other++;
+    expect(changed).not.toHaveBeenCalled();
+    to.other++;
+    expect(changed).toHaveBeenCalledTimes(1);
+    row.n++;
+    expect(changed).toHaveBeenCalledTimes(2);
+    stop();
+    row.n++;
+    expect(changed).toHaveBeenCalledTimes(2);
+  });
+
+  test('promoting a child to a root narrows existing descendant subscriptions', async () => {
+    const outer = createClassyStore({editor: {row: {n: 0}, tab: 0}, other: 0});
+    const changed = mock(() => {});
+    const stop = subscribe(outer.editor.row, changed);
+    outer.other++;
+    await Promise.resolve();
+    expect(changed).toHaveBeenCalledTimes(1);
+    const editor = createClassyStore(outer.editor);
+    outer.other++;
+    await Promise.resolve();
+    expect(changed).toHaveBeenCalledTimes(1);
+    editor.tab++;
+    editor.row.n++;
+    await Promise.resolve();
+    expect(changed).toHaveBeenCalledTimes(2);
+    stop();
+  });
+
   test('a retained child subscription keeps its notification scope alive', async () => {
     const changed = mock(() => {});
     const child = createClassyStore({child: {count: 1}}).child;

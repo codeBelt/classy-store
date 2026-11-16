@@ -462,6 +462,8 @@ const snap = snapshot(myStore);
 
 Low-level subscription API. Returns an unsubscribe function. By default, the callback fires once per batched mutation after the microtask flush. Pass `{sync: true}` to notify immediately on each mutation.
 
+A subscription to a store created by `createClassyStore()` observes its own subtree, even when another store contains it. A subscription to a child proxy also observes siblings within its nearest owning stores. Moving that child updates its subscription scope automatically.
+
 ```typescript
 import {subscribe} from '@codebelt/classy-store';
 

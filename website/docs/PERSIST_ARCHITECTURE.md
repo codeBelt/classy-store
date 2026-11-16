@@ -67,20 +67,21 @@ tsdown.config.ts                # 'src/utils/index.ts' in entry array
 
 Each `persist()` call creates a closure with the following internal state:
 
-| Variable              | Type                                    | Purpose                                                                       |
-| --------------------- | --------------------------------------- | ----------------------------------------------------------------------------- |
-| `disposed`            | `boolean`                               | Guards against writes after `dispose()`                                       |
-| `debounceTimer`       | `ReturnType<typeof setTimeout> \| null` | Active debounce timer (cancelled on save/clear/dispose or accepted hydration) |
-| `storageQueue`        | `Promise<void> \| undefined`            | Orders this handle's writes/removals and lets reads wait for prior operations |
-| `hydrationRequest`    | `number`                                | Rejects read results superseded by newer requests or storage events           |
-| `skipAutoSaveVersion` | `number \| undefined`                   | Skips a restored, cleared, or already scheduled revision                      |
-| `hydratedFlag`        | `boolean`                               | Synchronous hydration status                                                  |
-| `expiredFlag`         | `boolean`                               | Set to `true` when hydration encounters expired data                          |
-| `lastError`           | `PersistStatus['lastError']`            | Latest reported failure; cleared after a successful operation                 |
-| `resolveHydrated`     | `() => void`                            | Resolves the `hydrated` promise                                               |
-| `resolvedProps`       | `Array<{key, transform?}>`              | Normalized property list with optional transforms                             |
-| `transformMap`        | `Map<string, PropertyTransform>`        | Fast lookup from key to transform                                             |
-| `propKeys`            | `string[]`                              | Flat list of property keys to persist                                         |
+| Variable              | Type                                    | Purpose                                                                           |
+| --------------------- | --------------------------------------- | --------------------------------------------------------------------------------- |
+| `disposed`            | `boolean`                               | Guards against writes after `dispose()`                                           |
+| `debounceTimer`       | `ReturnType<typeof setTimeout> \| null` | Active debounce timer (cancelled on save/clear/dispose or accepted hydration)     |
+| `storageQueue`        | `Promise<void> \| undefined`            | Orders this handle's writes/removals and lets reads wait for prior operations     |
+| `hydrationRequest`    | `number`                                | Rejects read results superseded by newer requests or storage events               |
+| `skipAutoSaveVersion` | `number \| undefined`                   | Skips a restored or already scheduled revision                                    |
+| `clearedVersion`      | `number \| undefined`                   | Suppresses writes through the last clear, including remaining restore assignments |
+| `hydratedFlag`        | `boolean`                               | Synchronous hydration status                                                      |
+| `expiredFlag`         | `boolean`                               | Set to `true` when hydration encounters expired data                              |
+| `lastError`           | `PersistStatus['lastError']`            | Latest reported failure; cleared after a successful operation                     |
+| `resolveHydrated`     | `() => void`                            | Resolves the `hydrated` promise                                                   |
+| `resolvedProps`       | `Array<{key, transform?}>`              | Normalized property list with optional transforms                                 |
+| `transformMap`        | `Map<string, PropertyTransform>`        | Fast lookup from key to transform                                                 |
+| `propKeys`            | `string[]`                              | Flat list of property keys to persist                                             |
 
 Bookkeeping is per handle. Handles on the same store still observe each other's applied mutations, and handles using the same storage key can overwrite one another. Their queues do not coordinate with each other.
 

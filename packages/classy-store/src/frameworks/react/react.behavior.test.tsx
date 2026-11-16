@@ -90,6 +90,29 @@ class TestStore {
   }
 }
 
+describe('retained row subscriptions', () => {
+  afterEach(teardown);
+  it('updates a mounted row after it moves to another root', () => {
+    const from = createClassyStore({rows: [{n: 0}]});
+    const to = createClassyStore({rows: [] as {n: number}[]});
+    const row = from.rows[0];
+    function Row() {
+      return <span>{useClassyStore(row, (s) => s.n)}</span>;
+    }
+    setup();
+    render(<Row />);
+    act(() => {
+      from.rows.pop();
+      to.rows.push(row);
+    });
+    act(() => {
+      row.n = 3;
+    });
+    expect(to.rows[0]).toBe(row);
+    expect(container.textContent).toBe('3');
+  });
+});
+
 // ── Block 1: Batching — multi-prop methods ──────────────────────────────────
 
 describe('Batching — multi-prop methods cause single re-render', () => {

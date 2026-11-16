@@ -23,6 +23,77 @@ afterEach(() => {
 });
 
 describe('persist async operation ordering', () => {
+  test.each([
+    {trigger: 'manual', editAfterClear: false, debounce: 0},
+    {trigger: 'initial', editAfterClear: true, debounce: 0},
+    {trigger: 'storage', editAfterClear: false, debounce: 10},
+    {trigger: 'storage', editAfterClear: true, debounce: 10},
+  ])(
+    'clear during $trigger restore wins until a later local write (editAfterClear=$editAfterClear)',
+    async ({trigger, editAfterClear, debounce}) => {
+      let saved: string | null = JSON.stringify({
+        version: 0,
+        state: {count: 1, tail: 2},
+      });
+      const events: string[] = [];
+      const store = createClassyStore({label: 'initial', count: 0, tail: 0});
+      const handle = persist(store, {
+        name: 'draft',
+        skipHydration: trigger !== 'initial',
+        syncTabs: trigger === 'storage',
+        debounce,
+        storage: {
+          getItem: () => saved,
+          setItem: (_key, value) => {
+            saved = value;
+            events.push('write');
+          },
+          removeItem: () => {
+            saved = null;
+            events.push('clear');
+          },
+        },
+      });
+      handles.push(handle);
+      let cleared: Promise<void> | undefined;
+      const stop = subscribeKey(
+        store,
+        'count',
+        () => {
+          store.label = 'normalized';
+          cleared = handle.clear();
+          if (editAfterClear) store.label = 'later';
+        },
+        {sync: true},
+      );
+      try {
+        if (trigger === 'storage') {
+          globalThis.dispatchEvent(
+            new StorageEvent('storage', {key: 'draft', newValue: saved}),
+          );
+        } else if (trigger === 'manual') {
+          await handle.rehydrate();
+        } else {
+          await handle.hydrated;
+        }
+        await cleared;
+        await new Promise((resolve) => setTimeout(resolve, debounce + 5));
+        expect(store.tail).toBe(2);
+        expect(events).toEqual(editAfterClear ? ['clear', 'write'] : ['clear']);
+        if (editAfterClear) {
+          expect(JSON.parse(String(saved)).state.label).toBe('later');
+        } else {
+          expect(saved).toBeNull();
+          store.label = 'next edit';
+          await new Promise((resolve) => setTimeout(resolve, debounce + 5));
+          expect(JSON.parse(String(saved)).state.label).toBe('next edit');
+        }
+      } finally {
+        stop();
+      }
+    },
+  );
+
   for (const trigger of ['initial', 'manual', 'storage']) {
     for (const storedLabel of [false, true]) {
       test.each([false, true])(

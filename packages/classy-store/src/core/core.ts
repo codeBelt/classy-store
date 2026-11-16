@@ -179,9 +179,17 @@ export function getInternal(proxy: object): StoreInternal {
 function notifyMutation(internal: StoreInternal): void {
   const owners = internal.ancestors();
   // Invalidate every path before any synchronous subscriber reads a snapshot.
-  for (const node of owners) node.version++;
-  deliver(owners, 'syncListeners');
+  let recipients = owners;
   for (const node of owners) {
+    node.version++;
+    const scoped = node.scopedSubscribers;
+    if (scoped?.size) {
+      if (recipients === owners) recipients = new Set(owners);
+      for (const child of scoped) recipients.add(child);
+    }
+  }
+  deliver(recipients, 'syncListeners');
+  for (const node of recipients) {
     if (!node.batchedListeners.size) continue;
     if (!pendingNotifications.size) queueMicrotask(flushNotifications);
     pendingNotifications.add(node);
@@ -395,7 +403,7 @@ function createNode(target: object, pending?: StoreInternal[]): StoreInternal {
  */
 export function createClassyStore<T extends object>(instance: T): T {
   const node = createNode(instance);
-  node.isStoreRoot = true;
+  node.markAsRoot();
   node.resumeScope();
   return node.proxy as T;
 }
@@ -416,32 +424,20 @@ export function subscribe(
   options?: SubscribeOptions,
 ): () => void {
   const internal = getInternal(proxy);
-  // Always subscribe on the root so notifications fire regardless of
-  // whether the user subscribes to the root proxy or a child proxy.
-  const roots = [...internal.ancestors()].filter(
-    (node) => node.isStoreRoot || node.parents.size === 0,
-  );
-  // Cyclic stores still support mutation subscriptions, although snapshot()
-  // rejects cycles. Keep a subscription anchor inside a rootless cycle.
-  if (!roots.length) roots.push(internal);
-  if (roots.some((root) => root !== internal)) {
-    internal.subscriptionRoots ??= new Set();
-    internal.subscriptionRoots.add(roots);
-  }
-  const sets = roots.map((root) =>
-    options?.sync ? root.syncListeners : root.batchedListeners,
-  );
-  // One registration spanning several owners delivers once. Separate calls on
-  // independent stores retain their own registrations for the same function.
-  const notify = () => callback();
-  const key = roots.length === 1 ? callback : notify;
-  for (const listeners of sets) {
-    if (!listeners.has(key)) listeners.set(key, notify);
+  const listeners = options?.sync
+    ? internal.syncListeners
+    : internal.batchedListeners;
+  // Anchor delivery on the observed proxy. Child registrations additionally
+  // follow their current roots for sibling notifications.
+  if (!listeners.has(callback)) {
+    listeners.set(callback, () => callback());
+    internal.refreshSubscriptionScope();
   }
   return () => {
-    internal.subscriptionRoots?.delete(roots);
-    for (const listeners of sets) listeners.delete(key);
-    for (const root of roots) root.suspendIfDetached();
+    if (listeners.delete(callback)) {
+      internal.refreshSubscriptionScope();
+      internal.suspendIfDetached();
+    }
   };
 }
 
