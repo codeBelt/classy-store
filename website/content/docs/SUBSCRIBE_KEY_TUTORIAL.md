@@ -5,6 +5,8 @@ description: "Subscribe to one store property and respond only when that value c
 
 `subscribeKey()` subscribes to changes on a single property of a store proxy. It's the property-level equivalent of `subscribe()` — instead of firing on every store mutation, it only fires when the specific key you're watching actually changes.
 
+[Try the subscribeKey example →](/examples/subscribe-key/)
+
 ## Getting Started
 
 ### 1. Create a store

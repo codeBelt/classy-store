@@ -2,12 +2,12 @@
 
 Edit pages in `website/content/docs/` and use `meta.json` there to order the sidebar. Set each page’s title and description in its frontmatter. Link between sources with relative Markdown links such as `./REACT_SSR.md`. Published paths and heading fragments are used by npm and earlier release notes.
 
-From the repository root, install both sets of dependencies and build the library for the React demo.
+The homepage, docs, and interactive examples use one Next.js dev server and static export. Edit example pages in `website/content/examples/` and their live React controls in `website/examples/`. Code fences inside each example are highlighted at build time and share the guide theme.
+
+From the repository root:
 
 ```sh
-bun install --frozen-lockfile
 bun install --cwd website --frozen-lockfile
-bun run build
 bun run docs:dev
 ```
 
@@ -19,4 +19,4 @@ bun run docs:build
 bun run docs:test
 ```
 
-The tests serve `website/out/` under `/classy-store/`. They require Python 3 and Chromium. The export includes the React demo, search index, per-page Markdown, `llms.txt`, and `llms-full.txt`. The Docs workflow checks pull requests and publishes the tested export from `main`.
+The tests serve `website/out/` under `/classy-store/`. They require Python 3 and Chromium. The export includes all 11 native example pages, the legacy demo bookmark redirect, the shared search index, per-page Markdown, `llms.txt`, and `llms-full.txt`. The Docs workflow checks pull requests and publishes the tested export from `main`.

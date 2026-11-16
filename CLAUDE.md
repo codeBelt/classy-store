@@ -33,7 +33,8 @@ packages/classy-store/src/
 
 website/                           # Fumadocs static site (Next.js)
 website/content/docs/                      # .md source for all doc pages
-website/public/                    # Static assets and generated demo bundle
+website/examples/                  # Live React controls used by the MDX example pages
+website/public/                    # Static assets and old demo bookmark redirect
 
 examples/                          # Framework demo examples
 ```

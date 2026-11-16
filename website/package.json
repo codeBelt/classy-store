@@ -2,10 +2,9 @@
   "name": "classy-store-docs",
   "private": true,
   "scripts": {
-    "build:demos": "bun run --cwd .. demos:build",
-    "build": "bun run build:demos && next build --webpack",
-    "build:pages": "bun run build:demos && DOCS_BASE_PATH=/classy-store next build --webpack",
-    "dev": "bun run build:demos && next dev",
+    "build": "next build --webpack",
+    "build:pages": "DOCS_BASE_PATH=/classy-store next build --webpack",
+    "dev": "next dev",
     "start": "serve out",
     "types:check": "next typegen && tsc --noEmit",
     "test:pages": "playwright test"

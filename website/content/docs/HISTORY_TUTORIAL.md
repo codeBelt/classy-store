@@ -5,6 +5,8 @@ description: "Add undo, redo, pause, and resume behavior to a Classy Store insta
 
 `withHistory()` adds undo/redo for a store's data fields using a stack of snapshots. It records after each batched store notification. Call `undo()` to go back, `redo()` to go forward, and `pause()`/`resume()` to suspend and restart recording.
 
+[Try the History example →](/examples/history/)
+
 ## Getting Started
 
 ### 1. Create a store

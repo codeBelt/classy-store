@@ -135,8 +135,7 @@ exercise the public client entry, including computed getter behavior. Consumer
 fixtures under `tests/` verify the packed library and framework build boundaries.
 The other framework adapters remain under `src/frameworks/`.
 
-Runnable examples live in `examples/react` and `examples/nextjs` at the repository
-root. This guide and the utility architecture guides live in `website/docs`.
+The [interactive examples](/examples/) run in the documentation site. Their React components live in `website/examples`, and the standalone Next.js example lives in `examples/nextjs`.
 
 ## Layer 1: Write Proxy (`core.ts`)
 

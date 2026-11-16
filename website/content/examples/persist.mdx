@@ -1,0 +1,94 @@
+---
+title: "Persist"
+description: "Save preferences and notes to local storage, reload the page, and inspect the restored state."
+---
+
+import {DemoContainer} from '@/examples/components/DemoContainer';
+import {SimplePersistDemo} from '@/examples/demos/persist/SimplePersistDemo';
+import {KitchenSinkPersistDemo} from '@/examples/demos/persist/KitchenSinkPersistDemo';
+import {PersistenceProvider, StorageReady} from '@/examples/stores/persistence-context';
+
+<PersistenceProvider>
+
+## Simple Persist
+
+Change a preference, then refresh to restore it.
+
+<DemoContainer labels={["Store"]} demo={<StorageReady><SimplePersistDemo /></StorageReady>}>
+
+```typescript
+class PreferencesStore {
+  theme: 'light' | 'dark' = 'dark';
+  fontSize = 16;
+  accentColor: AccentColor = 'indigo';
+
+  get cssVars() {
+    return {
+      '--accent': colorMap[this.accentColor],
+      '--font-size': `${this.fontSize}px`,
+    };
+  }
+
+  setTheme(theme) { this.theme = theme; }
+  setFontSize(size) { this.fontSize = size; }
+  setAccentColor(color) { this.accentColor = color; }
+}
+
+const store = createClassyStore(new PreferencesStore());
+persist(store, { name: 'preferences', storage: localStorage });
+```
+
+</DemoContainer>
+
+## Kitchen Sink Persist
+
+Add notes and tags, change their order, and inspect the saved data.
+
+<DemoContainer labels={["Store"]} demo={<StorageReady><KitchenSinkPersistDemo /></StorageReady>}>
+
+```typescript
+class KitchenSinkStore {
+  notes = reactiveMap<string, Note>();
+  tags = reactiveSet<string>(['tutorial', 'persist']);
+  lastEditedAt = new Date();
+  viewMode: 'grid' | 'list' = 'list';
+  sortBy: 'date' | 'title' = 'date';
+  searchQuery = '';
+
+  get filteredNotes() { /* filter + sort */ }
+  addNote(title, body) { this.notes.set(...); }
+}
+
+persist(store, {
+  name: 'kitchen-sink',
+  syncTabs: true,
+  storage: localStorage,
+  debounce: 300,
+  version: 1,
+  merge: 'shallow',
+  properties: [
+    'viewMode', 'sortBy', 'searchQuery',
+    { key: 'lastEditedAt',
+      serialize: (d) => d.toISOString(),
+      deserialize: (state) => new Date(s) },
+    { key: 'notes',
+      serialize: (n) => [...n.entries()],
+      deserialize: (state) => reactiveMap(s) },
+    { key: 'tags',
+      serialize: (t) => [...t],
+      deserialize: (state) => reactiveSet(s) },
+  ],
+  migrate: (state, oldVersion) => {
+    if (oldVersion === 0) return { ...state, sortBy: 'date' };
+    return state;
+  },
+});
+```
+
+</DemoContainer>
+
+</PersistenceProvider>
+
+**API** · `persist(store, options): PersistHandle` from `@codebelt/classy-store/utils`.
+
+The simple example stores plain preferences. The notes example also serializes and restores dates, reactive maps, and reactive sets.

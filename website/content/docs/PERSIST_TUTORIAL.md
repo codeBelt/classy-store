@@ -5,6 +5,8 @@ description: "Persist, restore, migrate, and synchronize store state across brow
 
 `persist()` saves your store's state to storage and restores it on page load. It's a standalone utility function that works with any `createClassyStore()` instance.
 
+[Try the Persist example →](/examples/persist/)
+
 ## Getting Started
 
 ### 1. Create a store

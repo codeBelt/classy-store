@@ -2,11 +2,16 @@ import {readdirSync, readFileSync} from 'node:fs';
 import {expect, test} from '@playwright/test';
 
 const site = new URL('https://codebelt.github.io/classy-store/');
-const pages = readdirSync('content/docs')
-  .filter((name) => name.endsWith('.md'))
-  .map((name) =>
-    name === 'index.md' ? 'docs/' : `docs/${name.slice(0, -3)}/`,
-  );
+const pathsFor = (section: string, extension: string) =>
+  readdirSync(`content/${section}`)
+    .filter((name) => name.endsWith(extension))
+    .map((name) =>
+      name === `index${extension}`
+        ? `${section}/`
+        : `${section}/${name.slice(0, -extension.length)}/`,
+    );
+const pages = pathsFor('docs', '.md');
+const examplePages = pathsFor('examples', '.mdx');
 
 test('exported docs, README links, and section anchors resolve on Pages', async ({
   page,
@@ -20,7 +25,7 @@ test('exported docs, README links, and section anchors resolve on Pages', async 
   )) {
     links.add(href);
   }
-  for (const path of ['', ...pages]) {
+  for (const path of ['', ...pages, ...examplePages]) {
     const url = new URL(path, site);
     const html = readFileSync(`out/${path}index.html`, 'utf8');
     const {ids, hrefs} = await page.evaluate((html) => {
@@ -43,7 +48,11 @@ test('exported docs, README links, and section anchors resolve on Pages', async 
     if (url.origin !== site.origin) continue;
     expect(url.pathname, href).toMatch(/^\/classy-store(?:\/|$)/);
     const path = url.pathname.replace(/\/?$/, '/');
-    if (path.startsWith('/classy-store/docs/') || path === site.pathname) {
+    if (
+      path.startsWith('/classy-store/docs/') ||
+      path.startsWith('/classy-store/examples/') ||
+      path === site.pathname
+    ) {
       const ids = idsByPath.get(path);
       expect(ids, href).toBeDefined();
       if (url.hash)
@@ -116,7 +125,7 @@ test('search, copy Markdown, and the React demo work from the project subpath', 
     .toContain('# Angular 22');
   await page.goto('./');
   await page.getByRole('link', {name: 'Explore examples'}).click();
-  await expect(page).toHaveURL(/\/classy-store\/demos\/index.html/);
+  await expect(page).toHaveURL(/\/classy-store\/examples\/$/);
   await expect(
     page.getByRole('heading', {name: 'Interactive examples', exact: true}),
   ).toBeVisible();

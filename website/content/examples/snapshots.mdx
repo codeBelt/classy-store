@@ -1,0 +1,53 @@
+---
+title: "Snapshots"
+description: "Compare successive snapshots and see which branches retain their references after an edit."
+---
+
+import {DemoContainer} from '@/examples/components/DemoContainer';
+import {StructuralSharingDemo} from '@/examples/demos/snapshots/StructuralSharingDemo';
+
+## Structural Sharing Explorer
+
+Visualize snapshot reference identity. Cyan marks a shared reference; amber marks a new one.
+
+<DemoContainer labels={["Store", "Component"]} demo={<StructuralSharingDemo />}>
+
+```typescript
+class DocumentStore {
+  metadata = { title: 'Untitled', author: 'Anonymous' };
+  content = {
+    sections: [
+      { id: 1, heading: 'Introduction', body: '...' },
+      { id: 2, heading: 'Methods', body: '...' },
+    ],
+  };
+  settings = { theme: 'dark', fontSize: 14 };
+
+  updateTitle(title: string) {
+    this.metadata.title = title;
+  }
+  updateSectionBody(id: number, body: string) {
+    const section = this.content.sections.find(s => s.id === id);
+    if (section) section.body = body;
+  }
+  toggleTheme() {
+    this.settings.theme =
+      this.settings.theme === 'dark' ? 'light' : 'dark';
+  }
+}
+```
+
+```tsx
+// Compare snapshot references across renders
+const snap = snapshot(documentStore);
+const prev = prevSnapRef.current;
+
+// Structural sharing: unchanged branches keep identity
+snap.metadata === prev.metadata   // false (title changed)
+snap.content === prev.content     // true  (untouched)
+snap.settings === prev.settings   // true  (untouched)
+```
+
+</DemoContainer>
+
+Unchanged branches retain their references. Compare them with `===` to see structural sharing.

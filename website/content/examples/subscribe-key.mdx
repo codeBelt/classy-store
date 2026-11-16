@@ -1,0 +1,51 @@
+---
+title: "subscribeKey"
+description: "Watch separate property logs while changing the count or name."
+---
+
+import {DemoContainer} from '@/examples/components/DemoContainer';
+import {SubscribeKeyDemo} from '@/examples/demos/subscribe-key/SubscribeKeyDemo';
+
+## subscribeKey
+
+Subscribe to changes on a single property. Other property changes don't trigger the callback.
+
+<DemoContainer labels={["Store", "Usage"]} demo={<SubscribeKeyDemo />}>
+
+```typescript
+class SubscribeKeyStore {
+  count = 0;
+  name = 'Alice';
+  lastUpdated = '';
+
+  increment() {
+    this.count++;
+    this.lastUpdated = new Date().toLocaleTimeString();
+  }
+  setName(name: string) {
+    this.name = name;
+    this.lastUpdated = new Date().toLocaleTimeString();
+  }
+}
+
+const store = createClassyStore(new SubscribeKeyStore());
+```
+
+```tsx
+import { subscribeKey } from '@codebelt/classy-store/utils';
+
+// Only fires when 'count' changes
+const unsub = subscribeKey(store, 'count', (value, prev) => {
+  console.log(`count: ${prev} → ${value}`);
+});
+
+// Changing 'name' does NOT trigger this callback
+store.setName('Bob'); // callback not called
+store.increment();     // callback fires!
+```
+
+</DemoContainer>
+
+**API** · `subscribeKey(store, key, callback): () => void` from `@codebelt/classy-store/utils`.
+
+The subscription compares each property using `Object.is`. Updating the other property leaves its log alone.

@@ -27,7 +27,7 @@ export const docsLlms = llms(source, {
   async renderPage(page) {
     const markdown = await page.data.getText('processed');
     const body = markdown.replace(
-      /\]\((\.\.?\/[^)]+|#[^)]+)\)/g,
+      /\]\((\.\.?\/[^)]+|\/examples\/[^)]*|#[^)]+)\)/g,
       (link, href: string) => {
         const url = href.startsWith('#')
           ? page.url + href

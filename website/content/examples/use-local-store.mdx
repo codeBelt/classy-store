@@ -1,0 +1,57 @@
+---
+title: "useLocalStore"
+description: "Increment three independent counters created from the same class with useLocalStore."
+---
+
+import {DemoContainer} from '@/examples/components/DemoContainer';
+import {LocalCounterDemo} from '@/examples/demos/local-store/LocalCounterDemo';
+
+## Component-Scoped Counters
+
+Each counter uses useLocalStore() — independent state created on mount, disposed on unmount.
+
+<DemoContainer labels={["Store", "Component"]} demo={<LocalCounterDemo />}>
+
+```typescript
+class LocalCounterStore {
+  count = 0;
+  label: string;
+
+  constructor(label = 'Counter') {
+    this.label = label;
+  }
+
+  increment() { this.count++; }
+  decrement() { this.count--; }
+  reset() { this.count = 0; }
+}
+```
+
+```tsx
+function CounterInstance({ label }: { label: string }) {
+  // Each instance gets its own isolated store
+  const store = useLocalStore(
+    () => new LocalCounterStore(label)
+  );
+  const snap = useClassyStore(store);
+
+  return (
+    <div>
+      <span>{snap.label}: {snap.count}</span>
+      <button onClick={() => store.increment()}>+</button>
+      <button onClick={() => store.decrement()}>-</button>
+    </div>
+  );
+}
+
+// Three instances — completely independent state
+<CounterInstance label="A" />
+<CounterInstance label="B" />
+<CounterInstance label="C" />
+```
+
+</DemoContainer>
+
+**API** · `useLocalStore<T>(factory: () => T): T` from `@codebelt/classy-store/react`.
+
+Each component instance owns a store. Unmounting the component releases that instance.

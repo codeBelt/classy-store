@@ -9,7 +9,6 @@ on:
       - ".github/workflows/docs.yml"
       - "website/**"
       - "packages/**"
-      - "examples/react/**"
       - "package.json"
       - "bun.lock"
       - "README.md"
@@ -28,9 +27,7 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: "1.4.3"
-      - run: bun install --frozen-lockfile
       - run: bun install --cwd website --frozen-lockfile
-      - run: bun run build
       - run: bun run docs:build
       - run: bunx playwright install --with-deps chromium
         working-directory: website

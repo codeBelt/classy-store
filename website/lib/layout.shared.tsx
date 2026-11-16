@@ -15,13 +15,8 @@ export function baseOptions(): BaseLayoutProps {
     },
     themeSwitch: {mode: 'light-dark'},
     links: [
-      {text: 'Docs', url: '/docs', on: 'nav'},
-      {
-        text: 'Examples',
-        url: `${process.env.NEXT_PUBLIC_DOCS_BASE_PATH}/demos/index.html`,
-        external: true,
-        on: 'all',
-      },
+      {text: 'Docs', url: '/docs', on: 'all'},
+      {text: 'Examples', url: '/examples', on: 'all'},
     ],
     githubUrl: `https://github.com/${gitConfig.user}/${gitConfig.repo}`,
   };

@@ -15,7 +15,6 @@
   "ignore": [
     "classy-store-angular-example",
     "classy-store-nextjs-example",
-    "classy-store-react-example",
     "classy-store-solid-example",
     "classy-store-svelte-example",
     "classy-store-vue-example"

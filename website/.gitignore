@@ -9,7 +9,6 @@
 /.next/
 /out/
 /build
-/public/demos
 *.tsbuildinfo
 
 # misc

@@ -1,4 +1,3 @@
-import Link from 'fumadocs-core/link';
 import {
   DocsBody,
   DocsDescription,
@@ -51,24 +50,7 @@ export default async function Page(props: PageProps<'/docs/[[...slug]]'>) {
         <MDX
           components={getMDXComponents({
             // this allows you to link to other pages with relative file paths
-            a: createRelativeLink(source, page, ({href, ...props}) => {
-              if (
-                href?.startsWith(
-                  'https://codebelt.github.io/classy-store/demos/',
-                )
-              ) {
-                const path = href.slice(
-                  'https://codebelt.github.io/classy-store'.length,
-                );
-                return (
-                  <a
-                    {...props}
-                    href={process.env.NEXT_PUBLIC_DOCS_BASE_PATH + path}
-                  />
-                );
-              }
-              return <Link href={href} {...props} />;
-            }),
+            a: createRelativeLink(source, page),
           })}
         />
         {page.slugs.length === 0 && (

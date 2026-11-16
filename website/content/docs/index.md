@@ -46,7 +46,7 @@ function CounterButton() {
 
 This shared instance is for a client-only app. For SSR or independent subtrees, [scope the store](./REACT_SCOPING.md) to a request or provider.
 
-[Open the reactivity example →](https://codebelt.github.io/classy-store/demos/#/reactivity)
+[Open the reactivity example →](/examples/reactivity/)
 
 ## Framework support and upgrades
 

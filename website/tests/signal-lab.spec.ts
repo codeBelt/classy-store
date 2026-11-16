@@ -1,6 +1,6 @@
 import {expect, type Page, test} from '@playwright/test';
 
-const example = (slug = '') => `demos/index.html#/${slug}`;
+const example = (slug = '') => (slug ? `examples/${slug}/` : 'examples/');
 const control = (page: Page, name: string) =>
   page.getByRole('button', {name, exact: true});
 
@@ -27,17 +27,18 @@ test('the live bench, theme switch and docs-to-demo links work under the project
   await page.goto('docs/API_REFERENCE/');
   await expect(page.locator('html')).toHaveClass(/light/);
   await page.getByRole('link', {name: /Open snapshots example/}).click();
-  await expect(page).toHaveURL(/\/classy-store\/demos\/#\/snapshots$/);
+  await expect(page).toHaveURL(/\/classy-store\/examples\/snapshots\/$/);
   await page.reload();
   await expect(page.locator('html')).toHaveClass(/light/);
   await page
-    .locator('.examples-bar')
+    .locator('#nd-sidebar')
     .getByRole('button', {name: 'Toggle Theme'})
     .click();
+  await expect(page.locator('html')).toHaveClass(/dark/);
   await page.goto('docs/REACT_SCOPING/');
   await expect(page.locator('html')).toHaveClass(/dark/);
   await page.getByRole('link', {name: 'scoped editors demo'}).click();
-  await expect(page).toHaveURL(/\/classy-store\/demos\/#\/scoped-stores$/);
+  await expect(page).toHaveURL(/\/classy-store\/examples\/scoped-stores\/$/);
 });
 
 test('reactivity controls update only their channels, measure a batch and reset', async ({
@@ -144,7 +145,16 @@ test('switching source tabs preserves local counter instances', async ({
   await page.goto(example('use-local-store'));
   await control(page, '+').first().click();
   await control(page, 'Store').click();
+  await expect(page.locator('.example-source figure')).toContainText(
+    'class LocalCounterStore',
+  );
   await control(page, 'Component').click();
+  await expect(page.locator('.example-source figure')).toContainText(
+    'function CounterInstance',
+  );
+  await expect(
+    page.locator('.example-source figure span[style]').first(),
+  ).toBeVisible();
   await control(page, 'Demo').click();
   await expect(page.getByText('1', {exact: true})).toHaveCount(1);
   await expect(page.getByText('0', {exact: true})).toHaveCount(2);
@@ -220,11 +230,10 @@ test('mobile and reduced motion preserve navigation, controls and readable text'
       ),
     ).toEqual([]);
   }
-  await control(page, 'Menu').click();
-  await page.getByRole('searchbox', {name: 'Find an example'}).fill('History');
+  await control(page, 'Open Sidebar').click();
   await page
-    .getByRole('navigation', {name: 'Example navigation'})
-    .getByRole('link', {name: 'History'})
+    .locator('#nd-sidebar-mobile')
+    .getByRole('link', {name: 'History', exact: true})
     .click();
   await expect(
     page.getByRole('heading', {name: 'History', exact: true}),

@@ -130,7 +130,7 @@
     "test:browser": "playwright test --config tests/browser/playwright.config.ts",
     "---------- Lint --------------------------------------------------------": "",
     "typecheck": "tsc --noEmit && tsc --project tests/browser/tsconfig.json --noEmit && tsc --project tests/compiler/tsconfig.json --noEmit && tsc --project tests/performance/tsconfig.json --noEmit && tsc --project tests/memory/tsconfig.json --noEmit && tsc --project tests/next/tsconfig.json --noEmit && tsc --project tests/angularCompatibility/tsconfig.json --noEmit && tsc --project tests/frameworkCompatibility/tsconfig.json --noEmit",
-    "typecheck:scoping": "tsc --project ../../examples/react/tsconfig.scoping.json --noEmit",
+    "typecheck:scoping": "tsc --project tests/tsconfig.scoping.json --noEmit",
     "prepack": "cp ../../README.md .",
     "-----------------------------------------------------------------------": ""
   },

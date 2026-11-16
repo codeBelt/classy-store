@@ -172,7 +172,7 @@ body {
   border: 1px solid var(--lab-line);
   background: #101a22;
 }
-#nd-page .prose a[href*="/demos/"] {
+#nd-page .prose:not(.example-main) a[href*="/examples/"] {
   color: var(--lab-link);
   font-weight: 600;
 }

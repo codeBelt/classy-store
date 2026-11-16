@@ -243,6 +243,8 @@ For a shared subtree, use the [typed context and lifecycle example](./REACT_SCOP
 
 > See the [Local Stores](./TUTORIAL.md#local-stores) section in the Tutorial for persistence patterns and more examples.
 
+[Open local counter example →](/examples/use-local-store/)
+
 ### `createStoreHook(store)`
 
 Creates a pre-bound React hook for a specific store proxy. Eliminates the boilerplate of writing a typed wrapper around `useClassyStore` for every store instance.
@@ -315,7 +317,7 @@ const snap = snapshot(myStore);
 // Structural sharing: unchanged sub-trees === previous snapshot
 ```
 
-[Open snapshots example →](https://codebelt.github.io/classy-store/demos/#/snapshots)
+[Open snapshots example →](/examples/snapshots/)
 
 ### `subscribe(store, callback, options?)`
 
@@ -344,6 +346,8 @@ const unsubSync = subscribe(
 ### `shallowEqual(a, b)`
 
 Compares primitives with `Object.is`, arrays by length, occupied indices and element values, and other objects by their own enumerable string keys and values. A hole and an explicit `undefined` element compare differently. Comparing an array with a record returns `false`, even when both are empty. Use it for selectors returning plain records or arrays when one-level equality matches the UI's needs. It does not compare prototypes, symbol keys, or native `Map`/`Set`/`Date` contents; different instances with no enumerable keys can compare equal.
+
+[Compare selectors with shallowEqual →](/examples/shallow-equal/)
 
 ### `reactiveMap<K, V>(initial?)`
 

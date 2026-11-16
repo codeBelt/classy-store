@@ -3,6 +3,8 @@ title: "Store patterns"
 description: "Model nested state, combine stores, and work with computed getters."
 ---
 
+[Try the Scoped stores example →](/examples/scoped-stores/)
+
 ## Patterns
 
 ### Multiple stores

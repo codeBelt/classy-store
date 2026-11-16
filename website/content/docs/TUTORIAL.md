@@ -5,6 +5,8 @@ description: "Build a Classy Store app from a class definition through selectors
 
 `Classy Store` is a reactive state library for React, Vue, Svelte, Solid, and Angular built on ES proxies. Define state as classes, wrap them with `createClassyStore()`, and read them with the binding for your framework. Shared client stores need no Provider, observer, or reducer; context providers can scope independent instances. The library batches ordinary subscriptions while notifying React, Vue, Svelte, Solid, and Angular synchronously (Solid 2 retains its native reactive scheduling), and uses structural sharing for change detection.
 
+[Try the Reactivity example →](/examples/reactivity/)
+
 ## Quick Start
 
 **1. Define a class:**

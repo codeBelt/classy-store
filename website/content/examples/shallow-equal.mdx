@@ -1,0 +1,64 @@
+---
+title: "shallowEqual"
+description: "Compare component render counts when a selector returns an object with unchanged values."
+---
+
+import {DemoContainer} from '@/examples/components/DemoContainer';
+import {ShallowEqualDemo} from '@/examples/demos/shallow-equal/ShallowEqualDemo';
+
+## shallowEqual in Action
+
+Both selectors return an object with the first and last name. Change an unrelated setting to compare their render counts.
+
+<DemoContainer labels={["Store", "Selector"]} demo={<ShallowEqualDemo />}>
+
+```typescript
+class ProfileStore {
+  firstName = 'Alice';
+  lastName = 'Smith';
+  age = 30;
+  email = 'alice@example.com';
+  theme: 'dark' | 'light' = 'dark';
+  notifications = true;
+
+  setFirstName(name) { this.firstName = name; }
+  setLastName(name) { this.lastName = name; }
+  setAge(age) { this.age = age; }
+  toggleTheme() {
+    this.theme = this.theme === 'dark' ? 'light' : 'dark';
+  }
+  toggleNotifications() {
+    this.notifications = !this.notifications;
+  }
+}
+
+const profileStore = createClassyStore(new ProfileStore());
+```
+
+```tsx
+// This selector picks two properties into a NEW object.
+// Every call creates { first: ..., last: ... } — a fresh reference.
+
+// WITHOUT shallowEqual: re-renders on ANY store change
+// because {} !== {} (new object every time)
+const name = useClassyStore(profileStore, (state) => ({
+  first: state.firstName,
+  last: state.lastName,
+}));
+
+// WITH shallowEqual: only re-renders when firstName
+// or lastName actually change. Theme/notification
+// changes are ignored because the shallow comparison
+// sees the same values.
+const name = useClassyStore(
+  profileStore,
+  (state) => ({ first: state.firstName, last: state.lastName }),
+  { isEqual: shallowEqual }
+);
+```
+
+</DemoContainer>
+
+**API** · `shallowEqual<T>(a: T, b: T): boolean` from `@codebelt/classy-store`.
+
+Use the `isEqual` option when a selector builds a new object or array. Memoized class getters already retain their reference until a dependency changes.

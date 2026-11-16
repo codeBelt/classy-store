@@ -5,6 +5,8 @@ description: "Connect Classy Store to Redux DevTools for inspection and time-tra
 
 `devtools()` connects a store proxy to the [Redux DevTools](https://github.com/reduxjs/redux-devtools) browser extension for state inspection and time-travel debugging. It sends an initial snapshot and one update per batched store notification. Supported jump messages restore JSON data fields into the live store.
 
+[Try the DevTools example →](/examples/devtools/)
+
 ## Prerequisites
 
 Install the Redux DevTools extension for your browser:

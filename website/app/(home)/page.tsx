@@ -26,9 +26,9 @@ export default function HomePage() {
         <Link href="/docs/API_REFERENCE">
           API reference <span aria-hidden="true">↗</span>
         </Link>
-        <a href={`${process.env.NEXT_PUBLIC_DOCS_BASE_PATH}/demos/index.html`}>
+        <Link href="/examples/">
           Explore examples <span aria-hidden="true">→</span>
-        </a>
+        </Link>
       </nav>
     </main>
   );

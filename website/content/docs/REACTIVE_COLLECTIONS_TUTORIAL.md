@@ -12,6 +12,8 @@ subscribers, but mutating their contents does not. Reactive collections use
 arrays internally and expose Map-like and Set-like methods. They are not native
 `Map` or `Set` instances, and key/value lookups scan those arrays.
 
+[Try the Collections example →](/examples/collections/)
+
 ## Collection behavior
 
 - Lookups and mutations scan backing arrays, so they are O(n), not native-map-style indexed lookups.
