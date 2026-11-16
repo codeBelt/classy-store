@@ -4,7 +4,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link rel="icon" type="image/svg+xml" href="./logo.svg" />
+  <link rel="icon" type="image/svg+xml" href="../../../website/app/icon.svg" />
+  <script>
+    try { document.documentElement.className = localStorage.getItem('classy-store-theme') === 'light' ? 'light' : 'dark'; }
+    catch { document.documentElement.className = 'dark'; }
+  </script>
   <title>Classy Store Demo</title>
 </head>
 

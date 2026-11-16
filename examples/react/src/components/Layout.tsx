@@ -1,4 +1,8 @@
-import {type ReactNode, useState} from 'react';
+import {type ReactNode, useEffect, useState} from 'react';
+import instrumentImage from '../../../../website/public/instruments/signal-strip.webp' with {
+  type: 'file',
+};
+import {RackStrip} from '../../../../website/signal/instruments';
 import {NavSidebar} from './NavSidebar';
 
 export function Layout({
@@ -9,49 +13,103 @@ export function Layout({
   children: ReactNode;
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-
+  const [query, setQuery] = useState('');
+  const [light, setLight] = useState(
+    document.documentElement.classList.contains('light'),
+  );
+  useEffect(() => {
+    function sync(event: StorageEvent) {
+      if (event.key === 'classy-store-theme' || event.key === null) {
+        setLight(event.newValue === 'light');
+      }
+    }
+    window.addEventListener('storage', sync);
+    return () => window.removeEventListener('storage', sync);
+  }, []);
+  useEffect(() => {
+    document.documentElement.classList.toggle('light', light);
+    document.documentElement.classList.toggle('dark', !light);
+  }, [light]);
+  useEffect(() => {
+    const go = () => {
+      setSidebarOpen(false);
+      setQuery('');
+      window.scrollTo(0, 0);
+    };
+    window.addEventListener('hashchange', go);
+    return () => window.removeEventListener('hashchange', go);
+  }, []);
   return (
-    <div className="flex min-h-screen">
-      <NavSidebar
-        route={route}
-        open={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-      />
-
-      <div className="flex-1 min-w-0">
-        {/* Mobile header */}
-        <div className="lg:hidden sticky top-0 z-30 bg-zinc-950/90 backdrop-blur border-b border-zinc-800 px-4 py-3 flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => setSidebarOpen(true)}
-            className="text-zinc-400 hover:text-zinc-100 cursor-pointer"
-            aria-label="Open navigation"
-          >
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-              role="img"
-              aria-label="Menu"
-            >
-              <title>Menu</title>
-              <path
-                d="M3 5h14M3 10h14M3 15h14"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                fill="none"
-              />
-            </svg>
-          </button>
-          <span className="text-sm font-semibold text-zinc-200">
-            classy-store
+    <>
+      <header className="examples-bar">
+        <a className="lab-brand" href="../">
+          <span className="lab-monogram" aria-hidden="true">
+            CS
           </span>
-        </div>
-
-        <main className="max-w-5xl mx-auto px-6 py-8">{children}</main>
+          Classy Store
+        </a>
+        <a href="../docs/">Docs</a>
+        <a className="current" href="#/">
+          Examples
+        </a>
+        <button
+          type="button"
+          className="lab-secondary theme-key"
+          aria-label="Toggle Theme"
+          aria-pressed={light}
+          onClick={() => {
+            const next = !light;
+            setLight(next);
+            try {
+              localStorage.setItem(
+                'classy-store-theme',
+                next ? 'light' : 'dark',
+              );
+            } catch {
+              /* private browsing */
+            }
+          }}
+        >
+          {light ? 'Dark mode' : 'Light mode'}
+        </button>
+        <button
+          className="example-menu lab-secondary"
+          type="button"
+          aria-expanded={sidebarOpen}
+          aria-controls="examples-sidebar"
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+        >
+          Menu
+        </button>
+      </header>
+      <div className="example-layout">
+        <aside
+          id="examples-sidebar"
+          className={`example-sidebar${sidebarOpen ? ' is-open' : ''}`}
+        >
+          <label className="example-filter">
+            Find an example
+            <input
+              type="search"
+              value={query}
+              placeholder="Filter examples…"
+              onChange={(e) => setQuery(e.target.value)}
+            />
+          </label>
+          <NavSidebar
+            route={route}
+            query={query}
+            onClose={() => {
+              setSidebarOpen(false);
+              setQuery('');
+            }}
+          />
+        </aside>
+        <main className="example-main">
+          <RackStrip src={instrumentImage} />
+          {children}
+        </main>
       </div>
-    </div>
+    </>
   );
 }

@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "fumadocs-ui/css/neutral.css";
 @import "fumadocs-ui/css/preset.css";
+@import "../signal/tokens.css";
 
 html {
   scrollbar-gutter: stable;
@@ -14,4 +15,164 @@ html > body[data-scroll-locked] {
   margin-right: 0px !important;
   /* biome-ignore lint/complexity/noImportantStyles: Reset the matching scroll-lock compensation value. */
   --removed-body-scroll-bar-size: 0px !important;
+}
+
+:root,
+:root.dark,
+.dark #nd-sidebar {
+  --color-fd-background: var(--lab-bg);
+  --color-fd-foreground: var(--lab-ink);
+  --color-fd-card: var(--lab-panel);
+  --color-fd-card-foreground: var(--lab-ink);
+  --color-fd-muted: var(--lab-raised);
+  --color-fd-muted-foreground: var(--lab-muted);
+  --color-fd-border: var(--lab-line);
+  --color-fd-secondary: var(--lab-raised);
+  --color-fd-secondary-foreground: var(--lab-ink);
+  --color-fd-accent: var(--lab-active);
+  --color-fd-accent-foreground: var(--lab-ink);
+  --color-fd-primary: var(--lab-accent);
+  --color-fd-primary-foreground: var(--lab-accent-ink);
+  --color-fd-popover: var(--lab-panel);
+  --color-fd-popover-foreground: var(--lab-ink);
+  --color-fd-ring: var(--lab-link);
+}
+body {
+  background: var(--lab-bg);
+  color: var(--lab-ink);
+  font-family: var(--lab-font);
+}
+.lab-home {
+  width: min(100%, 76rem);
+  margin: auto;
+  padding: clamp(1.2rem, 3vw, 3rem);
+  padding-top: 1.4rem;
+}
+.home-hero {
+  display: grid;
+  grid-template-columns: minmax(14rem, 0.78fr) minmax(0, 1.55fr);
+  align-items: center;
+  gap: clamp(1rem, 2.5vw, 2.5rem);
+}
+.home-intro h1 {
+  margin: 0;
+  font-size: clamp(3.3rem, 6.8vw, 6.5rem);
+  line-height: 0.94;
+  letter-spacing: -0.069em;
+  font-weight: 760;
+}
+.home-intro p {
+  max-width: 18rem;
+  font-size: clamp(1.12rem, 1.85vw, 1.55rem);
+  color: var(--lab-muted);
+  line-height: 1.4;
+  margin: 1.3rem 0 1.55rem;
+}
+.home-intro .lab-primary {
+  min-height: 3rem;
+  font-size: 1.05rem;
+}
+.home-instrument {
+  min-width: 0;
+}
+.home-instrument .bench-scope {
+  border-radius: 1rem;
+}
+.home-controls {
+  margin-top: 0.4rem;
+  justify-content: center;
+}
+.home-controls output {
+  margin-right: 0.4rem;
+}
+.home-controls button {
+  min-height: 2.2rem;
+  padding: 0.25rem 0.8rem;
+  font-size: 0.85rem;
+}
+.home-source {
+  width: min(100%, 44rem);
+  margin: 1.8rem 3.5% 1.25rem auto;
+}
+.home-source figure {
+  margin: 0;
+}
+.home-source pre {
+  max-width: 100%;
+  overflow-x: auto;
+  font-size: 0.92rem;
+  line-height: 1.52;
+}
+.home-next {
+  display: flex;
+  gap: 2rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  padding-bottom: 1rem;
+  color: var(--lab-link);
+  font-weight: 600;
+}
+#nd-nav {
+  background: var(--lab-bg);
+}
+#nd-page {
+  padding-top: 1.5rem;
+}
+#nd-page h1 {
+  font-size: clamp(2.25rem, 4vw, 3.5rem);
+  letter-spacing: -0.055em;
+  line-height: 1.05;
+}
+#nd-page h2 {
+  letter-spacing: -0.035em;
+}
+#nd-page .rack-strip {
+  max-width: 54rem;
+}
+#nd-sidebar a[data-active="true"] {
+  background: var(--lab-active);
+  color: var(--lab-accent);
+  box-shadow: inset 2px 0 var(--lab-accent);
+}
+#nd-page .prose a {
+  text-decoration-color: var(--lab-link);
+}
+#nd-page figure,
+#nd-home-layout figure {
+  border-color: var(--lab-line);
+}
+@media (max-width: 680px) {
+  .home-hero {
+    grid-template-columns: 1fr;
+    gap: 1.2rem;
+  }
+  .home-intro h1 br {
+    display: none;
+  }
+  .home-intro h1 {
+    font-size: clamp(2.85rem, 10vw, 4rem);
+  }
+  .home-intro p {
+    max-width: 30rem;
+    margin: 0.85rem 0 1rem;
+  }
+  .home-source {
+    margin: 1.3rem 0 1.25rem;
+  }
+  #nd-page .rack-strip {
+    margin-bottom: 0.6rem;
+  }
+}
+
+.scope-guide svg[id^="classy-store-"] {
+  width: 100%;
+  max-height: 15rem;
+  padding: 0.85rem;
+  border-radius: 0.65rem;
+  border: 1px solid var(--lab-line);
+  background: #101a22;
+}
+#nd-page .prose a[href*="/demos/"] {
+  color: var(--lab-link);
+  font-weight: 600;
 }

@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 import {existsSync} from 'node:fs';
-import {rm} from 'node:fs/promises';
+import {copyFile, rm} from 'node:fs/promises';
 import path from 'node:path';
 import plugin from 'bun-plugin-tailwind';
 import dedupeReact from './dedupe-react';
@@ -157,6 +157,11 @@ const result = await Bun.build({
   },
   ...cliConfig,
 });
+
+await copyFile(
+  path.join(import.meta.dir, 'src/stores/posts.json'),
+  path.join(outdir, 'posts.json'),
+);
 
 const end = performance.now();
 

@@ -106,11 +106,11 @@ export function SubscribeKeyDemo() {
           Increment Count
         </Button>
         <Button
+          variant="secondary"
           onClick={() => {
             nameIdx = (nameIdx + 1) % names.length;
             subscribeKeyStore.setName(names[nameIdx] as string);
           }}
-          className="!bg-violet-500 hover:!bg-violet-400"
         >
           Change Name
         </Button>

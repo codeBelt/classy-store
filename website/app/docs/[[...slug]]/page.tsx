@@ -1,3 +1,4 @@
+import Link from 'fumadocs-core/link';
 import {
   DocsBody,
   DocsDescription,
@@ -13,6 +14,7 @@ import {getMDXComponents} from '@/components/mdx';
 import {MovedSections} from '@/components/moved-sections';
 import {getPageImageUrl, getPageMarkdownUrl, gitConfig} from '@/lib/shared';
 import {source} from '@/lib/source';
+import {RackStrip} from '@/signal/instruments';
 
 export default async function Page(props: PageProps<'/docs/[[...slug]]'>) {
   const params = await props.params;
@@ -24,6 +26,12 @@ export default async function Page(props: PageProps<'/docs/[[...slug]]'>) {
 
   return (
     <DocsPage toc={page.data.toc} full={page.data.full}>
+      <RackStrip
+        src={
+          process.env.NEXT_PUBLIC_DOCS_BASE_PATH +
+          '/instruments/signal-strip.webp'
+        }
+      />
       <DocsTitle>{page.data.title}</DocsTitle>
       <DocsDescription className="mb-0">
         {page.data.description}
@@ -35,11 +43,32 @@ export default async function Page(props: PageProps<'/docs/[[...slug]]'>) {
           githubUrl={`https://github.com/${gitConfig.user}/${gitConfig.repo}/blob/${gitConfig.branch}/website/content/docs/${page.path}`}
         />
       </div>
-      <DocsBody>
+      <DocsBody
+        className={
+          page.slugs[0] === 'REACT_SCOPING' ? 'scope-guide' : undefined
+        }
+      >
         <MDX
           components={getMDXComponents({
             // this allows you to link to other pages with relative file paths
-            a: createRelativeLink(source, page),
+            a: createRelativeLink(source, page, ({href, ...props}) => {
+              if (
+                href?.startsWith(
+                  'https://codebelt.github.io/classy-store/demos/',
+                )
+              ) {
+                const path = href.slice(
+                  'https://codebelt.github.io/classy-store'.length,
+                );
+                return (
+                  <a
+                    {...props}
+                    href={process.env.NEXT_PUBLIC_DOCS_BASE_PATH + path}
+                  />
+                );
+              }
+              return <Link href={href} {...props} />;
+            }),
           })}
         />
         {page.slugs.length === 0 && (

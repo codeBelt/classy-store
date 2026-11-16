@@ -16,7 +16,7 @@ const STORE_CODE = `class PostStore {
     this.loading = true;      // notification 1
     this.error = null;
     try {
-      const res = await fetch('/api/posts');
+      const res = await fetch('./posts.json');
       this.posts = await res.json();
     } catch (e) {
       this.error = e.message;

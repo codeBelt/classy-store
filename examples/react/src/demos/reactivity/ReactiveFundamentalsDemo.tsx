@@ -1,6 +1,10 @@
-import {createClassyStore} from '@codebelt/classy-store';
+import {createClassyStore, subscribe} from '@codebelt/classy-store';
 import {useClassyStore} from '@codebelt/classy-store/react';
-import {useState} from 'react';
+import {memo, useEffect, useRef, useState} from 'react';
+import instrumentImage from '../../../../../website/public/instruments/bench-scope.webp' with {
+  type: 'file',
+};
+import {BenchScope} from '../../../../../website/signal/instruments';
 import {Button} from '../../components/Button';
 import {DemoContainer} from '../../components/DemoContainer';
 import {RenderBadge} from '../../components/RenderBadge';
@@ -71,11 +75,44 @@ function NameInput() {
   );
 }`;
 
+function readChannels() {
+  return {count: counterStore.count, name: counterStore.name};
+}
+
+function CounterScope() {
+  const [samples, setSamples] = useState(() => [readChannels()]);
+  useEffect(
+    () =>
+      subscribe(
+        counterStore,
+        () => {
+          const next = readChannels();
+          setSamples((previous) => [...previous.slice(-23), next]);
+        },
+        {sync: true},
+      ),
+    [],
+  );
+  const latest = samples.at(-1) ?? readChannels();
+  return (
+    <div className="examples-scope">
+      <BenchScope
+        src={instrumentImage}
+        samples={samples.map((s) => s.count)}
+        events={samples.map((s, i) =>
+          i > 0 && s.name !== samples[i - 1]?.name ? 1 : 0,
+        )}
+        value={latest.count}
+      />
+    </div>
+  );
+}
+
 function CountCard() {
   const count = useClassyStore(counterStore, (state) => state.count);
   const renders = useRenderCount();
   return (
-    <div className="flex-1 flex items-center justify-between bg-indigo-500/10 border border-indigo-500/20 rounded-lg px-3 py-2.5">
+    <div className="flex-1 flex items-center justify-between bg-zinc-800/50 border border-zinc-700 rounded-lg px-3 py-2.5">
       <div>
         <div className="text-xs text-zinc-400 uppercase tracking-wide">
           Count
@@ -93,37 +130,47 @@ function NameCard() {
   const name = useClassyStore(counterStore, (state) => state.name);
   const renders = useRenderCount();
   return (
-    <div className="flex-1 flex items-center justify-between bg-violet-500/10 border border-violet-500/20 rounded-lg px-3 py-2.5">
+    <div className="flex-1 flex items-center justify-between bg-zinc-800/50 border border-zinc-700 rounded-lg px-3 py-2.5">
       <div>
         <div className="text-[10px] text-zinc-400 uppercase tracking-wide">
           Name
         </div>
-        <div className="text-xl font-mono font-bold text-violet-400">
-          {name}
-        </div>
+        <div className="text-xl font-mono font-bold text-amber-400">{name}</div>
       </div>
       <RenderBadge count={renders} />
     </div>
   );
 }
 
-function BatchCard() {
+const BatchCard = memo(function BatchCard() {
   const count = useClassyStore(batchStore, (state) => state.count);
   const renders = useRenderCount();
+  const beforeBatch = useRef<number | null>(null);
   return (
-    <div className="flex-1 flex items-center justify-between bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2.5">
-      <div>
-        <div className="text-[10px] text-zinc-400 uppercase tracking-wide">
-          Batch
-        </div>
-        <div className="text-xl font-mono font-bold text-amber-400">
-          {count}
-        </div>
+    <div className="rounded-lg border border-zinc-700 p-3">
+      <div className="mb-2 flex items-center justify-between">
+        <span>
+          Batch <strong>{count}</strong>
+        </span>
+        <RenderBadge count={renders} />
       </div>
-      <RenderBadge count={renders} />
+      <Button
+        size="sm"
+        onClick={() => {
+          beforeBatch.current = renders;
+          batchStore.incrementMany(1000);
+        }}
+      >
+        +1000 Batch
+      </Button>
+      {beforeBatch.current !== null && (
+        <output className="ms-2 text-xs">
+          1000 mutations · {renders - beforeBatch.current} observed render(s)
+        </output>
+      )}
     </div>
   );
-}
+});
 
 function NameInputCard() {
   const name = useClassyStore(formStore, (state) => state.name);
@@ -147,7 +194,7 @@ function NameInputCard() {
 }
 
 export function ReactiveFundamentalsDemo() {
-  const [lastBatch, setLastBatch] = useState(false);
+  const [resetId, setResetId] = useState(0);
 
   return (
     <DemoContainer
@@ -158,12 +205,7 @@ export function ReactiveFundamentalsDemo() {
         {label: 'Component', code: COMPONENT_CODE},
       ]}
     >
-      <div className="flex flex-col gap-3 mb-4">
-        <CountCard />
-        <NameCard />
-        <NameInputCard />
-        <BatchCard />
-      </div>
+      <CounterScope key={resetId} />
 
       <div className="flex flex-wrap gap-2 mb-4">
         <Button onClick={() => counterStore.increment()}>+ Count</Button>
@@ -173,18 +215,8 @@ export function ReactiveFundamentalsDemo() {
             nameIndex = (nameIndex + 1) % names.length;
             counterStore.setName(names[nameIndex] as string);
           }}
-          className="!bg-violet-500 !text-white hover:!bg-violet-400"
         >
           Change Name
-        </Button>
-        <Button
-          onClick={() => {
-            batchStore.incrementMany(1000);
-            setLastBatch(true);
-          }}
-          className="!bg-amber-500 hover:!bg-amber-400"
-        >
-          +1000 Batch
         </Button>
         <Button
           variant="secondary"
@@ -192,16 +224,19 @@ export function ReactiveFundamentalsDemo() {
             counterStore.reset();
             batchStore.reset();
             formStore.reset();
-            setLastBatch(false);
+            nameIndex = 0;
+            setResetId((id) => id + 1);
           }}
         >
           Reset
         </Button>
       </div>
-
-      {lastBatch && (
-        <p className="text-xs text-zinc-500">1000 mutations &rarr; 1 render</p>
-      )}
+      <div className="instrument-values mb-4">
+        <CountCard />
+        <NameCard />
+        <NameInputCard />
+        <BatchCard key={resetId} />
+      </div>
     </DemoContainer>
   );
 }

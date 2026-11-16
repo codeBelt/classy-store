@@ -12,18 +12,17 @@ export function HistoryPage() {
         </p>
       </header>
 
-      <ApiSignature
-        importPath="@codebelt/classy-store/utils"
-        signature="withHistory(store, options?): HistoryHandle"
-      />
-
       <div className="flex flex-col gap-6">
         <UndoRedoDemo />
+        <ApiSignature
+          importPath="@codebelt/classy-store/utils"
+          signature="withHistory(store, options?): HistoryHandle"
+        />
         <TipBox>
           Use <code className="text-xs bg-zinc-800 px-1 rounded">pause()</code>{' '}
           / <code className="text-xs bg-zinc-800 px-1 rounded">resume()</code>{' '}
-          to batch multiple edits into a single history entry. This is useful
-          for form submissions or complex multi-field updates.
+          to skip recording while paused. New changes are recorded after
+          resuming.
         </TipBox>
       </div>
     </>

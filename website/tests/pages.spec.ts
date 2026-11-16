@@ -118,7 +118,7 @@ test('search, copy Markdown, and the React demo work from the project subpath', 
   await page.getByRole('link', {name: 'Explore examples'}).click();
   await expect(page).toHaveURL(/\/classy-store\/demos\/index.html/);
   await expect(
-    page.getByText('Interactive Examples', {exact: true}).first(),
+    page.getByRole('heading', {name: 'Interactive examples', exact: true}),
   ).toBeVisible();
 });
 

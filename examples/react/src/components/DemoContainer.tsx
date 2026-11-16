@@ -20,6 +20,7 @@ export function DemoContainer({
 }) {
   const [activeTab, setActiveTab] = useState(0);
 
+  const selectedCode = codeTabs?.[activeTab - 1];
   const allTabs = [
     {label: 'Demo', type: 'demo' as const},
     ...(codeTabs ?? []).map((t) => ({...t, type: 'code' as const})),
@@ -35,12 +36,14 @@ export function DemoContainer({
         )}
       </div>
 
-      {/* Tabs */}
+      <div className="px-4 py-4 sm:px-5">{children}</div>
+      {/* Source tabs leave the live experiment mounted. */}
       <div className="flex border-b border-zinc-800 px-6 mt-4">
         {allTabs.map((tab, i) => (
           <button
             key={tab.label}
             type="button"
+            aria-pressed={activeTab === i}
             onClick={() => setActiveTab(i)}
             className={`px-3 py-2 text-xs font-medium transition-colors cursor-pointer -mb-px ${
               activeTab === i
@@ -53,23 +56,14 @@ export function DemoContainer({
         ))}
       </div>
 
-      {/* Content */}
-      {activeTab === 0 ? (
-        <div className="p-6">{children}</div>
-      ) : (
-        (() => {
-          const codeTab = codeTabs?.[activeTab - 1];
-          if (!codeTab) return null;
-          return (
-            <div className="max-h-[500px] overflow-y-auto bg-zinc-950">
-              <CodeBlock
-                code={codeTab.code}
-                language={codeTab.language ?? 'tsx'}
-                compact={true}
-              />
-            </div>
-          );
-        })()
+      {selectedCode && (
+        <div className="max-h-[500px] overflow-auto">
+          <CodeBlock
+            code={selectedCode.code}
+            language={selectedCode.language ?? 'tsx'}
+            compact={true}
+          />
+        </div>
       )}
     </div>
   );

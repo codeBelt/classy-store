@@ -353,6 +353,7 @@ function ControlPanel() {
       </span>
       <div className="flex flex-wrap gap-2">
         <Button
+          variant="secondary"
           size="sm"
           onClick={async () => {
             try {
@@ -364,11 +365,11 @@ function ControlPanel() {
               );
             }
           }}
-          className="!bg-teal-600 hover:!bg-teal-500"
         >
           Force Save
         </Button>
         <Button
+          variant="secondary"
           size="sm"
           onClick={async () => {
             try {
@@ -380,7 +381,6 @@ function ControlPanel() {
               );
             }
           }}
-          className="!bg-amber-600 hover:!bg-amber-500"
         >
           Clear Storage
         </Button>

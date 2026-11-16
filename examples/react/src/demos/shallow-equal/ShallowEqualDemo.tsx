@@ -165,12 +165,12 @@ export function ShallowEqualDemo() {
               Change First Name
             </Button>
             <Button
+              variant="secondary"
               size="sm"
               onClick={() => {
                 lnIdx = (lnIdx + 1) % lastNames.length;
                 profileStore.setLastName(lastNames[lnIdx] as string);
               }}
-              className="!bg-violet-500 hover:!bg-violet-400"
             >
               Change Last Name
             </Button>

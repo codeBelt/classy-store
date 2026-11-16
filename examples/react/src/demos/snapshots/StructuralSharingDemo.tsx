@@ -1,6 +1,5 @@
 import {snapshot, subscribe} from '@codebelt/classy-store';
-import {useClassyStore} from '@codebelt/classy-store/react';
-import {useEffect, useRef, useState} from 'react';
+import {useEffect, useState} from 'react';
 import {Button} from '../../components/Button';
 import {DemoContainer} from '../../components/DemoContainer';
 import {documentStore} from '../../stores/documentStore';
@@ -50,103 +49,53 @@ snap.metadata === prev.metadata   // false (title changed)
 snap.content === prev.content     // true  (untouched)
 snap.settings === prev.settings   // true  (untouched)`;
 
-function useRefComparison() {
-  const prevSnap = useRef<Snap | null>(null);
-  const snap = snapshot(documentStore);
-  const prev = prevSnap.current;
-  prevSnap.current = snap;
-  return {snap, prev};
-}
-
-function RefIndicator({same}: {same: boolean | null}) {
-  if (same === null) {
-    return (
-      <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-mono bg-zinc-700/50 text-zinc-500 border border-zinc-600/30">
-        init
-      </span>
-    );
-  }
-  if (same) {
-    return (
-      <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-mono bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-        same ref ===
-      </span>
-    );
-  }
-  return (
-    <span
-      key={Date.now()}
-      className="animate-ref-flash inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-mono text-red-400 border border-red-400/30"
-    >
-      new ref
-    </span>
-  );
-}
-
-function TreeNode({
-  label,
-  getValue,
-  depth = 0,
-  children,
-}: {
-  label: string;
-  getValue: (snap: Snap) => unknown;
-  depth?: number;
-  children?: React.ReactNode;
-}) {
-  useClassyStore(documentStore, () => snapshot(documentStore));
-  const {snap, prev} = useRefComparison();
-
-  const currentVal = getValue(snap);
-  const prevVal = prev ? getValue(prev) : undefined;
-  const same = prev === null ? null : currentVal === prevVal;
-
-  return (
-    <div style={{marginLeft: depth * 20}}>
-      <div className="flex items-center gap-2 py-1">
-        <span className="text-sm font-mono text-zinc-300">{label}</span>
-        <RefIndicator same={same} />
-      </div>
-      {children}
-    </div>
-  );
-}
-
 function SnapshotTree() {
+  const [pair, setPair] = useState<{current: Snap; previous?: Snap}>(() => ({
+    current: snapshot(documentStore),
+  }));
+  useEffect(
+    () =>
+      subscribe(documentStore, () => {
+        const current = snapshot(documentStore);
+        setPair((old) => ({current, previous: old.current}));
+      }),
+    [],
+  );
+  const {current, previous} = pair;
+  const rows = [
+    ['root', previous === current, 0],
+    ['.metadata', previous?.metadata === current.metadata, 1],
+    ['.content', previous?.content === current.content, 1],
+    [
+      '.sections[0]',
+      previous?.content.sections[0] === current.content.sections[0],
+      2,
+    ],
+    [
+      '.sections[1]',
+      previous?.content.sections[1] === current.content.sections[1],
+      2,
+    ],
+    ['.settings', previous?.settings === current.settings, 1],
+  ] as const;
   return (
-    <div className="bg-zinc-800/50 border border-zinc-700/50 rounded-lg p-4">
-      <div className="text-xs text-zinc-400 uppercase tracking-wide mb-3">
-        Snapshot Reference Tree
-      </div>
-      <TreeNode label="root" getValue={(store) => store}>
-        <TreeNode
-          label=".metadata"
-          getValue={(store) => store.metadata}
-          depth={1}
-        />
-        <TreeNode
-          label=".content"
-          getValue={(store) => store.content}
-          depth={1}
-        >
-          <TreeNode
-            label=".sections[0]"
-            getValue={(store) => store.content.sections[0]}
-            depth={2}
-          />
-          <TreeNode
-            label=".sections[1]"
-            getValue={(store) => store.content.sections[1]}
-            depth={2}
-          />
-        </TreeNode>
-        <TreeNode
-          label=".settings"
-          getValue={(store) => store.settings}
-          depth={1}
-        />
-      </TreeNode>
-    </div>
+    <section className="lab-display ref-tree">
+      <h4>Snapshot reference tree</h4>
+      <ul>
+        {rows.map(([name, same, depth]) => (
+          <li
+            style={{paddingInlineStart: depth * 15}}
+            key={name}
+            data-identity={previous && !same ? 'new' : 'same'}
+          >
+            <span>{name}</span>
+            <span>
+              {previous ? (same ? 'same ref' : 'new ref') : 'initial'}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
@@ -210,7 +159,7 @@ export function StructuralSharingDemo() {
   return (
     <DemoContainer
       title="Structural Sharing Explorer"
-      description="Visualize snapshot reference identity. Green = same ref (===), red = new ref."
+      description="Visualize snapshot reference identity. Cyan marks a shared reference; amber marks a new one."
       codeTabs={[
         {label: 'Store', code: STORE_CODE, language: 'typescript'},
         {label: 'Component', code: COMPONENT_CODE},
@@ -227,32 +176,28 @@ export function StructuralSharingDemo() {
             titleIndex = (titleIndex + 1) % titles.length;
             documentStore.updateTitle(titles[titleIndex] as string);
           }}
-          className="!bg-violet-500 hover:!bg-violet-400"
         >
           Edit Title
         </Button>
         <Button
+          variant="secondary"
           onClick={() => {
             bodyIndex = (bodyIndex + 1) % bodies.length;
             documentStore.updateSectionBody(1, bodies[bodyIndex] as string);
           }}
-          className="!bg-cyan-500 hover:!bg-cyan-400"
         >
           Edit Section 1 Body
         </Button>
         <Button
+          variant="secondary"
           onClick={() => {
             bodyIndex = (bodyIndex + 1) % bodies.length;
             documentStore.updateSectionBody(2, bodies[bodyIndex] as string);
           }}
-          className="!bg-cyan-500/20 !text-cyan-300 hover:!bg-cyan-500/30"
         >
           Edit Section 2 Body
         </Button>
-        <Button
-          onClick={() => documentStore.toggleTheme()}
-          className="!bg-amber-500 hover:!bg-amber-400"
-        >
+        <Button variant="secondary" onClick={() => documentStore.toggleTheme()}>
           Toggle Theme
         </Button>
       </div>
@@ -267,13 +212,13 @@ export function StructuralSharingDemo() {
           only{' '}
           <code className="text-xs bg-zinc-800 px-1 rounded">.metadata</code>{' '}
           and <code className="text-xs bg-zinc-800 px-1 rounded">root</code>{' '}
-          flash red. The{' '}
+          show new references. The{' '}
           <code className="text-xs bg-zinc-800 px-1 rounded">.content</code>,{' '}
           <code className="text-xs bg-zinc-800 px-1 rounded">.sections</code>,
           and{' '}
           <code className="text-xs bg-zinc-800 px-1 rounded">.settings</code>{' '}
-          nodes stay green because their snapshot references are structurally
-          shared.
+          nodes retain their references because their snapshot references are
+          structurally shared.
         </p>
       </div>
     </DemoContainer>

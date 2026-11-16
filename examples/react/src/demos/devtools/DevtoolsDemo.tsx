@@ -66,7 +66,7 @@ function DevtoolsCounter() {
     const dispose = devtools(devtoolsCounterStore, {
       name: 'DemoCounter',
     });
-    setConnected(true);
+    setConnected(Boolean(window.__REDUX_DEVTOOLS_EXTENSION__));
     return () => {
       dispose();
       setConnected(false);

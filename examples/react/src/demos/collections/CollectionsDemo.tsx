@@ -192,12 +192,12 @@ export function CollectionsDemo() {
           + User
         </Button>
         <Button
+          variant="secondary"
           onClick={() => {
             const tag = sampleTags[tagIdx % sampleTags.length] as string;
             tagIdx++;
             collectionStore.addTag(tag);
           }}
-          className="!bg-emerald-500 hover:!bg-emerald-400"
         >
           + Tag
         </Button>

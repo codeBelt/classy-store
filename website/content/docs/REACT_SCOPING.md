@@ -7,6 +7,16 @@ Use React context to choose a store instance for a subtree, then `useClassyStore
 
 The runnable [scoped editors demo](https://codebelt.github.io/classy-store/demos/#/scoped-stores) shows two independent editors and a nested editor. Its [source](https://github.com/codeBelt/classy-store/tree/main/examples/react/src/demos/scoped-store) is an application example built from existing APIs; there is no new context factory to install.
 
+```mermaid
+flowchart LR
+  A["Provider A · store A"] --> EditorA["Editor A"]
+  B["Provider B · store B"] --> EditorB["Editor B"]
+  classDef cyan fill:#10252d,color:#93f3f5,stroke:#42bdc7
+  classDef amber fill:#362719,color:#ffd294,stroke:#c08943
+  class A,EditorA cyan
+  class B,EditorB amber
+```
+
 ## Define a typed context
 
 Share the context definition across the application. Create store instances inside each provider, so server requests and sibling providers cannot accidentally share mutable state.

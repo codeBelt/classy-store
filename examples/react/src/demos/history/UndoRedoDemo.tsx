@@ -1,4 +1,7 @@
+import {subscribe} from '@codebelt/classy-store';
 import {useClassyStore, useHistoryStatus} from '@codebelt/classy-store/react';
+import {useEffect, useState} from 'react';
+import {SignalTrace} from '../../../../../website/signal/instruments';
 import {Button} from '../../components/Button';
 import {DemoContainer} from '../../components/DemoContainer';
 import {RenderBadge} from '../../components/RenderBadge';
@@ -48,6 +51,7 @@ function TitleEditor() {
         <RenderBadge count={renders} />
       </div>
       <input
+        aria-label="Title"
         type="text"
         value={title}
         onChange={(e) => textEditorStore.setTitle(e.target.value)}
@@ -70,11 +74,36 @@ function ContentEditor() {
         <RenderBadge count={renders} />
       </div>
       <textarea
+        aria-label="Content"
         value={content}
         onChange={(e) => textEditorStore.setContent(e.target.value)}
         rows={4}
         className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-200 outline-none focus:border-indigo-500/50 resize-none"
       />
+    </div>
+  );
+}
+
+function documentLength() {
+  return textEditorStore.title.length + textEditorStore.content.length;
+}
+
+function DocumentTrace() {
+  const [samples, setSamples] = useState(() => [documentLength()]);
+  useEffect(
+    () =>
+      subscribe(textEditorStore, () => {
+        const next = documentLength();
+        setSamples((prev) => [...prev.slice(-23), next]);
+      }),
+    [],
+  );
+  return (
+    <div className="lab-display">
+      <SignalTrace samples={samples} />
+      <output>
+        Document length · {samples[samples.length - 1]} characters
+      </output>
     </div>
   );
 }
@@ -87,8 +116,8 @@ function HistoryControls() {
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
-        <span className="text-xs text-zinc-400 uppercase tracking-wide">
-          History Controls
+        <span className="recording-state" data-paused={paused}>
+          {paused ? 'Paused' : 'Recording'}
         </span>
         <RenderBadge count={renders} />
       </div>
@@ -170,7 +199,10 @@ export function UndoRedoDemo() {
       <div className="flex flex-col gap-4">
         <TitleEditor />
         <ContentEditor />
-        <HistoryControls />
+        <div className="lab-transport">
+          <DocumentTrace />
+          <HistoryControls />
+        </div>
       </div>
     </DemoContainer>
   );

@@ -75,6 +75,7 @@ function FontSizeSlider() {
         <span className="text-sm text-zinc-400 shrink-0">Font Size</span>
         <input
           type="range"
+          aria-label="Font size"
           min={12}
           max={24}
           value={fontSize}

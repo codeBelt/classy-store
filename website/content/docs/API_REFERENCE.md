@@ -315,6 +315,8 @@ const snap = snapshot(myStore);
 // Structural sharing: unchanged sub-trees === previous snapshot
 ```
 
+[Open snapshots example →](https://codebelt.github.io/classy-store/demos/#/snapshots)
+
 ### `subscribe(store, callback, options?)`
 
 Low-level subscription API. Returns an unsubscribe function. By default, the callback fires once per batched mutation after the microtask flush. Pass `{sync: true}` to notify immediately on each mutation.
