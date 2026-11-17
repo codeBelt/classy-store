@@ -51,7 +51,7 @@ export const counterStore = createClassyStore(new CounterStore());
 ```ts
 import {devtools} from '@codebelt/classy-store/utils';
 
-const disconnect = devtools(counterStore, {name: 'CounterStore'});
+const connection = devtools(counterStore, {name: 'CounterStore'});
 ```
 
 Open the Redux DevTools panel in your browser. Select `CounterStore` to inspect the initial snapshot, including `count: 0`, `step: 1`, and the computed `doubled` getter.
@@ -82,7 +82,7 @@ Use a state/action jump in the DevTools timeline. The utility assigns the parsed
 ### 5. Disconnect when done
 
 ```ts
-disconnect();
+connection.dispose();
 ```
 
 After disconnecting, mutations are no longer sent to DevTools and time-travel messages are ignored.
@@ -98,14 +98,14 @@ function devtools<T extends object>(
 
 ### Options
 
-| Option    | Type      | Default         | Description                                |
-| --------- | --------- | --------------- | ------------------------------------------ |
-| `name`    | `string`  | `'ClassyStore'` | Display name in the DevTools panel         |
-| `enabled` | `boolean` | `true`          | Set to `false` to disable (returns a noop) |
+| Option    | Type      | Default         | Description                              |
+| --------- | --------- | --------------- | ---------------------------------------- |
+| `name`    | `string`  | `'ClassyStore'` | Display name in the DevTools panel       |
+| `enabled` | `boolean` | `true`          | Set to `false` to disable (inert handle) |
 
 ### Return value
 
-A cleanup function `() => void` that removes the store subscription and DevTools message listener. It does not call an extension-level disconnect API or clear the panel's recorded history.
+A `DevtoolsHandle`, the same shape of handle that `persist()` and `withHistory()` return. Its `dispose()` method removes the store subscription and DevTools message listener; calling it again does nothing. It does not call an extension-level disconnect API or clear the panel's recorded history.
 
 ## How It Works
 
@@ -147,20 +147,20 @@ devtools(counterStore, {
 });
 ```
 
-When `enabled` is `false`, `devtools()` returns a noop immediately. No DevTools connection or ongoing subscription is created. `import.meta.env.DEV` is a Vite example; use your application's build-time development flag in other environments.
+When `enabled` is `false`, `devtools()` returns an inert handle immediately. No DevTools connection or ongoing subscription is created. `import.meta.env.DEV` is a Vite example; use your application's build-time development flag in other environments.
 
 ### Conditional connection
 
 Connect DevTools only when the extension is available:
 
 ```ts
-const disconnect = devtools(counterStore, {name: 'CounterStore'});
+const connection = devtools(counterStore, {name: 'CounterStore'});
 
-// If the extension isn't installed, `disconnect` is a noop.
+// If the extension isn't installed, `connection.dispose()` does nothing.
 // No errors, no warnings — the store works normally.
 ```
 
-`devtools()` checks for `window.__REDUX_DEVTOOLS_EXTENSION__` internally. If it's not available (missing extension, SSR, Node.js), it returns a noop without throwing.
+`devtools()` checks for `window.__REDUX_DEVTOOLS_EXTENSION__` internally. If it's not available (missing extension, SSR, Node.js), it returns an inert handle without throwing. The library reads that global through its own type and declares nothing on `Window`, so it cannot clash with other DevTools typings in your project.
 
 ### Late disposal on unmount (React)
 
@@ -170,8 +170,8 @@ import {devtools} from '@codebelt/classy-store/utils';
 
 function App() {
   useEffect(() => {
-    const disconnect = devtools(counterStore, {name: 'CounterStore'});
-    return () => disconnect();
+    const connection = devtools(counterStore, {name: 'CounterStore'});
+    return () => connection.dispose();
   }, []);
 
   return <Counter />;
@@ -211,10 +211,10 @@ storage restoration. The supported dispatch commands are `JUMP_TO_STATE` and
 
 ## Quick Reference
 
-| What you want         | How to do it                                          |
-| --------------------- | ----------------------------------------------------- |
-| Connect a store       | `devtools(store, {name: 'MyStore'})`                  |
-| Disconnect            | `const dispose = devtools(...); dispose()`            |
-| Disable in production | `enabled: import.meta.env.DEV`                        |
-| Multiple stores       | Call `devtools()` once per store with unique names    |
-| Use without extension | Works safely — returns a noop if extension is missing |
+| What you want         | How to do it                                                   |
+| --------------------- | -------------------------------------------------------------- |
+| Connect a store       | `devtools(store, {name: 'MyStore'})`                           |
+| Disconnect            | `const connection = devtools(...); connection.dispose()`       |
+| Disable in production | `enabled: import.meta.env.DEV`                                 |
+| Multiple stores       | Call `devtools()` once per store with unique names             |
+| Use without extension | Works safely — returns an inert handle if extension is missing |

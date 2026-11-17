@@ -12,13 +12,16 @@
 
 Visit the **[Documentation Website](https://codebelt.github.io/classy-store/)** for tutorials, API reference, and examples.
 
-## Upgrading to 0.11.0
+## Upgrading to 1.0
 
-Applications upgrading from 0.10.x can keep their existing public imports. For behavior changes and framework support, see the [0.11.0 release notes](https://codebelt.github.io/classy-store/docs/UPGRADING_0_11).
+1.0 is the first stable release: the public API and its behavior now follow semantic versioning. Coming from 0.11.x, read the [1.0 upgrade guide](https://codebelt.github.io/classy-store/docs/UPGRADING_1_0). The changes most likely to need an edit are:
 
-When upgrading from 0.7.x, replace persistence `unsubscribe()` with `dispose()`, handle rejected promises from explicit persistence operations, and import hydration preparation from `@codebelt/classy-store/react/server`. The `useHistoryStatus` and `usePersistStatus` hooks keep utility metadata reactive in React.
+- `devtools(store)` returns a handle; call `handle.dispose()` instead of calling the result.
+- Angular's `injectStore` is now `injectClassyStore`.
+- `subscribe()` on a nested proxy observes only that proxy's subtree.
+- `persist` ignores stored data whose `version` differs unless you provide `migrate`.
 
-See the [0.8.0 upgrade guide](https://codebelt.github.io/classy-store/docs/UPGRADING_0_8) for the removal of `getVersion` and migration examples. If upgrading from 0.6.x or earlier, also read the [0.7.0 upgrade guide](https://codebelt.github.io/classy-store/docs/UPGRADING_0_7).
+Coming from an older release, apply the earlier guides first: [0.11.0](https://codebelt.github.io/classy-store/docs/UPGRADING_0_11), [0.8.0](https://codebelt.github.io/classy-store/docs/UPGRADING_0_8) and [0.7.0](https://codebelt.github.io/classy-store/docs/UPGRADING_0_7).
 
 ## 🚀 Features
 
@@ -76,7 +79,8 @@ store proxy and read render data through the hook.
 
 Nested plain objects, arrays, and the library's reactive collections support deep
 updates. Native `Date`, `Map`, `Set`, and other nested class instances remain opaque:
-replace their property to notify subscribers. Snapshots freeze copied state, but
+replace their property to notify subscribers. A class of your own can opt into deep
+updates with `static [PROXYABLE] = true`. Snapshots freeze copied state, but
 retain opaque values by reference. Keep computed getters pure and based on store
 property reads; changes to time or external variables do not invalidate their cache.
 
@@ -117,7 +121,7 @@ return (
 );
 ```
 
-Ordinary `subscribe(store, listener)` callbacks still batch in a microtask. React batches renders within event handlers, while selectors can run after each mutation.
+Ordinary `subscribe(store, listener)` callbacks still batch in a microtask. A store method or an array operation such as `sort` is one transaction: React is notified once when it returns, however many fields it wrote. A write made outside a method notifies on its own, so keep loops of writes inside a store method.
 
 For server-rendered React apps, call `prepareStoreForHydration(store)` from `@codebelt/classy-store/react/server` on matching server/client stores before persistence starts. Delayed Suspense boundaries then hydrate from the original data and catch up to live state. See the [SSR guide](https://codebelt.github.io/classy-store/docs/REACT_SSR).
 
@@ -144,8 +148,9 @@ for inputs, keyed lists, cleanup, and migration requirements.
 
 ## Solid 2 integration
 
-The `/solid` adapter is **in preview** and targets **Solid 2.0.0-rc.18 only**; Solid 1 is no longer
-supported. Pin `solid-js` and the browser renderer `@solidjs/web` to that exact
+The `/solid` adapter is **in preview** while Solid 2 is in release candidates. It accepts
+`solid-js@^2.0.0-rc.18` and is developed against `2.0.0-rc.23`; Solid 1 is not
+supported. Keep `solid-js` and the browser renderer `@solidjs/web` on the same
 release candidate. `useClassyStore(store)` returns an immutable snapshot accessor
 and requires a live component or `createRoot()` owner for automatic cleanup.
 
@@ -165,13 +170,13 @@ bun add @codebelt/classy-store
 
 Framework peers are optional; install only what your application uses.
 
-| Framework       | Supported peer range             |
-| --------------- | -------------------------------- |
-| React           | `^18.0.0 \|\| ^19.0.0`           |
-| Vue             | `^3.2.0`                         |
-| Svelte          | `^4.0.0 \|\| ^5.0.0`             |
-| Angular         | `^22.0.0`                        |
-| Solid (preview) | `2.0.0-rc.18` (exact prerelease) |
+| Framework       | Supported peer range                |
+| --------------- | ----------------------------------- |
+| React           | `^18.0.0 \|\| ^19.0.0`              |
+| Vue             | `^3.2.0`                            |
+| Svelte          | `^4.0.0 \|\| ^5.0.0`                |
+| Angular         | `^22.0.0`                           |
+| Solid (preview) | `^2.0.0-rc.18` (release candidates) |
 
 Use matching `react` and `react-dom` versions for React applications. These
 ranges exclude untested future majors. Development dependency pins are separate

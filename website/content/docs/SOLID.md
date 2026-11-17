@@ -1,11 +1,14 @@
 ---
 title: "Solid 2 (preview)"
-description: "Use the adapter with solid-js 2.0.0-rc.18 and a live Solid owner."
+description: "Use the adapter with the Solid 2 release candidates and a live Solid owner."
 ---
 
-The `/solid` adapter is **in preview** and targets **Solid 2.0.0-rc.18 only**. Solid 2 is a release
-candidate, so pin this exact version. Solid 1 is no longer supported by this
-adapter. The import and return shape stay the same:
+The `/solid` adapter is **in preview** while Solid 2 is in release candidates. It
+accepts `solid-js@^2.0.0-rc.18`; its tests and example ran at `2.0.0-rc.18` and run
+today at `2.0.0-rc.23`. A later release candidate can change Solid's API, so the
+adapter may need an update before Solid 2 is stable, and such an update can ship
+in a minor release of this library. Solid 1 is not supported. The import and
+return shape stay the same:
 
 ```typescript
 import {useClassyStore} from '@codebelt/classy-store/solid';
@@ -18,11 +21,12 @@ Install the runtime packages for a browser application:
 
 ```sh
 npm install @codebelt/classy-store
-npm install --save-exact solid-js@2.0.0-rc.18 @solidjs/web@2.0.0-rc.18
+npm install --save-exact solid-js@2.0.0-rc.23 @solidjs/web@2.0.0-rc.23
 ```
 
-The repository example uses `@solidjs/vite-plugin@3.0.0-next.51`,
-`@solidjs/compiler@2.0.0-rc.18`, and Vite `8.3.8`. The Vite plugin requires
+Keep `solid-js`, `@solidjs/web` and the compiler packages on the same release
+candidate. The repository example uses `@solidjs/vite-plugin@3.0.0-next.51`,
+`@solidjs/compiler@2.0.0-rc.23`, and Vite `8.3.8`. The Vite plugin requires
 Node.js 22.12 or later. Use `@solidjs/web` for DOM imports and
 `jsxImportSource: "@solidjs/web"` in TypeScript configuration. Replace the
 Solid 1 `vite-plugin-solid` package with `@solidjs/vite-plugin`.
