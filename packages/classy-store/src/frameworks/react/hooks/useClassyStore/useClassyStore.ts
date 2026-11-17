@@ -9,6 +9,7 @@ import {
 } from '../../../../storeRuntime';
 import type {Snapshot} from '../../../../types';
 import {SnapshotTargetCache} from '../../utils/snapshotTargetCache/snapshotTargetCache';
+import {TrackedProxyCache} from '../../utils/trackedProxyCache/trackedProxyCache';
 import {TrackingReadMap} from '../../utils/trackingReadMap/trackingReadMap';
 import type {
   EqualityFn,
@@ -89,7 +90,7 @@ export function useClassyStore<T extends object, S>(
   // Weak keys release old dependencies as their snapshots become unreachable.
   const committedReads = useRef(new WeakMap<object, unknown>()).current;
   const affected = new TrackingReadMap(committedReads);
-  const proxyCache = useRef(new WeakMap<object, unknown>()).current;
+  const proxyCache = useRef(new TrackedProxyCache()).current;
   let previousAutoSnapshot: Snapshot<T> | undefined;
   const getSnapshot = (): Snapshot<T> | S => {
     if (getSelectedSnapshot) return getSelectedSnapshot();

@@ -353,16 +353,40 @@ describe('createClassyStore() — core reactivity', () => {
       expect(listener).toHaveBeenCalledTimes(1);
     });
 
-    it('subscribe on a child proxy fires when a sibling mutates', async () => {
+    it('subscribe on a child proxy observes only that subtree', async () => {
       const s = createClassyStore({user: {name: 'Alice'}, count: 0});
       const listener = mock(() => {});
       subscribe(s.user, listener);
 
       s.count = 1;
       await flush();
+      expect(listener).not.toHaveBeenCalled();
 
-      // Listener was added to root, so it fires for any mutation in the tree.
+      s.user.name = 'Bob';
+      await flush();
       expect(listener).toHaveBeenCalledTimes(1);
+    });
+
+    it('registers the same callback independently on each call', async () => {
+      const s = createClassyStore({count: 0});
+      const listener = mock(() => {});
+      const first = subscribe(s, listener);
+      const second = subscribe(s, listener);
+
+      s.count = 1;
+      await flush();
+      expect(listener).toHaveBeenCalledTimes(2);
+
+      first();
+      first(); // Releasing twice must not release the other registration.
+      s.count = 2;
+      await flush();
+      expect(listener).toHaveBeenCalledTimes(3);
+
+      second();
+      s.count = 3;
+      await flush();
+      expect(listener).toHaveBeenCalledTimes(3);
     });
 
     it('unsubscribe from child proxy stops notifications', async () => {

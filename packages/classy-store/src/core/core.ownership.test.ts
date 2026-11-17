@@ -75,7 +75,7 @@ describe('shared proxy ownership', () => {
     expect(retained.config.currency).toBe('USD');
   });
 
-  test('a nested child follows its current sibling scope and detaches cleanly', () => {
+  test('a child subscription observes its own subtree across owner changes', () => {
     const from = createClassyStore<{box?: {row: {n: number}}; other: number}>({
       box: {row: {n: 0}},
       other: 0,
@@ -90,33 +90,30 @@ describe('shared proxy ownership', () => {
     const stop = subscribe(row, changed, {sync: true});
     to.box = box;
     delete from.box;
-    changed.mockClear();
     from.other++;
-    expect(changed).not.toHaveBeenCalled();
     to.other++;
-    expect(changed).toHaveBeenCalledTimes(1);
+    expect(changed).not.toHaveBeenCalled();
     row.n++;
-    expect(changed).toHaveBeenCalledTimes(2);
+    expect(changed).toHaveBeenCalledTimes(1);
     stop();
     row.n++;
-    expect(changed).toHaveBeenCalledTimes(2);
+    expect(changed).toHaveBeenCalledTimes(1);
   });
 
-  test('promoting a child to a root narrows existing descendant subscriptions', async () => {
+  test('promoting a child to a root leaves descendant subscriptions on their subtree', async () => {
     const outer = createClassyStore({editor: {row: {n: 0}, tab: 0}, other: 0});
     const changed = mock(() => {});
     const stop = subscribe(outer.editor.row, changed);
     outer.other++;
     await Promise.resolve();
-    expect(changed).toHaveBeenCalledTimes(1);
+    expect(changed).not.toHaveBeenCalled();
     const editor = createClassyStore(outer.editor);
-    outer.other++;
-    await Promise.resolve();
-    expect(changed).toHaveBeenCalledTimes(1);
     editor.tab++;
+    await Promise.resolve();
+    expect(changed).not.toHaveBeenCalled();
     editor.row.n++;
     await Promise.resolve();
-    expect(changed).toHaveBeenCalledTimes(2);
+    expect(changed).toHaveBeenCalledTimes(1);
     stop();
   });
 

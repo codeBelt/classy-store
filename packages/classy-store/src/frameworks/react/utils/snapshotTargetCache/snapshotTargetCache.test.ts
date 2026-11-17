@@ -46,14 +46,20 @@ describe('SnapshotTargetCache', () => {
       return descriptors(target);
     });
     try {
+      let backingCopy: object | undefined;
       for (let index = 0; index < 1000; index += 1) {
         const reads = new WeakMap();
         const proxyCache = new WeakMap();
         const tracked = createProxy(source, reads, proxyCache, cache);
         expect(tracked.items[index].value).toBe(index);
         expect(createProxy(source, reads, proxyCache, cache)).toBe(tracked);
+        // Every reader shares one backing copy of the list.
+        const [, copy] = cache.get(items) as [object, object];
+        backingCopy ??= copy;
+        expect(copy).toBe(backingCopy);
       }
-      expect(listScans).toBe(1);
+      // A dense list is copied by index: no key or descriptor scan at all.
+      expect(listScans).toBe(0);
     } finally {
       descriptorSpy.mockRestore();
       namesSpy.mockRestore();

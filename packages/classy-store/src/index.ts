@@ -8,3 +8,4 @@
 export {createClassyStore, snapshot, subscribe} from './storeRuntime';
 export type {Snapshot, SubscribeOptions} from './types';
 export {shallowEqual} from './utils/equality/equality';
+export {PROXYABLE} from './utils/internal/internal';

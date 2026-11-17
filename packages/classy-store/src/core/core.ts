@@ -13,6 +13,43 @@ import {StoreInternal} from './ownership';
 const internalsMap = new WeakMap<object, StoreInternal>();
 const targetNodes = new WeakMap<object, StoreInternal>();
 
+/** Maps every frozen snapshot → the raw object it was built from. */
+const snapshotSources = new WeakMap<object, object>();
+
+/** Maps a React tracking proxy → the frozen snapshot it wraps. */
+const trackedSnapshots = new WeakMap<object, object>();
+
+/** @internal Record a frozen snapshot so the store recognises it later. */
+export function registerSnapshot(snap: object, target: object): void {
+  snapshotSources.set(snap, target);
+}
+
+/** @internal Record a render-tracking proxy created over a snapshot. */
+export function registerTrackingProxy(proxy: object, snap: object): void {
+  trackedSnapshots.set(proxy, snap);
+}
+
+/**
+ * @internal Strip a store proxy or a tracking proxy, leaving the object it
+ * wraps: the raw target for live state, the frozen snapshot for tracked reads.
+ */
+export function unwrap<T>(value: T): T {
+  if (typeof value !== 'object' || value === null) return value;
+  const internal = internalsMap.get(value);
+  if (internal) return internal.target as T;
+  return (trackedSnapshots.get(value) ?? value) as T;
+}
+
+/**
+ * @internal One identity for a raw object, its store proxy, every snapshot of
+ * it, and tracked reads of those snapshots. Primitives are their own identity.
+ */
+export function identityOf(value: unknown): unknown {
+  const raw = unwrap(value);
+  if (typeof raw !== 'object' || raw === null) return raw;
+  return snapshotSources.get(raw) ?? raw;
+}
+
 // ── Dependency tracking for computed getters ──────────────────────────────────
 
 /**
@@ -179,17 +216,17 @@ export function getInternal(proxy: object): StoreInternal {
 function notifyMutation(internal: StoreInternal): void {
   const owners = internal.ancestors();
   // Invalidate every path before any synchronous subscriber reads a snapshot.
-  let recipients = owners;
-  for (const node of owners) {
-    node.version++;
-    const scoped = node.scopedSubscribers;
-    if (scoped?.size) {
-      if (recipients === owners) recipients = new Set(owners);
-      for (const child of scoped) recipients.add(child);
+  for (const node of owners) node.version++;
+  if (transactionDepth) {
+    // Inside a store method or array operation: tell synchronous subscribers
+    // once, when the outermost call returns.
+    for (const node of owners) {
+      if (node.syncListeners.size) pendingSync.add(node);
     }
+  } else {
+    deliver(owners, 'syncListeners');
   }
-  deliver(recipients, 'syncListeners');
-  for (const node of recipients) {
+  for (const node of owners) {
     if (!node.batchedListeners.size) continue;
     if (!pendingNotifications.size) queueMicrotask(flushNotifications);
     pendingNotifications.add(node);
@@ -197,6 +234,42 @@ function notifyMutation(internal: StoreInternal): void {
 }
 
 const pendingNotifications = new Set<StoreInternal>();
+
+// ── Transactions ──────────────────────────────────────────────────────────────
+
+let transactionDepth = 0;
+const pendingSync = new Set<StoreInternal>();
+
+/**
+ * Run one store method or array operation as a transaction. Versions advance
+ * with every write, so reads inside the call are current, but synchronous
+ * subscribers hear about it once, after the outermost call returns or throws.
+ * A sort of n rows is then one notification rather than n.
+ */
+function runTransaction<T>(run: () => T): T {
+  transactionDepth++;
+  try {
+    return run();
+  } finally {
+    if (--transactionDepth === 0 && pendingSync.size) {
+      const owners = new Set(pendingSync);
+      pendingSync.clear();
+      deliver(owners, 'syncListeners');
+    }
+  }
+}
+
+/** Bind a method to its proxy and run each call as a transaction. */
+function transactional(
+  method: (...args: unknown[]) => unknown,
+  receiver: object,
+): (...args: unknown[]) => unknown {
+  return function (...args: unknown[]) {
+    // A class stored as data stays constructible, as a bound function would.
+    if (new.target) return Reflect.construct(method, args);
+    return runTransaction(() => Reflect.apply(method, receiver, args));
+  };
+}
 
 function flushNotifications(): void {
   const owners = new Set(pendingNotifications);
@@ -208,10 +281,9 @@ function deliver(
   owners: Set<StoreInternal>,
   kind: 'syncListeners' | 'batchedListeners',
 ): void {
-  const listeners = new Set<() => void>();
-  for (const node of owners) {
-    for (const listener of node[kind].values()) listeners.add(listener);
-  }
+  // Copy first: a listener may subscribe or unsubscribe during delivery.
+  const listeners: (() => void)[] = [];
+  for (const node of owners) listeners.push(...node[kind]);
   for (const listener of listeners) {
     try {
       listener();
@@ -228,6 +300,8 @@ function linkChild(
   pending?: StoreInternal[],
 ): StoreInternal | undefined {
   if (typeof value !== 'object' || value === null) return;
+  // A snapshot kept in a store stays an immutable value, held by reference.
+  if (snapshotSources.has(value)) return;
   const child =
     internalsMap.get(value) ??
     (canProxy(value) ? createNode(value, pending) : undefined);
@@ -260,8 +334,13 @@ function createNode(target: object, pending?: StoreInternal[]): StoreInternal {
   >();
 
   const proxy = new Proxy(target, {
-    set(_target, prop, value, receiver) {
+    set(_target, prop, incoming, receiver) {
       internal.resumeScope();
+      // Store the snapshot itself, never the render-tracking proxy around it.
+      const value: unknown =
+        typeof incoming === 'object' && incoming !== null
+          ? (trackedSnapshots.get(incoming) ?? incoming)
+          : incoming;
       const descriptor = findPropertyDescriptor(_target, prop);
       if (descriptor && !('value' in descriptor)) {
         // Setters perform their own writes. Use the proxy as `this` so nested
@@ -330,15 +409,15 @@ function createNode(target: object, pending?: StoreInternal[]): StoreInternal {
 
       const value = Reflect.get(_target, prop);
 
-      // 2. Methods: bind to the proxy so `this.prop = x` goes through SET trap.
+      // 2. Methods: bind to the proxy so `this.prop = x` goes through SET trap,
+      // and run each call as one transaction.
       if (typeof value === 'function') {
+        const method = value as (...args: unknown[]) => unknown;
         // Array prototype methods should not be cached the same way as class methods.
-        if (Array.isArray(_target)) {
-          return value.bind(receiver);
-        }
+        if (Array.isArray(_target)) return transactional(method, receiver);
         const cached = boundMethods.get(prop);
         if (cached) return cached;
-        const bound = (value as (...args: unknown[]) => unknown).bind(receiver);
+        const bound = transactional(method, receiver);
         boundMethods.set(prop, bound);
         return bound;
       }
@@ -403,18 +482,20 @@ function createNode(target: object, pending?: StoreInternal[]): StoreInternal {
  */
 export function createClassyStore<T extends object>(instance: T): T {
   const node = createNode(instance);
-  node.markAsRoot();
+  node.isStoreRoot = true;
   node.resumeScope();
   return node.proxy as T;
 }
 
 /**
- * Subscribe to store changes. By default, the callback fires once per batched
- * mutation turn (coalesced via `queueMicrotask`). Pass `{sync: true}` to notify
- * immediately after each mutation.
+ * Subscribe to changes in a store, or in the subtree under one of its nested
+ * proxies. By default, the callback fires once per batched mutation turn
+ * (coalesced via `queueMicrotask`). Pass `{sync: true}` to be notified in the
+ * same call stack: after each direct write, and once after each store method
+ * or array operation.
  *
- * @param proxy - A reactive proxy created by `createClassyStore()`.
- * @param callback - Invoked when the store changes.
+ * @param proxy - A reactive proxy created by `createClassyStore()`, or a nested proxy read from one.
+ * @param callback - Invoked when that proxy's subtree changes.
  * @param options - Controls subscriber notification timing.
  * @returns An unsubscribe function. Call it to stop receiving notifications.
  */
@@ -427,17 +508,11 @@ export function subscribe(
   const listeners = options?.sync
     ? internal.syncListeners
     : internal.batchedListeners;
-  // Anchor delivery on the observed proxy. Child registrations additionally
-  // follow their current roots for sibling notifications.
-  if (!listeners.has(callback)) {
-    listeners.set(callback, () => callback());
-    internal.refreshSubscriptionScope();
-  }
+  // One entry per call: registering a callback twice gives two subscriptions.
+  const listener = () => callback();
+  listeners.add(listener);
   return () => {
-    if (listeners.delete(callback)) {
-      internal.refreshSubscriptionScope();
-      internal.suspendIfDetached();
-    }
+    if (listeners.delete(listener)) internal.suspendIfDetached();
   };
 }
 

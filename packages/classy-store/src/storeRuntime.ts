@@ -4,7 +4,10 @@ export {
   createClassyStore,
   getInternal,
   getVersion,
+  identityOf,
+  registerTrackingProxy,
   subscribe,
+  unwrap,
 } from './core/core';
 export {hydrationSnapshots} from './frameworks/react/utils/hydrationSnapshots/hydrationSnapshots';
 export {originalSnapshotAccessor, snapshot} from './snapshot/snapshot';
