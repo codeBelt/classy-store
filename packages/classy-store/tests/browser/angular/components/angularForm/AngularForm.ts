@@ -4,7 +4,7 @@ import {
   computed,
   effect,
 } from '@angular/core';
-import {injectStore} from '@codebelt/classy-store/angular';
+import {injectClassyStore} from '@codebelt/classy-store/angular';
 import {formStore, probe} from '../../angular.store';
 
 @Component({
@@ -22,7 +22,7 @@ import {formStore, probe} from '../../angular.store';
   `,
 })
 export class AngularForm {
-  readonly state = injectStore(formStore);
+  readonly state = injectClassyStore(formStore);
   readonly uppercase = computed(() => this.state().text.toUpperCase());
   readonly summary = computed(
     () => `${this.state().text}:${this.state().doubled}:${this.uppercase()}`,

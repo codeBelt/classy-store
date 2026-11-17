@@ -1,5 +1,5 @@
 import {ChangeDetectionStrategy, Component, computed} from '@angular/core';
-import {injectStore} from '@codebelt/classy-store/angular';
+import {injectClassyStore} from '@codebelt/classy-store/angular';
 import {counterStore, history} from '../store';
 
 @Component({
@@ -53,7 +53,7 @@ import {counterStore, history} from '../store';
   `,
 })
 export class AppComponent {
-  readonly snap = injectStore(counterStore);
+  readonly snap = injectClassyStore(counterStore);
   readonly summary = computed(
     () =>
       `${this.snap().label}: ${this.snap().enabled ? 'enabled' : 'disabled'}`,

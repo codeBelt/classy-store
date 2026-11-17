@@ -12,8 +12,8 @@
   },
   "dependencies": {
     "@codebelt/classy-store": "workspace:*",
-    "@solidjs/web": "2.0.0-rc.18",
-    "solid-js": "2.0.0-rc.18"
+    "@solidjs/web": "2.0.0-rc.23",
+    "solid-js": "2.0.0-rc.23"
   },
   "devDependencies": {
     "@solidjs/vite-plugin": "3.0.0-next.51",

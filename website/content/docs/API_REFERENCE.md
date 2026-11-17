@@ -37,7 +37,7 @@ Import from the entry that owns the API. Core, collections, and utilities do not
 | `@codebelt/classy-store/vue`          | `useClassyStore`                                                                             | —                                                                                                                                                                                                        |
 | `@codebelt/classy-store/svelte`       | `toSvelteStore`                                                                              | `ClassyReadable`                                                                                                                                                                                         |
 | `@codebelt/classy-store/solid`        | `useClassyStore`                                                                             | —                                                                                                                                                                                                        |
-| `@codebelt/classy-store/angular`      | `injectStore`                                                                                | —                                                                                                                                                                                                        |
+| `@codebelt/classy-store/angular`      | `injectClassyStore`                                                                          | —                                                                                                                                                                                                        |
 
 ESM and CommonJS callers using the same package installation can pass stores
 between them. For example, a utility loaded with `require('@codebelt/classy-store/utils')`
@@ -63,7 +63,7 @@ computed values or DOM. The adapter does not call it automatically, and ordinary
 core subscriptions stay batched. See the [Solid 2 guide](./SOLID.md) for pinned
 packages, inputs, keyed lists, and migration from Solid 1.
 
-Angular's `injectStore(store)` supports **all stable Angular 22 releases**
+Angular's `injectClassyStore(store)` supports **all stable Angular 22 releases**
 (`^22.0.0`). It requires a live
 injection context and returns a readonly signal. Store writes update the signal
 and dependent computed reads immediately; Angular schedules effects and rendering,

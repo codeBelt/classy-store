@@ -6,8 +6,8 @@
     "examples/*"
   ],
   "overrides": {
-    "@solidjs/babel-plugin": "2.0.0-rc.18",
-    "@solidjs/compiler": "2.0.0-rc.18"
+    "@solidjs/babel-plugin": "2.0.0-rc.23",
+    "@solidjs/compiler": "2.0.0-rc.23"
   },
   "scripts": {
     "---------- Dev --------------------------------------------------------": "",

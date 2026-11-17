@@ -134,7 +134,7 @@ Most components only need `useClassyStore(store)` to render application data. Us
 ## Angular 22 integration
 
 The `/angular` adapter supports **all stable Angular 22 releases** (`^22.0.0`).
-The library and example pin the Angular framework to `22.2.6`. Call `injectStore(store)`
+The library and example pin the Angular framework to `22.2.6`. Call `injectClassyStore(store)`
 in a live Angular injection context to get a readonly snapshot signal. Store
 writes update the signal and dependent computed reads immediately; Angular
 schedules rendering, including in zoneless applications. The subscription is

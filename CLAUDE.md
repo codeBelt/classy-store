@@ -21,7 +21,7 @@ packages/classy-store/src/
 │   ├── vue/vue.ts                 # Vue: useClassyStore() → ShallowRef<Snapshot<T>> (onUnmounted cleanup)
 │   ├── svelte/svelte.ts           # Svelte: toSvelteStore() → ClassyReadable<Snapshot<T>>
 │   ├── solid/solid.ts             # Solid: useClassyStore() → () => Snapshot<T> signal (onCleanup)
-│   └── angular/angular.ts         # Angular: injectStore() → Signal<Snapshot<T>> (DestroyRef)
+│   └── angular/angular.ts         # Angular: injectClassyStore() → Signal<Snapshot<T>> (DestroyRef)
 └── utils/
     ├── index.ts                   # Utils barrel: persist, devtools, subscribeKey, withHistory
     ├── persist/persist.ts         # persist() — storage, transforms, versioning, cross-tab sync, TTL
