@@ -1,4 +1,4 @@
-import {snapshot, subscribe} from '../../storeRuntime';
+import {getVersion, snapshot, subscribe} from '../../storeRuntime';
 import type {Snapshot} from '../../types';
 import {cloneSnapshotValue} from '../cloneSnapshot/cloneSnapshot';
 import {findGetterDescriptor} from '../internal/internal';
@@ -76,41 +76,46 @@ export function withHistory<T extends object>(
     isDisposed: disposed,
   });
 
-  /**
-   * Apply a snapshot's data properties back to the store proxy.
-   * Skips getters and methods — same pattern as `persist`.
-   */
+  const live = proxyStore as Record<string, unknown>;
+  // The store revision that the entry under the pointer describes.
+  let recordedVersion = getVersion(proxyStore);
+
+  /** Getters and methods are behavior, not state; restoring leaves them alone. */
+  function isData(key: string): boolean {
+    return (
+      !findGetterDescriptor(proxyStore, key)?.get &&
+      typeof live[key] !== 'function'
+    );
+  }
+
+  /** Make the store's data fields match a recorded snapshot. */
   function applySnapshot(snap: Snapshot<T>): void {
-    const snapRecord = snap as Record<string, unknown>;
+    const recorded = snap as Record<string, unknown>;
+    const current = snapshot(proxyStore) as Record<string, unknown>;
     const clones = new WeakMap<object, object>();
 
-    for (const key of Object.keys(snapRecord)) {
-      // Skip getters
-      if (findGetterDescriptor(proxyStore, key)?.get) continue;
-      // Skip methods
-      if (typeof (proxyStore as Record<string, unknown>)[key] === 'function') {
+    // A field added after this snapshot was taken did not exist in it.
+    for (const key of Object.keys(current)) {
+      if (!Object.hasOwn(recorded, key) && isData(key)) delete live[key];
+    }
+    for (const key of Object.keys(recorded)) {
+      if (!isData(key)) continue;
+      // An untouched branch still has this exact snapshot. Leaving it alone
+      // keeps its identity, so selectors reading it stay quiet.
+      if (Object.hasOwn(current, key) && Object.is(current[key], recorded[key]))
         continue;
-      }
-      (proxyStore as Record<string, unknown>)[key] = cloneSnapshotValue(
-        snapRecord[key],
-        clones,
-      );
+      live[key] = cloneSnapshotValue(recorded[key], clones);
     }
   }
 
-  // Subscribe to store mutations
-  const unsubscribeFromStore = subscribe(proxyStore, () => {
-    if (paused || restoring > 0 || disposed) return;
-
-    const snap = snapshot(proxyStore);
-
+  /** Append the store's current state as the newest history entry. */
+  function record(): void {
     // Truncate any redo entries after the current pointer
     if (pointer < history.length - 1) {
       history.length = pointer + 1;
     }
 
-    // Push new snapshot
-    history.push(snap);
+    history.push(snapshot(proxyStore));
     pointer = history.length - 1;
 
     // Enforce limit by shifting from front
@@ -118,37 +123,48 @@ export function withHistory<T extends object>(
       history.shift();
       pointer = history.length - 1;
     }
+    recordedVersion = getVersion(proxyStore);
+  }
+
+  /** Move to another entry without recording the move itself. */
+  function restore(target: number): void {
+    pointer = target;
+    restoring++;
+    try {
+      applySnapshot(history[pointer]);
+    } finally {
+      recordedVersion = getVersion(proxyStore);
+      // The store's batched notification for this restore runs first.
+      queueMicrotask(() => {
+        restoring--;
+      });
+      status.update(readStatus());
+    }
+  }
+
+  // Subscribe to store mutations
+  const unsubscribeFromStore = subscribe(proxyStore, () => {
+    if (paused || restoring > 0 || disposed) return;
+    // undo() may already have recorded this revision ahead of the notification.
+    if (getVersion(proxyStore) === recordedVersion) return;
+    record();
     status.update(readStatus());
   });
 
   const handle: HistoryHandle = {
     ...status.source,
     undo() {
-      if (disposed || pointer <= 0) return;
-      pointer--;
-      restoring++;
-      try {
-        applySnapshot(history[pointer]);
-      } finally {
-        queueMicrotask(() => {
-          restoring--;
-        });
-        status.update(readStatus());
-      }
+      if (disposed) return;
+      // An edit made in this same tick has not been recorded yet. Record it
+      // first, so that undo steps back over it and redo can return to it.
+      if (!paused && getVersion(proxyStore) !== recordedVersion) record();
+      if (pointer <= 0) return;
+      restore(pointer - 1);
     },
 
     redo() {
       if (disposed || pointer >= history.length - 1) return;
-      pointer++;
-      restoring++;
-      try {
-        applySnapshot(history[pointer]);
-      } finally {
-        queueMicrotask(() => {
-          restoring--;
-        });
-        status.update(readStatus());
-      }
+      restore(pointer + 1);
     },
 
     get canUndo() {

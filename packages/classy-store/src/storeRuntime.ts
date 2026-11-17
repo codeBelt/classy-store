@@ -5,6 +5,7 @@ export {
   getInternal,
   getVersion,
   identityOf,
+  isTrackingProxy,
   registerTrackingProxy,
   subscribe,
   unwrap,

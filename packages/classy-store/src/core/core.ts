@@ -29,6 +29,11 @@ export function registerTrackingProxy(proxy: object, snap: object): void {
   trackedSnapshots.set(proxy, snap);
 }
 
+/** @internal Whether a value is a render-tracking proxy over a snapshot. */
+export function isTrackingProxy(value: object): boolean {
+  return trackedSnapshots.has(value);
+}
+
 /**
  * @internal Strip a store proxy or a tracking proxy, leaving the object it
  * wraps: the raw target for live state, the frozen snapshot for tracked reads.

@@ -118,7 +118,7 @@ describe('core and React utility happy paths', () => {
   test('sends edits to DevTools and renders time-travel state in React', async () => {
     const extension = installDevtools();
     const store = createClassyStore({count: 0});
-    cleanups.push(devtools(store));
+    cleanups.push(devtools(store).dispose);
     const container = document.createElement('div');
     document.body.appendChild(container);
     const root = createRoot(container);
@@ -215,7 +215,7 @@ describe('core and React utility happy paths', () => {
     cleanups.push(persistence.dispose);
     await persistence.hydrated;
     const history = withHistory(store);
-    cleanups.push(history.dispose, devtools(store));
+    cleanups.push(history.dispose, devtools(store).dispose);
 
     store.count = 1;
     await flush();

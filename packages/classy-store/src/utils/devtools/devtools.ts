@@ -19,19 +19,22 @@ type DevToolsExtension = {
   connect: (options?: {name?: string}) => DevToolsConnection;
 };
 
-declare global {
-  interface Window {
-    __REDUX_DEVTOOLS_EXTENSION__?: DevToolsExtension;
-  }
-}
+// Read the extension through a local type. Declaring it on the global `Window`
+// would reach every consumer's program and can clash with their own typings.
+type DevToolsHost = {__REDUX_DEVTOOLS_EXTENSION__?: DevToolsExtension};
 
 // ── Options ──────────────────────────────────────────────────────────────────
 
 export type DevtoolsOptions = {
   /** Display name in the DevTools panel. Defaults to `'ClassyStore'`. */
   name?: string;
-  /** Set to `false` to disable the integration (returns a noop). Defaults to `true`. */
+  /** Set to `false` to disable the integration (returns an inert handle). Defaults to `true`. */
   enabled?: boolean;
+};
+
+export type DevtoolsHandle = {
+  /** Disconnect from DevTools and stop observing the store. Safe to call repeatedly. */
+  dispose: () => void;
 };
 
 // ── Implementation ───────────────────────────────────────────────────────────
@@ -45,24 +48,21 @@ export type DevtoolsOptions = {
  *
  * @param proxyStore - A reactive proxy created by `createClassyStore()`.
  * @param options - Optional configuration.
- * @returns A dispose function that disconnects from DevTools and unsubscribes.
+ * @returns A handle whose `dispose()` disconnects from DevTools and unsubscribes.
  */
 export function devtools<T extends object>(
   proxyStore: T,
   options?: DevtoolsOptions,
-): () => void {
+): DevtoolsHandle {
   const {name = 'ClassyStore', enabled = true} = options ?? {};
 
+  const extension =
+    enabled && typeof window !== 'undefined'
+      ? (window as unknown as DevToolsHost).__REDUX_DEVTOOLS_EXTENSION__
+      : undefined;
   // Guard: no extension or disabled
-  if (
-    !enabled ||
-    typeof window === 'undefined' ||
-    !window.__REDUX_DEVTOOLS_EXTENSION__
-  ) {
-    return () => {};
-  }
+  if (!extension) return {dispose() {}};
 
-  const extension = window.__REDUX_DEVTOOLS_EXTENSION__;
   const connection = extension.connect({name});
 
   // Send initial state
@@ -112,9 +112,13 @@ export function devtools<T extends object>(
     }
   });
 
-  // Return dispose function
-  return () => {
-    unsubscribeFromStore();
-    devToolsUnsub();
+  let disposed = false;
+  return {
+    dispose() {
+      if (disposed) return;
+      disposed = true;
+      unsubscribeFromStore();
+      devToolsUnsub();
+    },
   };
 }
