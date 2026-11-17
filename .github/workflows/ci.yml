@@ -20,6 +20,8 @@ jobs:
       # Packed-consumer typechecks resolve the package's generated declarations.
       - run: bun run build
       - run: bun run typecheck
+      - name: Published package shape (publint, arethetypeswrong)
+        run: bun run --filter @codebelt/classy-store check:package
       - name: Solid 2 example production build
         run: bun run --filter classy-store-solid-example build
       - name: Angular 22 example production build

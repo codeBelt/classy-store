@@ -8,6 +8,9 @@
     "directory": "packages/classy-store"
   },
   "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.mts",
@@ -105,7 +108,8 @@
         "types": "./dist/frameworks/solid/solid.d.cts",
         "default": "./dist/frameworks/solid/solid.cjs"
       }
-    }
+    },
+    "./package.json": "./package.json"
   },
   "imports": {
     "#store-runtime": {
@@ -131,6 +135,7 @@
     "---------- Lint --------------------------------------------------------": "",
     "typecheck": "tsc --noEmit && tsc --project tests/browser/tsconfig.json --noEmit && tsc --project tests/compiler/tsconfig.json --noEmit && tsc --project tests/performance/tsconfig.json --noEmit && tsc --project tests/memory/tsconfig.json --noEmit && tsc --project tests/next/tsconfig.json --noEmit && tsc --project tests/angularCompatibility/tsconfig.json --noEmit && tsc --project tests/frameworkCompatibility/tsconfig.json --noEmit",
     "typecheck:scoping": "tsc --project tests/tsconfig.scoping.json --noEmit",
+    "check:package": "publint --strict && attw --pack . --profile node16",
     "prepack": "cp ../../README.md .",
     "-----------------------------------------------------------------------": ""
   },
@@ -181,7 +186,9 @@
     "typescript": "7.0.2",
     "vue": "3.5.45",
     "@angular/platform-browser": "22.2.6",
-    "@angular/compiler": "22.2.6"
+    "@angular/compiler": "22.2.6",
+    "@arethetypeswrong/cli": "0.18.5",
+    "publint": "0.3.25"
   },
   "keywords": [
     "classy-store",
