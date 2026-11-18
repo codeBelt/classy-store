@@ -35,7 +35,7 @@ Run these cases with `bun run test:browser vue.spec.ts`; root `bun run typecheck
 checks its template through the Vue example's `check:integration` script using
 that example's Vue tooling and TypeScript installation.
 
-The `/solid` fixture uses Solid 2.0.0-rc.18 and its native `@solidjs/compiler`.
+The `/solid` fixture uses Solid 2.0.0 and its native `@solidjs/compiler`.
 Six cases cover caret editing, checkboxes, class getters and memos, native
 scheduling and explicit `flush()`, custom-key list identity, and component/root
 cleanup. The lifecycle case checks owner validation, nested and independent roots,

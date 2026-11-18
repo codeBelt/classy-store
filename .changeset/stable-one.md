@@ -14,11 +14,11 @@ Release 1.0.0, the first stable version. The public API and its behavior are now
 - `shallowEqual` returns `false` for values with different prototypes, compares dates by instant and maps and sets one level deep, and no longer treats arbitrary key-less objects as equal.
 - `devtools()` returns a handle with `dispose()` instead of a function, and no longer declares anything on the global `Window` type.
 - Angular: `injectStore` is renamed `injectClassyStore`.
+- Solid: the adapter requires stable Solid 2 (`solid-js@^2.0.0`) and is no longer a preview. The release candidates are no longer accepted.
 
 **Other changes**
 
 - `withHistory`: undo and redo remove top-level fields that the restored entry lacks, `undo()` steps back over an edit made in the same tick, and unchanged fields keep their identity.
 - Reactive collections compare keys and values by identity, so a plain object works as a key whether it is given raw, as a store proxy or as a snapshot. Lookups scan the raw backing array.
 - `PROXYABLE` is exported so a class can opt into nested reactivity with `static [PROXYABLE] = true`.
-- The Solid peer range is `^2.0.0-rc.18` (preview while Solid 2 is in release candidates).
 - The package declares `engines.node >= 20` and exports `./package.json`.

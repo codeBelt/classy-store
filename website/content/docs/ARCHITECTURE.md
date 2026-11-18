@@ -251,7 +251,7 @@ with `ownedWrite: true`, allowing external store notifications while an owner is
 active. Solid schedules its own reactive work; the adapter never calls `flush()`.
 A live owner is required before subscribing. Owner cleanup marks delivery inactive
 before removing the listener, and callbacks also check disposal during notification.
-The adapter accepts Solid `^2.0.0-rc.18` and is developed against `2.0.0-rc.23`; see the [Solid guide](./SOLID.md).
+The adapter supports Solid `^2.0.0`; see the [Solid guide](./SOLID.md).
 
 The Angular adapter also uses synchronous notifications, keeping its readonly
 snapshot signal and dependent computed reads current. Angular schedules its own

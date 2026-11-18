@@ -57,16 +57,16 @@ From an older release, apply the earlier notes first: [0.11.0](./UPGRADING_0_11.
 
 All framework peer dependencies are optional — install only what your project uses:
 
-| Framework         | Peer Dependency              | Import                           |
-| ----------------- | ---------------------------- | -------------------------------- |
-| React             | `react ^18.0.0 \|\| ^19.0.0` | `@codebelt/classy-store/react`   |
-| Vue               | `vue ^3.2.0`                 | `@codebelt/classy-store/vue`     |
-| Svelte            | `svelte ^4.0.0 \|\| ^5.0.0`  | `@codebelt/classy-store/svelte`  |
-| Solid 2 (preview) | `solid-js ^2.0.0-rc.18`      | `@codebelt/classy-store/solid`   |
-| Angular           | `@angular/core ^22.0.0`      | `@codebelt/classy-store/angular` |
+| Framework | Peer Dependency              | Import                           |
+| --------- | ---------------------------- | -------------------------------- |
+| React     | `react ^18.0.0 \|\| ^19.0.0` | `@codebelt/classy-store/react`   |
+| Vue       | `vue ^3.2.0`                 | `@codebelt/classy-store/vue`     |
+| Svelte    | `svelte ^4.0.0 \|\| ^5.0.0`  | `@codebelt/classy-store/svelte`  |
+| Solid 2   | `solid-js ^2.0.0`            | `@codebelt/classy-store/solid`   |
+| Angular   | `@angular/core ^22.0.0`      | `@codebelt/classy-store/angular` |
 
 These ranges include stable releases within the listed majors and exclude
-untested future majors. Solid remains pinned to its exact tested prerelease.
+untested future majors. Solid 1 and the Solid 2 release candidates are not supported.
 Use matching React/React DOM versions. Development dependencies stay pinned
 independently of the supported consumer ranges.
 
@@ -78,6 +78,6 @@ cleanup tests with each consumer's native compiler; CI runs them in Chromium.
 ## Choose a guide
 
 - [React tutorial](./TUTORIAL.md), [scoped stores](./REACT_SCOPING.md), [server rendering](./REACT_SSR.md), and [Next.js](./REACT_NEXT.md)
-- [Vue](./VUE.md), [Svelte](./SVELTE.md), [Solid 2 preview](./SOLID.md), and [Angular](./ANGULAR.md)
+- [Vue](./VUE.md), [Svelte](./SVELTE.md), [Solid 2](./SOLID.md), and [Angular](./ANGULAR.md)
 - [API reference](./API_REFERENCE.md) and [store patterns](./PATTERNS.md)
 - [Persistence](./PERSIST_TUTORIAL.md), [undo and redo](./HISTORY_TUTORIAL.md), [property subscriptions](./SUBSCRIBE_KEY_TUTORIAL.md), and [Redux DevTools](./DEVTOOLS_TUTORIAL.md)

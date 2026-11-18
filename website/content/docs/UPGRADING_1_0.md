@@ -17,6 +17,7 @@ Changes that can require an edit:
 | Angular `injectStore` renamed                                | Import and call `injectClassyStore`                                    |
 | `subscribe()` on a nested proxy no longer fires for siblings | Subscribe to the store itself if you relied on that                    |
 | `persist` ignores another stored `version` without `migrate` | Provide `migrate` to keep reading old data                             |
+| The Solid adapter requires stable Solid 2                    | Update `solid-js` and `@solidjs/web` to `^2.0.0`                       |
 | `shallowEqual` is stricter                                   | Usually nothing; check selectors that compared unlike values           |
 | Sync subscribers hear once per method, not once per write    | Usually nothing; remove code that relied on seeing intermediate states |
 
@@ -209,7 +210,7 @@ A class of your own can now be deeply reactive when nested in a store by declari
 
 ## Framework and package support
 
-- **Solid** stays in preview while Solid 2 is in release candidates. The peer range is now `^2.0.0-rc.18` instead of exactly `2.0.0-rc.18`; the adapter is developed against `2.0.0-rc.23`.
+- **Solid**: the adapter supports stable Solid 2 and is no longer a preview. The peer range is `^2.0.0` instead of exactly `2.0.0-rc.18`, which excludes the release candidates. Update `solid-js` and `@solidjs/web` to `2.0.0` or later; the adapter's `useClassyStore(store)` signature and behavior are unchanged.
 - **React** `^18.0.0 || ^19.0.0`, **Vue** `^3.2.0`, **Svelte** `^4.0.0 || ^5.0.0` and **Angular** `^22.0.0` are unchanged.
 - The package declares `engines.node >= 20` and exports `./package.json`.
 - TypeScript projects need `moduleResolution` set to `bundler`, `node16` or `nodenext` to resolve the subpath entries such as `@codebelt/classy-store/react`. The legacy `node` (node10) setting cannot resolve package `exports`; this was already the case in 0.x.

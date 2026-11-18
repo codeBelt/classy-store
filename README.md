@@ -20,6 +20,7 @@ Visit the **[Documentation Website](https://codebelt.github.io/classy-store/)** 
 - Angular's `injectStore` is now `injectClassyStore`.
 - `subscribe()` on a nested proxy observes only that proxy's subtree.
 - `persist` ignores stored data whose `version` differs unless you provide `migrate`.
+- The Solid adapter requires stable Solid 2 (`solid-js@^2.0.0`); update from the release candidates.
 
 Coming from an older release, apply the earlier guides first: [0.11.0](https://codebelt.github.io/classy-store/docs/UPGRADING_0_11), [0.8.0](https://codebelt.github.io/classy-store/docs/UPGRADING_0_8) and [0.7.0](https://codebelt.github.io/classy-store/docs/UPGRADING_0_7).
 
@@ -148,10 +149,9 @@ for inputs, keyed lists, cleanup, and migration requirements.
 
 ## Solid 2 integration
 
-The `/solid` adapter is **in preview** while Solid 2 is in release candidates. It accepts
-`solid-js@^2.0.0-rc.18` and is developed against `2.0.0-rc.23`; Solid 1 is not
-supported. Keep `solid-js` and the browser renderer `@solidjs/web` on the same
-release candidate. `useClassyStore(store)` returns an immutable snapshot accessor
+The `/solid` adapter supports **Solid 2** (`solid-js@^2.0.0`). Solid 1 and the Solid 2
+release candidates are not supported. Keep `solid-js` and the browser renderer
+`@solidjs/web` on the same version. `useClassyStore(store)` returns an immutable snapshot accessor
 and requires a live component or `createRoot()` owner for automatic cleanup.
 
 Store changes reach Solid synchronously, while Solid 2 batches its reactive
@@ -170,13 +170,13 @@ bun add @codebelt/classy-store
 
 Framework peers are optional; install only what your application uses.
 
-| Framework       | Supported peer range                |
-| --------------- | ----------------------------------- |
-| React           | `^18.0.0 \|\| ^19.0.0`              |
-| Vue             | `^3.2.0`                            |
-| Svelte          | `^4.0.0 \|\| ^5.0.0`                |
-| Angular         | `^22.0.0`                           |
-| Solid (preview) | `^2.0.0-rc.18` (release candidates) |
+| Framework | Supported peer range   |
+| --------- | ---------------------- |
+| React     | `^18.0.0 \|\| ^19.0.0` |
+| Vue       | `^3.2.0`               |
+| Svelte    | `^4.0.0 \|\| ^5.0.0`   |
+| Angular   | `^22.0.0`              |
+| Solid     | `^2.0.0`               |
 
 Use matching `react` and `react-dom` versions for React applications. These
 ranges exclude untested future majors. Development dependency pins are separate

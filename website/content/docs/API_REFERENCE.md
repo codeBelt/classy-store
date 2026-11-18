@@ -55,7 +55,7 @@ context. React's selector and auto-tracking modes are specific to `/react`.
 
 Read the [Svelte guide](./SVELTE.md) or [Vue guide](./VUE.md) for input handling, timing, and cleanup.
 
-Solid's `useClassyStore(store)` is in preview and accepts the Solid 2 release candidates from `2.0.0-rc.18` (`^2.0.0-rc.18`). It requires a
+Solid's `useClassyStore(store)` supports Solid 2 (`solid-js@^2.0.0`). It requires a
 live component or `createRoot()` owner and disposes its subscription with that
 owner. Store notifications reach its signal synchronously; Solid 2 retains its
 native batching. Call Solid's `flush()` when imperative code needs current
