@@ -3,9 +3,8 @@
 `bun run test:mutation` changes the library's source one small step at a time
 and runs the unit tests against each change. A change the tests do not notice
 is a surviving mutant: either a test is missing, or the change cannot be
-observed at all. Every survivor must be killed by a new test or listed in
-[`equivalentMutants.json`](./equivalentMutants.json) with a reason. Otherwise
-the run fails.
+observed at all. Every survivor must be killed by a new test or listed under
+[`equivalent/`](./equivalent) with a reason. Otherwise the run fails.
 
 Bun reports line and function coverage only, so this run is also how branches
 are checked. A condition that can be forced one way with no test failing is a
@@ -36,8 +35,9 @@ of the last full run.
 - A mutant is killed when a test fails. It times out when the tests take four
   times as long as the unmodified run, with a floor of 30 seconds.
 - `test-results/mutation/report.json` (ignored by Git) holds every mutant, its
-  status and the first test that failed. `RESULTS.md` is rewritten after a run
-  of every target file.
+  status and the first test that failed. A run of some files, or of a sample,
+  writes `report-partial.json` beside it instead. `RESULTS.md` is rewritten
+  after a run of every target file.
 
 ## Rules
 
@@ -81,9 +81,10 @@ Left alone, because the change would say nothing about the tests:
    `src/core/core.ts | subscribe | StatementRemoval | listeners.add(listener); => ; | #1`.
 2. If a caller of the public API could notice the change, write the test that
    does, through the public entry points.
-3. If nothing observable changes, add the mutant to `equivalentMutants.json`
-   with a reason. The `unexplained` array of the report holds each survivor in
-   the shape that file expects.
+3. If nothing observable changes, add the mutant to the list for its source
+   file under `equivalent/` (`core.json` for `core.ts`, and so on) with a
+   reason. The `unexplained` array of the report holds each survivor in the
+   shape those lists expect.
 
 A reason says why behaviour is identical with and without the change, for
 example "the cache is only a shortcut: without it the value is computed again

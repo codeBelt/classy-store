@@ -3,13 +3,14 @@ import {
   existsSync,
   mkdirSync,
   mkdtempSync,
+  readdirSync,
   readFileSync,
   rmSync,
   symlinkSync,
   writeFileSync,
 } from 'node:fs';
 import {availableParallelism, tmpdir} from 'node:os';
-import {dirname, join, resolve} from 'node:path';
+import {join, resolve} from 'node:path';
 import {applyMutant, generateMutants, mutantId} from './generateMutants';
 import type {
   EquivalentMutant,
@@ -22,12 +23,9 @@ import type {
 const mutationDirectory = import.meta.dir;
 const packageDirectory = resolve(mutationDirectory, '../..');
 const repositoryDirectory = resolve(packageDirectory, '../..');
-const equivalentPath = join(mutationDirectory, 'equivalentMutants.json');
+const equivalentDirectory = join(mutationDirectory, 'equivalent');
 const resultsPath = join(mutationDirectory, 'RESULTS.md');
-const reportPath = join(
-  repositoryDirectory,
-  'test-results/mutation/report.json',
-);
+const reportDirectory = join(repositoryDirectory, 'test-results/mutation');
 
 /** The files held to zero unexplained survivors. */
 const defaultTargets = [
@@ -44,7 +42,7 @@ const usage = `Usage: bun run test:mutation [files...] [options]
 
 Mutates each file, one change at a time, in a temporary copy of the package,
 and runs the unit tests against every change. A change no test notices must be
-listed in tests/mutation/equivalentMutants.json with a reason, or the run fails.
+listed under tests/mutation/equivalent/ with a reason, or the run fails.
 
   files              Source files to mutate, relative to packages/classy-store.
                      Default: the seven files named in runMutation.ts.
@@ -223,6 +221,17 @@ async function runMutant(
   }
 }
 
+/** Every list under `equivalent/`: one JSON file per source file. */
+function readEquivalents(): EquivalentMutant[] {
+  if (!existsSync(equivalentDirectory)) return [];
+  return readdirSync(equivalentDirectory)
+    .filter((name) => name.endsWith('.json'))
+    .sort()
+    .flatMap((name): EquivalentMutant[] =>
+      JSON.parse(readFileSync(join(equivalentDirectory, name), 'utf8')),
+    );
+}
+
 function emptyCounts(): MutationCounts {
   return {mutants: 0, killed: 0, timeout: 0, equivalent: 0, unexplained: 0};
 }
@@ -323,9 +332,7 @@ async function main(): Promise<number> {
     return 0;
   }
 
-  const equivalents: EquivalentMutant[] = existsSync(equivalentPath)
-    ? JSON.parse(readFileSync(equivalentPath, 'utf8'))
-    : [];
+  const equivalents = readEquivalents();
   const explained = new Set(equivalents.map(mutantId));
 
   const concurrency = Math.min(options.concurrency, mutants.length || 1);
@@ -445,6 +452,15 @@ async function main(): Promise<number> {
       return sum;
     }, emptyCounts());
 
+    const isFullRun =
+      options.sample === undefined &&
+      defaultTargets.every((target) => options.targets.includes(target)) &&
+      options.targets.length === defaultTargets.length;
+    // A run of some files or of a sample must not replace the report of a full run.
+    const reportPath = join(
+      reportDirectory,
+      isFullRun ? 'report.json' : 'report-partial.json',
+    );
     const report: MutationReport = {
       bun: Bun.version,
       concurrency,
@@ -457,13 +473,9 @@ async function main(): Promise<number> {
       stale,
       results,
     };
-    mkdirSync(dirname(reportPath), {recursive: true});
+    mkdirSync(reportDirectory, {recursive: true});
     writeFileSync(reportPath, `${JSON.stringify(report, null, 2)}\n`);
 
-    const isFullRun =
-      options.sample === undefined &&
-      defaultTargets.every((target) => options.targets.includes(target)) &&
-      options.targets.length === defaultTargets.length;
     if (isFullRun) writeResults(byFile, byMutator, totals);
 
     console.log(`\n${table('File', byFile, totals)}\n`);
@@ -478,7 +490,7 @@ async function main(): Promise<number> {
     console.log(`\nFull report: ${reportPath}`);
     if (unexplained.length || stale.length) {
       console.log(
-        `${unexplained.length} unexplained survivors, ${stale.length} stale entries in equivalentMutants.json.`,
+        `${unexplained.length} unexplained survivors, ${stale.length} stale entries under tests/mutation/equivalent/.`,
       );
       return 1;
     }

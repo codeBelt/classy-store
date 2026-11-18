@@ -51,7 +51,7 @@ export type MutantResult = Mutant & {
   durationMs: number;
 };
 
-/** An entry of `equivalentMutants.json`: a mutant no test can detect, and why. */
+/** An entry of a list under `equivalent/`: a mutant no test can detect, and why. */
 export type EquivalentMutant = MutantKey & {
   reason: string;
 };
@@ -72,9 +72,9 @@ export type MutationReport = {
   targets: string[];
   sampled: boolean;
   totals: MutationCounts;
-  /** Survivors with no entry in `equivalentMutants.json`, in the shape that file expects. */
+  /** Survivors with no entry under `equivalent/`, in the shape those lists expect. */
   unexplained: EquivalentMutant[];
-  /** Entries of `equivalentMutants.json` that match no generated mutant, or one a test now detects. */
+  /** Entries under `equivalent/` that match no generated mutant, or one a test now detects. */
   stale: {entry: EquivalentMutant; problem: string}[];
   results: MutantResult[];
 };
