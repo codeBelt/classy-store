@@ -506,4 +506,47 @@ describe('persist async operation ordering', () => {
     }
     expect(store.count).toBe(1);
   });
+
+  test('a third write waits for the second after the first has finished', async () => {
+    const gates = [deferred<void>(), deferred<void>(), deferred<void>()];
+    const started: number[] = [];
+    const store = createClassyStore({count: 0});
+    const handle = persist(store, {
+      name: 'draft',
+      skipHydration: true,
+      storage: {
+        getItem: () => null,
+        setItem: () => {
+          const index = started.length;
+          started.push(index);
+          return gates[index].promise;
+        },
+        removeItem: () => {},
+      },
+    });
+    handles.push(handle);
+
+    const first = handle.save();
+    const second = handle.save();
+    await tick();
+    expect(started).toEqual([0]);
+
+    gates[0].resolve();
+    await first;
+    await tick();
+    expect(started).toEqual([0, 1]);
+
+    // The second write is in flight, so the third must queue behind it.
+    const third = handle.save();
+    await tick();
+    expect(started).toEqual([0, 1]);
+
+    gates[1].resolve();
+    await second;
+    await tick();
+    expect(started).toEqual([0, 1, 2]);
+
+    gates[2].resolve();
+    await third;
+  });
 });

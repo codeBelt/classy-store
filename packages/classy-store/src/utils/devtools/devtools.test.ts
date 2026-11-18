@@ -283,6 +283,12 @@ describe('devtools', () => {
       type: 'ACTION',
       state: JSON.stringify({count: 999}),
     });
+    // Only a DISPATCH may time-travel, even when the rest looks like a jump.
+    conn._listener?.({
+      type: 'ACTION',
+      payload: {type: 'JUMP_TO_STATE'},
+      state: JSON.stringify({count: 999}),
+    });
     await tick();
 
     expect(store.count).toBe(0);

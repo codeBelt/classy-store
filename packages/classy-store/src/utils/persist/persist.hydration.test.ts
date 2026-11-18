@@ -222,6 +222,87 @@ describe('persist hydration with local edits', () => {
     expect(store.count).toBe(5);
     expect(slow.writes).toEqual([]);
   });
+
+  test('a save deferred by one read is not repeated after the next read', async () => {
+    const slow = slowStorage(stored({theme: 'dark'}));
+    const store = createClassyStore({theme: 'light', fontSize: 12});
+    const handle = persist(store, {name: 'settings', storage: slow.storage});
+    handles.push(handle);
+
+    // A local edit during the read is saved once the read has settled.
+    store.fontSize = 14;
+    await tick();
+    slow.release();
+    await handle.hydrated;
+    await tick();
+    expect(store.theme).toBe('dark');
+    expect(slow.writes).toHaveLength(1);
+
+    // Nothing was edited during this read, so there is nothing more to save.
+    await handle.rehydrate();
+    await tick();
+    expect(slow.writes).toHaveLength(1);
+  });
+
+  test('a slow read does not undo a newer record from another tab', async () => {
+    const read = deferred<string | null>();
+    const store = createClassyStore({theme: 'light', fontSize: 12});
+    const handle = persist(store, {
+      name: 'settings',
+      syncTabs: true,
+      storage: {
+        getItem: () => read.promise,
+        setItem: () => {},
+        removeItem: () => {},
+      },
+    });
+    handles.push(handle);
+
+    // The other tab's newer record puts the theme back to its default.
+    globalThis.dispatchEvent(
+      new StorageEvent('storage', {
+        key: 'settings',
+        newValue: stored({theme: 'light', fontSize: 14}),
+      }),
+    );
+    expect(store.fontSize).toBe(14);
+
+    // The read that started earlier now returns the older record.
+    read.resolve(stored({theme: 'dark', fontSize: 20}));
+    await handle.hydrated;
+    await tick();
+
+    expect(store.theme).toBe('light');
+    expect(store.fontSize).toBe(14);
+  });
+
+  test('an explicit save during a slow read keeps the saved state', async () => {
+    const read = deferred<string | null>();
+    const writes: string[] = [];
+    const store = createClassyStore({theme: 'light'});
+    const handle = persist(store, {
+      name: 'settings',
+      storage: {
+        getItem: () => read.promise,
+        setItem: (_name: string, value: string) => {
+          writes.push(value);
+        },
+        removeItem: () => {},
+      },
+    });
+    handles.push(handle);
+
+    await handle.save();
+    expect(writes).toEqual([stored({theme: 'light'})]);
+
+    // The older record arrives after the save and must not replace it.
+    read.resolve(stored({theme: 'dark'}));
+    await handle.hydrated;
+    await tick();
+
+    expect(store.theme).toBe('light');
+    expect(writes).toHaveLength(1);
+  });
 });
 
 describe('persist schema versions', () => {

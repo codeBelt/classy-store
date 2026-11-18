@@ -1,4 +1,4 @@
-import {describe, expect, it, mock} from 'bun:test';
+import {describe, expect, it, mock, spyOn} from 'bun:test';
 import {snapshot} from '../snapshot/snapshot';
 import {createClassyStore, getVersion, subscribe} from './core';
 
@@ -818,40 +818,167 @@ describe('createClassyStore() — core reactivity', () => {
     });
   });
 
+  // ── Replacing a nested object with a value that is not one ──────────────
+
+  describe('replacing a nested object with a non-object', () => {
+    it.each([
+      ['null', null],
+      ['undefined', undefined],
+      ['a number', 5],
+      ['a string', 'text'],
+      ['a Date', new Date(0)],
+    ])('%s takes the place of the old child', (_name, replacement) => {
+      const s = createClassyStore<{slot: unknown}>({slot: {label: 'old'}});
+      const old = s.slot as {label: string};
+      const listener = mock(() => {});
+      subscribe(s, listener, {sync: true});
+
+      s.slot = replacement;
+
+      expect(s.slot).toBe(replacement);
+      expect(snapshot(s).slot).toBe(replacement);
+      expect(listener).toHaveBeenCalledTimes(1);
+
+      // The replaced object is no longer part of the store.
+      old.label = 'edited';
+      expect(listener).toHaveBeenCalledTimes(1);
+      expect(snapshot(s).slot).toBe(replacement);
+    });
+
+    it('an array element replaced by a primitive drops the old row', () => {
+      const s = createClassyStore<{rows: unknown[]}>({
+        rows: [{id: 1}, {id: 2}],
+      });
+      const first = s.rows[0] as {id: number};
+      const listener = mock(() => {});
+      subscribe(s, listener, {sync: true});
+
+      s.rows[0] = 'gone';
+
+      expect(s.rows[0]).toBe('gone');
+      expect(snapshot(s).rows).toEqual(['gone', {id: 2}]);
+      expect(listener).toHaveBeenCalledTimes(1);
+
+      first.id = 99;
+      expect(listener).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  // ── Writes that must change nothing, or nothing else ─────────────────────
+
+  describe('assignments with no effect on ownership', () => {
+    it('assigning a nested proxy back to its own property changes nothing', () => {
+      const s = createClassyStore({user: {name: 'a'}, rows: [{id: 1}]});
+      const listener = mock(() => {});
+      subscribe(s, listener, {sync: true});
+      const before = snapshot(s);
+      const version = getVersion(s);
+
+      const user = s.user;
+      const rows = s.rows;
+      const first = s.rows[0];
+      s.user = user;
+      s.rows = rows;
+      s.rows[0] = first;
+
+      expect(listener).not.toHaveBeenCalled();
+      expect(getVersion(s)).toBe(version);
+      expect(snapshot(s)).toBe(before);
+      expect(s.user).toBe(user);
+    });
+
+    it('a write rejected by a read-only property throws and notifies no one', () => {
+      const source = {count: 0};
+      Object.defineProperty(source, 'locked', {
+        value: 1,
+        writable: false,
+        configurable: true,
+        enumerable: true,
+      });
+      const s = createClassyStore(source as {count: number; locked: number});
+      const listener = mock(() => {});
+      subscribe(s, listener, {sync: true});
+      const version = getVersion(s);
+
+      expect(() => {
+        s.locked = 2;
+      }).toThrow(TypeError);
+
+      expect(s.locked).toBe(1);
+      expect(getVersion(s)).toBe(version);
+      expect(listener).not.toHaveBeenCalled();
+    });
+
+    it('a plain object field named length is ordinary data', () => {
+      const s = createClassyStore<{
+        length: number;
+        [index: number]: {label: string};
+      }>({length: 5, 3: {label: 'kept'}});
+      const kept = s[3];
+      const listener = mock(() => {});
+      subscribe(s, listener, {sync: true});
+
+      s.length = 2;
+      kept.label = 'edited';
+
+      // Only an array's length removes entries; this child is still owned.
+      expect(listener).toHaveBeenCalledTimes(2);
+      expect(s[3]).toBe(kept);
+      expect(snapshot(s)[3].label).toBe('edited');
+    });
+  });
+
   // ── Bug fix: throwing listener kills remaining subscribers ──────────────
 
   describe('listener error isolation', () => {
     it('calls remaining listeners even if an earlier one throws', async () => {
       const s = createClassyStore({count: 0});
+      const failure = new Error('boom');
       const secondListener = mock(() => {});
+      const report = spyOn(console, 'error').mockImplementation(() => {});
+      try {
+        subscribe(s, () => {
+          throw failure;
+        });
+        subscribe(s, secondListener);
 
-      subscribe(s, () => {
-        throw new Error('boom');
-      });
-      subscribe(s, secondListener);
+        s.count = 1;
+        await flush();
 
-      s.count = 1;
-      await flush();
-
-      expect(secondListener).toHaveBeenCalledTimes(1);
+        expect(secondListener).toHaveBeenCalledTimes(1);
+        // The failure is reported, not swallowed.
+        expect(report).toHaveBeenCalledTimes(1);
+        expect(report).toHaveBeenCalledWith(failure);
+      } finally {
+        report.mockRestore();
+      }
     });
 
     it('calls remaining sync listeners even if an earlier one throws', () => {
       const s = createClassyStore({count: 0});
+      const failure = new Error('boom');
       const secondListener = mock(() => {});
+      const report = spyOn(console, 'error').mockImplementation(() => {});
+      try {
+        subscribe(
+          s,
+          () => {
+            throw failure;
+          },
+          {sync: true},
+        );
+        subscribe(s, secondListener, {sync: true});
 
-      subscribe(
-        s,
-        () => {
-          throw new Error('boom');
-        },
-        {sync: true},
-      );
-      subscribe(s, secondListener, {sync: true});
+        expect(() => {
+          s.count = 1;
+        }).not.toThrow();
 
-      s.count = 1;
-
-      expect(secondListener).toHaveBeenCalledTimes(1);
+        expect(secondListener).toHaveBeenCalledTimes(1);
+        expect(report).toHaveBeenCalledTimes(1);
+        expect(report).toHaveBeenCalledWith(failure);
+      } finally {
+        report.mockRestore();
+      }
     });
   });
 
@@ -908,6 +1035,24 @@ describe('createClassyStore() — core reactivity', () => {
       expect(s.bump).not.toBe(original);
       s.bump?.();
       expect(s.count).toBe(5);
+    });
+
+    it('deleting an own method that shadows a class method restores the class method', () => {
+      class Greeter {
+        name = 'class';
+        greet() {
+          return this.name;
+        }
+      }
+      const s = createClassyStore(new Greeter());
+      s.greet = function (this: Greeter) {
+        return `own ${this.name}`;
+      };
+      expect(s.greet()).toBe('own class');
+
+      delete (s as Partial<Greeter>).greet;
+
+      expect(s.greet()).toBe('class');
     });
   });
 

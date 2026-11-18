@@ -207,6 +207,31 @@ describe('transactions', () => {
     expect(instance).toBeInstanceOf(Model);
     expect(instance.name).toBe('row');
   });
+
+  test('a later transaction does not notify a store written by an earlier one', () => {
+    class Counter {
+      count = 0;
+
+      increment() {
+        this.count++;
+      }
+    }
+    const first = createClassyStore(new Counter());
+    const second = createClassyStore(new Counter());
+    const onFirst = mock(() => {});
+    const onSecond = mock(() => {});
+    subscribe(first, onFirst, {sync: true});
+    subscribe(second, onSecond, {sync: true});
+
+    first.increment();
+    second.increment();
+    batch(() => {
+      second.count = 5;
+    });
+
+    expect(onFirst).toHaveBeenCalledTimes(1);
+    expect(onSecond).toHaveBeenCalledTimes(2);
+  });
 });
 
 describe('batch()', () => {

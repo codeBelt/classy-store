@@ -50,6 +50,11 @@ describe('shallowEqual', () => {
     expect(shallowEqual({a: 1}, {b: 1})).toBe(false);
   });
 
+  it('returns false for an empty object against one with keys', () => {
+    expect(shallowEqual<object>({}, {a: 1})).toBe(false);
+    expect(shallowEqual<object>({a: 1}, {})).toBe(false);
+  });
+
   it('compares nested objects by reference only (not deep)', () => {
     const inner1 = {x: 1};
     const inner2 = {x: 1}; // same shape but different reference
@@ -197,6 +202,16 @@ describe('shallowEqual', () => {
       ),
     ).toBe(false);
     expect(shallowEqual(new Map(), new Map())).toBe(true);
+  });
+
+  it('does not equate a map with one that only contains it', () => {
+    const smaller = new Map([[1, 1]]);
+    const larger = new Map([
+      [1, 1],
+      [2, 2],
+    ]);
+    expect(shallowEqual(smaller, larger)).toBe(false);
+    expect(shallowEqual(larger, smaller)).toBe(false);
   });
 
   it('compares sets by size and membership', () => {

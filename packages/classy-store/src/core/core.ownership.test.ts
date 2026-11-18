@@ -186,6 +186,19 @@ describe('shared proxy ownership', () => {
     expect(rootChanged).not.toHaveBeenCalled();
   });
 
+  test('a detached list with one row refreshes when that row changed meanwhile', () => {
+    const store = createClassyStore({rows: [{n: 1}]});
+    const previousRows = store.rows;
+    const previousSnapshot = snapshot(previousRows);
+
+    // The row moves to a new list; the old list is detached and unobserved.
+    store.rows = previousRows.filter(() => true);
+    store.rows[0].n = 2;
+
+    expect(snapshot(previousRows)[0].n).toBe(2);
+    expect(previousSnapshot[0].n).toBe(1);
+  });
+
   test('filtering repeatedly keeps a single proxy and bounded work per scalar write', () => {
     let reads = 0;
     const row = new Proxy(
