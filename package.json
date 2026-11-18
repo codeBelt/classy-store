@@ -5,10 +5,6 @@
     "packages/*",
     "examples/*"
   ],
-  "overrides": {
-    "@solidjs/babel-plugin": "2.0.0-rc.23",
-    "@solidjs/compiler": "2.0.0-rc.23"
-  },
   "scripts": {
     "---------- Dev --------------------------------------------------------": "",
     "dev": "bun run --filter @codebelt/classy-store dev",
