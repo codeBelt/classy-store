@@ -111,8 +111,20 @@ bun run --filter classy-store-solid-example build
 bun run --filter classy-store-angular-example build
 ```
 
-Stage 1 adds a mutation run, a bundle-size check and a core benchmark, and
-lists their commands here.
+The stage 1 tooling. Each has a guide beside it under
+`packages/classy-store/tests/` (`mutation`, `size`, `benchmark`):
+
+```bash
+bun run test:mutation        # mutation run; add file paths to limit it
+bun run size                 # bundle size per entry point, against its budget
+bun run benchmark:core       # per-operation timings on Bun (JavaScriptCore)
+bun run benchmark:core:node  # the same on Node (V8)
+```
+
+Helper agents get their worktrees under `.claude/worktrees/`, inside the
+repository. Each holds its own `biome.json`, which makes `bun run lint` fail
+in the main checkout until the folder is ignored. It is ignored locally here
+through `.git/info/exclude`; a fresh clone needs the same line.
 
 ## Ground rules (every agent)
 
