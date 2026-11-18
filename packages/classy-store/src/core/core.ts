@@ -245,26 +245,21 @@ const pendingNotifications = new Set<StoreInternal>();
 let transactionDepth = 0;
 const pendingSync = new Set<StoreInternal>();
 
-/**
- * Run one store method or array operation as a transaction. Versions advance
- * with every write, so reads inside the call are current, but synchronous
- * subscribers hear about it once, after the outermost call returns or throws.
- * A sort of n rows is then one notification rather than n.
- */
-function runTransaction<T>(run: () => T): T {
-  transactionDepth++;
-  try {
-    return run();
-  } finally {
-    if (--transactionDepth === 0 && pendingSync.size) {
-      const owners = new Set(pendingSync);
-      pendingSync.clear();
-      deliver(owners, 'syncListeners');
-    }
+/** Close one transaction level; the outermost one notifies sync subscribers. */
+function settleTransaction(): void {
+  if (--transactionDepth === 0 && pendingSync.size) {
+    const owners = new Set(pendingSync);
+    pendingSync.clear();
+    deliver(owners, 'syncListeners');
   }
 }
 
-/** Bind a method to its proxy and run each call as a transaction. */
+/**
+ * Bind a method to its proxy and run each call as a transaction. Versions
+ * advance with every write, so reads inside the call are current, but
+ * synchronous subscribers hear about it once, after the outermost call returns
+ * or throws. A sort of n rows is then one notification rather than n.
+ */
 function transactional(
   method: (...args: unknown[]) => unknown,
   receiver: object,
@@ -272,7 +267,12 @@ function transactional(
   return function (...args: unknown[]) {
     // A class stored as data stays constructible, as a bound function would.
     if (new.target) return Reflect.construct(method, args);
-    return runTransaction(() => Reflect.apply(method, receiver, args));
+    transactionDepth++;
+    try {
+      return Reflect.apply(method, receiver, args);
+    } finally {
+      settleTransaction();
+    }
   };
 }
 
