@@ -276,6 +276,35 @@ function transactional(
   };
 }
 
+/**
+ * Run several writes as one transaction. Use it for a loop or a group of direct
+ * writes made outside a store method: synchronous subscribers, which includes
+ * every framework binding, are notified once when `run` returns or throws,
+ * instead of once per write. Store methods and array operations are
+ * transactions already. Calls nest; the outermost one notifies.
+ *
+ * Only the synchronous part of `run` is covered. A write made after an `await`
+ * happens once `batch()` has already returned, and notifies on its own.
+ *
+ * @param run - Performs the writes. Its return value is passed through.
+ * @returns Whatever `run` returns.
+ *
+ * @example
+ * ```ts
+ * batch(() => {
+ *   for (const row of rows) store.items.push(row);
+ * });
+ * ```
+ */
+export function batch<T>(run: () => T): T {
+  transactionDepth++;
+  try {
+    return run();
+  } finally {
+    settleTransaction();
+  }
+}
+
 function flushNotifications(): void {
   const owners = new Set(pendingNotifications);
   pendingNotifications.clear();

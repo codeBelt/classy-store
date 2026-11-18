@@ -2,7 +2,7 @@ import {afterEach, beforeEach, describe, expect, it, spyOn} from 'bun:test';
 import {act, type ReactNode} from 'react';
 import {createRoot, type Root} from 'react-dom/client';
 import {reactiveMap} from '../../collections/collections';
-import {createClassyStore} from '../../core/core';
+import {batch, createClassyStore} from '../../core/core';
 import {shallowEqual} from '../../utils/equality/equality';
 import {useClassyStore} from './react';
 
@@ -136,6 +136,44 @@ describe('useClassyStore — transactions', () => {
     });
 
     expect(input.value).toBe('axb');
+  });
+});
+
+describe('useClassyStore — batch()', () => {
+  it('a batched loop of direct writes builds one list snapshot and renders once', () => {
+    const store = createClassyStore({items: rows(400)});
+    let renders = 0;
+    function Count() {
+      renders++;
+      const count = useClassyStore(store, (state) => state.items.length);
+      return <span>{count}</span>;
+    }
+    render(<Count />);
+    const rendersBefore = renders;
+    let buildsOfList = 0;
+    const originalFreeze = Object.freeze;
+    const freezeSpy = spyOn(Object, 'freeze').mockImplementation(((
+      value: unknown,
+    ) => {
+      if (Array.isArray(value) && value.length >= 400) buildsOfList++;
+      return originalFreeze(value);
+    }) as typeof Object.freeze);
+
+    try {
+      act(() => {
+        batch(() => {
+          for (let index = 0; index < 200; index++) {
+            store.items.push({id: index, done: false});
+          }
+        });
+      });
+    } finally {
+      freezeSpy.mockRestore();
+    }
+
+    expect(buildsOfList).toBe(1);
+    expect(renders - rendersBefore).toBe(1);
+    expect(container.textContent).toBe('600');
   });
 });
 

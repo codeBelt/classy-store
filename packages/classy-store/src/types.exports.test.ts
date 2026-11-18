@@ -3,6 +3,7 @@ import type {Signal} from '@angular/core';
 import {reactiveMap} from './collections/index';
 import {injectClassyStore} from './frameworks/angular/angular';
 import {
+  batch,
   createClassyStore,
   PROXYABLE,
   type Snapshot,
@@ -33,6 +34,9 @@ describe('public entry point types', () => {
       () => void
     >();
     expectTypeOf(shallowEqual).toEqualTypeOf<<T>(a: T, b: T) => boolean>();
+    expectTypeOf(batch).toEqualTypeOf<<T>(run: () => T) => T>();
+    expectTypeOf(batch(() => store.count)).toEqualTypeOf<number>();
+    expectTypeOf(batch(async () => 'done')).toEqualTypeOf<Promise<string>>();
   });
 
   test('PROXYABLE is a symbol that a class can use as a static key', () => {

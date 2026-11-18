@@ -1,6 +1,7 @@
 // Both package formats resolve this peer-free entry through #store-runtime.
 export {createProxy, isChanged} from 'proxy-compare';
 export {
+  batch,
   createClassyStore,
   getInternal,
   getVersion,
