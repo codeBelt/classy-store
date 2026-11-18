@@ -147,6 +147,28 @@ describe('shared proxy ownership', () => {
     expect(independent).toHaveBeenCalledTimes(3);
   });
 
+  test('reattaching a detached list reconnects a row that kept its own subscriber', () => {
+    const store = createClassyStore({rows: [{count: 1}, {count: 2}]});
+    const list = store.rows;
+    const row = list[0];
+    // The subscriber keeps the row active while its list is detached.
+    const onRow = mock(() => {});
+    subscribe(row, onRow, {sync: true});
+
+    store.rows = [];
+    store.rows = list;
+
+    const onStore = mock(() => {});
+    subscribe(store, onStore, {sync: true});
+
+    // Write through the retained row, without reading it through the store.
+    row.count = 5;
+
+    expect(onRow).toHaveBeenCalledTimes(1);
+    expect(onStore).toHaveBeenCalledTimes(1);
+    expect(snapshot(store).rows[0].count).toBe(5);
+  });
+
   test('a detached list refreshes shared rows when read again', () => {
     const store = createClassyStore({rows: [{n: 1}, {n: 2}]});
     const previousRows = store.rows;

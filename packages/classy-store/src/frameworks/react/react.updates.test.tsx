@@ -191,6 +191,39 @@ describe('useClassyStore update consistency', () => {
     expect(childRenders).toHaveBeenCalledTimes(2);
   });
 
+  test('a field its memoized child never read does not re-render the parent', async () => {
+    const store = createClassyStore({node: {name: 'First', unrelated: 0}});
+    const parentRenders = mock(() => {});
+    const Child = memo(function Child({node}: {node: {readonly name: string}}) {
+      return <span>{node.name}</span>;
+    });
+
+    function Display({label}: {label: string}) {
+      const state = useClassyStore(store);
+      parentRenders();
+      return (
+        <div>
+          {label}:<Child node={state.node} />
+        </div>
+      );
+    }
+
+    // The second parent render reuses the child, so `name` is not read again.
+    const {root, container} = mount(<Display label="Original" />);
+    act(() => root.render(<Display label="Parent update" />));
+    parentRenders.mockClear();
+
+    await act(async () => {
+      store.node.unrelated++;
+    });
+    expect(parentRenders).not.toHaveBeenCalled();
+
+    await act(async () => {
+      store.node.name = 'Store update';
+    });
+    expect(container.textContent).toBe('Parent update:Store update');
+  });
+
   test('tracks nested object values held by class symbol fields', () => {
     const key = Symbol('state');
     class SymbolStore {

@@ -52,6 +52,23 @@ describe('angular injectClassyStore', () => {
     expectNoListeners(store);
   });
 
+  it('rejects an already-destroyed DestroyRef without leaking a listener', () => {
+    const store = createClassyStore({count: 0});
+    // A component's injector still hands out its DestroyRef after the view is
+    // destroyed. Stand in for that injector: the root one refuses first.
+    const onDestroy = mock(() => () => {});
+    const viewInjector = {
+      get: (token: unknown) =>
+        token === DestroyRef ? {destroyed: true, onDestroy} : null,
+    } as unknown as Injector;
+
+    expect(() =>
+      runInInjectionContext(viewInjector, () => injectClassyStore(store)),
+    ).toThrow(/live Angular injection context/);
+    expect(onDestroy).not.toHaveBeenCalled();
+    expectNoListeners(store);
+  });
+
   it('returns a readonly signal with the current immutable snapshot', () => {
     const store = createClassyStore({count: 11, nested: {label: 'Initial'}});
     const {result: state, destroy} = withInjector(() =>
