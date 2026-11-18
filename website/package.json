@@ -11,24 +11,24 @@
   },
   "dependencies": {
     "@codebelt/classy-store": "0.11.0",
-    "fumadocs-core": "16.17.7",
-    "fumadocs-mdx": "15.4.9",
-    "fumadocs-ui": "npm:@fumadocs/base-ui@16.17.7",
-    "mermaid": "^12.2.0",
+    "fumadocs-core": "16.19.4",
+    "fumadocs-mdx": "15.6.3",
+    "fumadocs-ui": "npm:@fumadocs/base-ui@16.19.4",
+    "mermaid": "^12.3.0",
     "next": "16.4.6",
     "next-themes": "0.4.6",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4.3.3",
+    "@tailwindcss/postcss": "^4.3.5",
     "@types/mdx": "^2.0.14",
-    "@types/node": "^26.6.5",
+    "@types/node": "^26.6.6",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
-    "postcss": "^8.5.31",
-    "serve": "^14.2.6",
-    "tailwindcss": "^4.3.3",
+    "postcss": "^8.5.33",
+    "serve": "^14.2.8",
+    "tailwindcss": "^4.3.5",
     "typescript": "^7.0.2",
     "@playwright/test": "1.65.1"
   }
