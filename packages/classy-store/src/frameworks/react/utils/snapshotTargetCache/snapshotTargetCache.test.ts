@@ -98,6 +98,21 @@ describe('SnapshotTargetCache', () => {
     expect(source.nested.value).toBe(1);
   });
 
+  test('hands out a backing copy that rejects writes and deletes of its own', () => {
+    // proxy-compare's tracking proxy refuses these before they reach the
+    // copy, so the copy's own guard only shows when it is reached directly.
+    const source = Object.freeze({value: 1});
+    const cache = new SnapshotTargetCache();
+    createProxy(source, new WeakMap(), new WeakMap(), cache);
+    const [original, copy] = cache.get(source) as [object, {value: number}];
+
+    expect(original).toBe(source);
+    expect(copy).not.toBe(source);
+    expect(Reflect.set(copy, 'value', 2)).toBe(false);
+    expect(Reflect.deleteProperty(copy, 'value')).toBe(false);
+    expect(copy.value).toBe(1);
+  });
+
   test('rechecks mutable getter results when their descriptors change', () => {
     const mutable = {nested: {value: 1}};
     const source = Object.freeze({
