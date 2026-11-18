@@ -11,11 +11,16 @@ jobs:
       fail-fast: false
       matrix:
         react: ["18.0.0", "18.3.1", "19.0.0", "19.3.1"]
+        node: ["24"]
+        # The package declares Node 22 as its minimum; prove it on one consumer.
+        include:
+          - react: "19.3.1"
+            node: "22"
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
-          node-version: "24"
+          node-version: ${{ matrix.node }}
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: "1.4.4"

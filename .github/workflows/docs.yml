@@ -27,7 +27,8 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: "1.4.4"
-      - run: bun install --cwd website --frozen-lockfile
+      - run: bun install --frozen-lockfile
+      # Builds the library first: the site runs the package from this repository.
       - run: bun run docs:build
       - run: bunx playwright install --with-deps chromium
         working-directory: website

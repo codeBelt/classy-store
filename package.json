@@ -3,7 +3,8 @@
   "private": true,
   "workspaces": [
     "packages/*",
-    "examples/*"
+    "examples/*",
+    "website"
   ],
   "scripts": {
     "---------- Dev --------------------------------------------------------": "",
@@ -24,7 +25,7 @@
     "lint": "biome check",
     "lint:fix": "biome check --write",
     "check:package": "bun run build && bun run --filter @codebelt/classy-store check:package",
-    "typecheck": "bun run --filter @codebelt/classy-store typecheck && bun run --filter @codebelt/classy-store typecheck:scoping && bun run --filter classy-store-svelte-example check:integration && bun run --filter classy-store-vue-example check:integration && bun run --filter classy-store-solid-example typecheck && bun run --filter classy-store-solid-example check:integration && bun run --filter classy-store-angular-example typecheck && bun run --filter classy-store-angular-example check:integration",
+    "typecheck": "bun run --filter @codebelt/classy-store typecheck && bun run --filter @codebelt/classy-store typecheck:scoping && bun run --filter classy-store-svelte-example check:integration && bun run --filter classy-store-vue-example check:integration && bun run --filter classy-store-solid-example typecheck && bun run --filter classy-store-solid-example check:integration && bun run --filter classy-store-angular-example typecheck && bun run --filter classy-store-angular-example check:integration && bun run --filter classy-store-nextjs-example typecheck && bun run --filter classy-store-docs types:check",
     "---------- Release (Changesets) ----------------------------------------": "",
     "changeset": "changeset",
     "changeset:add": "changeset add",
@@ -39,8 +40,8 @@
     "solid:dev": "cd examples/solid && bun run dev",
     "angular:dev": "cd examples/angular && bun run start",
     "---------- Docs (Fumadocs)  ------------------------------------------": "",
-    "docs:dev": "bun run --cwd website dev",
-    "docs:build": "bun run --cwd website build:pages",
+    "docs:dev": "bun run build && bun run --cwd website dev",
+    "docs:build": "bun run build && bun run --cwd website build:pages",
     "docs:test": "bun run --cwd website test:pages",
     "---------- CI / Helper ------------------------------------------------": "",
     "checkall": "bun run lint:fix && bun run test && bun run typecheck",

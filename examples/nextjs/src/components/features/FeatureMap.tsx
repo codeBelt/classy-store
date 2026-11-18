@@ -216,6 +216,12 @@ const sections: FeatureSection[] = [
         ],
       },
       {
+        api: 'Transactions',
+        description:
+          'A store method that writes many fields notifies React once, when it returns',
+        links: [{label: 'Planner / PlannerGrid', href: '/planner'}],
+      },
+      {
         api: 'Cross-store reads',
         description: 'One component reads from multiple stores',
         links: [

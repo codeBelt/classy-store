@@ -10,7 +10,7 @@
     "test:pages": "playwright test"
   },
   "dependencies": {
-    "@codebelt/classy-store": "0.11.0",
+    "@codebelt/classy-store": "workspace:*",
     "fumadocs-core": "16.19.4",
     "fumadocs-mdx": "15.6.3",
     "fumadocs-ui": "npm:@fumadocs/base-ui@16.19.4",
@@ -30,6 +30,7 @@
     "serve": "^14.2.8",
     "tailwindcss": "^4.3.5",
     "typescript": "^7.0.2",
-    "@playwright/test": "1.65.1"
+    "@playwright/test": "1.65.1",
+    "zod": "^4.6.7"
   }
 }
