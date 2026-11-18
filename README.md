@@ -67,8 +67,8 @@ the original instance, so their writes can bypass reactivity. Mutate through the
 store proxy and read render data through the hook.
 
 Nested plain objects, arrays, and the library's reactive collections support deep
-updates. Native `Date`, `Map`, `Set`, and other nested class instances remain opaque:
-replace their property to notify subscribers. A class of your own can opt into deep
+updates. Native `Date`, `Map`, `Set`, frozen objects, and other nested class instances
+remain opaque: replace their property to notify subscribers. A class of your own can opt into deep
 updates with `static [PROXYABLE] = true`. Snapshots freeze copied state, but
 retain opaque values by reference. Keep computed getters pure and based on store
 property reads; changes to time or external variables do not invalidate their cache.

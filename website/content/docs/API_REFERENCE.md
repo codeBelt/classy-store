@@ -84,7 +84,7 @@ const myStore = createClassyStore(new MyClass());
 - **Prototype methods** are automatically bound so `this` mutations go through the proxy; arrow-function fields cannot be rebound. Each call is a [transaction](./TUTORIAL.md#batching-and-transactions): synchronous subscribers are notified once, after the outermost call returns
 - **Getters** cache results from the store properties they read. Initialize optional fields used in getters, including fields whose initial value is `undefined`. A live getter that reads an absent field recomputes on subsequent reads
 - **Nested plain objects, arrays, and reactive collections** share a single proxy per object. Retained rows stay reactive after reordering or filtering. A separately created store embedded by its proxy stays reactive too. Ordinary nested class instances remain opaque; a class opts in with [`static [PROXYABLE] = true`](#proxyable)
-- **Snapshots** assigned into a store are kept by reference as immutable values and are not proxied
+- **Frozen objects**, snapshots included, are kept by reference as immutable values and are not proxied. Replace the field to publish a change; see [Frozen objects are values](./TUTORIAL.md#frozen-objects-are-values)
 
 Keep the returned proxy as the mutable store. Writes to the original instance
 or raw nested objects bypass notifications and snapshot invalidation. See the

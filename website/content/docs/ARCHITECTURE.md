@@ -202,10 +202,12 @@ child versions identify edits to shared rows made while it was detached.
 
 1. **Memoized getter detection** — walk prototype chain with `Object.getOwnPropertyDescriptor`. If a getter is found, call `evaluateComputed()` which checks dependency validity and returns the cached result or re-evaluates with dependency tracking.
 2. **Method binding** — wrap function values so they run with the proxy as `this`, which sends `this.count++` in methods through the SET trap, and so each call is a [transaction](#transactions). Object methods reuse a cached wrapper. Array method reads create a fresh one.
-3. **Nested state** — if `canProxy()` accepts it (plain object, array, or a class that opts in with the exported `PROXYABLE` symbol, as the library's reactive collections do), return its canonical child proxy. A frozen snapshot is never proxied: it is returned as the immutable value it is. Record a dependency if a getter is currently being tracked.
+3. **Nested state** — if `canProxy()` accepts it (plain object, array, or a class that opts in with the exported `PROXYABLE` symbol, as the library's reactive collections do), return its canonical child proxy. A frozen object, a snapshot included, is never proxied: it is returned as the immutable value it is. Neither is the value of a non-writable, non-configurable property, which a Proxy is required to return unchanged. Whether an object is frozen is worked out once and remembered, because the check scans every property. Record a dependency if a getter is currently being tracked.
 4. **Primitives and opaque values** — return as-is and record a value dependency when a getter is being tracked.
 
 **DELETE trap:** Attempt `Reflect.deleteProperty` first. On success, detach the child, clear the bound-method cache, bump versions, and notify. A failed deletion preserves the connection.
+
+**DEFINE trap:** Forward `Object.defineProperty` to the target. If the property is read-only afterwards, as every property is once `Object.freeze(proxy)` has run, detach its child so later reads return the value itself.
 
 ### Batching via `queueMicrotask`
 

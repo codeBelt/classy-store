@@ -130,4 +130,21 @@ describe('withHistory() — restoring state', () => {
     store.big.list.push(5);
     expect(store.big.list).toEqual([1, 2, 3, 4, 5]);
   });
+
+  it('undo and redo restore the content of a frozen value', async () => {
+    const store = createClassyStore<{profile: {name: string}}>({
+      profile: Object.freeze({name: 'Ada'}),
+    });
+    const history = withHistory(store);
+    store.profile = Object.freeze({name: 'Grace'});
+    await flush();
+
+    history.undo();
+    expect(store.profile.name).toBe('Ada');
+    expect(snapshot(store)).toEqual({profile: {name: 'Ada'}});
+
+    history.redo();
+    expect(store.profile.name).toBe('Grace');
+    history.dispose();
+  });
 });

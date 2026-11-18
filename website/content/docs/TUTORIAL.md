@@ -612,15 +612,32 @@ class FormStore {
 }
 ```
 
-### Initialize with mutable data
+### Frozen objects are values
 
-The live store wraps nested plain objects with proxies. If a frozen input contains an object-valued, non-writable and non-configurable property, JavaScript requires that property to return its original object. Even reading `store.profile.details` can then throw a `TypeError`. For plain, structured-cloneable input, make a mutable copy before creating the store:
+The store keeps a frozen object by reference and never wraps it in a proxy, the same way it treats a `Date`. You read through it as usual, a snapshot holds the very same object, and replacing the field notifies subscribers:
 
 ```ts
 const profile = Object.freeze({details: {name: 'Ada'}});
-const store = createClassyStore({profile: structuredClone(profile)});
-store.profile.details.name = 'Grace';
+const store = createClassyStore({profile});
+
+store.profile === profile; // true
+store.profile.details.name; // 'Ada'
+snapshot(store).profile === profile; // true
+
+store.profile = Object.freeze({details: {name: 'Grace'}}); // notifies
 ```
+
+This suits immutable data that arrives whole, such as the result of an immutable-update library or a response you freeze on arrival, and large read-only tables you want kept out of the proxy system: the store creates no proxies for them and a snapshot makes no copy.
+
+The store does not look inside a frozen object. `Object.freeze` is shallow, so `store.profile.details.name = 'Grace'` still changes the object, but nothing is notified. Replace the frozen object to publish a change. The same goes for a store placed inside a frozen object you assign: the outer store does not follow it, so subscribe to that store directly. To edit frozen input in place, give the store a mutable copy instead, for example `structuredClone(profile)` for plain data.
+
+Three related cases follow the same rule:
+
+- A property that cannot be reassigned (non-writable and non-configurable) returns the object it holds as it is.
+- A frozen object passed to `createClassyStore()` gives a store whose reads return its own values and whose writes throw a `TypeError`. A store embedded in it by its proxy stays connected, so a frozen object can group stores.
+- After `Object.freeze(store.profile)`, that object reads the same way; writes to it throw.
+
+Undo, redo and rehydration put content back as ordinary data, so a value restored by `withHistory` or `persist` is reactive again and no longer frozen.
 
 ### Keep mutations inside the proxy
 
@@ -640,7 +657,7 @@ counterStore.count;
 
 ### Non-proxyable types
 
-Nested native `Date`, `RegExp`, `Map`, and `Set` values, and arbitrary nested class instances, remain opaque. Replacing the field notifies subscribers; mutating the existing object does not. For observable collection operations, use `reactiveMap()` and `reactiveSet()`. For dates, a timestamp field works well. The root class passed to `createClassyStore()` is proxied; this does not make every class instance nested inside it reactive.
+Nested native `Date`, `RegExp`, `Map`, and `Set` values, arbitrary nested class instances, and [frozen objects](#frozen-objects-are-values) remain opaque. Replacing the field notifies subscribers; mutating the existing object does not. For observable collection operations, use `reactiveMap()` and `reactiveSet()`. For dates, a timestamp field works well. The root class passed to `createClassyStore()` is proxied; this does not make every class instance nested inside it reactive.
 
 ### Reactive nested classes
 

@@ -9,7 +9,7 @@ Release 1.0.0, the first stable version. The public API and its behavior are now
 - Store methods and array operations are transactions. Synchronous subscribers, including every framework adapter, are notified once when the outermost call returns instead of once per property write. A `sort` or `unshift` on a long list is now one notification and one snapshot.
 - `subscribe()` on a nested proxy observes only that proxy's subtree. It no longer fires for sibling changes.
 - Each `subscribe()` call is an independent registration; subscribing the same callback twice yields two subscriptions.
-- A snapshot assigned into a store stays an immutable snapshot, held by reference, including one read through React's auto-tracked hook.
+- A frozen object held in a store is an immutable value, kept by reference and never proxied. That covers any object you freeze, a snapshot assigned into a store, and one read through React's auto-tracked hook. Reading a nested object through a frozen object no longer throws.
 - `persist`: hydration is per field. A stored field is restored unless that same field was edited locally while the read was in flight, and a local edit can no longer overwrite the stored record before it is restored. Stored data whose version differs is ignored unless `migrate` is provided.
 - `shallowEqual` returns `false` for values with different prototypes, compares dates by instant and maps and sets one level deep, and no longer treats arbitrary key-less objects as equal.
 - `devtools()` returns a handle with `dispose()` instead of a function, and no longer declares anything on the global `Window` type.

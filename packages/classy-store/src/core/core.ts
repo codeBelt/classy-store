@@ -327,19 +327,54 @@ function deliver(
   }
 }
 
+/**
+ * Being frozen is permanent, so a positive answer is remembered: asking a large
+ * frozen array again would scan every element on each read.
+ */
+const frozenValues = new WeakSet<object>();
+
+/** A snapshot, or any object its owner froze: a value the store never proxies. */
+function isImmutableValue(value: object): boolean {
+  if (snapshotSources.has(value) || frozenValues.has(value)) return true;
+  if (!Object.isFrozen(value)) return false;
+  frozenValues.add(value);
+  return true;
+}
+
+/** A Proxy must return such a property's own value, never a proxy of it. */
+function isReadOnly(descriptor: PropertyDescriptor | undefined): boolean {
+  return descriptor?.configurable === false && descriptor.writable === false;
+}
+
+/**
+ * Make `value` a child of `owner` at `key`, creating its proxy on first sight.
+ * Returns nothing when the value stays as it is: a primitive, an opaque type,
+ * an immutable value, or the value of a read-only property.
+ */
 function linkChild(
   owner: StoreInternal,
   key: string | symbol,
   value: unknown,
   pending?: StoreInternal[],
+  descriptor?: PropertyDescriptor,
 ): StoreInternal | undefined {
   if (typeof value !== 'object' || value === null) return;
-  // A snapshot kept in a store stays an immutable value, held by reference.
-  if (snapshotSources.has(value)) return;
-  const child =
-    internalsMap.get(value) ??
-    (canProxy(value) ? createNode(value, pending) : undefined);
-  if (child) owner.attach(key, child);
+  // A store embedded by its proxy is already the value the property holds, so
+  // it stays a child wherever it sits, including in a frozen object.
+  const existing = internalsMap.get(value);
+  if (!existing) {
+    // An immutable value is held by reference, like a `Date`. Opaque types are
+    // ruled out first: they are read far more often than they are frozen.
+    if (!canProxy(value) || isImmutableValue(value)) return;
+    if (
+      isReadOnly(
+        descriptor ?? Object.getOwnPropertyDescriptor(owner.target, key),
+      )
+    )
+      return;
+  }
+  const child = existing ?? createNode(value, pending);
+  owner.attach(key, child);
   return child;
 }
 
@@ -410,7 +445,7 @@ function createNode(target: object, pending?: StoreInternal[]): StoreInternal {
         if (
           !own ||
           !('value' in own) ||
-          !linkChild(internal, prop, own.value)
+          !linkChild(internal, prop, own.value, undefined, own)
         ) {
           internal.detach(prop);
         }
@@ -464,6 +499,19 @@ function createNode(target: object, pending?: StoreInternal[]): StoreInternal {
       return child ? child.proxy : value;
     },
 
+    defineProperty(_target, prop, descriptor) {
+      const defined = Reflect.defineProperty(_target, prop, descriptor);
+      // `Object.freeze(proxy)` arrives here once per property. A property that
+      // is now read-only holds its value as it is, as if frozen all along.
+      const own = defined && Object.getOwnPropertyDescriptor(_target, prop);
+      if (own && isReadOnly(own)) {
+        const child = internal.childInternals.get(prop);
+        // An embedded store's proxy is that value: it remains a child.
+        if (child && child.proxy !== own.value) internal.detach(prop);
+      }
+      return defined;
+    },
+
     deleteProperty(_target, prop) {
       internal.resumeScope();
       const deleted = Reflect.deleteProperty(_target, prop);
@@ -488,7 +536,8 @@ function createNode(target: object, pending?: StoreInternal[]): StoreInternal {
     for (const owner of nodes) {
       for (const key of Reflect.ownKeys(owner.target)) {
         const desc = Object.getOwnPropertyDescriptor(owner.target, key);
-        if (desc && 'value' in desc) linkChild(owner, key, desc.value, nodes);
+        if (desc && 'value' in desc)
+          linkChild(owner, key, desc.value, nodes, desc);
       }
     }
   }

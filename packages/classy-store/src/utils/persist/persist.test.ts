@@ -152,6 +152,37 @@ describe('persist()', () => {
       expect(stored?.state.count).toBe(1);
       expect(stored?.state).not.toHaveProperty('increment');
     });
+
+    it('saves a frozen value and restores it as ordinary data', async () => {
+      const storage = createMockStorage();
+      const s = createClassyStore<{
+        prefs: {theme: string; tags: readonly string[]};
+      }>({
+        prefs: Object.freeze({theme: 'dark', tags: Object.freeze(['a'])}),
+      });
+      const handle = persist(s, {name: 'test', storage});
+      await handle.hydrated;
+      await handle.save();
+      expect(parseStored(storage, 'test')?.state).toEqual({
+        prefs: {theme: 'dark', tags: ['a']},
+      });
+
+      storage.data.set(
+        'test',
+        JSON.stringify({
+          version: 0,
+          state: {prefs: {theme: 'light', tags: ['b']}},
+        }),
+      );
+      await handle.rehydrate();
+
+      expect(snapshot(s).prefs).toEqual({theme: 'light', tags: ['b']});
+      // What came back from storage is plain data, so it is reactive again.
+      s.prefs.theme = 'sepia';
+      expect(snapshot(s).prefs.theme).toBe('sepia');
+
+      handle.dispose();
+    });
   });
 
   // ── Pick specific properties ────────────────────────────────────────────
