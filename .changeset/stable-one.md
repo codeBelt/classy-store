@@ -14,7 +14,7 @@ Release 1.0.0, the first stable version. The public API and its behavior are now
 - `shallowEqual` returns `false` for values with different prototypes, compares dates by instant and maps and sets one level deep, and no longer treats arbitrary key-less objects as equal.
 - `devtools()` returns a handle with `dispose()` instead of a function, and no longer declares anything on the global `Window` type.
 - Angular: `injectStore` is renamed `injectClassyStore`.
-- Solid: the adapter requires stable Solid 2 (`solid-js@^2.0.0`) and is no longer a preview. The release candidates are no longer accepted.
+- Solid: the adapter requires Solid 2 (`solid-js@^2.0.0`).
 
 **Other changes**
 

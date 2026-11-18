@@ -60,8 +60,8 @@ live component or `createRoot()` owner and disposes its subscription with that
 owner. Store notifications reach its signal synchronously; Solid 2 retains its
 native batching. Call Solid's `flush()` when imperative code needs current
 computed values or DOM. The adapter does not call it automatically, and ordinary
-core subscriptions stay batched. See the [Solid 2 guide](./SOLID.md) for supported
-versions, inputs, keyed lists, and migration from Solid 1.
+core subscriptions stay batched. See the [Solid 2 guide](./SOLID.md) for setup,
+inputs, keyed lists, and ownership.
 
 Angular's `injectClassyStore(store)` supports **all stable Angular 22 releases**
 (`^22.0.0`). It requires a live

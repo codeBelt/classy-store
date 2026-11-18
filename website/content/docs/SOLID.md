@@ -3,10 +3,9 @@ title: "Solid 2"
 description: "Use the adapter with Solid 2 and a live Solid owner."
 ---
 
-The `/solid` adapter supports Solid 2 (`solid-js@^2.0.0`). Solid 1 is not
-supported, and neither are the Solid 2 release candidates that earlier versions
-of this library targeted: update `solid-js` and `@solidjs/web` to the stable
-release. The import and return shape stay the same:
+The `/solid` adapter supports Solid 2 (`solid-js@^2.0.0`). Call
+`useClassyStore(store)` in a component or a live `createRoot()`. It returns an
+accessor for the store's current immutable snapshot:
 
 ```typescript
 import {useClassyStore} from '@codebelt/classy-store/solid';
@@ -26,8 +25,8 @@ Keep `solid-js`, `@solidjs/web` and the compiler packages on the same version.
 The repository example uses `@solidjs/vite-plugin@3.0.1`, which brings
 `@solidjs/compiler@2.0.0`, and Vite `8.3.8`. The Vite plugin requires
 Node.js 22.12 or later. Use `@solidjs/web` for DOM imports and
-`jsxImportSource: "@solidjs/web"` in TypeScript configuration. Replace the
-Solid 1 `vite-plugin-solid` package with `@solidjs/vite-plugin`.
+`jsxImportSource: "@solidjs/web"` in TypeScript configuration, and
+`@solidjs/vite-plugin` as the Vite plugin.
 
 ## Inputs, computed values, and lists
 

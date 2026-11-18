@@ -20,7 +20,7 @@ Visit the **[Documentation Website](https://codebelt.github.io/classy-store/)** 
 - Angular's `injectStore` is now `injectClassyStore`.
 - `subscribe()` on a nested proxy observes only that proxy's subtree.
 - `persist` ignores stored data whose `version` differs unless you provide `migrate`.
-- The Solid adapter requires stable Solid 2 (`solid-js@^2.0.0`); update from the release candidates.
+- The Solid adapter requires Solid 2 (`solid-js@^2.0.0`).
 
 Coming from an older release, apply the earlier guides first: [0.11.0](https://codebelt.github.io/classy-store/docs/UPGRADING_0_11), [0.8.0](https://codebelt.github.io/classy-store/docs/UPGRADING_0_8) and [0.7.0](https://codebelt.github.io/classy-store/docs/UPGRADING_0_7).
 
@@ -149,16 +149,16 @@ for inputs, keyed lists, cleanup, and migration requirements.
 
 ## Solid 2 integration
 
-The `/solid` adapter supports **Solid 2** (`solid-js@^2.0.0`). Solid 1 and the Solid 2
-release candidates are not supported. Keep `solid-js` and the browser renderer
-`@solidjs/web` on the same version. `useClassyStore(store)` returns an immutable snapshot accessor
-and requires a live component or `createRoot()` owner for automatic cleanup.
+The `/solid` adapter supports **Solid 2** (`solid-js@^2.0.0`). Keep `solid-js` and
+the browser renderer `@solidjs/web` on the same version. `useClassyStore(store)`
+returns an immutable snapshot accessor and requires a live component or
+`createRoot()` owner for automatic cleanup.
 
 Store changes reach Solid synchronously, while Solid 2 batches its reactive
 updates. Use Solid's `flush()` when imperative code needs updated computed values
 or DOM immediately. Ordinary core subscriptions remain batched. See the
-[Solid 2 guide](https://codebelt.github.io/classy-store/docs/SOLID) for inputs,
-keyed lists, ownership, and migration of the example toolchain.
+[Solid 2 guide](https://codebelt.github.io/classy-store/docs/SOLID) for setup,
+inputs, keyed lists, and ownership.
 
 ## 📦 Installation
 

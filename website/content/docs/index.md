@@ -66,7 +66,7 @@ All framework peer dependencies are optional — install only what your project 
 | Angular   | `@angular/core ^22.0.0`      | `@codebelt/classy-store/angular` |
 
 These ranges include stable releases within the listed majors and exclude
-untested future majors. Solid 1 and the Solid 2 release candidates are not supported.
+untested future majors.
 Use matching React/React DOM versions. Development dependencies stay pinned
 independently of the supported consumer ranges.
 

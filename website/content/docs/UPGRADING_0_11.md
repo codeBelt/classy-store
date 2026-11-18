@@ -7,7 +7,7 @@ Applications upgrading from 0.10.x can keep their existing store definitions and
 
 ## Framework support
 
-**The Solid adapter is in preview.** Applications using `@codebelt/classy-store/solid` must pin `solid-js` to exactly `2.0.0-rc.18`. Browser applications must also pin `@solidjs/web` to `2.0.0-rc.18`. Check the adapter's peer requirement before upgrading Solid. [Solid integration guide](./SOLID.md)
+**Solid.** Applications using `@codebelt/classy-store/solid` should check the adapter's peer requirement before upgrading Solid. The current requirement is in the [Solid integration guide](./SOLID.md).
 
 **Angular supports all stable 22.x releases** through the optional `@angular/core` peer range `^22.0.0`. The library's development dependencies and example use Angular `22.2.6`. Keep your application's Angular runtime and compiler packages on matching versions. [Angular integration guide](./ANGULAR.md)
 
