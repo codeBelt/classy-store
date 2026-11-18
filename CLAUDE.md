@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```
 packages/classy-store/src/
-├── index.ts                       # Main entry: createClassyStore, snapshot, subscribe, shallowEqual, PROXYABLE
+├── index.ts                       # Main entry: createClassyStore, snapshot, subscribe, batch, shallowEqual, PROXYABLE
 ├── storeRuntime.ts                # Runtime shared by every entry and both module formats (#store-runtime)
 ├── types.ts                       # Public Snapshot<T>, SubscribeOptions
 ├── core/core.ts                   # Layer 1: Write Proxy — createClassyStore(), subscribe(), transactions, computed getters
@@ -39,7 +39,7 @@ packages/classy-store/src/
     ├── utilityStatus/             # Status publisher behind the persist and history handles
     └── internal/internal.ts       # isPlainObject, canProxy, findGetterDescriptor, PROXYABLE
 
-website/                           # Fumadocs static site (Next.js)
+website/                           # Fumadocs static site (Next.js); a workspace member that runs the library built from this repository
 website/content/docs/                      # .md source for all doc pages
 website/examples/                  # Live React controls used by the MDX example pages
 website/public/                    # Static assets and old demo bookmark redirect
@@ -62,8 +62,8 @@ bun run typecheck    # TypeScript type check without emit
 bun run check:package  # Build, then publint + arethetypeswrong on the packed tarball
 bun run checkall     # lint + test + typecheck (full CI check)
 
-bun run docs:dev     # Start Fumadocs at http://localhost:3000
-bun run docs:build   # Export the GitHub Pages site to website/out/
+bun run docs:dev     # Build the library, then start Fumadocs at http://localhost:3000
+bun run docs:build   # Build the library, then export the GitHub Pages site to website/out/
 ```
 
 Run from `packages/classy-store/`:
@@ -105,7 +105,7 @@ Enforced by Biome (`biome.json` at repo root; the version is pinned in the root 
 
 - **No arrow function methods:** Arrow function properties (`increment = () => {}`) have `this` lexically bound to the raw instance. `.bind()` is a no-op on arrow functions, so the GET trap cannot rebind `this` to the proxy. Mutations inside arrow functions bypass the SET trap entirely — no notifications, no reactivity. Always use prototype methods (`increment() {}`).
 - **Batching:** ordinary subscribers are coalesced via `queueMicrotask`. Multiple synchronous writes (including array `push` which triggers multiple SET traps) produce a single notification.
-- **Transactions:** `{sync: true}` subscribers, which is every framework binding, are notified once per direct write, and once per store method or array-method call, when the outermost call returns. Versions still bump on every write, so reads inside the call are current. Without this an in-place `sort` or `unshift` notifies once per moved element and each notification rebuilds the list snapshot.
+- **Transactions:** `{sync: true}` subscribers, which is every framework binding, are notified once per direct write, and once per store method or array-method call, when the outermost call returns. Versions still bump on every write, so reads inside the call are current. Without this an in-place `sort` or `unshift` notifies once per moved element and each notification rebuilds the list snapshot. The exported `batch(run)` opens the same transaction around direct writes made outside a method.
 - **Subscription scope:** `subscribe(node)` observes that node's subtree only. Each call is its own registration.
 - **Snapshots are values:** a frozen snapshot assigned into a store is kept by reference and never proxied, including one read through React's tracking proxy.
 - **Internal state:** stored in a `WeakMap<proxy, StoreInternal>` — never on the user's object. Allows GC when a store is dereferenced.

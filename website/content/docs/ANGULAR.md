@@ -104,7 +104,7 @@ When testing scheduled rendering, wait for `ApplicationRef.whenStable()` or
 `ComponentFixture.whenStable()` instead of masking scheduling with manual
 `detectChanges()` calls.
 
-## Cleanup and migration
+## Cleanup
 
 The subscription belongs to the injected `DestroyRef`. A component-scoped call
 unsubscribes when that component is destroyed; a service or provider factory
@@ -115,11 +115,6 @@ independently. Remounting reads the store's current state.
 Calls outside an injection context or after its destruction throw without
 registering a listener. Destroyed consumers ignore pending notifications,
 including destruction during an in-progress store notification.
-
-To migrate, update your Angular packages to the same stable Angular 22 release
-and use its compatible TypeScript toolchain. The `injectClassyStore(store)` signature and `/angular` import
-path are unchanged. Signal reads now update immediately rather than waiting for
-the core subscription microtask. There is no adapter timing option.
 
 See the [Angular example](https://github.com/codeBelt/classy-store/tree/main/examples/angular)
 for a zoneless application with inputs, a class getter, Angular computed state,

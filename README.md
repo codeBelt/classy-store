@@ -12,18 +12,6 @@
 
 Visit the **[Documentation Website](https://codebelt.github.io/classy-store/)** for tutorials, API reference, and examples.
 
-## Upgrading to 1.0
-
-1.0 is the first stable release: the public API and its behavior now follow semantic versioning. Coming from 0.11.x, read the [1.0 upgrade guide](https://codebelt.github.io/classy-store/docs/UPGRADING_1_0). The changes most likely to need an edit are:
-
-- `devtools(store)` returns a handle; call `handle.dispose()` instead of calling the result.
-- Angular's `injectStore` is now `injectClassyStore`.
-- `subscribe()` on a nested proxy observes only that proxy's subtree.
-- `persist` ignores stored data whose `version` differs unless you provide `migrate`.
-- The Solid adapter requires Solid 2 (`solid-js@^2.0.0`).
-
-Coming from an older release, apply the earlier guides first: [0.11.0](https://codebelt.github.io/classy-store/docs/UPGRADING_0_11), [0.8.0](https://codebelt.github.io/classy-store/docs/UPGRADING_0_8) and [0.7.0](https://codebelt.github.io/classy-store/docs/UPGRADING_0_7).
-
 ## 🚀 Features
 
 - **Class-Based**: Define state and logic using standard ES6 classes.
@@ -99,6 +87,7 @@ property reads; changes to time or external variables do not invalidate their ca
 | Read state outside React or observe mutations            | `snapshot(store)`, `subscribe(store, listener)`, `subscribeKey(store, key, listener)` |
 | Persist state, record history, or inspect it in DevTools | `persist(store, options)`, `withHistory(store)`, `devtools(store)`                    |
 | Track changes inside Map-like or Set-like collections    | `reactiveMap()`, `reactiveSet()`                                                      |
+| Group direct writes into one notification                | `batch(run)`                                                                          |
 | Compare selector results one level deep                  | `shallowEqual(previous, next)`                                                        |
 
 `useClassyStore` is the starting point for React components. The two status hooks
@@ -122,7 +111,7 @@ return (
 );
 ```
 
-Ordinary `subscribe(store, listener)` callbacks still batch in a microtask. A store method or an array operation such as `sort` is one transaction: React is notified once when it returns, however many fields it wrote. A write made outside a method notifies on its own, so keep loops of writes inside a store method.
+Ordinary `subscribe(store, listener)` callbacks still batch in a microtask. A store method or an array operation such as `sort` is one transaction: React is notified once when it returns, however many fields it wrote. A write made outside a method notifies on its own, so put a loop of writes in a store method or wrap it in `batch()`.
 
 For server-rendered React apps, call `prepareStoreForHydration(store)` from `@codebelt/classy-store/react/server` on matching server/client stores before persistence starts. Delayed Suspense boundaries then hydrate from the original data and catch up to live state. See the [SSR guide](https://codebelt.github.io/classy-store/docs/REACT_SSR).
 
@@ -145,7 +134,7 @@ writes update the signal and dependent computed reads immediately; Angular
 schedules rendering, including in zoneless applications. The subscription is
 removed with its `DestroyRef` lifecycle. Ordinary core subscriptions remain
 batched. See the [Angular guide](https://codebelt.github.io/classy-store/docs/ANGULAR)
-for inputs, keyed lists, cleanup, and migration requirements.
+for inputs, keyed lists, and cleanup.
 
 ## Solid 2 integration
 

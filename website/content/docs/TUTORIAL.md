@@ -197,8 +197,6 @@ function NameInput() {
 }
 ```
 
-If upgrading from 0.6.x, remove the React `sync` option and `UseClassyStoreOptions` imports. Keep `isEqual` if you use custom selector equality. The low-level `subscribe()` API retains its batching and optional `sync` setting.
-
 ## Batching and transactions
 
 Ordinary `subscribe()` callbacks batch notifications in a microtask. Framework adapters, including React's, are notified synchronously, so a controlled input sees its new value within the event that changed it.
@@ -228,7 +226,19 @@ class FormStore {
 
 Array methods called on store state work the same way: `store.items.sort()`, `unshift()`, `splice()` or a `forEach()` that edits every row is one notification and one new snapshot of the list, however many elements moved.
 
-A write made directly on the store outside any method, such as `store.count++` in an event handler, notifies by itself. A plain loop of such writes therefore notifies once per write, and each notification rebuilds the snapshots on the changed path. Put loops and multi-field updates in a store method.
+A write made directly on the store outside any method, such as `store.count++` in an event handler, notifies by itself. A plain loop of such writes therefore notifies once per write, and each notification rebuilds the snapshots on the changed path. Put loops and multi-field updates in a store method, or wrap them in `batch()` when the writes belong outside the store:
+
+```ts
+import {batch} from '@codebelt/classy-store';
+
+batch(() => {
+  for (const row of incoming) {
+    listStore.items.push(row);
+  }
+}); // one notification, not one per row
+```
+
+`batch()` returns its callback's result and nests with store methods and with other batches; the outermost call notifies.
 
 An `async` method is a transaction up to its first `await`. Each write after an `await` notifies on its own unless it happens inside another method call, which lets loading and result states appear separately. See [Async Patterns](#async-patterns) below.
 
@@ -676,7 +686,7 @@ On a snapshot, every getter of the class is installed as an enumerable own acces
 
 A write outside a store method notifies React by itself. Setting a field and reverting it with two such writes can still schedule rendering, even though the final displayed value is unchanged. Neither selector mode nor auto-tracked mode promises to avoid this work.
 
-Likewise, a plain loop with a thousand direct writes sends a thousand synchronous notifications. Move the loop into a store method to make it one transaction and one notification. Ordinary `subscribe()` callbacks receive one microtask notification either way.
+Likewise, a plain loop with a thousand direct writes sends a thousand synchronous notifications. Move the loop into a store method, or wrap it in `batch()`, to make it one transaction and one notification. Ordinary `subscribe()` callbacks receive one microtask notification either way.
 
 ### Auto-tracked references
 

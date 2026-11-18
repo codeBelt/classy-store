@@ -2,7 +2,7 @@
 "@codebelt/classy-store": major
 ---
 
-Release 1.0.0, the first stable version. The public API and its behavior are now covered by semantic versioning. See the [1.0 upgrade guide](https://codebelt.github.io/classy-store/docs/UPGRADING_1_0) for before/after examples of every breaking change.
+Release 1.0.0, the first stable version. The public API and its behavior are now covered by semantic versioning.
 
 **Breaking changes**
 
@@ -20,5 +20,6 @@ Release 1.0.0, the first stable version. The public API and its behavior are now
 
 - `withHistory`: undo and redo remove top-level fields that the restored entry lacks, `undo()` steps back over an edit made in the same tick, and unchanged fields keep their identity.
 - Reactive collections compare keys and values by identity, so a plain object works as a key whether it is given raw, as a store proxy or as a snapshot. Lookups scan the raw backing array.
+- `batch(run)` is exported to group direct writes made outside a store method into one synchronous notification.
 - `PROXYABLE` is exported so a class can opt into nested reactivity with `static [PROXYABLE] = true`.
-- The package declares `engines.node >= 20` and exports `./package.json`.
+- The package declares `engines.node >= 22` and exports `./package.json`.

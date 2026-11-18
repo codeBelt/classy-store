@@ -17,6 +17,7 @@ description: "Public entry points, types, hooks, and utility signatures for Clas
 | Read state outside React or observe mutations            | `snapshot(store)`, `subscribe(store, listener)`, `subscribeKey(store, key, listener)` |
 | Persist state, record history, or inspect it in DevTools | `persist(store, options)`, `withHistory(store)`, `devtools(store)`                    |
 | Track changes inside Map-like or Set-like collections    | `reactiveMap()`, `reactiveSet()`                                                      |
+| Group direct writes into one notification                | `batch(run)`                                                                          |
 | Compare selector results one level deep                  | `shallowEqual(previous, next)`                                                        |
 
 `useClassyStore` is the starting point for React components. The two status hooks
@@ -29,7 +30,7 @@ Import from the entry that owns the API. Core, collections, and utilities do not
 
 | Import path                           | Runtime exports                                                                              | Public types                                                                                                                                                                                                               |
 | ------------------------------------- | -------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@codebelt/classy-store`              | `createClassyStore`, `snapshot`, `subscribe`, `shallowEqual`, `PROXYABLE`                    | `Snapshot`, `SubscribeOptions`                                                                                                                                                                                             |
+| `@codebelt/classy-store`              | `createClassyStore`, `snapshot`, `subscribe`, `batch`, `shallowEqual`, `PROXYABLE`           | `Snapshot`, `SubscribeOptions`                                                                                                                                                                                             |
 | `@codebelt/classy-store/react`        | `useClassyStore`, `useLocalStore`, `createStoreHook`, `useHistoryStatus`, `usePersistStatus` | `UseClassyStoreSelectorOptions`                                                                                                                                                                                            |
 | `@codebelt/classy-store/react/server` | `prepareStoreForHydration`                                                                   | —                                                                                                                                                                                                                          |
 | `@codebelt/classy-store/collections`  | `reactiveMap`, `reactiveSet`                                                                 | `ReactiveMap`, `ReactiveSet`                                                                                                                                                                                               |
@@ -68,7 +69,7 @@ Angular's `injectClassyStore(store)` supports **all stable Angular 22 releases**
 injection context and returns a readonly signal. Store writes update the signal
 and dependent computed reads immediately; Angular schedules effects and rendering,
 including zoneless `OnPush` views. Cleanup follows the injected `DestroyRef`.
-See the [Angular guide](./ANGULAR.md) for inputs, keyed lists, and migration.
+See the [Angular guide](./ANGULAR.md) for inputs, keyed lists, and cleanup.
 
 ## API Reference
 
@@ -152,7 +153,7 @@ return (
 
 React subscriptions always notify synchronously, including selector, auto-tracked, and bound hooks. There is no React `sync` option. This lets React observe controlled-field changes during the input event and preserve caret position. Ordinary `subscribe()` callbacks remain batched.
 
-When upgrading from 0.6.x, remove the React hook's `sync` option and imports of `UseClassyStoreOptions`. Selector options still support `isEqual`. Selectors run after each direct write to a store and once after each store method or array operation, even when React batches the resulting renders. [0.7.0 upgrade guide](./UPGRADING_0_7.md)
+Selectors run after each direct write to a store and once after each store method or array operation, even when React batches the resulting renders.
 
 ### `useHistoryStatus(history)`
 
@@ -347,6 +348,25 @@ const unsubSync = subscribe(
 unsub();
 unsubSync();
 ```
+
+### `batch(run)`
+
+Runs `run` and notifies synchronous subscribers once, when it returns or throws, instead of once per write. Every framework adapter subscribes synchronously, so this is what keeps a loop of direct writes from re-reading the store on each iteration. Returns whatever `run` returns.
+
+```typescript
+import {batch} from '@codebelt/classy-store';
+
+batch(() => {
+  for (const row of incoming) {
+    listStore.items.push(row);
+  }
+  listStore.loadedAt = Date.now();
+}); // subscribers are notified once, here
+```
+
+Store methods and array methods on store state are transactions already, so `batch()` is only needed for writes made directly on the store outside a method. Calls nest, including with store methods; the outermost one notifies. Reads inside the callback see every write made so far.
+
+Only the synchronous part of the callback is covered. In `batch(async () => { ... })`, a write after an `await` happens once `batch()` has already returned and notifies on its own. Ordinary `subscribe()` callbacks are batched in a microtask regardless. [Batching and transactions](./TUTORIAL.md#batching-and-transactions)
 
 ### `shallowEqual(a, b)`
 

@@ -49,11 +49,7 @@ This shared instance is for a client-only app. For SSR or independent subtrees, 
 
 [Open the reactivity example →](/examples/reactivity/)
 
-## Framework support and upgrades
-
-1.0 is the first stable release. Upgrading from 0.11.x? Read the [1.0 upgrade guide](./UPGRADING_1_0.md) for the breaking changes and the edits they need.
-
-From an older release, apply the earlier notes first: [0.11.0](./UPGRADING_0_11.md), then [0.8.0](./UPGRADING_0_8.md) for public API changes and persistence error handling, and [0.7.0](./UPGRADING_0_7.md) from 0.6.x or earlier.
+## Framework support
 
 All framework peer dependencies are optional — install only what your project uses:
 

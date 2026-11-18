@@ -235,6 +235,8 @@ store.items.unshift(row)               // 5,000 rows, one mounted consumer
 
 Without this, each of those writes notified the consumer, and each notification rebuilt the list snapshot: quadratic work for one call. Batched listeners are unaffected; they were already coalesced by the microtask. Writes after an `await` in an async method happen after its call returned, so they are outside the transaction.
 
+The exported `batch(run)` opens the same transaction around any callback. It exists for writes made directly on a store outside a method, which would otherwise each notify on their own.
+
 The Svelte adapter also uses synchronous notifications to satisfy the readable
 store contract. It subscribes before delivering the initial snapshot so mutations
 inside that first callback are observed, and removes the subscription if the
