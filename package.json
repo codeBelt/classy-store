@@ -14,6 +14,7 @@
     "---------- Test --------------------------------------------------------": "",
     "test": "bun run --filter @codebelt/classy-store test",
     "test:browser": "bun run --filter @codebelt/classy-store test:browser",
+    "test:mutation": "bun packages/classy-store/tests/mutation/runMutation.ts",
     "test:frameworks:compatibility": "bun run build && node packages/classy-store/tests/frameworkCompatibility/runCompatibility.mjs",
     "test:angular:compatibility": "bun run build && node packages/classy-store/tests/angularCompatibility/runCompatibility.mjs",
     "test:react:compatibility": "bun run build && node packages/classy-store/tests/compatibility/runCompatibility.mjs",
