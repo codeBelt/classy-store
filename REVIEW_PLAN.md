@@ -13,7 +13,7 @@ commit it ended on, and where its report is.
 | Plan                  | Revised 2026-11-18 after a check against the repository at `7540662` |           |                                                                          |
 | 1. Safety net         | Done 2026-11-18                                                      | `5bc4008` | `review/stage-1-report.md`                                               |
 | 2. Library comparison | Done 2026-11-19                                                      | `1b426fb` | `review/stage-2-report.md`, with the eleven reports in `review/stage-2/` |
-| 3. Design review      | Not started                                                          |           |                                                                          |
+| 3. Design review      | In progress since 2026-11-19                                         |           | `review/stage-3/`                                                        |
 | 4. Refactor           | Not started                                                          |           |                                                                          |
 | 5. Release            | Not started                                                          |           |                                                                          |
 
@@ -140,17 +140,20 @@ fail in the main checkout, so `.gitignore` lists that folder.
 - Fixed: state is a plain class wrapped in a proxy, consumers read immutable
   snapshots with structural sharing, and one core serves React, Vue, Svelte,
   Solid and Angular. Everything built on that is open to change.
-- The owner alone decides when to merge and when to release. No agent merges
-  the pull request, merges the Changesets release pull request, enables
-  auto-merge, publishes to npm, creates a tag or a GitHub release, or runs
-  the release workflow. Finishing a stage, passing checks or an earlier
-  approval is not permission; only the owner's explicit instruction for that
-  specific action is.
-- Do not ask the owner to merge or release, and do not suggest it is time.
-  Report the state of the work and stop; the owner will say when.
+- The owner alone decides when anything is merged into `main` and when to
+  release. No agent merges the pull request, merges the Changesets release
+  pull request, enables auto-merge, publishes to npm, creates a tag or a
+  GitHub release, or runs the release workflow. Finishing a stage, passing
+  checks or an earlier approval is not permission; only the owner's explicit
+  instruction for that specific action is.
+- Do not ask the owner to merge into `main` or to release, and do not suggest
+  it is time. Report the state of the work and stop; the owner will say when.
 - Committing and pushing to the branch need no further approval. The owner
   said on 2026-11-18: "From now on, you can commit and push anytime you want."
-  Merging and releasing are unchanged: the two rules above still hold.
+- Merging into any branch other than `main` needs no further approval, for
+  example a helper agent's branch into `release/1.0`. The owner said on
+  2026-11-19: "You can always merge, just not into main branch." Merging into
+  `main` and releasing are unchanged: the first two rules still hold.
 - Read the repo's agent instructions first (`AGENTS.md` if present, otherwise
   `CLAUDE.md`). Typecheck with `bun run typecheck`, never `bunx tsc`.
 - Use the skills listed for your stage. Load each one before the work it
