@@ -60,7 +60,7 @@
     "original": "snapshot(proxyStore) !== baseline",
     "replacement": "true",
     "occurrence": 1,
-    "reason": "The check is only a shortcut. When the current snapshot is the baseline itself, discardEditedFields() compares every pending field with itself. A snapshot returns the same value for a field each time it is read, so nothing is dropped."
+    "reason": "Performance only: The check is only a shortcut. When the current snapshot is the baseline itself, discardEditedFields() compares every pending field with itself. A snapshot returns the same value for a field each time it is read, so nothing is dropped."
   },
   {
     "file": "src/utils/persist/persist.ts",
@@ -69,7 +69,7 @@
     "original": "pending.delete(key);",
     "replacement": ";",
     "occurrence": 1,
-    "reason": "The loop visits each key once either way: a Set iterator does not return to a key it has passed. Leaving restored keys in the set only lets discardEditedFields() drop them too, which changes nothing, and makes the `pending.size` test true after the last field, when only restored keys are left to drop."
+    "reason": "Performance only: The loop visits each key once either way: a Set iterator does not return to a key it has passed. Leaving restored keys in the set only lets discardEditedFields() drop them too, which changes nothing, and makes the `pending.size` test true after the last field, when only restored keys are left to drop."
   },
   {
     "file": "src/utils/persist/persist.ts",
@@ -78,7 +78,7 @@
     "original": "pending.size",
     "replacement": "true",
     "occurrence": 1,
-    "reason": "With nothing pending, discardEditedFields() has no key to drop. It only takes a snapshot, which changes nothing."
+    "reason": "Performance only: With nothing pending, discardEditedFields() has no key to drop. It only takes a snapshot, which changes nothing."
   },
   {
     "file": "src/utils/persist/persist.ts",

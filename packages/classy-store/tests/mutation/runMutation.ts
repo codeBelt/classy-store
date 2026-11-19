@@ -221,6 +221,15 @@ async function runMutant(
   }
 }
 
+/** What a reason must start with. The guide says what each one means. */
+const reasonLabels = [
+  'Same behaviour:',
+  'Unreachable:',
+  'No effect:',
+  'Performance only:',
+  'Memory only:',
+];
+
 /** Every list under `equivalent/`: one JSON file per source file. */
 function readEquivalents(): EquivalentMutant[] {
   if (!existsSync(equivalentDirectory)) return [];
@@ -333,6 +342,17 @@ async function main(): Promise<number> {
   }
 
   const equivalents = readEquivalents();
+  const unlabelled = equivalents.filter(
+    (entry) => !reasonLabels.some((label) => entry.reason.startsWith(label)),
+  );
+  if (unlabelled.length) {
+    for (const entry of unlabelled)
+      console.error(`NO LABEL ${mutantId(entry)}`);
+    console.error(
+      `\nEvery reason under tests/mutation/equivalent/ starts with one of: ${reasonLabels.join(' ')}`,
+    );
+    return 2;
+  }
   const explained = new Set(equivalents.map(mutantId));
 
   const concurrency = Math.min(options.concurrency, mutants.length || 1);
