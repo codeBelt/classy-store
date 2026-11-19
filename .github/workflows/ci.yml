@@ -8,6 +8,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        # The floor guard compares against the commit the pull request started from.
+        with: {fetch-depth: 0}
       - uses: actions/setup-node@v6
         with:
           node-version: "24"
@@ -16,12 +18,17 @@ jobs:
           bun-version: "1.4.4"
       - run: bun install --frozen-lockfile
       - run: bun run lint
-      - run: bun run test
+      - name: Floor of CONSTRAINTS.md (no silenced check, skipped test or loosened rule)
+        run: bun run check:floor
+      - name: Unit tests, with every source file at full line and function coverage
+        run: bun run test:coverage
       # Packed-consumer typechecks resolve the package's generated declarations.
       - run: bun run build
       - run: bun run typecheck
       - name: Published package shape (publint, arethetypeswrong)
         run: bun run --filter @codebelt/classy-store check:package
+      - name: Bundle size budgets
+        run: bun packages/classy-store/tests/size/runSize.ts
       - name: Solid 2 example production build
         run: bun run --filter classy-store-solid-example build
       - name: Angular 22 example production build

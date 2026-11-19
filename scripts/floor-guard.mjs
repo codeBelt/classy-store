@@ -135,8 +135,13 @@ const suppressions =
   /@ts-ignore|@ts-nocheck|biome-ignore|eslint-disable|istanbul ignore|c8 ignore|Stryker disable/;
 // In the library itself an expected type error or an `any` cast is one too.
 const librarySuppressions = /@ts-expect-error|\bas any\b/;
-const stubs =
-  /throw new \w*Error\(\s*['"`]not implemented|catch\s*(\(\w*\))?\s*\{\s*\}|\b(TODO|FIXME)\b/i;
+// "Not implemented" in any case; TODO and FIXME only as written, so that a
+// variable called `todo` in a fixture is not taken for unfinished work.
+const stubs = [
+  /throw new \w*Error\(\s*['"`]not implemented/i,
+  /catch\s*(\(\w*\))?\s*\{\s*\}/,
+  /\b(TODO|FIXME)\b/,
+];
 // A skip with a condition as its first argument is allowed; one that names a
 // test, or takes nothing, is not.
 const skips =
@@ -154,7 +159,9 @@ for (const {file: path, text} of added) {
   if (isLibrarySource(path) && librarySuppressions.test(text)) {
     flag('silenced-checker', path, text);
   }
-  if (!isTest(path) && stubs.test(text)) flag('unfinished-work', path, text);
+  if (!isTest(path) && stubs.some((stub) => stub.test(text))) {
+    flag('unfinished-work', path, text);
+  }
   if (isTest(path) && skips.test(text)) flag('test-made-easier', path, text);
 }
 

@@ -62,6 +62,12 @@ bun run typecheck    # TypeScript type check without emit
 bun run check:package  # Build, then publint + arethetypeswrong on the packed tarball
 bun run checkall     # lint + test + typecheck (full CI check)
 
+bun run test:coverage   # Unit tests; fails if a source file is below 100% of lines or functions
+bun run check:floor     # Diff-scoped guard for the floor in CONSTRAINTS.md
+bun run size            # Build, then gzipped size per entry point against its budget
+bun run test:mutation   # Mutation run over the core files (about ten minutes); pass file paths to limit it
+bun run benchmark:core  # Per-operation timings on Bun; benchmark:core:node for V8
+
 bun run docs:dev     # Build the library, then start Fumadocs at http://localhost:3000
 bun run docs:build   # Build the library, then export the GitHub Pages site to website/out/
 ```
@@ -92,6 +98,12 @@ it('notifies on mutation', async () => {
   expect(cb).toHaveBeenCalledTimes(1);
 });
 ```
+
+## Quality Bar
+
+Read [CONSTRAINTS.md](CONSTRAINTS.md) before writing code. Do not weaken it to
+make a change pass: a rule there is loosened only together with a decision
+record under `docs/decisions/`.
 
 ## Code Style
 
