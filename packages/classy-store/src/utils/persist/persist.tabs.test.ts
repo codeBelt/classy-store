@@ -67,15 +67,18 @@ describe('persist storage listener', () => {
     handles.push(handle);
     // Some event targets, happy-dom among them, still call a listener that
     // was removed while the event was being delivered.
-    const [deliver] = [...listeners];
+    const registered = [...listeners];
+    expect(registered).toHaveLength(1);
     handle.dispose();
 
-    deliver?.(
-      new StorageEvent('storage', {
-        key: 'draft',
-        newValue: JSON.stringify({version: 0, state: {count: 9}}),
-      }),
-    );
+    for (const deliver of registered) {
+      deliver(
+        new StorageEvent('storage', {
+          key: 'draft',
+          newValue: JSON.stringify({version: 0, state: {count: 9}}),
+        }),
+      );
+    }
 
     expect(store.count).toBe(0);
   });
