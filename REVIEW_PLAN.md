@@ -153,8 +153,8 @@ through `.git/info/exclude`; a fresh clone needs the same line.
   worktree, installs nothing here and leaves `bun.lock` alone. The one file a
   read-only agent may create here is its own report under `review/`; the
   agent running the stage commits it.
-- A helper agent runs on Fable or on Sonnet at high effort, never on anything
-  lower. "Agent models" below says which.
+- A helper agent runs on Fable, on Opus or on Sonnet at high effort, never on
+  anything lower. "Agent models" below says which.
 - `CONSTRAINTS.md` is the quality bar from the end of stage 1. No agent lowers
   a number in it or weakens a check to make something pass. A number moves
   only through a stage 3 decision the owner approved, which states the new
@@ -225,15 +225,16 @@ Not for this work: `frontend-ui-engineering`, `frontend-design`, `dataviz`,
 ## Agent models
 
 The main thread runs Fable, and it is the one writer in stage 4. A helper agent
-runs on one of two settings and never on anything lower: no Haiku, and no
-Sonnet below high effort.
+runs on Fable, on Opus, or on Sonnet at high effort, and never on anything
+lower: no Haiku, and no Sonnet below high effort.
 
 | Setting                               | Use it for                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Fable, inherited from the main thread | Work that needs judgement about subtle code, or that feeds a design decision. Mutation triage in `core.ts`, `ownership.ts` and `snapshot.ts`. The stage 2 source reads (Valtio, MobX, Vue reactivity, Solid 2, Svelte 5, Preact Signals and the TC39 proposal, Immer), the adapter agent and the security agent. Stage 3 spikes and adversarial reviews. The independent review and the second comparison pass in stage 4. |
+| Opus                                  | Work in between: it needs judgement but does not decide the design. Writing characterisation and type tests through the public API. Mutation triage in the utility files when a survivor is subtle. It may also stand in for Fable when usage is short, except on the three core files.                                                                                                                                    |
 | Sonnet at high effort                 | Self-contained work whose result a tool checks, and reading that only summarises. Mutation triage in `persist.ts`, `history.ts`, `equality.ts` and `collections.ts`, where the mutation runner checks the result. The stage 2 reads marked "API read only" (Legend-State, Zustand and Jotai). Running suites and collecting their results.                                                                                 |
 
-When it is unclear which applies, use Fable.
+When it is unclear which applies, use the higher one.
 
 Running them, as learned on 2026-11-18:
 
