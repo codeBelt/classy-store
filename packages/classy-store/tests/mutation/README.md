@@ -86,9 +86,19 @@ Left alone, because the change would say nothing about the tests:
    reason. The `unexplained` array of the report holds each survivor in the
    shape those lists expect.
 
-A reason says why behaviour is identical with and without the change, for
-example "the cache is only a shortcut: without it the value is computed again
-and is the same". "Hard to test" is not a reason.
+A reason starts with one of these labels and then says why, in a sentence or
+two:
+
+| Label               | Meaning                                                                                               |
+| ------------------- | ----------------------------------------------------------------------------------------------------- |
+| `Same behaviour:`   | The result is identical with and without the change.                                                  |
+| `Unreachable:`      | The code can never run. The reason says what guarantees that.                                         |
+| `No effect:`        | The statement runs but changes nothing anyone reads.                                                  |
+| `Performance only:` | The store does more or less work for the same result: a cache, a fast path.                           |
+| `Memory only:`      | Only the moment memory is released changes, and a test that waits for collection would not be stable. |
+
+"Hard to test" is not a reason. `Unreachable:` and `No effect:` mark dead code,
+which is worth deleting rather than keeping on the list.
 
 A key holds no line number, so it stays valid when code moves. It changes when
 the mutated code itself changes. An entry that matches no mutant, or one a test
