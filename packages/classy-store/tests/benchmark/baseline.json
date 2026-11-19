@@ -1,0 +1,305 @@
+{
+  "machine": {
+    "cpu": "Apple M1 Max",
+    "cores": 10,
+    "os": "darwin 25.6.0 arm64"
+  },
+  "bun": {
+    "version": "1.4.4",
+    "engine": "JavaScriptCore",
+    "runs": 5,
+    "metrics": {
+      "raw.read": {
+        "ns": 0.167,
+        "min": 0.165,
+        "max": 0.168
+      },
+      "proxy.read": {
+        "ns": 2.17,
+        "min": 1.94,
+        "max": 2.48
+      },
+      "store.read": {
+        "ns": 31.8,
+        "min": 30.6,
+        "max": 32
+      },
+      "store.read.nested": {
+        "ns": 106,
+        "min": 104,
+        "max": 107
+      },
+      "snapshot.read": {
+        "ns": 0.155,
+        "min": 0.155,
+        "max": 0.155
+      },
+      "raw.write": {
+        "ns": 0.326,
+        "min": 0.325,
+        "max": 0.326
+      },
+      "proxy.write": {
+        "ns": 59.8,
+        "min": 59.8,
+        "max": 62.3
+      },
+      "store.write": {
+        "ns": 156,
+        "min": 155,
+        "max": 157
+      },
+      "store.write.same": {
+        "ns": 34.1,
+        "min": 33.8,
+        "max": 34.2
+      },
+      "store.write.sync": {
+        "ns": 168,
+        "min": 167,
+        "max": 169
+      },
+      "store.write.batched": {
+        "ns": 169,
+        "min": 168,
+        "max": 170
+      },
+      "store.write.nested": {
+        "ns": 302,
+        "min": 300,
+        "max": 306
+      },
+      "store.method": {
+        "ns": 227,
+        "min": 226,
+        "max": 227
+      },
+      "store.batch10": {
+        "ns": 1409,
+        "min": 1405,
+        "max": 1412
+      },
+      "array.pushPop": {
+        "ns": 1722,
+        "min": 1719,
+        "max": 1776
+      },
+      "snapshot.cached": {
+        "ns": 15.9,
+        "min": 15.7,
+        "max": 16
+      },
+      "snapshot.afterWrite": {
+        "ns": 125053,
+        "min": 124749,
+        "max": 126042
+      },
+      "snapshot.first": {
+        "ns": 1941856,
+        "min": 1879975,
+        "max": 2023431
+      },
+      "getter.cached": {
+        "ns": 57.3,
+        "min": 55.1,
+        "max": 66.4
+      },
+      "getter.recompute": {
+        "ns": 358,
+        "min": 336,
+        "max": 490
+      },
+      "getter.rows.recompute": {
+        "ns": 151276,
+        "min": 147121,
+        "max": 153998
+      },
+      "create.small": {
+        "ns": 1431,
+        "min": 1426,
+        "max": 1441
+      },
+      "create.rows": {
+        "ns": 555739,
+        "min": 549396,
+        "max": 582938
+      },
+      "subscribe": {
+        "ns": 42.4,
+        "min": 41.4,
+        "max": 43
+      }
+    },
+    "ratios": {
+      "read": {
+        "ns": 14.3,
+        "min": 12.8,
+        "max": 16.5
+      },
+      "write": {
+        "ns": 2.6,
+        "min": 2.51,
+        "max": 2.61
+      },
+      "getter": {
+        "ns": 26.1,
+        "min": 23.1,
+        "max": 34.2
+      },
+      "snapshot": {
+        "ns": 7.28,
+        "min": 6.43,
+        "max": 8.23
+      }
+    }
+  },
+  "node": {
+    "version": "24.21.0",
+    "engine": "V8 13.6.233.17-node.53",
+    "runs": 5,
+    "metrics": {
+      "raw.read": {
+        "ns": 0.54,
+        "min": 0.539,
+        "max": 0.542
+      },
+      "proxy.read": {
+        "ns": 22,
+        "min": 22,
+        "max": 22.1
+      },
+      "store.read": {
+        "ns": 45.1,
+        "min": 44.7,
+        "max": 45.9
+      },
+      "store.read.nested": {
+        "ns": 132,
+        "min": 132,
+        "max": 135
+      },
+      "snapshot.read": {
+        "ns": 0.453,
+        "min": 0.453,
+        "max": 0.458
+      },
+      "raw.write": {
+        "ns": 0.435,
+        "min": 0.435,
+        "max": 0.435
+      },
+      "proxy.write": {
+        "ns": 147,
+        "min": 147,
+        "max": 148
+      },
+      "store.write": {
+        "ns": 195,
+        "min": 194,
+        "max": 200
+      },
+      "store.write.same": {
+        "ns": 53.6,
+        "min": 53.4,
+        "max": 54.6
+      },
+      "store.write.sync": {
+        "ns": 234,
+        "min": 233,
+        "max": 238
+      },
+      "store.write.batched": {
+        "ns": 204,
+        "min": 203,
+        "max": 209
+      },
+      "store.write.nested": {
+        "ns": 482,
+        "min": 476,
+        "max": 485
+      },
+      "store.method": {
+        "ns": 276,
+        "min": 275,
+        "max": 281
+      },
+      "store.batch10": {
+        "ns": 1593,
+        "min": 1584,
+        "max": 1614
+      },
+      "array.pushPop": {
+        "ns": 3414,
+        "min": 3298,
+        "max": 3433
+      },
+      "snapshot.cached": {
+        "ns": 29.9,
+        "min": 29.9,
+        "max": 33
+      },
+      "snapshot.afterWrite": {
+        "ns": 60417,
+        "min": 57966,
+        "max": 62115
+      },
+      "snapshot.first": {
+        "ns": 2737592,
+        "min": 2621699,
+        "max": 2875975
+      },
+      "getter.cached": {
+        "ns": 80.4,
+        "min": 80,
+        "max": 96.7
+      },
+      "getter.recompute": {
+        "ns": 377,
+        "min": 375,
+        "max": 382
+      },
+      "getter.rows.recompute": {
+        "ns": 256030,
+        "min": 252094,
+        "max": 256677
+      },
+      "create.small": {
+        "ns": 5063,
+        "min": 4930,
+        "max": 5628
+      },
+      "create.rows": {
+        "ns": 1101774,
+        "min": 960257,
+        "max": 1399754
+      },
+      "subscribe": {
+        "ns": 53.7,
+        "min": 53.1,
+        "max": 57.5
+      }
+    },
+    "ratios": {
+      "read": {
+        "ns": 2.04,
+        "min": 2.03,
+        "max": 2.08
+      },
+      "write": {
+        "ns": 1.33,
+        "min": 1.32,
+        "max": 1.36
+      },
+      "getter": {
+        "ns": 3.65,
+        "min": 3.63,
+        "max": 4.38
+      },
+      "snapshot": {
+        "ns": 1.36,
+        "min": 1.36,
+        "max": 1.5
+      }
+    }
+  }
+}

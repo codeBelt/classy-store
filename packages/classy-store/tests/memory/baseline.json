@@ -1,0 +1,527 @@
+{
+  "recorded": "2026-11-19",
+  "runs": 5,
+  "metadata": {
+    "react": "19.3.1",
+    "compiler": "1.0.0",
+    "browser": "159.0.8154.6",
+    "bun": "1.4.4",
+    "os": "darwin 25.6.0 arm64",
+    "build": "production",
+    "cycles": 25,
+    "size": 64,
+    "observeOnly": false
+  },
+  "cases": {
+    "mount, selector, compiler off": {
+      "first": {
+        "MemoryStoreMarker": 1,
+        "MemoryCollectionMarker": 1,
+        "TrackingReadMap": 1
+      },
+      "second": {
+        "MemoryStoreMarker": 1,
+        "MemoryCollectionMarker": 1,
+        "TrackingReadMap": 1
+      },
+      "cleanup": {
+        "MemoryStoreMarker": 0,
+        "MemoryCollectionMarker": 0,
+        "TrackingReadMap": 0
+      }
+    },
+    "mount, selector, compiler on": {
+      "first": {
+        "MemoryStoreMarker": 1,
+        "MemoryCollectionMarker": 1,
+        "TrackingReadMap": 1
+      },
+      "second": {
+        "MemoryStoreMarker": 1,
+        "MemoryCollectionMarker": 1,
+        "TrackingReadMap": 1
+      },
+      "cleanup": {
+        "MemoryStoreMarker": 0,
+        "MemoryCollectionMarker": 0,
+        "TrackingReadMap": 0
+      }
+    },
+    "mount, object-selector, compiler off": {
+      "first": {
+        "MemoryStoreMarker": 1,
+        "MemoryCollectionMarker": 1,
+        "TrackingReadMap": 1
+      },
+      "second": {
+        "MemoryStoreMarker": 1,
+        "MemoryCollectionMarker": 1,
+        "TrackingReadMap": 1
+      },
+      "cleanup": {
+        "MemoryStoreMarker": 0,
+        "MemoryCollectionMarker": 0,
+        "TrackingReadMap": 0
+      }
+    },
+    "mount, object-selector, compiler on": {
+      "first": {
+        "MemoryStoreMarker": 1,
+        "MemoryCollectionMarker": 1,
+        "TrackingReadMap": 1
+      },
+      "second": {
+        "MemoryStoreMarker": 1,
+        "MemoryCollectionMarker": 1,
+        "TrackingReadMap": 1
+      },
+      "cleanup": {
+        "MemoryStoreMarker": 0,
+        "MemoryCollectionMarker": 0,
+        "TrackingReadMap": 0
+      }
+    },
+    "mount, tracked, compiler off": {
+      "first": {
+        "MemoryStoreMarker": 1,
+        "MemoryCollectionMarker": 1,
+        "TrackingReadMap": 1
+      },
+      "second": {
+        "MemoryStoreMarker": 1,
+        "MemoryCollectionMarker": 1,
+        "TrackingReadMap": 1
+      },
+      "cleanup": {
+        "MemoryStoreMarker": 0,
+        "MemoryCollectionMarker": 0,
+        "TrackingReadMap": 0
+      }
+    },
+    "mount, tracked, compiler on": {
+      "first": {
+        "MemoryStoreMarker": 1,
+        "MemoryCollectionMarker": 1,
+        "TrackingReadMap": 1
+      },
+      "second": {
+        "MemoryStoreMarker": 1,
+        "MemoryCollectionMarker": 1,
+        "TrackingReadMap": 1
+      },
+      "cleanup": {
+        "MemoryStoreMarker": 0,
+        "MemoryCollectionMarker": 0,
+        "TrackingReadMap": 0
+      }
+    },
+    "reset, selector, compiler off": {
+      "first": {
+        "MemoryStoreMarker": 1,
+        "MemoryCollectionMarker": 1,
+        "TrackingReadMap": 1
+      },
+      "second": {
+        "MemoryStoreMarker": 1,
+        "MemoryCollectionMarker": 1,
+        "TrackingReadMap": 1
+      },
+      "cleanup": {
+        "MemoryStoreMarker": 0,
+        "MemoryCollectionMarker": 0,
+        "TrackingReadMap": 0
+      }
+    },
+    "reset, selector, compiler on": {
+      "first": {
+        "MemoryStoreMarker": 1,
+        "MemoryCollectionMarker": 1,
+        "TrackingReadMap": 1
+      },
+      "second": {
+        "MemoryStoreMarker": 1,
+        "MemoryCollectionMarker": 1,
+        "TrackingReadMap": 1
+      },
+      "cleanup": {
+        "MemoryStoreMarker": 0,
+        "MemoryCollectionMarker": 0,
+        "TrackingReadMap": 0
+      }
+    },
+    "reset, object-selector, compiler off": {
+      "first": {
+        "MemoryStoreMarker": 1,
+        "MemoryCollectionMarker": 1,
+        "TrackingReadMap": 1
+      },
+      "second": {
+        "MemoryStoreMarker": 1,
+        "MemoryCollectionMarker": 1,
+        "TrackingReadMap": 1
+      },
+      "cleanup": {
+        "MemoryStoreMarker": 0,
+        "MemoryCollectionMarker": 0,
+        "TrackingReadMap": 0
+      }
+    },
+    "reset, object-selector, compiler on": {
+      "first": {
+        "MemoryStoreMarker": 1,
+        "MemoryCollectionMarker": 1,
+        "TrackingReadMap": 1
+      },
+      "second": {
+        "MemoryStoreMarker": 1,
+        "MemoryCollectionMarker": 1,
+        "TrackingReadMap": 1
+      },
+      "cleanup": {
+        "MemoryStoreMarker": 0,
+        "MemoryCollectionMarker": 0,
+        "TrackingReadMap": 0
+      }
+    },
+    "reset, tracked, compiler off": {
+      "first": {
+        "MemoryStoreMarker": 1,
+        "MemoryCollectionMarker": 1,
+        "TrackingReadMap": 1
+      },
+      "second": {
+        "MemoryStoreMarker": 1,
+        "MemoryCollectionMarker": 1,
+        "TrackingReadMap": 1
+      },
+      "cleanup": {
+        "MemoryStoreMarker": 0,
+        "MemoryCollectionMarker": 0,
+        "TrackingReadMap": 0
+      }
+    },
+    "reset, tracked, compiler on": {
+      "first": {
+        "MemoryStoreMarker": 1,
+        "MemoryCollectionMarker": 1,
+        "TrackingReadMap": 1
+      },
+      "second": {
+        "MemoryStoreMarker": 1,
+        "MemoryCollectionMarker": 1,
+        "TrackingReadMap": 1
+      },
+      "cleanup": {
+        "MemoryStoreMarker": 0,
+        "MemoryCollectionMarker": 0,
+        "TrackingReadMap": 0
+      }
+    },
+    "replace, selector, compiler off": {
+      "first": {
+        "MemoryStoreMarker": 1,
+        "MemoryCollectionMarker": 2,
+        "TrackingReadMap": 2
+      },
+      "second": {
+        "MemoryStoreMarker": 1,
+        "MemoryCollectionMarker": 2,
+        "TrackingReadMap": 2
+      },
+      "cleanup": {
+        "MemoryStoreMarker": 0,
+        "MemoryCollectionMarker": 0,
+        "TrackingReadMap": 0
+      }
+    },
+    "replace, selector, compiler on": {
+      "first": {
+        "MemoryStoreMarker": 1,
+        "MemoryCollectionMarker": 2,
+        "TrackingReadMap": 2
+      },
+      "second": {
+        "MemoryStoreMarker": 1,
+        "MemoryCollectionMarker": 2,
+        "TrackingReadMap": 2
+      },
+      "cleanup": {
+        "MemoryStoreMarker": 0,
+        "MemoryCollectionMarker": 0,
+        "TrackingReadMap": 0
+      }
+    },
+    "replace, object-selector, compiler off": {
+      "first": {
+        "MemoryStoreMarker": 1,
+        "MemoryCollectionMarker": 2,
+        "TrackingReadMap": 2
+      },
+      "second": {
+        "MemoryStoreMarker": 1,
+        "MemoryCollectionMarker": 2,
+        "TrackingReadMap": 2
+      },
+      "cleanup": {
+        "MemoryStoreMarker": 0,
+        "MemoryCollectionMarker": 0,
+        "TrackingReadMap": 0
+      }
+    },
+    "replace, object-selector, compiler on": {
+      "first": {
+        "MemoryStoreMarker": 1,
+        "MemoryCollectionMarker": 2,
+        "TrackingReadMap": 2
+      },
+      "second": {
+        "MemoryStoreMarker": 1,
+        "MemoryCollectionMarker": 2,
+        "TrackingReadMap": 2
+      },
+      "cleanup": {
+        "MemoryStoreMarker": 0,
+        "MemoryCollectionMarker": 0,
+        "TrackingReadMap": 0
+      }
+    },
+    "replace, tracked, compiler off": {
+      "first": {
+        "MemoryStoreMarker": 1,
+        "MemoryCollectionMarker": 3,
+        "TrackingReadMap": 3
+      },
+      "second": {
+        "MemoryStoreMarker": 1,
+        "MemoryCollectionMarker": 3,
+        "TrackingReadMap": 3
+      },
+      "cleanup": {
+        "MemoryStoreMarker": 0,
+        "MemoryCollectionMarker": 0,
+        "TrackingReadMap": 0
+      }
+    },
+    "replace, tracked, compiler on": {
+      "first": {
+        "MemoryStoreMarker": 1,
+        "MemoryCollectionMarker": 3,
+        "TrackingReadMap": 3
+      },
+      "second": {
+        "MemoryStoreMarker": 1,
+        "MemoryCollectionMarker": 3,
+        "TrackingReadMap": 3
+      },
+      "cleanup": {
+        "MemoryStoreMarker": 0,
+        "MemoryCollectionMarker": 0,
+        "TrackingReadMap": 0
+      }
+    },
+    "truncate, selector, compiler off": {
+      "first": {
+        "MemoryStoreMarker": 1,
+        "MemoryCollectionMarker": 0,
+        "TrackingReadMap": 3
+      },
+      "second": {
+        "MemoryStoreMarker": 1,
+        "MemoryCollectionMarker": 0,
+        "TrackingReadMap": 3
+      },
+      "cleanup": {
+        "MemoryStoreMarker": 0,
+        "MemoryCollectionMarker": 0,
+        "TrackingReadMap": 0
+      }
+    },
+    "truncate, selector, compiler on": {
+      "first": {
+        "MemoryStoreMarker": 1,
+        "MemoryCollectionMarker": 0,
+        "TrackingReadMap": 3
+      },
+      "second": {
+        "MemoryStoreMarker": 1,
+        "MemoryCollectionMarker": 0,
+        "TrackingReadMap": 3
+      },
+      "cleanup": {
+        "MemoryStoreMarker": 0,
+        "MemoryCollectionMarker": 0,
+        "TrackingReadMap": 0
+      }
+    },
+    "truncate, object-selector, compiler off": {
+      "first": {
+        "MemoryStoreMarker": 1,
+        "MemoryCollectionMarker": 0,
+        "TrackingReadMap": 3
+      },
+      "second": {
+        "MemoryStoreMarker": 1,
+        "MemoryCollectionMarker": 0,
+        "TrackingReadMap": 3
+      },
+      "cleanup": {
+        "MemoryStoreMarker": 0,
+        "MemoryCollectionMarker": 0,
+        "TrackingReadMap": 0
+      }
+    },
+    "truncate, object-selector, compiler on": {
+      "first": {
+        "MemoryStoreMarker": 1,
+        "MemoryCollectionMarker": 0,
+        "TrackingReadMap": 3
+      },
+      "second": {
+        "MemoryStoreMarker": 1,
+        "MemoryCollectionMarker": 0,
+        "TrackingReadMap": 3
+      },
+      "cleanup": {
+        "MemoryStoreMarker": 0,
+        "MemoryCollectionMarker": 0,
+        "TrackingReadMap": 0
+      }
+    },
+    "truncate, tracked, compiler off": {
+      "first": {
+        "MemoryStoreMarker": 1,
+        "MemoryCollectionMarker": 0,
+        "TrackingReadMap": 2
+      },
+      "second": {
+        "MemoryStoreMarker": 1,
+        "MemoryCollectionMarker": 0,
+        "TrackingReadMap": 2
+      },
+      "cleanup": {
+        "MemoryStoreMarker": 0,
+        "MemoryCollectionMarker": 0,
+        "TrackingReadMap": 0
+      }
+    },
+    "truncate, tracked, compiler on": {
+      "first": {
+        "MemoryStoreMarker": 1,
+        "MemoryCollectionMarker": 0,
+        "TrackingReadMap": 2
+      },
+      "second": {
+        "MemoryStoreMarker": 1,
+        "MemoryCollectionMarker": 0,
+        "TrackingReadMap": 2
+      },
+      "cleanup": {
+        "MemoryStoreMarker": 0,
+        "MemoryCollectionMarker": 0,
+        "TrackingReadMap": 0
+      }
+    },
+    "detached, selector, compiler off": {
+      "first": {
+        "MemoryStoreMarker": 0,
+        "MemoryCollectionMarker": 25,
+        "TrackingReadMap": 0
+      },
+      "second": {
+        "MemoryStoreMarker": 0,
+        "MemoryCollectionMarker": 50,
+        "TrackingReadMap": 0
+      },
+      "cleanup": {
+        "MemoryStoreMarker": 0,
+        "MemoryCollectionMarker": 0,
+        "TrackingReadMap": 0
+      }
+    },
+    "detached, selector, compiler on": {
+      "first": {
+        "MemoryStoreMarker": 0,
+        "MemoryCollectionMarker": 25,
+        "TrackingReadMap": 0
+      },
+      "second": {
+        "MemoryStoreMarker": 0,
+        "MemoryCollectionMarker": 50,
+        "TrackingReadMap": 0
+      },
+      "cleanup": {
+        "MemoryStoreMarker": 0,
+        "MemoryCollectionMarker": 0,
+        "TrackingReadMap": 0
+      }
+    },
+    "detached, object-selector, compiler off": {
+      "first": {
+        "MemoryStoreMarker": 0,
+        "MemoryCollectionMarker": 25,
+        "TrackingReadMap": 0
+      },
+      "second": {
+        "MemoryStoreMarker": 0,
+        "MemoryCollectionMarker": 50,
+        "TrackingReadMap": 0
+      },
+      "cleanup": {
+        "MemoryStoreMarker": 0,
+        "MemoryCollectionMarker": 0,
+        "TrackingReadMap": 0
+      }
+    },
+    "detached, object-selector, compiler on": {
+      "first": {
+        "MemoryStoreMarker": 0,
+        "MemoryCollectionMarker": 25,
+        "TrackingReadMap": 0
+      },
+      "second": {
+        "MemoryStoreMarker": 0,
+        "MemoryCollectionMarker": 50,
+        "TrackingReadMap": 0
+      },
+      "cleanup": {
+        "MemoryStoreMarker": 0,
+        "MemoryCollectionMarker": 0,
+        "TrackingReadMap": 0
+      }
+    },
+    "detached, tracked, compiler off": {
+      "first": {
+        "MemoryStoreMarker": 0,
+        "MemoryCollectionMarker": 25,
+        "TrackingReadMap": 0
+      },
+      "second": {
+        "MemoryStoreMarker": 0,
+        "MemoryCollectionMarker": 50,
+        "TrackingReadMap": 0
+      },
+      "cleanup": {
+        "MemoryStoreMarker": 0,
+        "MemoryCollectionMarker": 0,
+        "TrackingReadMap": 0
+      }
+    },
+    "detached, tracked, compiler on": {
+      "first": {
+        "MemoryStoreMarker": 0,
+        "MemoryCollectionMarker": 25,
+        "TrackingReadMap": 0
+      },
+      "second": {
+        "MemoryStoreMarker": 0,
+        "MemoryCollectionMarker": 50,
+        "TrackingReadMap": 0
+      },
+      "cleanup": {
+        "MemoryStoreMarker": 0,
+        "MemoryCollectionMarker": 0,
+        "TrackingReadMap": 0
+      }
+    }
+  }
+}

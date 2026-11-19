@@ -82,3 +82,14 @@ bun run benchmark:react
 Optional settings: `BENCHMARK_SIZES=200,1000`, `BENCHMARK_SAMPLES=5`, and
 `BENCHMARK_ITERATIONS=20`. Sizes must be at least ten for the burst workload.
 No new runtime dependency or public React API is required.
+
+## Baseline
+
+[`baseline.json`](./baseline.json) holds, for every case and operation, the
+median over five full-size runs and the lowest and highest run. After
+`bun run benchmark:react`, run `bun run benchmark:react:compare` to list the
+figures that fall outside that spread. It never fails: timings are
+observations to report, not thresholds.
+
+To record a new baseline, keep each run's output with `BENCHMARK_OUTPUT` and
+pass the files to `bun packages/classy-store/tests/performance/baseline.ts record`.
