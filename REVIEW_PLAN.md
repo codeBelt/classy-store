@@ -140,7 +140,9 @@ fail in the main checkout, so `.gitignore` lists that folder.
   specific action is.
 - Do not ask the owner to merge or release, and do not suggest it is time.
   Report the state of the work and stop; the owner will say when.
-- Pushing to the branch also needs the owner's approval each time.
+- Committing and pushing to the branch need no further approval. The owner
+  said on 2026-11-18: "From now on, you can commit and push anytime you want."
+  Merging and releasing are unchanged: the two rules above still hold.
 - Read the repo's agent instructions first (`AGENTS.md` if present, otherwise
   `CLAUDE.md`). Typecheck with `bun run typecheck`, never `bunx tsc`.
 - Use the skills listed for your stage. Load each one before the work it
