@@ -122,9 +122,8 @@ bun run benchmark:core:node  # the same on Node (V8)
 ```
 
 Helper agents get their worktrees under `.claude/worktrees/`, inside the
-repository. Each holds its own `biome.json`, which makes `bun run lint` fail
-in the main checkout until the folder is ignored. It is ignored locally here
-through `.git/info/exclude`; a fresh clone needs the same line.
+repository. Each holds its own `biome.json`, which would make `bun run lint`
+fail in the main checkout, so `.gitignore` lists that folder.
 
 ## Ground rules (every agent)
 
