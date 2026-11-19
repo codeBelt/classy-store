@@ -8,14 +8,14 @@ published. Not part of the published docs; delete it when the work is done.
 Read this first. Whoever finishes a stage updates its row: the state, the
 commit it ended on, and where its report is.
 
-| Stage                 | State                                                                                                                                                                   | Ended on  | Report                     |
-| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | -------------------------- |
-| Plan                  | Revised 2026-11-18 after a check against the repository at `7540662`                                                                                                    |           |                            |
-| 1. Safety net         | Done 2026-11-18                                                                                                                                                         | `5bc4008` | `review/stage-1-report.md` |
-| 2. Library comparison | In progress since 2026-11-18. Done: Valtio, MobX, Vue reactivity, Solid 2. Running: Svelte 5, Signals, Immer, adapters. Left: security, Legend-State, Zustand and Jotai |           | `review/stage-2/`          |
-| 3. Design review      | Not started                                                                                                                                                             |           |                            |
-| 4. Refactor           | Not started                                                                                                                                                             |           |                            |
-| 5. Release            | Not started                                                                                                                                                             |           |                            |
+| Stage                 | State                                                                                                                                                             | Ended on  | Report                     |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | -------------------------- |
+| Plan                  | Revised 2026-11-18 after a check against the repository at `7540662`                                                                                              |           |                            |
+| 1. Safety net         | Done 2026-11-18                                                                                                                                                   | `5bc4008` | `review/stage-1-report.md` |
+| 2. Library comparison | In progress since 2026-11-18. Done: Valtio, MobX, Vue reactivity, Solid 2, Svelte 5, Signals, Immer, adapters. Running: security, Legend-State, Zustand and Jotai |           | `review/stage-2/`          |
+| 3. Design review      | Not started                                                                                                                                                       |           |                            |
+| 4. Refactor           | Not started                                                                                                                                                       |           |                            |
+| 5. Release            | Not started                                                                                                                                                       |           |                            |
 
 ## Starting point (read this if you are new to the work)
 
