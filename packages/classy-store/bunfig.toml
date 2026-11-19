@@ -1,2 +1,8 @@
 [test]
 preload = ["./happydom.ts"]
+
+# Coverage is measured on library source only. Bun applies the threshold to
+# every file on its own, and only when a run asks for coverage.
+coverageSkipTestFiles = true
+coveragePathIgnorePatterns = ["happydom.ts", "tests/**", "src/**/testHelpers/**"]
+coverageThreshold = { lines = 1.0, functions = 1.0 }

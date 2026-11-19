@@ -13,6 +13,7 @@
     "build": "bun run --filter @codebelt/classy-store build",
     "---------- Test --------------------------------------------------------": "",
     "test": "bun run --filter @codebelt/classy-store test",
+    "test:coverage": "bun run --filter @codebelt/classy-store test:coverage",
     "test:browser": "bun run --filter @codebelt/classy-store test:browser",
     "test:mutation": "bun packages/classy-store/tests/mutation/runMutation.ts",
     "test:frameworks:compatibility": "bun run build && node packages/classy-store/tests/frameworkCompatibility/runCompatibility.mjs",

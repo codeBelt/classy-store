@@ -131,6 +131,7 @@
     "build": "tsdown",
     "---------- Test --------------------------------------------------------": "",
     "test": "bun test src tests/memory/heapSnapshot.test.ts tests/mutation",
+    "test:coverage": "bun test src tests/memory/heapSnapshot.test.ts tests/mutation --coverage",
     "test:browser": "playwright test --config tests/browser/playwright.config.ts",
     "---------- Lint --------------------------------------------------------": "",
     "typecheck": "tsc --noEmit && tsc --project tests/browser/tsconfig.json --noEmit && tsc --project tests/compiler/tsconfig.json --noEmit && tsc --project tests/performance/tsconfig.json --noEmit && tsc --project tests/memory/tsconfig.json --noEmit && tsc --project tests/next/tsconfig.json --noEmit && tsc --project tests/angularCompatibility/tsconfig.json --noEmit && tsc --project tests/frameworkCompatibility/tsconfig.json --noEmit && tsc --project tests/mutation/tsconfig.json --noEmit && tsc --project tests/size/tsconfig.json --noEmit",
