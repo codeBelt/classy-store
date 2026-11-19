@@ -110,6 +110,13 @@ function record(paths: string[]): number {
   return 0;
 }
 
+/**
+ * How far outside the baseline's spread a figure must be to count. The browser
+ * clock ticks in tenths of a millisecond, so five runs often agree exactly and
+ * the spread is zero; a later run one tick away is not a change.
+ */
+const tolerance = (before: Range) => Math.max(0.1, before.medianMs * 0.05);
+
 function compare(paths: string[]): number {
   const baseline: Baseline = JSON.parse(readFileSync(baselinePath, 'utf8'));
   const current = summarise(
@@ -124,11 +131,11 @@ function compare(paths: string[]): number {
         changed.push(
           `| ${key} | ${operation} | none | ${now.medianMs} | new |`,
         );
-      } else if (now.minMs > before.maxMs) {
+      } else if (now.minMs > before.maxMs + tolerance(before)) {
         changed.push(
           `| ${key} | ${operation} | ${before.medianMs} (${before.minMs} to ${before.maxMs}) | ${now.medianMs} | slower |`,
         );
-      } else if (now.maxMs < before.minMs) {
+      } else if (now.maxMs < before.minMs - tolerance(before)) {
         changed.push(
           `| ${key} | ${operation} | ${before.medianMs} (${before.minMs} to ${before.maxMs}) | ${now.medianMs} | faster |`,
         );

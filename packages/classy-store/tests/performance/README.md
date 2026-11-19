@@ -88,8 +88,9 @@ No new runtime dependency or public React API is required.
 [`baseline.json`](./baseline.json) holds, for every case and operation, the
 median over five full-size runs and the lowest and highest run. After
 `bun run benchmark:react`, run `bun run benchmark:react:compare` to list the
-figures that fall outside that spread. It never fails: timings are
-observations to report, not thresholds.
+figures that fall outside that spread by more than a tenth of a millisecond
+(one tick of the browser clock) or five percent, whichever is larger. It never
+fails: timings are observations to report, not thresholds.
 
 To record a new baseline, keep each run's output with `BENCHMARK_OUTPUT` and
 pass the files to `bun packages/classy-store/tests/performance/baseline.ts record`.
