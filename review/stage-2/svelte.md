@@ -784,7 +784,7 @@ production builds; our side from the repository source at `ac38f2f`):
 ## Appendix: ported tests and their output
 
 All files are in the scratch folder
-`/private/tmp/claude-501/-Users-robertparallax-WebstormProjects-classy-store/9c8c2bbd-bb57-4b12-aa7b-9d06972e3fdd/scratchpad/stage-2-svelte/`.
+`<scratch>/stage-2-svelte/`.
 Each port is compiled by `build.mjs` and run by `run.sh`, both shown at the
 end. In the development build the compiler rewrites `===`, so a port that
 compares a proxy with its raw object on purpose prints
@@ -1670,11 +1670,11 @@ import {
   PROXYABLE,
   snapshot,
   subscribe,
-} from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/index.ts';
+} from '<repo>/packages/classy-store/src/index.ts';
 import {
   reactiveMap,
   reactiveSet,
-} from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/collections/index.ts';
+} from '<repo>/packages/classy-store/src/collections/index.ts';
 import {attempt} from './helpers.js';
 
 console.log('--- p01 wrapping');
@@ -2419,8 +2419,8 @@ import {SvelteMap} from 'svelte/reactivity';
 import {
   createClassyStore,
   snapshot,
-} from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/index.ts';
-import {reactiveMap} from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/collections/index.ts';
+} from '<repo>/packages/classy-store/src/index.ts';
+import {reactiveMap} from '<repo>/packages/classy-store/src/collections/index.ts';
 
 function time(label: string, run: () => unknown, rounds: number) {
   for (let i = 0; i < rounds / 10; i++) run();

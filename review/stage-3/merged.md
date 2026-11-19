@@ -2117,7 +2117,7 @@ check the nine items of M76 against the tutorials.
 ## Appendix: the three scripts
 
 All three are in the scratch folder
-`/private/tmp/claude-501/-Users-robertparallax-WebstormProjects-classy-store/9c8c2bbd-bb57-4b12-aa7b-9d06972e3fdd/scratchpad/stage-3-merge/`,
+`<scratch>/stage-3-merge/`,
 which a reboot can clear.
 
 ### `frozen-read.mjs`: contradiction 24
@@ -2234,7 +2234,7 @@ import {
   PROXYABLE,
   snapshot,
   subscribe,
-} from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/index.ts';
+} from '<repo>/packages/classy-store/src/index.ts';
 
 const attempt = (label: string, run: () => unknown) => {
   try {

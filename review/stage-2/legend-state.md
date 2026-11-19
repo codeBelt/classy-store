@@ -820,7 +820,7 @@ import {
   batch,
   createClassyStore,
   subscribe,
-} from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/index.ts';
+} from '<repo>/packages/classy-store/src/index.ts';
 const flush = () => new Promise<void>((r) => setTimeout(r, 0));
 const origError = console.error;
 let loggedErrors = 0;
@@ -1025,7 +1025,7 @@ import {
   batch,
   createClassyStore,
   subscribe,
-} from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/index.ts';
+} from '<repo>/packages/classy-store/src/index.ts';
 const s = createClassyStore({a: 0, b: 0, c: 0});
 let calls = 0;
 subscribe(s, () => calls++, {sync: true});
@@ -1332,8 +1332,8 @@ P1 in ours reads the status through `getSnapshot()`; the other ports use `onErro
 `ports/persist.ours.ts`
 
 ```ts
-import {createClassyStore} from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/index.ts';
-import {persist} from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/utils/persist/persist.ts';
+import {createClassyStore} from '<repo>/packages/classy-store/src/index.ts';
+import {persist} from '<repo>/packages/classy-store/src/utils/persist/persist.ts';
 const store = new Map<string, string>();
 let writes = 0;
 const writeLog: string[] = [];

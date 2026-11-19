@@ -997,7 +997,7 @@ import {
   createClassyStore,
   snapshot,
   subscribe,
-} from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/index.ts';
+} from '<repo>/packages/classy-store/src/index.ts';
 import {show, title} from './helper.mjs';
 
 title('1. A frozen object held in a store');
@@ -1264,7 +1264,7 @@ import {
   snapshot,
   subscribe,
   PROXYABLE,
-} from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/index.ts';
+} from '<repo>/packages/classy-store/src/index.ts';
 import {show, title} from './helper.mjs';
 
 class Counter {
@@ -2455,7 +2455,7 @@ import {
   snapshot,
   subscribe,
   batch,
-} from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/index.ts';
+} from '<repo>/packages/classy-store/src/index.ts';
 import {show, title} from './helper.mjs';
 
 title('3. A function held in an array, read twice; a class held in a store');
@@ -2685,7 +2685,7 @@ $ node --conditions=development 09-private.solid.mjs
 Ours:
 
 ```ts
-import {createClassyStore} from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/index.ts';
+import {createClassyStore} from '<repo>/packages/classy-store/src/index.ts';
 import {show, title} from './helper.mjs';
 
 title('22. #private fields');
@@ -2721,8 +2721,8 @@ $ bun 09-private.classy.ts
 import {
   createClassyStore,
   snapshot,
-} from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/index.ts';
-import {withHistory} from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/utils/index.ts';
+} from '<repo>/packages/classy-store/src/index.ts';
+import {withHistory} from '<repo>/packages/classy-store/src/utils/index.ts';
 import {show, title} from './helper.mjs';
 
 const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 0));

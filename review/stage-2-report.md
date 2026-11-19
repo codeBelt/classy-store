@@ -309,7 +309,7 @@ usage is short, except on the three core files, and stage 2 changes no file.
 
 Scratch folders, which a reboot can clear: each report names its agent's.
 Mine is
-`/private/tmp/claude-501/-Users-robertparallax-WebstormProjects-classy-store/9c8c2bbd-bb57-4b12-aa7b-9d06972e3fdd/scratchpad/stage-2-spot/`.
+`<scratch>/stage-2-spot/`.
 
 ## Appendix: the re-runs
 
@@ -327,7 +327,7 @@ import {
   createClassyStore,
   snapshot,
   subscribe,
-} from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/index.ts';
+} from '<repo>/packages/classy-store/src/index.ts';
 
 const time = (run: () => void) => {
   const start = performance.now();
@@ -616,7 +616,7 @@ clean read: this.rows[i] 28.42 µs, local rows 0.12 µs
 ### `diamond.ts`: defect 2
 
 ```ts
-import {createClassyStore} from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/index.ts';
+import {createClassyStore} from '<repo>/packages/classy-store/src/index.ts';
 
 // Two getters per level, each reading both getters of the level below.
 function diamond(depth: number) {
@@ -668,8 +668,8 @@ import {
   batch,
   createClassyStore,
   subscribe,
-} from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/index.ts';
-import {persist} from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/utils/index.ts';
+} from '<repo>/packages/classy-store/src/index.ts';
+import {persist} from '<repo>/packages/classy-store/src/utils/index.ts';
 
 // Legend-State finding 4: a synchronous storage, read right after persist() returns.
 const memory = new Map<string, string>();
@@ -734,8 +734,8 @@ sync calls after the promise settles: 3
 ### `migrate.ts`: defects 14, 22 and 23
 
 ```ts
-import {createClassyStore} from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/index.ts';
-import {persist} from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/utils/index.ts';
+import {createClassyStore} from '<repo>/packages/classy-store/src/index.ts';
+import {persist} from '<repo>/packages/classy-store/src/utils/index.ts';
 
 const memory = new Map<string, string>();
 const storage = {

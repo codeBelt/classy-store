@@ -651,7 +651,7 @@ Only read:
 ## Appendix: ported tests and their output
 
 All files are in
-`/private/tmp/claude-501/-Users-robertparallax-WebstormProjects-classy-store/9c8c2bbd-bb57-4b12-aa7b-9d06972e3fdd/scratchpad/stage-2-signals/run/`.
+`<scratch>/stage-2-signals/run/`.
 `ours.ts` re-exports `batch`, `createClassyStore`, `snapshot` and `subscribe`
 from the repository's `packages/classy-store/src/index.ts`; in each spike
 folder it re-exports them from that folder's `src/index.ts`.
@@ -667,7 +667,7 @@ export {
   createClassyStore,
   snapshot,
   subscribe,
-} from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/index.ts';
+} from '<repo>/packages/classy-store/src/index.ts';
 ```
 
 ### Helper: `polyfill-effect.ts`

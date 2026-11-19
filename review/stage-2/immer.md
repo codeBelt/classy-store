@@ -1058,7 +1058,7 @@ import {
   createClassyStore,
   snapshot,
   subscribe,
-} from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/index.ts';
+} from '<repo>/packages/classy-store/src/index.ts';
 import {section, show} from './harness.mjs';
 
 section('a frozen object as the input');
@@ -1342,7 +1342,7 @@ import {
   PROXYABLE,
   snapshot,
   subscribe,
-} from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/index.ts';
+} from '<repo>/packages/classy-store/src/index.ts';
 import {section, show} from './harness.mjs';
 
 class Unmarked {
@@ -1540,7 +1540,7 @@ import {Immer, produce} from 'immer';
 import {
   createClassyStore,
   snapshot,
-} from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/index.ts';
+} from '<repo>/packages/classy-store/src/index.ts';
 import {section, show} from './harness.mjs';
 
 const strict = new Immer({useStrictShallowCopy: true});
@@ -1791,7 +1791,7 @@ import {
   createClassyStore,
   snapshot,
   subscribe,
-} from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/index.ts';
+} from '<repo>/packages/classy-store/src/index.ts';
 import {section, show} from './harness.mjs';
 
 section('Object.defineProperty (findings 1, 45, 71)');
@@ -1999,7 +1999,7 @@ import {produce} from 'immer';
 import {
   createClassyStore,
   snapshot,
-} from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/index.ts';
+} from '<repo>/packages/classy-store/src/index.ts';
 import {section, show} from './harness.mjs';
 
 type Node = {n: number; self?: Node};
@@ -2089,12 +2089,12 @@ import {enableMapSet, produce} from 'immer';
 import {
   reactiveMap,
   reactiveSet,
-} from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/collections/index.ts';
+} from '<repo>/packages/classy-store/src/collections/index.ts';
 import {
   createClassyStore,
   snapshot,
   subscribe,
-} from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/index.ts';
+} from '<repo>/packages/classy-store/src/index.ts';
 import {ns, section, show, time} from './harness.mjs';
 
 if (process.argv[2] === 'noplugin') {
@@ -2329,8 +2329,8 @@ immer: Map nested, read in the recipe: THROWS Error: [Immer] The plugin for 'Map
 // Port 8, type level only: a tuple, a Map and a Set through Immer's types and
 // through ours. Checked with `tsc --noEmit`; nothing here runs.
 import {type Draft, type Immutable, produce} from 'immer';
-import type {ReactiveMap} from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/collections/index.ts';
-import type {Snapshot} from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/types.ts';
+import type {ReactiveMap} from '<repo>/packages/classy-store/src/collections/index.ts';
+import type {Snapshot} from '<repo>/packages/classy-store/src/types.ts';
 
 type Equal<A, B> =
   (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2

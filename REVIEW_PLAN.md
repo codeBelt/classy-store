@@ -72,10 +72,13 @@ deadline; the code should be as correct and clear as it can be made.
   are the hardest parts to reason about.
 
 **How to work through this plan.** Do the stages in order. Each stage ends
-with a report to the owner and waits for their go-ahead before the next one
-starts. The report is also saved (see "Where the work is written down") and
-the Status table above is updated. Stage 3 is the decision point: the owner
-approves each proposed change there.
+with a report, which is saved (see "Where the work is written down"), and the
+Status table above is updated. Stage 3 is the decision point: every proposed
+change gets a written decision there before stage 4 implements anything.
+Until 2026-11-19 each stage waited for the owner's go-ahead and the owner
+approved each stage 3 change. The owner has since handed those decisions to
+the agent running the plan: see the first ground rule. When the Status table
+says the work is paused, do nothing until the owner says to start again.
 
 **Commands** (from the repo root; see `CLAUDE.md` for the rest):
 
@@ -135,6 +138,15 @@ fail in the main checkout, so `.gitignore` lists that folder.
 
 ## Ground rules (every agent)
 
+- The agent running the plan makes the decisions, and does not wait for the
+  owner's approval or go-ahead. Two things stay the owner's alone: merging
+  into `main` and releasing. The owner said on 2026-11-19: "The only
+  limitation you have is not to merge into main. You can make all the
+  decisions in the world. You're the expert. Do not merge into main or
+  release. Those are the two things that you cannot do. Everything else you
+  can do. You are the one making the decisions from the research and building
+  this library." Every decision is still written down with its reasons, so
+  the owner can read why.
 - No deadline. Correctness and clarity win over speed.
 - Breaking changes and public API changes are allowed. The library has one user.
 - Fixed: state is a plain class wrapped in a proxy, consumers read immutable
@@ -169,8 +181,8 @@ fail in the main checkout, so `.gitignore` lists that folder.
   anything lower. "Agent models" below says which.
 - `CONSTRAINTS.md` is the quality bar from the end of stage 1. No agent lowers
   a number in it or weakens a check to make something pass. A number moves
-  only through a stage 3 decision the owner approved, which states the new
-  value.
+  only through a stage 3 decision with a decision record under
+  `docs/decisions/` that states the new value and the reason.
 - Report what was verified and what was not. A claim needs a test, a
   reproduction or a measurement behind it.
 
@@ -189,10 +201,16 @@ fail in the main checkout, so `.gitignore` lists that folder.
 
 - `review/` is committed with the stage that wrote it, so a later agent with a
   fresh context or its own worktree can read it.
-- This plan is untracked as of 2026-11-18. Commit it with the first stage 1
-  commit. Until then, an agent in its own worktree or in another session
-  cannot see it: run agents in this checkout, or put the text of their stage
-  in their brief.
+- Stage 3 working reports are in `review/stage-3/`, and the briefs its
+  helper agents were given are in `review/stage-3/briefs/`. A brief is
+  started with a prompt that names `COMMON.md` and one other file, and gives
+  the real paths for the two placeholders below.
+- No absolute path of this machine goes into a committed file: the branch is
+  public and such a path carries the local account name. Reports write
+  `<repo>` for the repository root and `<scratch>` for the agent scratchpad.
+  Run `node scripts/scrub-paths.mjs <file>...` on a report before committing
+  it. The reports up to 2026-11-19 were committed with real paths and
+  scrubbed afterwards, so those paths are still in this branch's history.
 - Only one document describes the public API when the work is done. The spec
   is the working contract for stage 4. By the end of stage 4,
   `website/content/docs/API_REFERENCE.md` says everything the spec says, and
@@ -422,9 +440,9 @@ report format and write to the same folder:
   `persist` and `devtools` treat data they did not write: stored JSON with
   `__proto__` or `constructor` keys, version and migration input, cross-tab
   storage events, and DevTools messages that set state. Each finding is a
-  proposal for stage 3, so the owner decides on it with the rest.
+  proposal for stage 3, so it is decided with the rest.
 
-## Stage 3: Design review (one agent: read and experiment, the owner decides, then write)
+## Stage 3: Design review (one agent: read and experiment, decide, then write)
 
 1. Merge the stage 2 reports and remove duplicates.
 2. Review our own code independently of other libraries: every function in
@@ -455,7 +473,12 @@ report format and write to the same folder:
    breaking change) or **unspecified** (it may change in a minor release).
    Without this, the stage 1 tests make every incidental behaviour part of
    the 1.0 contract.
-6. The owner approves or rejects each item. Nothing is implemented before that.
+6. The agent running the stage decides each item and writes the decision and
+   its reason into the document. Before the decisions stand, a fresh agent
+   that took no part in the spikes reviews the document as an adversary and
+   its objections are answered in writing. Nothing is implemented before
+   that. The owner approved each item here until 2026-11-19 and has since
+   handed the decisions over (first ground rule).
 7. From the approved items, write the 1.0 public API spec at `review/spec.md`
    and one decision record per change under `docs/decisions/`, then an ordered
    task list for stage 4. The spec lists guaranteed and unspecified behaviour
@@ -492,8 +515,9 @@ Skills: `incremental-implementation`, `test-driven-development`,
 - After the last refactor commit, in this order:
   1. An independent review by an agent that took no part in the refactor.
   2. A second library-comparison pass limited to the areas that changed.
-  3. Their findings go to the owner. An approved fix is committed under the
-     same rules as any other change.
+  3. Their findings are decided like any stage 3 item, and written into the
+     stage report. An approved fix is committed under the same rules as any
+     other change.
   4. Last, on the final commit: the full validation matrix (browsers, React
      versions with and without the compiler, Node versions, Vue, Svelte,
      Angular, Next.js, packed-consumer checks). The stage report names the

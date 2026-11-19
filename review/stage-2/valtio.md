@@ -718,9 +718,9 @@ was ported from.
 // Shared harness: the same scenario runs against Valtio and against our source.
 import * as v from 'valtio/vanilla';
 import * as vu from 'valtio/vanilla/utils';
-import * as c from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/index.ts';
-import * as cc from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/collections/index.ts';
-import * as cu from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/utils/index.ts';
+import * as c from '<repo>/packages/classy-store/src/index.ts';
+import * as cc from '<repo>/packages/classy-store/src/collections/index.ts';
+import * as cu from '<repo>/packages/classy-store/src/utils/index.ts';
 
 export type Lib = {
   name: string;
@@ -2533,8 +2533,8 @@ Output:
 import {
   createProxy,
   isChanged,
-} from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/storeRuntime.ts';
-import {getUntracked} from '/Users/robertparallax/WebstormProjects/classy-store/node_modules/.bun/proxy-compare@3.0.1/node_modules/proxy-compare';
+} from '<repo>/packages/classy-store/src/storeRuntime.ts';
+import {getUntracked} from '<repo>/node_modules/.bun/proxy-compare@3.0.1/node_modules/proxy-compare';
 import {c} from './libs';
 
 class Bag {
@@ -2705,8 +2705,8 @@ C. what we do today: a Proxy over {} with a get trap only
 ### `getUntracked` with the proxy-compare instance our library loads
 
 ```ts
-import {createProxy} from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/storeRuntime.ts';
-import {getUntracked} from '/Users/robertparallax/WebstormProjects/classy-store/node_modules/.bun/proxy-compare@3.0.1/node_modules/proxy-compare';
+import {createProxy} from '<repo>/packages/classy-store/src/storeRuntime.ts';
+import {getUntracked} from '<repo>/node_modules/.bun/proxy-compare@3.0.1/node_modules/proxy-compare';
 import {c} from './libs';
 class Row {
   static [c.PROXYABLE] = true;
@@ -2745,7 +2745,7 @@ class row: tracking proxy true | getUntracked finds the snapshot false
 ```ts
 // A lookup index built lazily for a frozen snapshot array, which can never go stale.
 import {c, cc} from './libs';
-import {identityOf} from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/storeRuntime.ts';
+import {identityOf} from '<repo>/packages/classy-store/src/storeRuntime.ts';
 
 const indexes = new WeakMap<readonly unknown[], Map<unknown, number>>();
 function indexOfFrozen(backing: readonly unknown[], member: unknown): number {
@@ -2869,7 +2869,7 @@ with `TS2344`, so the assertions are being checked.
 ```ts
 import type {Snapshot as ValtioSnapshot} from 'valtio/vanilla';
 import {proxyMap} from 'valtio/vanilla/utils';
-import type {Snapshot as OurSnapshot} from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/types';
+import type {Snapshot as OurSnapshot} from '<repo>/packages/classy-store/src/types';
 
 type Equal<A, B> =
   (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2

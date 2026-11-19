@@ -457,7 +457,7 @@ framework; Pinia and NgRx SignalStore, from their documentation only.
 ## Appendix: scripts and output
 
 All files are in
-`/private/tmp/claude-501/-Users-robertparallax-WebstormProjects-classy-store/9c8c2bbd-bb57-4b12-aa7b-9d06972e3fdd/scratchpad/stage-2-adapters/`,
+`<scratch>/stage-2-adapters/`,
 run with `bun <file>` unless noted. `node_modules` there is a symlink to
 `packages/classy-store/node_modules`.
 
@@ -485,8 +485,8 @@ import {renderToString} from 'vue/server-renderer';
 import {
   createClassyStore,
   getInternal,
-} from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/core/core';
-import {useClassyStore} from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/frameworks/vue/vue';
+} from '<repo>/packages/classy-store/src/core/core';
+import {useClassyStore} from '<repo>/packages/classy-store/src/frameworks/vue/vue';
 
 console.log('vue', version);
 const listeners = (store: object) => getInternal(store).syncListeners.size;
@@ -705,9 +705,9 @@ import {
 import {
   getInternal,
   subscribe,
-} from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/core/core';
-import {snapshot} from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/snapshot/snapshot';
-import type {Snapshot} from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/types';
+} from '<repo>/packages/classy-store/src/core/core';
+import {snapshot} from '<repo>/packages/classy-store/src/snapshot/snapshot';
+import type {Snapshot} from '<repo>/packages/classy-store/src/types';
 
 export function useClassyStoreSketch<T extends object>(
   proxyStore: T,
@@ -756,7 +756,7 @@ import {renderToString} from 'vue/server-renderer';
 import {
   createClassyStore,
   getInternal,
-} from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/core/core';
+} from '<repo>/packages/classy-store/src/core/core';
 import {useClassyStoreSketch} from './vue-sketch';
 
 const listeners = (store: object) => getInternal(store).syncListeners.size;
@@ -795,7 +795,7 @@ import {GlobalRegistrator} from '@happy-dom/global-registrator';
 GlobalRegistrator.register();
 const {createApp, defineComponent, h, nextTick} = await import('vue');
 const {createClassyStore, getInternal} = await import(
-  '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/core/core'
+  '<repo>/packages/classy-store/src/core/core'
 );
 const {useClassyStoreSketch} = await import('./vue-sketch');
 
@@ -858,8 +858,8 @@ import {
 import {
   createClassyStore,
   getInternal,
-} from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/core/core';
-import {injectClassyStore} from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/frameworks/angular/angular';
+} from '<repo>/packages/classy-store/src/core/core';
+import {injectClassyStore} from '<repo>/packages/classy-store/src/frameworks/angular/angular';
 
 console.log('angular', VERSION.full);
 const listeners = (store: object) => getInternal(store).syncListeners.size;
@@ -1040,9 +1040,9 @@ import {
   createClassyStore,
   getInternal,
   subscribe,
-} from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/core/core';
-import {snapshot} from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/snapshot/snapshot';
-import type {Snapshot} from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/types';
+} from '<repo>/packages/classy-store/src/core/core';
+import {snapshot} from '<repo>/packages/classy-store/src/snapshot/snapshot';
+import type {Snapshot} from '<repo>/packages/classy-store/src/types';
 
 function injectClassyStoreSketch<T extends object>(
   proxyStore: T,
@@ -1137,9 +1137,9 @@ import {renderToString} from 'react-dom/server';
 import {
   createClassyStore,
   getInternal,
-} from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/core/core';
-import {useClassyStore} from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/frameworks/react/react';
-import {prepareStoreForHydration} from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/frameworks/react/server';
+} from '<repo>/packages/classy-store/src/core/core';
+import {useClassyStore} from '<repo>/packages/classy-store/src/frameworks/react/react';
+import {prepareStoreForHydration} from '<repo>/packages/classy-store/src/frameworks/react/server';
 
 console.log('react', version);
 const store = createClassyStore({count: 0});
@@ -1201,9 +1201,9 @@ import {
   createClassyStore,
   getInternal,
   subscribe,
-} from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/core/core';
-import {snapshot} from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/snapshot/snapshot';
-import {useClassyStore} from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/frameworks/solid/solid';
+} from '<repo>/packages/classy-store/src/core/core';
+import {snapshot} from '<repo>/packages/classy-store/src/snapshot/snapshot';
+import {useClassyStore} from '<repo>/packages/classy-store/src/frameworks/solid/solid';
 
 const listeners = (store: object) => getInternal(store).syncListeners.size;
 const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
@@ -1312,8 +1312,8 @@ import {createRoot, getOwner} from 'solid-js';
 import {
   createClassyStore,
   getInternal,
-} from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/core/core';
-import {useClassyStore} from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/frameworks/solid/solid';
+} from '<repo>/packages/classy-store/src/core/core';
+import {useClassyStore} from '<repo>/packages/classy-store/src/frameworks/solid/solid';
 
 const listeners = (store: object) => getInternal(store).syncListeners.size;
 console.log('isServer', isServer);
@@ -1363,8 +1363,7 @@ Run: `bun svelte-build.mjs`
 import {writeFileSync} from 'node:fs';
 import {compile, compileModule} from 'svelte/compiler';
 
-const SRC =
-  '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src';
+const SRC = '<repo>/packages/classy-store/src';
 
 const component = `<script>
   import {toSvelteStore} from '${SRC}/frameworks/svelte/svelte';
@@ -1454,7 +1453,7 @@ import Counter from './svelte-out/Counter.server.js';
 import {
   createClassyStore,
   getInternal,
-} from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/core/core';
+} from '<repo>/packages/classy-store/src/core/core';
 
 const store = createClassyStore({count: 0});
 for (let request = 1; request <= 3; request++) {
@@ -1480,7 +1479,7 @@ Run: `bun --conditions browser svelte-client.mjs`
 ```js
 // Runes over the adapter, on Svelte's client runtime. Run: bun --conditions browser svelte-client.mjs
 import {run} from './svelte-out/runes.svelte.js';
-import {createClassyStore} from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/core/core';
+import {createClassyStore} from '<repo>/packages/classy-store/src/core/core';
 await run(createClassyStore({count: 0, other: 0, user: {name: 'Ada'}}));
 ```
 
@@ -1505,7 +1504,7 @@ Run: `bun svelte-compile.mjs (compiled code omitted from the output)`
 import {
   compile,
   VERSION,
-} from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/node_modules/svelte/src/compiler/index.js';
+} from '<repo>/packages/classy-store/node_modules/svelte/src/compiler/index.js';
 
 const guide = `<script lang="ts">
   import {toSvelteStore} from '@codebelt/classy-store/svelte';
@@ -1559,7 +1558,7 @@ Run: `bun svelte-compile-runes.mjs`
 import {
   compile,
   compileModule,
-} from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/node_modules/svelte/src/compiler/index.js';
+} from '<repo>/packages/classy-store/node_modules/svelte/src/compiler/index.js';
 
 const cases = {
   'state + $props': `<script lang="ts">
@@ -1650,9 +1649,9 @@ import {
   watch,
 } from 'vue';
 import {derived, fromStore, get, type Readable} from 'svelte/store';
-import type {Snapshot} from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/types';
-import {useClassyStore} from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/frameworks/vue/vue';
-import {toSvelteStore} from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/frameworks/svelte/svelte';
+import type {Snapshot} from '<repo>/packages/classy-store/src/types';
+import {useClassyStore} from '<repo>/packages/classy-store/src/frameworks/vue/vue';
+import {toSvelteStore} from '<repo>/packages/classy-store/src/frameworks/svelte/svelte';
 
 type Counter = {count: number; nested: {label: string}};
 declare const store: Counter;
@@ -1700,8 +1699,8 @@ import {effectScope} from 'vue';
 import {
   batch,
   createClassyStore,
-} from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/core/core';
-import {useClassyStore} from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/frameworks/vue/vue';
+} from '<repo>/packages/classy-store/src/core/core';
+import {useClassyStore} from '<repo>/packages/classy-store/src/frameworks/vue/vue';
 import {useClassyStoreSketch} from './vue-sketch';
 
 const ROWS = 2000;
@@ -1777,10 +1776,10 @@ import {Injector, runInInjectionContext} from '@angular/core';
 import {
   createClassyStore,
   subscribe,
-} from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/core/core';
-import {snapshot} from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/snapshot/snapshot';
-import {injectClassyStore} from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/frameworks/angular/angular';
-import {toSvelteStore} from '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/frameworks/svelte/svelte';
+} from '<repo>/packages/classy-store/src/core/core';
+import {snapshot} from '<repo>/packages/classy-store/src/snapshot/snapshot';
+import {injectClassyStore} from '<repo>/packages/classy-store/src/frameworks/angular/angular';
+import {toSvelteStore} from '<repo>/packages/classy-store/src/frameworks/svelte/svelte';
 
 const ROWS = 2000;
 const makeStore = () =>
@@ -1847,10 +1846,10 @@ GlobalRegistrator.register();
 const {createElement, act} = await import('react');
 const {createRoot} = await import('react-dom/client');
 const {batch, createClassyStore} = await import(
-  '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/core/core'
+  '<repo>/packages/classy-store/src/core/core'
 );
 const {useClassyStore} = await import(
-  '/Users/robertparallax/WebstormProjects/classy-store/packages/classy-store/src/frameworks/react/react'
+  '<repo>/packages/classy-store/src/frameworks/react/react'
 );
 
 const ROWS = 2000;

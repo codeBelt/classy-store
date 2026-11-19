@@ -27,7 +27,7 @@ Read closely:
   to see which `merge` and `enabled` idioms we teach
 
 Ran, all in
-`/private/tmp/claude-501/-Users-robertparallax-WebstormProjects-classy-store/9c8c2bbd-bb57-4b12-aa7b-9d06972e3fdd/scratchpad/stage-2-security/`,
+`<scratch>/stage-2-security/`,
 with Bun 1.4.4 importing our source by absolute path:
 
 - `repro/persist-input.ts`: hostile and malformed stored records, versions,
@@ -586,7 +586,7 @@ Only read, not run:
 ## Appendix: reproduction code and output
 
 The scripts are in
-`/private/tmp/claude-501/-Users-robertparallax-WebstormProjects-classy-store/9c8c2bbd-bb57-4b12-aa7b-9d06972e3fdd/scratchpad/stage-2-security/repro/`.
+`<scratch>/stage-2-security/repro/`.
 The essential parts follow.
 
 ### Hostile stored records (`persist-input.ts`, abridged)

@@ -563,7 +563,7 @@ Bears on API question 8.
 ## Appendix: ported tests and their output
 
 Each file is in the scratch folder
-`/private/tmp/claude-501/-Users-robertparallax-WebstormProjects-classy-store/9c8c2bbd-bb57-4b12-aa7b-9d06972e3fdd/scratchpad/stage-2-zustand-jotai/ports/`
+`<scratch>/stage-2-zustand-jotai/ports/`
 and runs with `bun test <file>` there. `./ours/` is a copy of our `src`
 (without tests) from `c59084e`. The preload registers happy-dom and sets
 `IS_REACT_ACT_ENVIRONMENT`; `helpers.ts` mounts a component inside `act`.
