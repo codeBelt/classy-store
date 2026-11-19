@@ -1,4 +1,4 @@
-import {describe, expect, it} from 'bun:test';
+import {describe, expect, it, mock} from 'bun:test';
 import {createClassyStore, snapshot, subscribe} from '../../index';
 import {type HistoryHandle, withHistory} from '../index';
 
@@ -77,5 +77,19 @@ describe('withHistory() — after dispose()', () => {
 
     expect(await isCollected(delivered)).toBe(true);
     expect(owner.history.getSnapshot().isDisposed).toBe(true);
+  });
+});
+
+describe('withHistory() — while dispose() is being published', () => {
+  it('every status subscriber hears about a dispose, even when one of them disposes again', () => {
+    const history = withHistory(createClassyStore({count: 0}));
+    const later = mock(() => {});
+    history.subscribe(() => history.dispose());
+    history.subscribe(later);
+
+    history.dispose();
+
+    expect(later).toHaveBeenCalledTimes(1);
+    expect(history.getSnapshot().isDisposed).toBe(true);
   });
 });

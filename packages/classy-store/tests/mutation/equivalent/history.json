@@ -34,14 +34,5 @@
     "replacement": "false",
     "occurrence": 1,
     "reason": "No effect: dispose() empties the history and sets the pointer to 0, and nothing records after it, so `pointer >= history.length - 1` already returns for a disposed history."
-  },
-  {
-    "file": "src/utils/history/history.ts",
-    "scope": "withHistory > handle > dispose",
-    "mutator": "ConditionalExpression",
-    "original": "disposed",
-    "replacement": "false",
-    "occurrence": 1,
-    "reason": "No effect: a second dispose() repeats steps already taken. The flag is set, unsubscribing twice is harmless, the history is already empty, and the status is unchanged, so nothing is published."
   }
 ]
