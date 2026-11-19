@@ -527,4 +527,20 @@ describe('computed getters — write proxy memoization', () => {
     expect(s.hasA).toBe(false);
     expect(callCount).toBe(2);
   });
+
+  it('recomputes after a property it read is deleted', () => {
+    const s = createClassyStore({
+      base: 1,
+      bonus: 5 as number | undefined,
+      get total() {
+        return this.base + (this.bonus ?? 0);
+      },
+    });
+    expect(s.total).toBe(6);
+
+    delete s.bonus;
+
+    expect(s.total).toBe(1);
+    expect(snapshot(s).total).toBe(1);
+  });
 });

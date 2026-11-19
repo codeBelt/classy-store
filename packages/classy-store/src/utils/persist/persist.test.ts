@@ -152,6 +152,37 @@ describe('persist()', () => {
       expect(stored?.state.count).toBe(1);
       expect(stored?.state).not.toHaveProperty('increment');
     });
+
+    it('saves a frozen value and restores it as ordinary data', async () => {
+      const storage = createMockStorage();
+      const s = createClassyStore<{
+        prefs: {theme: string; tags: readonly string[]};
+      }>({
+        prefs: Object.freeze({theme: 'dark', tags: Object.freeze(['a'])}),
+      });
+      const handle = persist(s, {name: 'test', storage});
+      await handle.hydrated;
+      await handle.save();
+      expect(parseStored(storage, 'test')?.state).toEqual({
+        prefs: {theme: 'dark', tags: ['a']},
+      });
+
+      storage.data.set(
+        'test',
+        JSON.stringify({
+          version: 0,
+          state: {prefs: {theme: 'light', tags: ['b']}},
+        }),
+      );
+      await handle.rehydrate();
+
+      expect(snapshot(s).prefs).toEqual({theme: 'light', tags: ['b']});
+      // What came back from storage is plain data, so it is reactive again.
+      s.prefs.theme = 'sepia';
+      expect(snapshot(s).prefs.theme).toBe('sepia');
+
+      handle.dispose();
+    });
   });
 
   // ── Pick specific properties ────────────────────────────────────────────
@@ -356,6 +387,26 @@ describe('persist()', () => {
       await handle.save();
       const stored = parseStored(storage, 'test');
       expect(stored?.state.count).toBe(42);
+    });
+
+    it('save() cancels the pending debounced write instead of repeating it', async () => {
+      const storage = createMockStorage();
+      const s = createClassyStore({count: 0});
+      const handle = persist(s, {name: 'test', storage, debounce: 30});
+      await handle.hydrated;
+      const setItem = mock(storage.setItem);
+      storage.setItem = setItem;
+
+      s.count = 42;
+      await tick();
+      await handle.save();
+      expect(setItem).toHaveBeenCalledTimes(1);
+
+      // The debounce window passes without a second write of the same state.
+      await wait(60);
+      expect(setItem).toHaveBeenCalledTimes(1);
+
+      handle.dispose();
     });
   });
 
@@ -775,6 +826,28 @@ describe('persist()', () => {
       await handle.rehydrate();
       expect(s.count).toBe(777);
     });
+
+    it('an explicit save leaves no deferred write for a later read', async () => {
+      const storage = createMockStorage();
+      const s = createClassyStore({count: 0});
+      const handle = persist(s, {name: 'test', storage});
+      await handle.hydrated;
+
+      s.count = 1;
+      await handle.save();
+      await tick();
+
+      const external = JSON.stringify({version: 0, state: {count: 7}});
+      storage.data.set('test', external);
+      await handle.rehydrate();
+      await tick();
+
+      // The read restores the record and does not write it back.
+      expect(s.count).toBe(7);
+      expect(storage.data.get('test')).toBe(external);
+
+      handle.dispose();
+    });
   });
 
   // ── isHydrated / hydrated promise ───────────────────────────────────────
@@ -870,6 +943,181 @@ describe('persist()', () => {
       globalThis.dispatchEvent(event);
 
       expect(s.count).toBe(0); // unchanged
+
+      handle.dispose();
+    });
+
+    it('ignores a storage event whose value has since been replaced', async () => {
+      const storage = createMockStorage();
+      const s = createClassyStore({count: 0});
+      const handle = persist(s, {name: 'test', storage, syncTabs: true});
+      await handle.hydrated;
+
+      const newer = JSON.stringify({version: 0, state: {count: 7}});
+      const area = {getItem: () => newer} as unknown as Storage;
+      globalThis.dispatchEvent(
+        new StorageEvent('storage', {
+          key: 'test',
+          newValue: JSON.stringify({version: 0, state: {count: 3}}),
+          storageArea: area,
+        }),
+      );
+
+      // The obsolete value is not applied over the newer one.
+      expect(s.count).toBe(0);
+
+      globalThis.dispatchEvent(
+        new StorageEvent('storage', {
+          key: 'test',
+          newValue: newer,
+          storageArea: area,
+        }),
+      );
+
+      expect(s.count).toBe(7);
+
+      handle.dispose();
+    });
+
+    it('reports an unreadable storage event and keeps the current state', async () => {
+      const storage = createMockStorage();
+      const s = createClassyStore({count: 5});
+      const onError = mock((_error: unknown, _operation: string) => {});
+      const handle = persist(s, {
+        name: 'test',
+        storage,
+        syncTabs: true,
+        onError,
+      });
+      await handle.hydrated;
+
+      globalThis.dispatchEvent(
+        new StorageEvent('storage', {key: 'test', newValue: '{not json'}),
+      );
+
+      expect(s.count).toBe(5);
+      expect(onError).toHaveBeenCalledTimes(1);
+      expect(onError.mock.calls[0]?.[1]).toBe('parse');
+      expect(handle.getSnapshot().lastError?.operation).toBe('parse');
+
+      // A later valid event from the other tab is applied and clears the error.
+      globalThis.dispatchEvent(
+        new StorageEvent('storage', {
+          key: 'test',
+          newValue: JSON.stringify({version: 0, state: {count: 9}}),
+        }),
+      );
+      expect(s.count).toBe(9);
+      expect(handle.getSnapshot().lastError).toBeNull();
+
+      handle.dispose();
+    });
+
+    it('does not listen unless syncTabs is enabled', async () => {
+      const storage = createMockStorage();
+      const s = createClassyStore({count: 0});
+      const handle = persist(s, {name: 'test', storage});
+      await handle.hydrated;
+
+      globalThis.dispatchEvent(
+        new StorageEvent('storage', {
+          key: 'test',
+          newValue: JSON.stringify({version: 0, state: {count: 999}}),
+        }),
+      );
+
+      expect(s.count).toBe(0);
+
+      handle.dispose();
+    });
+
+    it('keeps a live record from another tab when clearOnExpire is on', async () => {
+      const storage = createMockStorage();
+      const s = createClassyStore({count: 0});
+      const handle = persist(s, {
+        name: 'test',
+        storage,
+        syncTabs: true,
+        expireIn: 60_000,
+        clearOnExpire: true,
+      });
+      await handle.hydrated;
+
+      const record = JSON.stringify({
+        version: 0,
+        state: {count: 4},
+        expiresAt: Date.now() + 60_000,
+      });
+      storage.data.set('test', record);
+      globalThis.dispatchEvent(
+        new StorageEvent('storage', {key: 'test', newValue: record}),
+      );
+      await tick();
+
+      expect(s.count).toBe(4);
+      expect(handle.isExpired).toBe(false);
+      expect(storage.data.get('test')).toBe(record);
+
+      handle.dispose();
+    });
+
+    it('removes an expired record from another tab when clearOnExpire is on', async () => {
+      const storage = createMockStorage();
+      const s = createClassyStore({count: 0});
+      const handle = persist(s, {
+        name: 'test',
+        storage,
+        syncTabs: true,
+        expireIn: 60_000,
+        clearOnExpire: true,
+      });
+      await handle.hydrated;
+      expect(handle.getSnapshot().isExpired).toBe(false);
+
+      const expired = JSON.stringify({
+        version: 0,
+        state: {count: 4},
+        expiresAt: Date.now() - 1000,
+      });
+      storage.data.set('test', expired);
+      globalThis.dispatchEvent(
+        new StorageEvent('storage', {key: 'test', newValue: expired}),
+      );
+
+      // The status is published at once; the removal follows.
+      expect(handle.getSnapshot().isExpired).toBe(true);
+      await tick();
+      expect(s.count).toBe(0);
+      expect(storage.data.has('test')).toBe(false);
+
+      handle.dispose();
+    });
+
+    it('leaves an expired record from another tab in storage by default', async () => {
+      const storage = createMockStorage();
+      const s = createClassyStore({count: 0});
+      const handle = persist(s, {
+        name: 'test',
+        storage,
+        syncTabs: true,
+        expireIn: 60_000,
+      });
+      await handle.hydrated;
+
+      const expired = JSON.stringify({
+        version: 0,
+        state: {count: 4},
+        expiresAt: Date.now() - 1000,
+      });
+      storage.data.set('test', expired);
+      globalThis.dispatchEvent(
+        new StorageEvent('storage', {key: 'test', newValue: expired}),
+      );
+      await tick();
+
+      expect(s.count).toBe(0);
+      expect(handle.isExpired).toBe(true);
+      expect(storage.data.get('test')).toBe(expired);
 
       handle.dispose();
     });
@@ -998,6 +1246,35 @@ describe('persist()', () => {
       await tick();
 
       expect(storage.data.has('test')).toBe(false);
+    });
+
+    it.each([
+      ['a record that is not an envelope', JSON.stringify(42)],
+      ['a record without state', JSON.stringify({version: 0, state: null})],
+      [
+        'a record from another version',
+        JSON.stringify({version: 9, state: {count: 42}}),
+      ],
+    ])('clearOnExpire does not remove %s', async (_name, record) => {
+      const storage = createMockStorage();
+      storage.data.set('test', record);
+
+      const s = createClassyStore({count: 0});
+      const handle = persist(s, {
+        name: 'test',
+        storage,
+        expireIn: 60_000,
+        clearOnExpire: true,
+      });
+      await handle.hydrated;
+      await tick();
+
+      // Ignored, not expired: only an elapsed TTL may delete stored data.
+      expect(s.count).toBe(0);
+      expect(handle.isExpired).toBe(false);
+      expect(storage.data.get('test')).toBe(record);
+
+      handle.dispose();
     });
 
     it('clearOnExpire: false (default) leaves the key in storage', async () => {
@@ -1419,6 +1696,23 @@ describe('persist()', () => {
   // ── onError callback ────────────────────────────────────────────────────
 
   describe('onError callback', () => {
+    it('a later successful read clears the last error', async () => {
+      const storage = createMockStorage();
+      storage.data.set('test', '{not json');
+      const s = createClassyStore({count: 0});
+      const handle = persist(s, {name: 'test', storage, onError: () => {}});
+      await handle.hydrated;
+      expect(handle.getSnapshot().lastError?.operation).toBe('parse');
+
+      storage.data.set('test', JSON.stringify({version: 0, state: {count: 3}}));
+      await handle.rehydrate();
+
+      expect(s.count).toBe(3);
+      expect(handle.getSnapshot().lastError).toBeNull();
+
+      handle.dispose();
+    });
+
     it('reports a setItem failure with operation "write" and keeps the store usable', async () => {
       const storage = createMockStorage();
       storage.setItem = () => {

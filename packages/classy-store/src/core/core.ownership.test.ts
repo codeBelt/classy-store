@@ -75,7 +75,29 @@ describe('shared proxy ownership', () => {
     expect(retained.config.currency).toBe('USD');
   });
 
-  test('a nested child follows its current sibling scope and detaches cleanly', () => {
+  test('a child whose only owner was collected drops that owner when it gains a new one', async () => {
+    const record = {count: 1};
+    const child = (() => createClassyStore({record}).record)();
+    const parents = getInternal(child).parents;
+    // A child with one owner keeps no registry, so a collected owner leaves
+    // its dead reference behind until the child is attached again.
+    const ownerIsDead = () =>
+      [...parents.keys()].every((reference) => reference.deref() === undefined);
+    for (let i = 0; i < 30 && !ownerIsDead(); i++) {
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      Bun.gc(true);
+    }
+    expect(parents.size).toBe(1);
+    expect(ownerIsDead()).toBe(true);
+
+    const next = createClassyStore({record: child});
+
+    expect(next.record).toBe(child);
+    expect(parents.size).toBe(1);
+    expect([...parents.keys()][0]?.deref()).toBe(getInternal(next));
+  });
+
+  test('a child subscription observes its own subtree across owner changes', () => {
     const from = createClassyStore<{box?: {row: {n: number}}; other: number}>({
       box: {row: {n: 0}},
       other: 0,
@@ -90,33 +112,30 @@ describe('shared proxy ownership', () => {
     const stop = subscribe(row, changed, {sync: true});
     to.box = box;
     delete from.box;
-    changed.mockClear();
     from.other++;
-    expect(changed).not.toHaveBeenCalled();
     to.other++;
-    expect(changed).toHaveBeenCalledTimes(1);
+    expect(changed).not.toHaveBeenCalled();
     row.n++;
-    expect(changed).toHaveBeenCalledTimes(2);
+    expect(changed).toHaveBeenCalledTimes(1);
     stop();
     row.n++;
-    expect(changed).toHaveBeenCalledTimes(2);
+    expect(changed).toHaveBeenCalledTimes(1);
   });
 
-  test('promoting a child to a root narrows existing descendant subscriptions', async () => {
+  test('promoting a child to a root leaves descendant subscriptions on their subtree', async () => {
     const outer = createClassyStore({editor: {row: {n: 0}, tab: 0}, other: 0});
     const changed = mock(() => {});
     const stop = subscribe(outer.editor.row, changed);
     outer.other++;
     await Promise.resolve();
-    expect(changed).toHaveBeenCalledTimes(1);
+    expect(changed).not.toHaveBeenCalled();
     const editor = createClassyStore(outer.editor);
-    outer.other++;
-    await Promise.resolve();
-    expect(changed).toHaveBeenCalledTimes(1);
     editor.tab++;
+    await Promise.resolve();
+    expect(changed).not.toHaveBeenCalled();
     editor.row.n++;
     await Promise.resolve();
-    expect(changed).toHaveBeenCalledTimes(2);
+    expect(changed).toHaveBeenCalledTimes(1);
     stop();
   });
 
@@ -150,6 +169,28 @@ describe('shared proxy ownership', () => {
     expect(independent).toHaveBeenCalledTimes(3);
   });
 
+  test('reattaching a detached list reconnects a row that kept its own subscriber', () => {
+    const store = createClassyStore({rows: [{count: 1}, {count: 2}]});
+    const list = store.rows;
+    const row = list[0];
+    // The subscriber keeps the row active while its list is detached.
+    const onRow = mock(() => {});
+    subscribe(row, onRow, {sync: true});
+
+    store.rows = [];
+    store.rows = list;
+
+    const onStore = mock(() => {});
+    subscribe(store, onStore, {sync: true});
+
+    // Write through the retained row, without reading it through the store.
+    row.count = 5;
+
+    expect(onRow).toHaveBeenCalledTimes(1);
+    expect(onStore).toHaveBeenCalledTimes(1);
+    expect(snapshot(store).rows[0].count).toBe(5);
+  });
+
   test('a detached list refreshes shared rows when read again', () => {
     const store = createClassyStore({rows: [{n: 1}, {n: 2}]});
     const previousRows = store.rows;
@@ -165,6 +206,19 @@ describe('shared proxy ownership', () => {
     previousRows[1].n = 4;
     expect(listChanged).toHaveBeenCalledTimes(1);
     expect(rootChanged).not.toHaveBeenCalled();
+  });
+
+  test('a detached list with one row refreshes when that row changed meanwhile', () => {
+    const store = createClassyStore({rows: [{n: 1}]});
+    const previousRows = store.rows;
+    const previousSnapshot = snapshot(previousRows);
+
+    // The row moves to a new list; the old list is detached and unobserved.
+    store.rows = previousRows.filter(() => true);
+    store.rows[0].n = 2;
+
+    expect(snapshot(previousRows)[0].n).toBe(2);
+    expect(previousSnapshot[0].n).toBe(1);
   });
 
   test('filtering repeatedly keeps a single proxy and bounded work per scalar write', () => {

@@ -6,12 +6,10 @@ type ParentReference = {deref(): StoreInternal | undefined};
 export class StoreInternal {
   version = 0;
   isStoreRoot = false;
-  readonly batchedListeners = new Map<() => void, () => void>();
-  readonly syncListeners = new Map<() => void, () => void>();
-  // A subscribed child observes siblings within each nearest root. Keep its
-  // current paths alive and update the routes when a parent edge changes.
-  private subscriptionPath?: Set<StoreInternal>;
-  private pathObservers?: Set<StoreInternal>;
+  // Each subscribe() call owns one entry, so the same callback can be
+  // registered more than once and released independently.
+  readonly batchedListeners = new Set<() => void>();
+  readonly syncListeners = new Set<() => void>();
   readonly computedCache = new Map<string | symbol, ComputedEntry>();
   readonly childInternals = new Map<string | symbol, StoreInternal>();
   readonly parents = new Map<ParentReference, number>();
@@ -28,11 +26,6 @@ export class StoreInternal {
     readonly target: object,
     readonly proxy: object,
   ) {}
-
-  get scopedSubscribers(): ReadonlySet<StoreInternal> | undefined {
-    if (this.isStoreRoot || !this.parents.size) return this.pathObservers;
-    return undefined;
-  }
 
   attach(key: string | symbol, child: StoreInternal): void {
     if (this.childInternals.get(key) === child) return;
@@ -58,7 +51,6 @@ export class StoreInternal {
       child.parentCleanup?.register(this, this.reference, this.reference);
     }
     child.parents.set(this.reference, count + 1);
-    if (!count && !child.isStoreRoot) child.ownershipChanged();
   }
 
   // A single-owner node has at most one stale reference. Start collecting
@@ -92,7 +84,6 @@ export class StoreInternal {
     }
     child.parents.delete(this.reference);
     child.parentCleanup?.unregister(this.reference);
-    if (!child.isStoreRoot) child.ownershipChanged();
   }
 
   private canSuspend(): boolean {
@@ -101,8 +92,7 @@ export class StoreInternal {
       !this.parents.size &&
       !this.isStoreRoot &&
       !this.syncListeners.size &&
-      !this.batchedListeners.size &&
-      !this.pathObservers?.size
+      !this.batchedListeners.size
     );
   }
 
@@ -165,46 +155,10 @@ export class StoreInternal {
     scope.resume();
   }
 
-  markAsRoot(): void {
-    if (this.isStoreRoot) return;
-    this.isStoreRoot = true;
-    this.ownershipChanged();
-  }
-
-  private ownershipChanged(): void {
-    if (this.pathObservers?.size) {
-      for (const child of [...this.pathObservers])
-        child.refreshSubscriptionScope();
-    }
-  }
-
-  refreshSubscriptionScope(): void {
-    const previous = this.subscriptionPath;
-    const needsScope =
-      !this.isStoreRoot &&
-      (this.syncListeners.size || this.batchedListeners.size);
-    const next = needsScope ? this.ancestors(true) : undefined;
-    this.subscriptionPath = next;
-    if (next) {
-      for (const owner of next) {
-        owner.pathObservers ??= new Set();
-        owner.pathObservers.add(this);
-      }
-    }
-    if (previous) {
-      for (const owner of previous) {
-        if (!next?.has(owner)) {
-          owner.pathObservers?.delete(this);
-          owner.suspendIfDetached();
-        }
-      }
-    }
-  }
-
-  ancestors(stopAtStoreRoots = false): Set<StoreInternal> {
+  /** This node and every container that currently owns it, up to each root. */
+  ancestors(): Set<StoreInternal> {
     const visited = new Set<StoreInternal>([this]);
     for (const node of visited) {
-      if (stopAtStoreRoots && node.isStoreRoot) continue;
       for (const reference of node.parents.keys()) {
         const parent = reference.deref();
         if (parent) visited.add(parent);

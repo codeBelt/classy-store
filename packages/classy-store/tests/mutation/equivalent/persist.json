@@ -1,0 +1,155 @@
+[
+  {
+    "file": "src/utils/persist/persist.ts",
+    "scope": "persist",
+    "mutator": "StringLiteral",
+    "original": "'shallow'",
+    "replacement": "''",
+    "occurrence": 1,
+    "reason": "No effect: `merge` is only ever tested with `typeof merge === 'function'`. Any value that is not a function takes the shallow path, so the text of the default is never read."
+  },
+  {
+    "file": "src/utils/persist/persist.ts",
+    "scope": "persist > reportError",
+    "mutator": "ConditionalExpression",
+    "original": "onError",
+    "replacement": "true",
+    "occurrence": 1,
+    "reason": "No effect: the call sits in a try block whose catch swallows everything. Calling an `onError` that was not provided throws a TypeError there, which is swallowed, and nothing else runs in between."
+  },
+  {
+    "file": "src/utils/persist/persist.ts",
+    "scope": "persist",
+    "mutator": "ConditionalExpression",
+    "original": "prop.transform",
+    "replacement": "true",
+    "occurrence": 1,
+    "reason": "No effect: the map is only read with `get()`. An entry that holds `undefined` reads back exactly like a missing entry."
+  },
+  {
+    "file": "src/utils/persist/persist.ts",
+    "scope": "persist > writeToStorage",
+    "mutator": "StatementRemoval",
+    "original": "assertActive();",
+    "replacement": ";",
+    "occurrence": 1,
+    "reason": "Unreachable: nothing calls writeToStorage() on a disposed handle. save() has just made the same check, and an automatic save starts only from scheduleWrite(), the debounce timer or the end of a read, each of which dispose() cuts off (the `disposed` checks and clearTimeout). Every step from those to this line is synchronous."
+  },
+  {
+    "file": "src/utils/persist/persist.ts",
+    "scope": "persist > queueAutoSave",
+    "mutator": "ConditionalExpression",
+    "original": "debounceTimer !== null",
+    "replacement": "true",
+    "occurrence": 1,
+    "reason": "No effect: with no timer pending, the block runs `clearTimeout(null)`, which does nothing."
+  },
+  {
+    "file": "src/utils/persist/persist.ts",
+    "scope": "persist > applyPersistedState",
+    "mutator": "ConditionalExpression",
+    "original": "typeof envelope !== 'object'",
+    "replacement": "false",
+    "occurrence": 1,
+    "reason": "No effect: JSON.parse returns a truthy non-object only as a number, a string or `true`. None of them has a `state` property, so the last clause, `typeof envelope.state !== 'object'`, rejects the record in the same way."
+  },
+  {
+    "file": "src/utils/persist/persist.ts",
+    "scope": "persist > applyPersistedState",
+    "mutator": "ConditionalExpression",
+    "original": "snapshot(proxyStore) !== baseline",
+    "replacement": "true",
+    "occurrence": 1,
+    "reason": "Performance only: The check is only a shortcut. When the current snapshot is the baseline itself, discardEditedFields() compares every pending field with itself. A snapshot returns the same value for a field each time it is read, so nothing is dropped."
+  },
+  {
+    "file": "src/utils/persist/persist.ts",
+    "scope": "persist > applyPersistedState",
+    "mutator": "StatementRemoval",
+    "original": "pending.delete(key);",
+    "replacement": ";",
+    "occurrence": 1,
+    "reason": "Performance only: The loop visits each key once either way: a Set iterator does not return to a key it has passed. Leaving restored keys in the set only lets discardEditedFields() drop them too, which changes nothing, and makes the `pending.size` test true after the last field, when only restored keys are left to drop."
+  },
+  {
+    "file": "src/utils/persist/persist.ts",
+    "scope": "persist > applyPersistedState",
+    "mutator": "ConditionalExpression",
+    "original": "pending.size",
+    "replacement": "true",
+    "occurrence": 1,
+    "reason": "Performance only: With nothing pending, discardEditedFields() has no key to drop. It only takes a snapshot, which changes nothing."
+  },
+  {
+    "file": "src/utils/persist/persist.ts",
+    "scope": "persist > hydrateFromStorage",
+    "mutator": "StatementRemoval",
+    "original": "debounceTimer = null;",
+    "replacement": ";",
+    "occurrence": 1,
+    "reason": "No effect: the stale id is only ever passed to clearTimeout, which ignores a cleared timer, or overwritten. A timer that looks pending changes behaviour in one place, this same block, where it sets saveAfterRead. That flag is already true, and stays true until save(), clear() or the end of the read resets it, each of which also clears or replaces the timer."
+  },
+  {
+    "file": "src/utils/persist/persist.ts",
+    "scope": "persist > onStorageEvent",
+    "mutator": "ConditionalExpression",
+    "original": "debounceTimer !== null",
+    "replacement": "true",
+    "occurrence": 1,
+    "reason": "No effect: with no timer pending, the block runs `clearTimeout(null)`, which does nothing, and sets a variable that is already null to null."
+  },
+  {
+    "file": "src/utils/persist/persist.ts",
+    "scope": "persist > dispose",
+    "mutator": "ConditionalExpression",
+    "original": "debounceTimer !== null",
+    "replacement": "true",
+    "occurrence": 1,
+    "reason": "No effect: with no timer pending, the block runs `clearTimeout(null)`, which does nothing, and sets a variable that is already null to null."
+  },
+  {
+    "file": "src/utils/persist/persist.ts",
+    "scope": "persist > dispose",
+    "mutator": "StatementRemoval",
+    "original": "debounceTimer = null;",
+    "replacement": ";",
+    "occurrence": 1,
+    "reason": "No effect: nothing reads the timer variable after dispose(). Every place that does is behind a `disposed` check or assertActive()."
+  },
+  {
+    "file": "src/utils/persist/persist.ts",
+    "scope": "persist > handle > save",
+    "mutator": "StatementRemoval",
+    "original": "assertActive();",
+    "replacement": ";",
+    "occurrence": 1,
+    "reason": "No effect: writeToStorage(), called a few lines later, makes the same check and rejects with the same error. The statements in between only reset saveAfterRead and the debounce timer, which nothing uses once the handle is disposed. The only difference is that the promise rejects a few microtasks later, with no storage call or callback in between."
+  },
+  {
+    "file": "src/utils/persist/persist.ts",
+    "scope": "persist > handle > save",
+    "mutator": "ConditionalExpression",
+    "original": "debounceTimer !== null",
+    "replacement": "true",
+    "occurrence": 1,
+    "reason": "No effect: with no timer pending, the block runs `clearTimeout(null)`, which does nothing, and sets a variable that is already null to null."
+  },
+  {
+    "file": "src/utils/persist/persist.ts",
+    "scope": "persist > handle > clear",
+    "mutator": "ConditionalExpression",
+    "original": "debounceTimer !== null",
+    "replacement": "true",
+    "occurrence": 1,
+    "reason": "No effect: with no timer pending, the block runs `clearTimeout(null)`, which does nothing, and sets a variable that is already null to null."
+  },
+  {
+    "file": "src/utils/persist/persist.ts",
+    "scope": "persist > handle > rehydrate",
+    "mutator": "ConditionalExpression",
+    "original": "!hydratedFlag",
+    "replacement": "true",
+    "occurrence": 1,
+    "reason": "No effect: setting a flag that is already true and resolving a promise that is already resolved change nothing."
+  }
+]

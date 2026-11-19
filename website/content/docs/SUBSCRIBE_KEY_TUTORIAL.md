@@ -76,7 +76,7 @@ Subscribing captures the initial value. The callback receives current and previo
 Under the hood, `subscribeKey` wraps the existing `subscribe()` + `snapshot()` APIs:
 
 1. Captures an initial snapshot and stores `snapshot[key]` as the previous value.
-2. On each batched notification (or each mutation with `sync: true`), takes a new snapshot and compares `snapshot[key]` with the previous value via `Object.is()`.
+2. On each batched notification (or, with `sync: true`, after each direct write and once after each store method or array operation), takes a new snapshot and compares `snapshot[key]` with the previous value via `Object.is()`.
 3. If different, updates the stored previous value and calls the callback with `(currentValue, previousValue)`.
 
 Because `snapshot()` uses structural sharing, unchanged sub-trees return the same reference. This makes the `Object.is()` comparison efficient — no deep equality checks are needed.

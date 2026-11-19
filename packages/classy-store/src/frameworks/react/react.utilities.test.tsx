@@ -18,23 +18,33 @@ import {UtilityValue} from './testHelpers/utilityValue/UtilityValue';
 
 const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 const cleanups: Array<() => void> = [];
-let previousExtension: Window['__REDUX_DEVTOOLS_EXTENSION__'];
+
+// The library reads the extension through a local type and declares nothing
+// on the global `Window`; the test does the same.
+type DevtoolsListener = (message: {
+  type: string;
+  payload?: {type?: string};
+  state?: string;
+}) => void;
+type DevtoolsHost = {__REDUX_DEVTOOLS_EXTENSION__?: {connect: () => unknown}};
+const devtoolsHost = window as unknown as DevtoolsHost;
+let previousExtension: DevtoolsHost['__REDUX_DEVTOOLS_EXTENSION__'];
 
 function disposeAll() {
   for (const cleanup of cleanups.splice(0).reverse()) cleanup();
 }
 
 beforeEach(() => {
-  previousExtension = window.__REDUX_DEVTOOLS_EXTENSION__;
+  previousExtension = devtoolsHost.__REDUX_DEVTOOLS_EXTENSION__;
 });
 
 afterEach(async () => {
   disposeAll();
   await flush();
   if (previousExtension) {
-    window.__REDUX_DEVTOOLS_EXTENSION__ = previousExtension;
+    devtoolsHost.__REDUX_DEVTOOLS_EXTENSION__ = previousExtension;
   } else {
-    delete window.__REDUX_DEVTOOLS_EXTENSION__;
+    delete devtoolsHost.__REDUX_DEVTOOLS_EXTENSION__;
   }
 });
 
@@ -53,22 +63,19 @@ function createStorage() {
 }
 
 function installDevtools() {
-  type Extension = NonNullable<Window['__REDUX_DEVTOOLS_EXTENSION__']>;
-  type Connection = ReturnType<Extension['connect']>;
-  type Listener = Parameters<Connection['subscribe']>[0];
-  let listener: Listener | undefined;
+  let listener: DevtoolsListener | undefined;
   const unsubscribe = mock(() => {
     listener = undefined;
   });
   const connection = {
     init: mock((_state: unknown) => {}),
     send: mock((_action: string | {type: string}, _state: unknown) => {}),
-    subscribe: (nextListener: Listener) => {
+    subscribe: (nextListener: DevtoolsListener) => {
       listener = nextListener;
       return unsubscribe;
     },
   };
-  window.__REDUX_DEVTOOLS_EXTENSION__ = {connect: () => connection};
+  devtoolsHost.__REDUX_DEVTOOLS_EXTENSION__ = {connect: () => connection};
   return {
     connection,
     unsubscribe,
@@ -118,7 +125,7 @@ describe('core and React utility happy paths', () => {
   test('sends edits to DevTools and renders time-travel state in React', async () => {
     const extension = installDevtools();
     const store = createClassyStore({count: 0});
-    cleanups.push(devtools(store));
+    cleanups.push(devtools(store).dispose);
     const container = document.createElement('div');
     document.body.appendChild(container);
     const root = createRoot(container);
@@ -215,7 +222,7 @@ describe('core and React utility happy paths', () => {
     cleanups.push(persistence.dispose);
     await persistence.hydrated;
     const history = withHistory(store);
-    cleanups.push(history.dispose, devtools(store));
+    cleanups.push(history.dispose, devtools(store).dispose);
 
     store.count = 1;
     await flush();

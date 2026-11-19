@@ -283,10 +283,20 @@ state when requested and resolves after that write completes; a failed write
 reports through `onError` and does not block later writes.
 
 `rehydrate()` waits for writes/removals already requested through that handle.
-If another read, save, clear, accepted storage event, or local mutation supersedes
-an in-flight read, its result is ignored. In particular, typing while initial
-async hydration is pending keeps the newer local state. An ignored read still
-settles its promise; hydration completion does not guarantee that stored data won.
+If another read, an explicit `save()` or `clear()`, or an accepted storage event
+supersedes an in-flight read, its result is ignored. An ignored read still settles
+its promise.
+
+A local edit does not supersede a read. Stored data is restored field by field:
+a field you edited while the read was in flight keeps your newer value, including
+when the edit was nested inside it, and every other stored field is still
+restored. Typing into one field during a slow initial hydration therefore keeps
+what you typed without losing the rest of the saved state.
+
+Background saves wait for the read as well. An edit made while the read is pending
+is saved once the read settles, together with the fields it restored, so it can
+never replace the stored record with default values first. Hydration completion
+still does not guarantee that every stored field won.
 
 `clear()` cancels pending auto-saves and removes stored data after earlier issued
 writes finish. Later edits can persist again. `dispose()` skips queued writes
@@ -442,9 +452,12 @@ persist(todoStore, {
 ```
 
 Migration runs only when stored and configured versions differ. Without a
-`migrate` callback, a version mismatch does not reject the payload. Validate the
-versions and shapes your application accepts. Migration and hydration do not
-automatically rewrite storage; a later save writes the configured version.
+`migrate` callback, stored data from another version is ignored: the store keeps
+its current state and no error is reported. Raising `version` without providing
+`migrate` is therefore how you discard an old format. A stored record with no
+`version` field counts as version `0`. Validate the versions and shapes your
+`migrate` accepts. Migration and hydration do not automatically rewrite storage;
+a later save writes the configured version.
 
 **Merge Strategies**
 
@@ -568,7 +581,7 @@ try {
 
 An active handle reports failures through `onError` and status before rejecting with the original error. `PersistOperation` identifies the failing step. Reading storage uses `'read'`. Decoding JSON, deserializing properties, migrating, merging, and applying restored fields use `'parse'`. Serializing properties, encoding JSON, and writing storage use `'write'`. Removing data uses `'remove'`. Later queued saves can still run after a failure. `rehydrate()` also waits for expired-data removal when `clearOnExpire` is enabled and rejects if that removal fails.
 
-An obsolete read superseded by a local edit or newer request is still ignored. Calls on a disposed handle reject; explicit queued writes cancelled by disposal also reject without invoking the adapter. Disposal errors do not invoke `onError` or publish more status.
+An obsolete read superseded by a newer request, an explicit save or a clear is still ignored. Calls on a disposed handle reject; explicit queued writes cancelled by disposal also reject without invoking the adapter. Disposal errors do not invoke `onError` or publish more status.
 
 Handle rejected promises in DOM event handlers, for example `onClick={() => { void handle.save().catch(showError); }}`. Use `try`/`catch` inside an async handler when the UI also needs to show success.
 

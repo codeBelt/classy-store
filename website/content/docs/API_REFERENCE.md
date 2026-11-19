@@ -17,6 +17,7 @@ description: "Public entry points, types, hooks, and utility signatures for Clas
 | Read state outside React or observe mutations            | `snapshot(store)`, `subscribe(store, listener)`, `subscribeKey(store, key, listener)` |
 | Persist state, record history, or inspect it in DevTools | `persist(store, options)`, `withHistory(store)`, `devtools(store)`                    |
 | Track changes inside Map-like or Set-like collections    | `reactiveMap()`, `reactiveSet()`                                                      |
+| Group direct writes into one notification                | `batch(run)`                                                                          |
 | Compare selector results one level deep                  | `shallowEqual(previous, next)`                                                        |
 
 `useClassyStore` is the starting point for React components. The two status hooks
@@ -27,17 +28,17 @@ persistence handle. They do not create those handles or subscribe to store data.
 
 Import from the entry that owns the API. Core, collections, and utilities do not depend on React.
 
-| Import path                           | Runtime exports                                                                              | Public types                                                                                                                                                                                             |
-| ------------------------------------- | -------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@codebelt/classy-store`              | `createClassyStore`, `snapshot`, `subscribe`, `shallowEqual`                                 | `Snapshot`, `SubscribeOptions`                                                                                                                                                                           |
-| `@codebelt/classy-store/react`        | `useClassyStore`, `useLocalStore`, `createStoreHook`, `useHistoryStatus`, `usePersistStatus` | `UseClassyStoreSelectorOptions`                                                                                                                                                                          |
-| `@codebelt/classy-store/react/server` | `prepareStoreForHydration`                                                                   | —                                                                                                                                                                                                        |
-| `@codebelt/classy-store/collections`  | `reactiveMap`, `reactiveSet`                                                                 | `ReactiveMap`, `ReactiveSet`                                                                                                                                                                             |
-| `@codebelt/classy-store/utils`        | `persist`, `withHistory`, `subscribeKey`, `devtools`                                         | `PersistOptions`, `PersistHandle`, `PersistStatus`, `PersistOperation`, `PropertyTransform`, `StorageAdapter`, `HistoryOptions`, `HistoryHandle`, `HistoryStatus`, `DevtoolsOptions`, `SubscribeOptions` |
-| `@codebelt/classy-store/vue`          | `useClassyStore`                                                                             | —                                                                                                                                                                                                        |
-| `@codebelt/classy-store/svelte`       | `toSvelteStore`                                                                              | `ClassyReadable`                                                                                                                                                                                         |
-| `@codebelt/classy-store/solid`        | `useClassyStore`                                                                             | —                                                                                                                                                                                                        |
-| `@codebelt/classy-store/angular`      | `injectStore`                                                                                | —                                                                                                                                                                                                        |
+| Import path                           | Runtime exports                                                                              | Public types                                                                                                                                                                                                               |
+| ------------------------------------- | -------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@codebelt/classy-store`              | `createClassyStore`, `snapshot`, `subscribe`, `batch`, `shallowEqual`, `PROXYABLE`           | `Snapshot`, `SubscribeOptions`                                                                                                                                                                                             |
+| `@codebelt/classy-store/react`        | `useClassyStore`, `useLocalStore`, `createStoreHook`, `useHistoryStatus`, `usePersistStatus` | `UseClassyStoreSelectorOptions`                                                                                                                                                                                            |
+| `@codebelt/classy-store/react/server` | `prepareStoreForHydration`                                                                   | —                                                                                                                                                                                                                          |
+| `@codebelt/classy-store/collections`  | `reactiveMap`, `reactiveSet`                                                                 | `ReactiveMap`, `ReactiveSet`                                                                                                                                                                                               |
+| `@codebelt/classy-store/utils`        | `persist`, `withHistory`, `subscribeKey`, `devtools`                                         | `PersistOptions`, `PersistHandle`, `PersistStatus`, `PersistOperation`, `PropertyTransform`, `StorageAdapter`, `HistoryOptions`, `HistoryHandle`, `HistoryStatus`, `DevtoolsOptions`, `DevtoolsHandle`, `SubscribeOptions` |
+| `@codebelt/classy-store/vue`          | `useClassyStore`                                                                             | —                                                                                                                                                                                                                          |
+| `@codebelt/classy-store/svelte`       | `toSvelteStore`                                                                              | `ClassyReadable`                                                                                                                                                                                                           |
+| `@codebelt/classy-store/solid`        | `useClassyStore`                                                                             | —                                                                                                                                                                                                                          |
+| `@codebelt/classy-store/angular`      | `injectClassyStore`                                                                          | —                                                                                                                                                                                                                          |
 
 ESM and CommonJS callers using the same package installation can pass stores
 between them. For example, a utility loaded with `require('@codebelt/classy-store/utils')`
@@ -55,34 +56,35 @@ context. React's selector and auto-tracking modes are specific to `/react`.
 
 Read the [Svelte guide](./SVELTE.md) or [Vue guide](./VUE.md) for input handling, timing, and cleanup.
 
-Solid's `useClassyStore(store)` targets **Solid 2.0.0-rc.18 only**. It requires a
+Solid's `useClassyStore(store)` supports Solid 2 (`solid-js@^2.0.0`). It requires a
 live component or `createRoot()` owner and disposes its subscription with that
 owner. Store notifications reach its signal synchronously; Solid 2 retains its
 native batching. Call Solid's `flush()` when imperative code needs current
 computed values or DOM. The adapter does not call it automatically, and ordinary
-core subscriptions stay batched. See the [Solid 2 guide](./SOLID.md) for pinned
-packages, inputs, keyed lists, and migration from Solid 1.
+core subscriptions stay batched. See the [Solid 2 guide](./SOLID.md) for setup,
+inputs, keyed lists, and ownership.
 
-Angular's `injectStore(store)` supports **all stable Angular 22 releases**
+Angular's `injectClassyStore(store)` supports **all stable Angular 22 releases**
 (`^22.0.0`). It requires a live
 injection context and returns a readonly signal. Store writes update the signal
 and dependent computed reads immediately; Angular schedules effects and rendering,
 including zoneless `OnPush` views. Cleanup follows the injected `DestroyRef`.
-See the [Angular guide](./ANGULAR.md) for inputs, keyed lists, and migration.
+See the [Angular guide](./ANGULAR.md) for inputs, keyed lists, and cleanup.
 
 ## API Reference
 
 ### `createClassyStore(instance)`
 
-Wraps a class instance or plain object in a reactive proxy. Passing the same instance or its store proxy again returns the existing proxy. Mutations notify framework adapters synchronously. Ordinary subscribers receive a batched notification in a microtask.
+Wraps a class instance or plain object in a reactive proxy. Passing the same instance or its store proxy again returns the existing proxy. Mutations notify framework adapters synchronously: once per direct write, and once per store method or array operation. Ordinary subscribers receive a batched notification in a microtask.
 
 ```typescript
 const myStore = createClassyStore(new MyClass());
 ```
 
-- **Prototype methods** are automatically bound so `this` mutations go through the proxy; arrow-function fields cannot be rebound
+- **Prototype methods** are automatically bound so `this` mutations go through the proxy; arrow-function fields cannot be rebound. Each call is a [transaction](./TUTORIAL.md#batching-and-transactions): synchronous subscribers are notified once, after the outermost call returns
 - **Getters** cache results from the store properties they read. Initialize optional fields used in getters, including fields whose initial value is `undefined`. A live getter that reads an absent field recomputes on subsequent reads
-- **Nested plain objects, arrays, and reactive collections** share a single proxy per object. Retained rows stay reactive after reordering or filtering. A separately created store embedded by its proxy stays reactive too. Ordinary nested class instances remain opaque
+- **Nested plain objects, arrays, and reactive collections** share a single proxy per object. Retained rows stay reactive after reordering or filtering. A separately created store embedded by its proxy stays reactive too. Ordinary nested class instances remain opaque; a class opts in with [`static [PROXYABLE] = true`](#proxyable)
+- **Frozen objects**, snapshots included, are kept by reference as immutable values and are not proxied. Replace the field to publish a change; see [Frozen objects are values](./TUTORIAL.md#frozen-objects-are-values)
 
 Keep the returned proxy as the mutable store. Writes to the original instance
 or raw nested objects bypass notifications and snapshot invalidation. See the
@@ -151,7 +153,7 @@ return (
 
 React subscriptions always notify synchronously, including selector, auto-tracked, and bound hooks. There is no React `sync` option. This lets React observe controlled-field changes during the input event and preserve caret position. Ordinary `subscribe()` callbacks remain batched.
 
-When upgrading from 0.6.x, remove the React hook's `sync` option and imports of `UseClassyStoreOptions`. Selector options still support `isEqual`. Selectors can observe each write to a store even when React batches the resulting renders. [0.7.0 upgrade guide](./UPGRADING_0_7.md)
+Selectors run after each direct write to a store and once after each store method or array operation, even when React batches the resulting renders.
 
 ### `useHistoryStatus(history)`
 
@@ -321,9 +323,11 @@ const snap = snapshot(myStore);
 
 ### `subscribe(store, callback, options?)`
 
-Returns an unsubscribe function. By default, consecutive writes before the scheduled microtask runs produce one callback during that microtask. Pass `{sync: true}` to notify immediately after each mutation.
+Returns an unsubscribe function. By default, consecutive writes before the scheduled microtask runs produce one callback during that microtask. Pass `{sync: true}` to be notified in the same call stack: after each direct write, and once after each store method or array operation.
 
-A subscription to a store created by `createClassyStore()` observes its own subtree, even when another store contains it. A subscription to a child proxy also observes siblings within its nearest owning stores. Moving that child updates its subscription scope automatically.
+A subscription observes the subtree of the proxy it is given. Pass a store to observe all of it, or a nested proxy such as `store.user` to observe only that object and what it contains; a change to a sibling field does not notify it. The subscription follows the object itself, so it keeps working when the object moves to another field or another store.
+
+Each call is its own registration. Subscribing the same callback twice produces two notifications per change, and each returned function removes only its own registration.
 
 ```typescript
 import {subscribe} from '@codebelt/classy-store';
@@ -345,13 +349,59 @@ unsub();
 unsubSync();
 ```
 
+### `batch(run)`
+
+Runs `run` and notifies synchronous subscribers once, when it returns or throws, instead of once per write. Every framework adapter subscribes synchronously, so this is what keeps a loop of direct writes from re-reading the store on each iteration. Returns whatever `run` returns.
+
+```typescript
+import {batch} from '@codebelt/classy-store';
+
+batch(() => {
+  for (const row of incoming) {
+    listStore.items.push(row);
+  }
+  listStore.loadedAt = Date.now();
+}); // subscribers are notified once, here
+```
+
+Store methods and array methods on store state are transactions already, so `batch()` is only needed for writes made directly on the store outside a method. Calls nest, including with store methods; the outermost one notifies. Reads inside the callback see every write made so far.
+
+Only the synchronous part of the callback is covered. In `batch(async () => { ... })`, a write after an `await` happens once `batch()` has already returned and notifies on its own. Ordinary `subscribe()` callbacks are batched in a microtask regardless. [Batching and transactions](./TUTORIAL.md#batching-and-transactions)
+
 ### `shallowEqual(a, b)`
 
-Use `shallowEqual` for selectors returning arrays or plain records with enumerable data fields. It compares primitives with `Object.is` and arrays by length, occupied indices, and element values. A hole differs from an explicit `undefined` element. Comparing an array with a record returns `false`.
+Use `shallowEqual` for selectors that return a new array, record, or collection on each call. It compares primitives with `Object.is` and arrays by length, occupied indices, and element values. A hole differs from an explicit `undefined` element.
 
-For records it compares enumerable string-key counts, then checks each key from the first record for own membership and an `Object.is`-equal value in the second. If keys differ in enumerability, the result can depend on argument order. Symbol keys, prototypes, and the contents of native maps, sets, and dates fall outside this comparison.
+Two values with different prototypes are never equal, so an array never equals a record and a class instance never equals a plain object with the same fields. Within one kind:
+
+- **Records and class instances** compare enumerable string-key counts, then each key from the first for own membership and an `Object.is`-equal value in the second. If keys differ in enumerability, the result can depend on argument order. Symbol keys are not compared.
+- **`Date`** values are equal when they hold the same instant.
+- **`Map`** and **`Set`** are equal when they have the same size and members; map values are compared with `Object.is`.
+- **Any other object with no enumerable keys**, such as a `RegExp`, an `Error` or a `Promise`, is equal only to itself, because its state is not visible to the comparison.
 
 [Compare selectors with shallowEqual →](/examples/shallow-equal/)
+
+### `PROXYABLE`
+
+A symbol that lets a class of your own be deeply reactive when its instances are nested in a store. Without it, a nested class instance is an opaque value, like a `Date`.
+
+```typescript
+import {createClassyStore, PROXYABLE} from '@codebelt/classy-store';
+
+class Todo {
+  static [PROXYABLE] = true;
+  done = false;
+
+  toggle() {
+    this.done = !this.done;
+  }
+}
+
+const store = createClassyStore({todos: [new Todo()]});
+store.todos[0].toggle(); // notifies subscribers of `store`
+```
+
+Instances are proxied like plain objects, their getters are memoized, and their snapshots keep the class prototype. The class passed to `createClassyStore()` itself needs no marker. [Reactive nested classes](./TUTORIAL.md#reactive-nested-classes)
 
 ### `reactiveMap<K, V>(initial?)`
 
@@ -481,8 +531,13 @@ Connect a store to Redux DevTools for state inspection and time-travel debugging
 ```typescript
 import {devtools} from '@codebelt/classy-store/utils';
 
-const disconnect = devtools(myStore, {name: 'MyStore'});
+const connection = devtools(myStore, {name: 'MyStore'});
+
+// When the connection is no longer needed:
+connection.dispose();
 ```
+
+Returns a `DevtoolsHandle`. `dispose()` disconnects from the extension and stops observing the store; calling it again does nothing. When the extension is missing or `enabled` is `false`, the handle is inert.
 
 > See the [DevTools Tutorial](./DEVTOOLS_TUTORIAL.md).
 
@@ -502,7 +557,7 @@ const unsub = subscribeKey(store, 'theme', (value, prev) => {
 
 ### `withHistory(store, options?)`
 
-Adds undo and redo with a bounded history of snapshots. Recording uses a batched subscription, so consecutive writes in the same turn produce one entry.
+Adds undo and redo with a bounded history of snapshots. Recording uses a batched subscription, so consecutive writes in the same turn produce one entry. `undo()` first records an edit that has not been recorded yet, so it always steps back over the latest change.
 
 ```typescript
 import {createClassyStore} from '@codebelt/classy-store';
@@ -511,11 +566,12 @@ import {withHistory} from '@codebelt/classy-store/utils';
 const store = createClassyStore({count: 0});
 const history = withHistory(store, {limit: 100});
 store.count = 1;
-await Promise.resolve(); // let the recording subscription run
 history.undo(); // count is 0
 history.redo(); // count is 1
 history.dispose();
 ```
+
+Restoring an entry makes the store's data fields match it: changed fields are replaced with mutable copies, top-level fields the entry does not have are deleted, and unchanged fields are left untouched, so selectors reading them do not re-run.
 
 > See the [withHistory Tutorial](./HISTORY_TUTORIAL.md).
 

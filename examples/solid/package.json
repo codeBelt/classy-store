@@ -12,12 +12,12 @@
   },
   "dependencies": {
     "@codebelt/classy-store": "workspace:*",
-    "@solidjs/web": "2.0.0-rc.18",
-    "solid-js": "2.0.0-rc.18"
+    "@solidjs/web": "2.0.0",
+    "solid-js": "2.0.0"
   },
   "devDependencies": {
-    "@solidjs/vite-plugin": "3.0.0-next.51",
-    "typescript": "^5.7.0",
+    "@solidjs/vite-plugin": "3.0.1",
+    "typescript": "^7.0.2",
     "vite": "8.3.8"
   }
 }

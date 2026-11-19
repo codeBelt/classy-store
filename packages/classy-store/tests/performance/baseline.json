@@ -1,0 +1,572 @@
+{
+  "recorded": "2026-11-19",
+  "runs": 5,
+  "machine": "Apple M1 Max",
+  "metadata": {
+    "react": "19.3.1",
+    "libraryVersion": "0.11.0",
+    "compiler": "1.0.0",
+    "browser": "159.0.8154.6",
+    "bun": "1.4.4",
+    "os": "darwin 25.6.0 arm64",
+    "build": "production profiling",
+    "sizes": [200, 1000],
+    "samples": 5,
+    "iterations": 20,
+    "warmup": 5
+  },
+  "cases": {
+    "form 200, selector, compiler off": {
+      "mount": {
+        "medianMs": 9.4,
+        "minMs": 9.2,
+        "maxMs": 9.6
+      },
+      "change": {
+        "medianMs": 0.2,
+        "minMs": 0.2,
+        "maxMs": 0.2
+      },
+      "burst": {
+        "medianMs": 0.4,
+        "minMs": 0.4,
+        "maxMs": 0.5
+      },
+      "unrelated": {
+        "medianMs": 0,
+        "minMs": 0,
+        "maxMs": 0
+      },
+      "noop": {
+        "medianMs": 0,
+        "minMs": 0,
+        "maxMs": 0
+      },
+      "parent": {
+        "medianMs": 0.7,
+        "minMs": 0.7,
+        "maxMs": 0.7
+      },
+      "input": {
+        "medianMs": 0.1,
+        "minMs": 0.1,
+        "maxMs": 0.2
+      }
+    },
+    "form 200, selector, compiler on": {
+      "mount": {
+        "medianMs": 9.5,
+        "minMs": 9.4,
+        "maxMs": 9.6
+      },
+      "change": {
+        "medianMs": 0.2,
+        "minMs": 0.2,
+        "maxMs": 0.2
+      },
+      "burst": {
+        "medianMs": 0.4,
+        "minMs": 0.4,
+        "maxMs": 0.4
+      },
+      "unrelated": {
+        "medianMs": 0,
+        "minMs": 0,
+        "maxMs": 0
+      },
+      "noop": {
+        "medianMs": 0,
+        "minMs": 0,
+        "maxMs": 0
+      },
+      "parent": {
+        "medianMs": 0.7,
+        "minMs": 0.7,
+        "maxMs": 0.7
+      },
+      "input": {
+        "medianMs": 0.1,
+        "minMs": 0.1,
+        "maxMs": 0.1
+      }
+    },
+    "form 200, tracked, compiler off": {
+      "mount": {
+        "medianMs": 10.8,
+        "minMs": 10.7,
+        "maxMs": 11
+      },
+      "change": {
+        "medianMs": 0.2,
+        "minMs": 0.2,
+        "maxMs": 0.2
+      },
+      "burst": {
+        "medianMs": 0.6,
+        "minMs": 0.6,
+        "maxMs": 0.6
+      },
+      "unrelated": {
+        "medianMs": 0,
+        "minMs": 0,
+        "maxMs": 0
+      },
+      "noop": {
+        "medianMs": 0,
+        "minMs": 0,
+        "maxMs": 0
+      },
+      "parent": {
+        "medianMs": 1,
+        "minMs": 1,
+        "maxMs": 1
+      },
+      "input": {
+        "medianMs": 0.2,
+        "minMs": 0.1,
+        "maxMs": 0.2
+      }
+    },
+    "form 200, tracked, compiler on": {
+      "mount": {
+        "medianMs": 11,
+        "minMs": 11,
+        "maxMs": 11.1
+      },
+      "change": {
+        "medianMs": 0.2,
+        "minMs": 0.2,
+        "maxMs": 0.2
+      },
+      "burst": {
+        "medianMs": 0.6,
+        "minMs": 0.6,
+        "maxMs": 0.6
+      },
+      "unrelated": {
+        "medianMs": 0,
+        "minMs": 0,
+        "maxMs": 0
+      },
+      "noop": {
+        "medianMs": 0,
+        "minMs": 0,
+        "maxMs": 0
+      },
+      "parent": {
+        "medianMs": 1,
+        "minMs": 1,
+        "maxMs": 1.1
+      },
+      "input": {
+        "medianMs": 0.2,
+        "minMs": 0.1,
+        "maxMs": 0.2
+      }
+    },
+    "list 200, selector, compiler off": {
+      "mount": {
+        "medianMs": 8.9,
+        "minMs": 8.8,
+        "maxMs": 9
+      },
+      "change": {
+        "medianMs": 0.2,
+        "minMs": 0.1,
+        "maxMs": 0.2
+      },
+      "burst": {
+        "medianMs": 0.4,
+        "minMs": 0.4,
+        "maxMs": 0.4
+      },
+      "unrelated": {
+        "medianMs": 0,
+        "minMs": 0,
+        "maxMs": 0
+      },
+      "noop": {
+        "medianMs": 0,
+        "minMs": 0,
+        "maxMs": 0
+      },
+      "parent": {
+        "medianMs": 0.7,
+        "minMs": 0.7,
+        "maxMs": 0.7
+      }
+    },
+    "list 200, selector, compiler on": {
+      "mount": {
+        "medianMs": 9,
+        "minMs": 9,
+        "maxMs": 9.1
+      },
+      "change": {
+        "medianMs": 0.2,
+        "minMs": 0.1,
+        "maxMs": 0.2
+      },
+      "burst": {
+        "medianMs": 0.4,
+        "minMs": 0.4,
+        "maxMs": 0.5
+      },
+      "unrelated": {
+        "medianMs": 0,
+        "minMs": 0,
+        "maxMs": 0
+      },
+      "noop": {
+        "medianMs": 0,
+        "minMs": 0,
+        "maxMs": 0
+      },
+      "parent": {
+        "medianMs": 0.7,
+        "minMs": 0.7,
+        "maxMs": 0.7
+      }
+    },
+    "list 200, tracked, compiler off": {
+      "mount": {
+        "medianMs": 10.2,
+        "minMs": 10.1,
+        "maxMs": 10.2
+      },
+      "change": {
+        "medianMs": 0.2,
+        "minMs": 0.2,
+        "maxMs": 0.2
+      },
+      "burst": {
+        "medianMs": 0.6,
+        "minMs": 0.6,
+        "maxMs": 0.6
+      },
+      "unrelated": {
+        "medianMs": 0,
+        "minMs": 0,
+        "maxMs": 0
+      },
+      "noop": {
+        "medianMs": 0,
+        "minMs": 0,
+        "maxMs": 0
+      },
+      "parent": {
+        "medianMs": 1,
+        "minMs": 1,
+        "maxMs": 1.1
+      }
+    },
+    "list 200, tracked, compiler on": {
+      "mount": {
+        "medianMs": 10.4,
+        "minMs": 10.4,
+        "maxMs": 10.8
+      },
+      "change": {
+        "medianMs": 0.2,
+        "minMs": 0.2,
+        "maxMs": 0.2
+      },
+      "burst": {
+        "medianMs": 0.6,
+        "minMs": 0.6,
+        "maxMs": 0.6
+      },
+      "unrelated": {
+        "medianMs": 0,
+        "minMs": 0,
+        "maxMs": 0
+      },
+      "noop": {
+        "medianMs": 0,
+        "minMs": 0,
+        "maxMs": 0
+      },
+      "parent": {
+        "medianMs": 1.1,
+        "minMs": 1.1,
+        "maxMs": 1.2
+      }
+    },
+    "form 1000, selector, compiler off": {
+      "mount": {
+        "medianMs": 25.4,
+        "minMs": 25,
+        "maxMs": 25.7
+      },
+      "change": {
+        "medianMs": 0.5,
+        "minMs": 0.5,
+        "maxMs": 0.5
+      },
+      "burst": {
+        "medianMs": 1.5,
+        "minMs": 1.5,
+        "maxMs": 1.5
+      },
+      "unrelated": {
+        "medianMs": 0.1,
+        "minMs": 0.1,
+        "maxMs": 0.1
+      },
+      "noop": {
+        "medianMs": 0,
+        "minMs": 0,
+        "maxMs": 0
+      },
+      "parent": {
+        "medianMs": 3.2,
+        "minMs": 3.2,
+        "maxMs": 3.2
+      },
+      "input": {
+        "medianMs": 0.4,
+        "minMs": 0.4,
+        "maxMs": 0.4
+      }
+    },
+    "form 1000, selector, compiler on": {
+      "mount": {
+        "medianMs": 25.8,
+        "minMs": 25.7,
+        "maxMs": 25.9
+      },
+      "change": {
+        "medianMs": 0.5,
+        "minMs": 0.5,
+        "maxMs": 0.5
+      },
+      "burst": {
+        "medianMs": 1.5,
+        "minMs": 1.5,
+        "maxMs": 1.5
+      },
+      "unrelated": {
+        "medianMs": 0.1,
+        "minMs": 0.1,
+        "maxMs": 0.1
+      },
+      "noop": {
+        "medianMs": 0,
+        "minMs": 0,
+        "maxMs": 0
+      },
+      "parent": {
+        "medianMs": 3.3,
+        "minMs": 3.3,
+        "maxMs": 3.4
+      },
+      "input": {
+        "medianMs": 0.4,
+        "minMs": 0.4,
+        "maxMs": 0.5
+      }
+    },
+    "form 1000, tracked, compiler off": {
+      "mount": {
+        "medianMs": 30.9,
+        "minMs": 30.5,
+        "maxMs": 30.9
+      },
+      "change": {
+        "medianMs": 0.6,
+        "minMs": 0.6,
+        "maxMs": 0.6
+      },
+      "burst": {
+        "medianMs": 2.1,
+        "minMs": 2.1,
+        "maxMs": 2.1
+      },
+      "unrelated": {
+        "medianMs": 0.1,
+        "minMs": 0.1,
+        "maxMs": 0.1
+      },
+      "noop": {
+        "medianMs": 0,
+        "minMs": 0,
+        "maxMs": 0
+      },
+      "parent": {
+        "medianMs": 4.7,
+        "minMs": 4.7,
+        "maxMs": 4.8
+      },
+      "input": {
+        "medianMs": 0.5,
+        "minMs": 0.5,
+        "maxMs": 0.6
+      }
+    },
+    "form 1000, tracked, compiler on": {
+      "mount": {
+        "medianMs": 31.6,
+        "minMs": 31.2,
+        "maxMs": 32.1
+      },
+      "change": {
+        "medianMs": 0.6,
+        "minMs": 0.6,
+        "maxMs": 0.6
+      },
+      "burst": {
+        "medianMs": 2.1,
+        "minMs": 2.1,
+        "maxMs": 2.2
+      },
+      "unrelated": {
+        "medianMs": 0.1,
+        "minMs": 0.1,
+        "maxMs": 0.1
+      },
+      "noop": {
+        "medianMs": 0,
+        "minMs": 0,
+        "maxMs": 0
+      },
+      "parent": {
+        "medianMs": 5.1,
+        "minMs": 5,
+        "maxMs": 5.1
+      },
+      "input": {
+        "medianMs": 0.6,
+        "minMs": 0.5,
+        "maxMs": 0.6
+      }
+    },
+    "list 1000, selector, compiler off": {
+      "mount": {
+        "medianMs": 17.7,
+        "minMs": 17.7,
+        "maxMs": 17.9
+      },
+      "change": {
+        "medianMs": 0.5,
+        "minMs": 0.5,
+        "maxMs": 0.5
+      },
+      "burst": {
+        "medianMs": 1.5,
+        "minMs": 1.5,
+        "maxMs": 1.5
+      },
+      "unrelated": {
+        "medianMs": 0.1,
+        "minMs": 0.1,
+        "maxMs": 0.1
+      },
+      "noop": {
+        "medianMs": 0,
+        "minMs": 0,
+        "maxMs": 0
+      },
+      "parent": {
+        "medianMs": 3.5,
+        "minMs": 3.5,
+        "maxMs": 3.5
+      }
+    },
+    "list 1000, selector, compiler on": {
+      "mount": {
+        "medianMs": 17.9,
+        "minMs": 17.7,
+        "maxMs": 18
+      },
+      "change": {
+        "medianMs": 0.5,
+        "minMs": 0.5,
+        "maxMs": 0.5
+      },
+      "burst": {
+        "medianMs": 1.5,
+        "minMs": 1.4,
+        "maxMs": 1.5
+      },
+      "unrelated": {
+        "medianMs": 0.1,
+        "minMs": 0.1,
+        "maxMs": 0.1
+      },
+      "noop": {
+        "medianMs": 0,
+        "minMs": 0,
+        "maxMs": 0
+      },
+      "parent": {
+        "medianMs": 3.6,
+        "minMs": 3.6,
+        "maxMs": 3.6
+      }
+    },
+    "list 1000, tracked, compiler off": {
+      "mount": {
+        "medianMs": 23,
+        "minMs": 22.9,
+        "maxMs": 23.2
+      },
+      "change": {
+        "medianMs": 0.6,
+        "minMs": 0.6,
+        "maxMs": 0.6
+      },
+      "burst": {
+        "medianMs": 2.1,
+        "minMs": 2.1,
+        "maxMs": 2.1
+      },
+      "unrelated": {
+        "medianMs": 0.1,
+        "minMs": 0.1,
+        "maxMs": 0.1
+      },
+      "noop": {
+        "medianMs": 0,
+        "minMs": 0,
+        "maxMs": 0
+      },
+      "parent": {
+        "medianMs": 5.2,
+        "minMs": 5.1,
+        "maxMs": 5.3
+      }
+    },
+    "list 1000, tracked, compiler on": {
+      "mount": {
+        "medianMs": 23.4,
+        "minMs": 23.2,
+        "maxMs": 24.1
+      },
+      "change": {
+        "medianMs": 0.6,
+        "minMs": 0.6,
+        "maxMs": 0.6
+      },
+      "burst": {
+        "medianMs": 2.1,
+        "minMs": 2.1,
+        "maxMs": 2.2
+      },
+      "unrelated": {
+        "medianMs": 0.1,
+        "minMs": 0.1,
+        "maxMs": 0.1
+      },
+      "noop": {
+        "medianMs": 0,
+        "minMs": 0,
+        "maxMs": 0
+      },
+      "parent": {
+        "medianMs": 5.6,
+        "minMs": 5.6,
+        "maxMs": 5.8
+      }
+    }
+  }
+}

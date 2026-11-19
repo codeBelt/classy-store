@@ -1,0 +1,14 @@
+{
+  "bun": {
+    "read": 20,
+    "write": 3.2,
+    "getter": 41,
+    "snapshot": 10
+  },
+  "node": {
+    "read": 2.5,
+    "write": 1.7,
+    "getter": 5.3,
+    "snapshot": 1.8
+  }
+}

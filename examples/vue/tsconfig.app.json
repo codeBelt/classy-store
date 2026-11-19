@@ -17,7 +17,6 @@
     "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true,
-    "baseUrl": ".",
     "paths": {
       "@codebelt/classy-store": ["../../packages/classy-store/src/index.ts"],
       "@codebelt/classy-store/vue": [

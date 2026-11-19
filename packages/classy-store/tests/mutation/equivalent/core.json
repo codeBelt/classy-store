@@ -1,0 +1,218 @@
+[
+  {
+    "file": "src/core/core.ts",
+    "scope": "unwrap",
+    "mutator": "ConditionalExpression",
+    "original": "value === null",
+    "replacement": "false",
+    "occurrence": 1,
+    "reason": "Performance only: the null check is a fast path. Without it null reaches two WeakMap lookups that both miss, and `undefined ?? null` gives back null."
+  },
+  {
+    "file": "src/core/core.ts",
+    "scope": "identityOf",
+    "mutator": "ConditionalExpression",
+    "original": "typeof raw !== 'object'",
+    "replacement": "false",
+    "occurrence": 1,
+    "reason": "Performance only: the early return is a fast path. Only frozen snapshot objects are registered in `snapshotSources`, so the lookup misses for a primitive or a function and `?? raw` returns it unchanged."
+  },
+  {
+    "file": "src/core/core.ts",
+    "scope": "identityOf",
+    "mutator": "ConditionalExpression",
+    "original": "typeof raw !== 'object' || raw === null",
+    "replacement": "false",
+    "occurrence": 1,
+    "reason": "Performance only: the early return is a fast path. Only frozen snapshot objects are registered in `snapshotSources`, so the lookup misses for a primitive, null or a function and `?? raw` returns it unchanged."
+  },
+  {
+    "file": "src/core/core.ts",
+    "scope": "identityOf",
+    "mutator": "LogicalOperator",
+    "original": "typeof raw !== 'object' || raw === null",
+    "replacement": "typeof raw !== 'object' && raw === null",
+    "occurrence": 1,
+    "reason": "Performance only: the condition is then never true, and the early return is a fast path. Only frozen snapshot objects are registered in `snapshotSources`, so the lookup misses for a primitive, null or a function and `?? raw` returns it unchanged."
+  },
+  {
+    "file": "src/core/core.ts",
+    "scope": "identityOf",
+    "mutator": "ConditionalExpression",
+    "original": "raw === null",
+    "replacement": "false",
+    "occurrence": 1,
+    "reason": "Performance only: the null check is a fast path. Only frozen snapshot objects are registered in `snapshotSources`, so the lookup misses for null and `?? raw` returns it unchanged."
+  },
+  {
+    "file": "src/core/core.ts",
+    "scope": "activeTracker",
+    "mutator": "ConditionalExpression",
+    "original": "trackerStack.length > 0",
+    "replacement": "true",
+    "occurrence": 1,
+    "reason": "Same behaviour: with an empty stack the index read gives undefined where the original gives null, and both callers only test the tracker for truthiness."
+  },
+  {
+    "file": "src/core/core.ts",
+    "scope": "activeTracker",
+    "mutator": "EqualityOperator",
+    "original": "trackerStack.length > 0",
+    "replacement": "trackerStack.length >= 0",
+    "occurrence": 1,
+    "reason": "Same behaviour: with an empty stack the index read gives undefined where the original gives null, and both callers only test the tracker for truthiness."
+  },
+  {
+    "file": "src/core/core.ts",
+    "scope": "recordDep",
+    "mutator": "StringLiteral",
+    "original": "'value'",
+    "replacement": "''",
+    "occurrence": 1,
+    "reason": "Same behaviour: `areDepsValid` checks for 'version' and 'computed' and treats every other kind as a value dependency, and nothing else reads `kind`."
+  },
+  {
+    "file": "src/core/core.ts",
+    "scope": "areDepsValid",
+    "mutator": "ConditionalExpression",
+    "original": "!cached",
+    "replacement": "false",
+    "occurrence": 1,
+    "reason": "Unreachable: a computed dependency is recorded only after `evaluateComputed` returned for that getter, which leaves an entry in the node's `computedCache`, and entries are never removed. `cached` is always defined here."
+  },
+  {
+    "file": "src/core/core.ts",
+    "scope": "areDepsValid",
+    "mutator": "BooleanLiteral",
+    "original": "false",
+    "replacement": "true",
+    "occurrence": 3,
+    "reason": "Unreachable: this is the `return false` under `if (!cached)`. A computed dependency is recorded only after `evaluateComputed` left an entry in the node's `computedCache`, and entries are never removed."
+  },
+  {
+    "file": "src/core/core.ts",
+    "scope": "settleTransaction",
+    "mutator": "ConditionalExpression",
+    "original": "pendingSync.size",
+    "replacement": "true",
+    "occurrence": 1,
+    "reason": "Performance only: with nothing pending the block copies an empty set and delivers to no listener."
+  },
+  {
+    "file": "src/core/core.ts",
+    "scope": "isImmutableValue",
+    "mutator": "ConditionalExpression",
+    "original": "snapshotSources.has(value)",
+    "replacement": "false",
+    "occurrence": 1,
+    "reason": "Performance only: a snapshot is frozen before it is registered, so without this lookup `Object.isFrozen` gives the same answer and `frozenValues` remembers it. The lookup only spares that first scan."
+  },
+  {
+    "file": "src/core/core.ts",
+    "scope": "linkChild",
+    "mutator": "ConditionalExpression",
+    "original": "value === null",
+    "replacement": "false",
+    "occurrence": 1,
+    "reason": "Performance only: the null check is a fast path. Without it null misses the `internalsMap` lookup and `canProxy(null)` is false, so the function still returns nothing."
+  },
+  {
+    "file": "src/core/core.ts",
+    "scope": "detachTruncatedChildren",
+    "mutator": "ConditionalExpression",
+    "original": "index !== undefined",
+    "replacement": "true",
+    "occurrence": 1,
+    "reason": "Same behaviour: for a key that is not an array index `getArrayIndex` returns undefined, and `undefined >= length` is false, so nothing is detached either way."
+  },
+  {
+    "file": "src/core/core.ts",
+    "scope": "createNode > proxy > set > value",
+    "mutator": "ConditionalExpression",
+    "original": "typeof incoming === 'object' && incoming !== null",
+    "replacement": "true",
+    "occurrence": 1,
+    "reason": "Performance only: the check is a fast path. Only tracking proxies, which are objects, are registered in `trackedSnapshots`, so the lookup misses for a primitive, null or a function and `?? incoming` keeps the value."
+  },
+  {
+    "file": "src/core/core.ts",
+    "scope": "createNode > proxy > set > value",
+    "mutator": "ConditionalExpression",
+    "original": "typeof incoming === 'object'",
+    "replacement": "true",
+    "occurrence": 1,
+    "reason": "Performance only: the type check is a fast path. Only tracking proxies, which are objects, are registered in `trackedSnapshots`, so the lookup misses for a primitive or a function and `?? incoming` keeps the value."
+  },
+  {
+    "file": "src/core/core.ts",
+    "scope": "createNode > proxy > set > value",
+    "mutator": "LogicalOperator",
+    "original": "typeof incoming === 'object' && incoming !== null",
+    "replacement": "typeof incoming === 'object' || incoming !== null",
+    "occurrence": 1,
+    "reason": "Performance only: the condition is then always true, and the check is a fast path. Only tracking proxies, which are objects, are registered in `trackedSnapshots`, so the lookup misses for a primitive, null or a function and `?? incoming` keeps the value."
+  },
+  {
+    "file": "src/core/core.ts",
+    "scope": "createNode > proxy > set > value",
+    "mutator": "ConditionalExpression",
+    "original": "incoming !== null",
+    "replacement": "true",
+    "occurrence": 1,
+    "reason": "Performance only: the null check is a fast path. Only tracking proxies, which are objects, are registered in `trackedSnapshots`, so the lookup misses for null and `?? incoming` keeps the value."
+  },
+  {
+    "file": "src/core/core.ts",
+    "scope": "createNode > proxy > set > oldLength",
+    "mutator": "ConditionalExpression",
+    "original": "prop === 'length'",
+    "replacement": "true",
+    "occurrence": 1,
+    "reason": "Same behaviour: a write to any key but `length` cannot shorten an array, so `truncated` is false whether or not the old length was recorded. Only a user-made Proxy over an array whose own set trap removes elements could differ, and the store assumes throughout that a write changes one key."
+  },
+  {
+    "file": "src/core/core.ts",
+    "scope": "createNode > proxy > set > truncated",
+    "mutator": "ConditionalExpression",
+    "original": "oldLength !== undefined",
+    "replacement": "true",
+    "occurrence": 1,
+    "reason": "Same behaviour: when no old length was recorded the comparison is `length < undefined`, which is false, so `truncated` is false either way."
+  },
+  {
+    "file": "src/core/core.ts",
+    "scope": "createNode > proxy > set",
+    "mutator": "ConditionalExpression",
+    "original": "written",
+    "replacement": "true",
+    "occurrence": 1,
+    "reason": "Same behaviour: the block is skipped only when a refused `length` write still shortened the array. The key is then `length`, whose value is a number and never a child, so running the block links nothing and detaches nothing."
+  },
+  {
+    "file": "src/core/core.ts",
+    "scope": "createNode > proxy > set",
+    "mutator": "ConditionalExpression",
+    "original": "!('value' in own)",
+    "replacement": "false",
+    "occurrence": 1,
+    "reason": "Same behaviour: if the own property were an accessor, `own.value` would be undefined, `linkChild` would link nothing and the detach would still run."
+  },
+  {
+    "file": "src/core/core.ts",
+    "scope": "createNode > proxy > defineProperty",
+    "mutator": "ConditionalExpression",
+    "original": "own",
+    "replacement": "true",
+    "occurrence": 1,
+    "reason": "Same behaviour: when the definition is refused `own` is false, and `isReadOnly(false)` is false, so the block is skipped either way."
+  },
+  {
+    "file": "src/core/core.ts",
+    "scope": "createNode",
+    "mutator": "ConditionalExpression",
+    "original": "'value' in desc",
+    "replacement": "true",
+    "occurrence": 1,
+    "reason": "Same behaviour: for an accessor `desc.value` is undefined, and `linkChild` returns at once for anything that is not an object."
+  }
+]

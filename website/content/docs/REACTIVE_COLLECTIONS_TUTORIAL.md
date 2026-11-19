@@ -16,9 +16,10 @@ arrays internally and expose Map-like and Set-like methods. They are not native
 
 ## Collection behavior
 
-- Reading `.size` takes constant time. Looking up, inserting, replacing, or deleting an entry can scan the backing array. Passing validated entries or values to the factory deduplicates the initial iterable in one pass.
-- Prefer primitive map keys and set values. Objects read through a store can be proxied, and snapshots copy supported objects; their identity may differ from the original input object.
-- Lookup methods use `Object.is`, which distinguishes `0` and `-0`. Initial iterables are deduplicated with native `Map`/`Set` semantics, which treat those two values as equal. Avoid depending on signed-zero keys.
+- Reading `.size` takes constant time. Looking up, inserting, replacing, or deleting an entry scans the backing array, so each of those is linear in the collection's size. On live store state and on plain snapshots the scan reads the raw array directly. In a React component that reads the store without a selector, a lookup goes entry by entry through the tracking proxy so the component records what it compared; for a large collection, select the value with a selector instead. Passing validated entries or values to the factory deduplicates the initial iterable in one pass.
+- Objects work as map keys and set values. A member is matched by identity, and the original object, its store proxy and any snapshot of it are the same identity. So `selected.has(todo)` gives the same answer whether `todo` came from the store, from a snapshot in a component, or is the object you first added. Two separate objects with equal fields are different members.
+- `map.set(key, value)` on an existing key keeps the stored key and its position and replaces only the value. Setting the value it already has changes nothing and notifies no one.
+- Primitive members use `Object.is`, which distinguishes `0` and `-0`. Initial iterables are deduplicated with native `Map`/`Set` semantics, which treat those two values as equal. Avoid depending on signed-zero keys.
 - Iterators copy the entry/value list when created. Later additions and removals do not change that list; referenced objects can still change. This differs from native live iterators.
 - Both collections expose `size`, `has`, `delete`, `clear`, `keys`, `values`, `entries`, `forEach`, and iteration with `for...of`. The map also exposes `get` and `set`. The set exposes `add`.
 

@@ -37,7 +37,7 @@ I wanted state management that feels like writing plain TypeScript.
 
 - **A class is the store.** Define fields, methods, and getters — that's your state, your actions, and your derived values. The class _is_ the type. TypeScript infers everything automatically.
 - **Getters are computed values.** Write `get filtered()` to derive a cached value from store fields such as `this.items` and `this.filter`.
-- **Framework bindings that feel native.** React's `useClassyStore`, Vue's `useClassyStore` (shallow ref), Svelte's `toSvelteStore`, Solid's `useClassyStore` (signal getter), Angular's `injectStore` — each integration matches the framework's reactive idioms.
+- **Framework bindings that feel native.** React's `useClassyStore`, Vue's `useClassyStore` (shallow ref), Svelte's `toSvelteStore`, Solid's `useClassyStore` (signal getter), Angular's `injectClassyStore` — each integration matches the framework's reactive idioms.
 - **Call methods directly.** `todoStore.addTodo('Buy milk')` — a real object with real methods, callable from anywhere.
 - **Filter React store updates.** Selectors and automatic tracking can skip subscription-driven renders for unchanged data.
 

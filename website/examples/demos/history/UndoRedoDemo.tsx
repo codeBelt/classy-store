@@ -61,14 +61,23 @@ function documentLength() {
 
 function DocumentTrace() {
   const [samples, setSamples] = useState(() => [documentLength()]);
-  useEffect(
-    () =>
-      subscribe(textEditorStore, () => {
-        const next = documentLength();
-        setSamples((prev) => [...prev.slice(-23), next]);
-      }),
-    [],
-  );
+  useEffect(() => {
+    // An edit made after this component rendered and before this effect ran
+    // reached no subscriber, so record it here.
+    setSamples((previousSamples) => {
+      const currentLength = documentLength();
+      return previousSamples.at(-1) === currentLength
+        ? previousSamples
+        : [...previousSamples.slice(-23), currentLength];
+    });
+    return subscribe(textEditorStore, () => {
+      const nextLength = documentLength();
+      setSamples((previousSamples) => [
+        ...previousSamples.slice(-23),
+        nextLength,
+      ]);
+    });
+  }, []);
   return (
     <div className="lab-display">
       <SignalTrace samples={samples} />

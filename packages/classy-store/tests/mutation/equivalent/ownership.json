@@ -1,0 +1,110 @@
+[
+  {
+    "file": "src/core/ownership.ts",
+    "scope": "StoreInternal > connect",
+    "mutator": "ConditionalExpression",
+    "original": "!count",
+    "replacement": "true",
+    "occurrence": 1,
+    "reason": "Memory only: an owner that takes the child under a second key is registered again with the child's clean-up registry, and that registry is built before a second owner exists. Only the moment the link to a collected owner is dropped changes, and that link is an internal object no test can watch."
+  },
+  {
+    "file": "src/core/ownership.ts",
+    "scope": "StoreInternal > trackSharedParents",
+    "mutator": "ConditionalExpression",
+    "original": "this.parentCleanup",
+    "replacement": "false",
+    "occurrence": 1,
+    "reason": "Performance only: a new registry is built for every new owner instead of once. It registers every owner that is still alive and drops the links to the dead ones, so the link to a collected owner goes as before."
+  },
+  {
+    "file": "src/core/ownership.ts",
+    "scope": "StoreInternal > trackSharedParents",
+    "mutator": "LogicalOperator",
+    "original": "this.parentCleanup || !this.parents.size",
+    "replacement": "this.parentCleanup && !this.parents.size",
+    "occurrence": 1,
+    "reason": "Memory only: a child gets its clean-up registry with its first owner instead of its second, and a new one with each later owner. The link to a single owner is then dropped once that owner is collected instead of at the next write below the child, and that link is an internal object no test can watch."
+  },
+  {
+    "file": "src/core/ownership.ts",
+    "scope": "StoreInternal > trackSharedParents",
+    "mutator": "ConditionalExpression",
+    "original": "typeof WeakRef !== 'function'",
+    "replacement": "false",
+    "occurrence": 1,
+    "reason": "Same behaviour: without WeakRef a link is a plain object that keeps its owner alive, so an owner registered through it is never collected and the registry never calls back. Where WeakRef exists the condition is false already."
+  },
+  {
+    "file": "src/core/ownership.ts",
+    "scope": "StoreInternal > trackSharedParents",
+    "mutator": "StatementRemoval",
+    "original": "this.parentCleanup.register(parent, reference, reference);",
+    "replacement": ";",
+    "occurrence": 1,
+    "reason": "Memory only: the owners a child had before its registry was built are not registered, so the link to one of them stays after it is collected, until the next write below the child drops it. That link is an internal object no test can watch."
+  },
+  {
+    "file": "src/core/ownership.ts",
+    "scope": "StoreInternal > disconnect",
+    "mutator": "ConditionalExpression",
+    "original": "count === undefined",
+    "replacement": "false",
+    "occurrence": 1,
+    "reason": "Same behaviour: when the owner has no link to the child, the code below deletes a link and a registration that are not there, which does what returning early does."
+  },
+  {
+    "file": "src/core/ownership.ts",
+    "scope": "StoreInternal > disconnect",
+    "mutator": "StatementRemoval",
+    "original": "child.parentCleanup?.unregister(this.reference);",
+    "replacement": ";",
+    "occurrence": 1,
+    "reason": "Memory only: the former owner stays registered until it is collected, and the callback then deletes a link that is already gone. Only the registry's own entry for that owner lives longer."
+  },
+  {
+    "file": "src/core/ownership.ts",
+    "scope": "StoreInternal > resume",
+    "mutator": "ConditionalExpression",
+    "original": "!this.detachedVersions",
+    "replacement": "false",
+    "occurrence": 1,
+    "reason": "Performance only: for a node that is not suspended the loop below pops its one frame, finds neither saved versions nor a suspended node, and stops. The guard skips building that frame."
+  },
+  {
+    "file": "src/core/ownership.ts",
+    "scope": "StoreInternal > resume",
+    "mutator": "ConditionalExpression",
+    "original": "!frame",
+    "replacement": "false",
+    "occurrence": 1,
+    "reason": "Unreachable: `pending.pop()` runs only while the list is not empty, so `frame` is never undefined and the `break` never runs. The check only narrows the type."
+  },
+  {
+    "file": "src/core/ownership.ts",
+    "scope": "StoreInternal > resume",
+    "mutator": "ConditionalExpression",
+    "original": "child.detachedVersions",
+    "replacement": "true",
+    "occurrence": 1,
+    "reason": "Performance only: a frame pushed for a child that is not suspended is popped and skipped, because it carries no saved versions and its node is not suspended."
+  },
+  {
+    "file": "src/core/ownership.ts",
+    "scope": "StoreInternal > resumeScope",
+    "mutator": "ConditionalExpression",
+    "original": "!this.detachedVersions",
+    "replacement": "false",
+    "occurrence": 1,
+    "reason": "Performance only: a node that is not suspended has no suspended container above it to walk to, so the walk ends at once and `resume()` returns on its own guard. The one exception is the state left by the frozen-container finding in core.removedContainers.test.ts, where the walk resumes that container one touch early, as a read of it would."
+  },
+  {
+    "file": "src/core/ownership.ts",
+    "scope": "StoreInternal > ancestors",
+    "mutator": "StatementRemoval",
+    "original": "node.parents.delete(reference);",
+    "replacement": ";",
+    "occurrence": 1,
+    "reason": "Memory only: the link to a collected owner stays in the child's list and is skipped on every later walk. That link is an internal object no test can watch."
+  }
+]

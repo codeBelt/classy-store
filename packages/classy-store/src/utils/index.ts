@@ -7,7 +7,7 @@
  */
 
 export type {SubscribeOptions} from '../types';
-export type {DevtoolsOptions} from './devtools/devtools';
+export type {DevtoolsHandle, DevtoolsOptions} from './devtools/devtools';
 export {devtools} from './devtools/devtools';
 export type {
   HistoryHandle,

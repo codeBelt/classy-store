@@ -1,0 +1,11 @@
+{
+  ".": 3750,
+  "./utils": 2750,
+  "./collections": 750,
+  "./react": 1700,
+  "./react/server": 175,
+  "./vue": 300,
+  "./svelte": 200,
+  "./angular": 300,
+  "./solid": 335
+}

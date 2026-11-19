@@ -38,7 +38,7 @@ The component above uses Svelte 5 event syntax. In Svelte 4, use `on:click={() =
 ## Timing and cleanup
 
 Svelte's `toSvelteStore(store)` delivers the initial snapshot immediately and
-notifies subscribers synchronously after each mutation. `$store` subscriptions
+notifies subscribers synchronously: after each direct write, and once after each store method or array operation. `$store` subscriptions
 are cleaned up automatically when the component is destroyed; manual subscribers
 must call the returned unsubscribe function. Snapshots are readonly: update the
 original store or call its actions from input handlers instead of using

@@ -46,14 +46,20 @@ describe('SnapshotTargetCache', () => {
       return descriptors(target);
     });
     try {
+      let backingCopy: object | undefined;
       for (let index = 0; index < 1000; index += 1) {
         const reads = new WeakMap();
         const proxyCache = new WeakMap();
         const tracked = createProxy(source, reads, proxyCache, cache);
         expect(tracked.items[index].value).toBe(index);
         expect(createProxy(source, reads, proxyCache, cache)).toBe(tracked);
+        // Every reader shares one backing copy of the list.
+        const [, copy] = cache.get(items) as [object, object];
+        backingCopy ??= copy;
+        expect(copy).toBe(backingCopy);
       }
-      expect(listScans).toBe(1);
+      // A dense list is copied by index: no key or descriptor scan at all.
+      expect(listScans).toBe(0);
     } finally {
       descriptorSpy.mockRestore();
       namesSpy.mockRestore();
@@ -90,6 +96,21 @@ describe('SnapshotTargetCache', () => {
       expect(Reflect.deleteProperty(tracked.nested, 'value')).toBe(false);
     }
     expect(source.nested.value).toBe(1);
+  });
+
+  test('hands out a backing copy that rejects writes and deletes of its own', () => {
+    // proxy-compare's tracking proxy refuses these before they reach the
+    // copy, so the copy's own guard only shows when it is reached directly.
+    const source = Object.freeze({value: 1});
+    const cache = new SnapshotTargetCache();
+    createProxy(source, new WeakMap(), new WeakMap(), cache);
+    const [original, copy] = cache.get(source) as [object, {value: number}];
+
+    expect(original).toBe(source);
+    expect(copy).not.toBe(source);
+    expect(Reflect.set(copy, 'value', 2)).toBe(false);
+    expect(Reflect.deleteProperty(copy, 'value')).toBe(false);
+    expect(copy.value).toBe(1);
   });
 
   test('rechecks mutable getter results when their descriptors change', () => {

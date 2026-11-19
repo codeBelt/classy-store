@@ -77,6 +77,8 @@ Each `persist()` call creates a closure with the following internal state:
 | `debounceTimer`       | `ReturnType<typeof setTimeout> \| null` | Active debounce timer (cancelled on save/clear/dispose or accepted hydration)     |
 | `storageQueue`        | `Promise<void> \| undefined`            | Orders this handle's writes/removals and lets reads wait for prior operations     |
 | `hydrationRequest`    | `number`                                | Rejects read results superseded by newer requests or storage events               |
+| `reading`             | `number`                                | Reads in flight; background saves wait while it is above zero                     |
+| `saveAfterRead`       | `boolean`                               | A local edit asked to be saved during a read; written once the read settles       |
 | `skipAutoSaveVersion` | `number \| undefined`                   | Skips a restored or already scheduled revision                                    |
 | `clearedVersion`      | `number \| undefined`                   | Suppresses writes through the last clear, including remaining restore assignments |
 | `hydratedFlag`        | `boolean`                               | Synchronous hydration status                                                      |
@@ -157,10 +159,20 @@ Triggered in three scenarios:
 All three call the same `applyPersistedState(raw)` function:
 
 Async reads first wait for prior writes/removals. They capture a request number
-and the store version, and only apply their result if both are still current and
-the handle remains active. A newer read/save/clear/storage event changes the
-request number; a local edit changes the store version. Obsolete results and
-read errors are ignored. A restore records the revision attributable to its direct field assignments.
+and a baseline snapshot of the store, and apply their result only if the request
+is still current and the handle remains active. A newer read, an explicit
+save/clear, or a storage event changes the request number. Obsolete results and
+read errors are ignored.
+
+A local edit does not make a read obsolete. When the result arrives, each pending
+field is compared with the baseline snapshot: a field whose presence or snapshot
+identity changed was edited locally, including by a nested edit, and keeps its
+local value; the others are restored. While any read is in flight, background
+saves are deferred (`saveAfterRead`), so an edit cannot replace the stored record
+with defaults before the read restores it. When the last read settles, one save
+writes the merged state. `save()` and `clear()` cancel that deferred save.
+
+A restore records the revision attributable to its direct field assignments.
 The batched save skips that revision. Additional writes by synchronous or
 batched subscribers advance the revision and are saved. If a synchronous subscriber edits a pending top-level field, a snapshot comparison detects changes to its presence or value, including nested edits. The restore skips that field and continues applying the others.
 
@@ -172,16 +184,17 @@ batched subscribers advance the revision and are saved. If a synchronous subscri
      set expiredFlag = true
      if clearOnExpire → storage.removeItem(name)
      return (skip hydration)
-4. if envelope.version !== options.version AND migrate exists:
-     state = migrate(state, envelope.version)
+4. if the stored version (0 when absent) !== options.version:
+     if no migrate → return without applying (stored data from another version is ignored)
+     state = migrate(state, storedVersion)
 5. for each stored state key:
      if transform exists → state[key] = transform.deserialize(state[key])
-6. For a custom merge, build currentState from the baseline snapshot (only propKeys)
+6. For a custom merge, build currentState from the store's current snapshot (only propKeys)
 7. Apply merge strategy:
      'shallow': apply the stored fields only
      custom function: merge(persistedState, currentState)
 8. for each key in propKeys:
-     if key is present in mergedState and still pending → proxy[key] = cloneSnapshotValue(mergedState[key])
+     if key is present in mergedState and unchanged since the baseline → proxy[key] = cloneSnapshotValue(mergedState[key])
      (goes through SET trap → reactivity → batched notification)
 9. Initial/manual read completion marks hydratedFlag and resolves hydrated.
    Storage-event application alone does not mark hydration settled.

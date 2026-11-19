@@ -34,18 +34,25 @@ function readChannels() {
 
 function CounterScope() {
   const [samples, setSamples] = useState(() => [readChannels()]);
-  useEffect(
-    () =>
-      subscribe(
-        counterStore,
-        () => {
-          const next = readChannels();
-          setSamples((previous) => [...previous.slice(-23), next]);
-        },
-        {sync: true},
-      ),
-    [],
-  );
+  useEffect(() => {
+    // A change made after this component rendered and before this effect ran
+    // reached no subscriber, so record it here.
+    setSamples((previous) => {
+      const current = readChannels();
+      const last = previous.at(-1);
+      return last?.count === current.count && last.name === current.name
+        ? previous
+        : [...previous.slice(-23), current];
+    });
+    return subscribe(
+      counterStore,
+      () => {
+        const next = readChannels();
+        setSamples((previous) => [...previous.slice(-23), next]);
+      },
+      {sync: true},
+    );
+  }, []);
   const latest = samples.at(-1) ?? readChannels();
   return (
     <div className="examples-scope">

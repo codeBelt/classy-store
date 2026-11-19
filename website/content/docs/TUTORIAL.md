@@ -197,11 +197,11 @@ function NameInput() {
 }
 ```
 
-If upgrading from 0.6.x, remove the React `sync` option and `UseClassyStoreOptions` imports. Keep `isEqual` if you use custom selector equality. The low-level `subscribe()` API retains its batching and optional `sync` setting.
+## Batching and transactions
 
-## Batching
+Ordinary `subscribe()` callbacks batch notifications in a microtask. Framework adapters, including React's, are notified synchronously, so a controlled input sees its new value within the event that changed it.
 
-Ordinary `subscribe()` callbacks batch notifications in a microtask. React subscriptions instead notify after each mutation. React batches the resulting renders within an event handler, so a method that updates several fields can commit their final state together. This is not a transaction: selectors and getters may run between writes.
+A store method is a transaction. Its writes take effect immediately, so the method reads its own changes, but synchronous subscribers are notified once, when the outermost method returns or throws. A selector or a component never observes the state halfway through a method.
 
 ```ts
 class FormStore {
@@ -211,22 +211,36 @@ class FormStore {
   count = 0;
 
   submit(name: string, email: string) {
-    this.name = name; // immediately notifies React
-    this.email = email; // immediately notifies React
-    this.submitted = true; // React batches renders in an event handler
-  }
+    this.name = name;
+    this.email = email;
+    this.submitted = true;
+  } // React is notified once, here
 
   incrementMany(n: number) {
     for (let i = 0; i < n; i++) {
-      this.count++; // each write notifies React
+      this.count++;
     }
-  }
+  } // one notification, not n
 }
 ```
 
-For ordinary subscribers, `incrementMany(100)` produces one notification. React may check its selected value on every write; use efficient selectors and avoid depending on an exact render count outside an event handler.
+Array methods called on store state work the same way: `store.items.sort()`, `unshift()`, `splice()` or a `forEach()` that edits every row is one notification and one new snapshot of the list, however many elements moved.
 
-Mutations separated by `await` can commit separately, allowing loading and result states to appear — see [Async Patterns](#async-patterns) below.
+A write made directly on the store outside any method, such as `store.count++` in an event handler, notifies by itself. A plain loop of such writes therefore notifies once per write, and each notification rebuilds the snapshots on the changed path. Put loops and multi-field updates in a store method, or wrap them in `batch()` when the writes belong outside the store:
+
+```ts
+import {batch} from '@codebelt/classy-store';
+
+batch(() => {
+  for (const row of incoming) {
+    listStore.items.push(row);
+  }
+}); // one notification, not one per row
+```
+
+`batch()` returns its callback's result and nests with store methods and with other batches; the outermost call notifies.
+
+An `async` method is a transaction up to its first `await`. Each write after an `await` notifies on its own unless it happens inside another method call, which lets loading and result states appear separately. See [Async Patterns](#async-patterns) below.
 
 ## Snapshots
 
@@ -382,7 +396,7 @@ How it works:
 
 ## Async Patterns
 
-Async methods work naturally. React is notified as each field changes, and pending asynchronous work lets it commit the loading state before the result arrives.
+Async methods work naturally. The writes before the first `await` are one transaction, and each write after an `await` notifies React on its own, so the loading state commits before the result arrives.
 
 ```ts
 class PostStore {
@@ -598,15 +612,32 @@ class FormStore {
 }
 ```
 
-### Initialize with mutable data
+### Frozen objects are values
 
-The live store wraps nested plain objects with proxies. If a frozen input contains an object-valued, non-writable and non-configurable property, JavaScript requires that property to return its original object. Even reading `store.profile.details` can then throw a `TypeError`. For plain, structured-cloneable input, make a mutable copy before creating the store:
+The store keeps a frozen object by reference and never wraps it in a proxy, the same way it treats a `Date`. You read through it as usual, a snapshot holds the very same object, and replacing the field notifies subscribers:
 
 ```ts
 const profile = Object.freeze({details: {name: 'Ada'}});
-const store = createClassyStore({profile: structuredClone(profile)});
-store.profile.details.name = 'Grace';
+const store = createClassyStore({profile});
+
+store.profile === profile; // true
+store.profile.details.name; // 'Ada'
+snapshot(store).profile === profile; // true
+
+store.profile = Object.freeze({details: {name: 'Grace'}}); // notifies
 ```
+
+This suits immutable data that arrives whole, such as the result of an immutable-update library or a response you freeze on arrival, and large read-only tables you want kept out of the proxy system: the store creates no proxies for them and a snapshot makes no copy.
+
+The store does not look inside a frozen object. `Object.freeze` is shallow, so `store.profile.details.name = 'Grace'` still changes the object, but nothing is notified. Replace the frozen object to publish a change. The same goes for a store placed inside a frozen object you assign: the outer store does not follow it, so subscribe to that store directly. To edit frozen input in place, give the store a mutable copy instead, for example `structuredClone(profile)` for plain data.
+
+Three related cases follow the same rule:
+
+- A property that cannot be reassigned (non-writable and non-configurable) returns the object it holds as it is.
+- A frozen object passed to `createClassyStore()` gives a store whose reads return its own values and whose writes throw a `TypeError`. A store embedded in it by its proxy stays connected, so a frozen object can group stores.
+- After `Object.freeze(store.profile)`, that object reads the same way; writes to it throw.
+
+Undo, redo and rehydration put content back as ordinary data, so a value restored by `withHistory` or `persist` is reactive again and no longer frozen.
 
 ### Keep mutations inside the proxy
 
@@ -626,13 +657,53 @@ counterStore.count;
 
 ### Non-proxyable types
 
-Nested native `Date`, `RegExp`, `Map`, and `Set` values, and arbitrary nested class instances, remain opaque. Replacing the field notifies subscribers; mutating the existing object does not. For observable collection operations, use `reactiveMap()` and `reactiveSet()`. For dates, a timestamp field works well. The root class passed to `createClassyStore()` is proxied; this does not make every class instance nested inside it reactive.
+Nested native `Date`, `RegExp`, `Map`, and `Set` values, arbitrary nested class instances, and [frozen objects](#frozen-objects-are-values) remain opaque. Replacing the field notifies subscribers; mutating the existing object does not. For observable collection operations, use `reactiveMap()` and `reactiveSet()`. For dates, a timestamp field works well. The root class passed to `createClassyStore()` is proxied; this does not make every class instance nested inside it reactive.
+
+### Reactive nested classes
+
+A class of your own can opt into the same deep reactivity as plain objects by declaring `static [PROXYABLE] = true`. Its instances are then proxied wherever they appear in a store, their getters are memoized, and their snapshots keep the class prototype:
+
+```ts
+import {createClassyStore, PROXYABLE} from '@codebelt/classy-store';
+
+class Todo {
+  static [PROXYABLE] = true;
+  done = false;
+
+  constructor(public title: string) {}
+
+  toggle() {
+    this.done = !this.done; // notifies the store that holds this todo
+  }
+}
+
+const todoStore = createClassyStore({todos: [new Todo('Write docs')]});
+todoStore.todos[0].toggle();
+```
+
+The limits of the root class apply to these classes too: use prototype methods rather than arrow-function fields, and ordinary fields rather than `#private` ones. JSON does not keep a prototype, so persist such instances with a [property transform](./PERSIST_TUTORIAL.md).
+
+### Snapshots stored in a store
+
+A snapshot is an immutable value. If you assign one into a store, for example a row taken from a rendered list, the store keeps that frozen object by reference; it does not become live state, and writing to it throws a `TypeError`:
+
+```ts
+const row = snapshot(todoStore).todos[0];
+todoStore.selected = row; // a frozen copy of the row as it was
+todoStore.selected.done = true; // TypeError: the snapshot is read-only
+```
+
+To keep a reference that follows later edits, store the live object or its id instead: `todoStore.selected = todoStore.todos[0]`. To start an independent editable copy, clone the snapshot first, for example with `structuredClone(row)` for plain data.
+
+### Getters appear as own fields on snapshots
+
+On a snapshot, every getter of the class is installed as an enumerable own accessor, so `Object.keys(snapshot)`, object spread and `JSON.stringify(snapshot)` include computed values. The live store lists only its data fields. Pick the data fields explicitly when you need only stored state.
 
 ### Set-then-revert and loop updates
 
-React checks subscriptions after each write. Setting a field and reverting it in one event can still schedule rendering, even though the final displayed value is unchanged. Neither selector mode nor auto-tracked mode promises to avoid this work.
+A write outside a store method notifies React by itself. Setting a field and reverting it with two such writes can still schedule rendering, even though the final displayed value is unchanged. Neither selector mode nor auto-tracked mode promises to avoid this work.
 
-Likewise, a loop with a thousand writes sends a thousand synchronous React notifications. React can batch their renders within an event handler, but selectors may still run on each mutation. Ordinary `subscribe()` callbacks receive one microtask notification for that loop. For large updates, calculate the final value first when intermediate writes serve no purpose.
+Likewise, a plain loop with a thousand direct writes sends a thousand synchronous notifications. Move the loop into a store method, or wrap it in `batch()`, to make it one transaction and one notification. Ordinary `subscribe()` callbacks receive one microtask notification either way.
 
 ### Auto-tracked references
 

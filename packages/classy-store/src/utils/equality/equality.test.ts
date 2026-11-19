@@ -50,6 +50,11 @@ describe('shallowEqual', () => {
     expect(shallowEqual({a: 1}, {b: 1})).toBe(false);
   });
 
+  it('returns false for an empty object against one with keys', () => {
+    expect(shallowEqual<object>({}, {a: 1})).toBe(false);
+    expect(shallowEqual<object>({a: 1}, {})).toBe(false);
+  });
+
   it('compares nested objects by reference only (not deep)', () => {
     const inner1 = {x: 1};
     const inner2 = {x: 1}; // same shape but different reference
@@ -172,5 +177,87 @@ describe('shallowEqual', () => {
 
   it('handles objects with symbol-like string keys', () => {
     expect(shallowEqual({'Symbol(foo)': 1}, {'Symbol(foo)': 1})).toBe(true);
+  });
+
+  it('compares dates by the instant they hold', () => {
+    expect(shallowEqual(new Date(0), new Date(0))).toBe(true);
+    expect(shallowEqual(new Date(0), new Date(1e12))).toBe(false);
+    expect(shallowEqual(new Date(Number.NaN), new Date(Number.NaN))).toBe(true);
+  });
+
+  it('compares maps by size, keys and values one level deep', () => {
+    const shared = {id: 1};
+    expect(shallowEqual(new Map([[1, shared]]), new Map([[1, shared]]))).toBe(
+      true,
+    );
+    expect(shallowEqual(new Map([[1, 1]]), new Map([[2, 2]]))).toBe(false);
+    expect(shallowEqual(new Map([[1, 1]]), new Map([[1, 2]]))).toBe(false);
+    expect(shallowEqual(new Map([[1, {id: 1}]]), new Map([[1, {id: 1}]]))).toBe(
+      false,
+    );
+    expect(
+      shallowEqual(
+        new Map<number, number | undefined>([[1, undefined]]),
+        new Map<number, number | undefined>([[2, undefined]]),
+      ),
+    ).toBe(false);
+    expect(shallowEqual(new Map(), new Map())).toBe(true);
+  });
+
+  it('does not equate a map with one that only contains it', () => {
+    const smaller = new Map([[1, 1]]);
+    const larger = new Map([
+      [1, 1],
+      [2, 2],
+    ]);
+    expect(shallowEqual(smaller, larger)).toBe(false);
+    expect(shallowEqual(larger, smaller)).toBe(false);
+  });
+
+  it('compares sets by size and membership', () => {
+    expect(shallowEqual(new Set([1, 2]), new Set([2, 1]))).toBe(true);
+    expect(shallowEqual(new Set([1]), new Set([2]))).toBe(false);
+    expect(shallowEqual(new Set([1]), new Set([1, 2]))).toBe(false);
+  });
+
+  it('never equates values with different prototypes', () => {
+    class Point {
+      x = 1;
+    }
+    class Size {
+      x = 1;
+    }
+    expect(shallowEqual(new Point() as unknown, new Size() as unknown)).toBe(
+      false,
+    );
+    expect(shallowEqual(new Point() as unknown, {x: 1} as unknown)).toBe(false);
+    expect(shallowEqual(new Map() as unknown, new Set() as unknown)).toBe(
+      false,
+    );
+    expect(shallowEqual(Object.create(null) as unknown, {} as unknown)).toBe(
+      false,
+    );
+  });
+
+  it('compares class instances of one class by their own fields', () => {
+    class Point {
+      constructor(
+        public x: number,
+        public y: number,
+      ) {}
+    }
+    expect(shallowEqual(new Point(1, 2), new Point(1, 2))).toBe(true);
+    expect(shallowEqual(new Point(1, 2), new Point(1, 3))).toBe(false);
+  });
+
+  it('does not equate opaque objects whose state it cannot see', () => {
+    class Empty {}
+    expect(shallowEqual(/a/, /b/)).toBe(false);
+    expect(shallowEqual(/a/, /a/)).toBe(false);
+    expect(shallowEqual(new Error('a'), new Error('b'))).toBe(false);
+    expect(shallowEqual(Promise.resolve(1), Promise.resolve(2))).toBe(false);
+    expect(shallowEqual(new Empty(), new Empty())).toBe(false);
+    // Records and arrays with nothing in them hide nothing.
+    expect(shallowEqual(Object.create(null), Object.create(null))).toBe(true);
   });
 });

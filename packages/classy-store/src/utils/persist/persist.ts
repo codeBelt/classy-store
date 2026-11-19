@@ -121,6 +121,9 @@ export function persist<T extends object>(
   let hydratedFlag = false;
   let expiredFlag = false;
   let hydrationRequest = 0;
+  // Reads in flight, and whether a local edit asked to be saved meanwhile.
+  let reading = 0;
+  let saveAfterRead = false;
   let storageQueue: Promise<void> | undefined;
   let skipAutoSaveVersion: number | undefined;
   let clearedVersion: number | undefined;
@@ -228,7 +231,34 @@ export function persist<T extends object>(
     await enqueueStorageMutation(() => storage.setItem(name, json), 'write');
   }
 
-  /** Schedule a debounced write (or write immediately if debounce is 0). */
+  /** Save in the background, unless a read has yet to deliver stored data. */
+  function autoSave(): void {
+    // Writing now would replace the stored record with defaults before the
+    // read can restore it. Save the merged state once the read settles.
+    if (reading) {
+      saveAfterRead = true;
+      return;
+    }
+    // Background writes already report failures through status and onError.
+    void writeToStorage().catch(() => {});
+  }
+
+  /** Write after the configured debounce (or immediately if it is 0). */
+  function queueAutoSave(): void {
+    if (debounceMs <= 0) {
+      autoSave();
+      return;
+    }
+    if (debounceTimer !== null) {
+      clearTimeout(debounceTimer);
+    }
+    debounceTimer = setTimeout(() => {
+      debounceTimer = null;
+      autoSave();
+    }, debounceMs);
+  }
+
+  /** Schedule a save for a store notification. */
   function scheduleWrite(): void {
     if (disposed) return;
     // A preceding subscriber can edit during a batch, scheduling a second
@@ -236,20 +266,7 @@ export function persist<T extends object>(
     const current = getVersion(proxyStore);
     if (current === skipAutoSaveVersion || current === clearedVersion) return;
     skipAutoSaveVersion = current;
-
-    if (debounceMs <= 0) {
-      // Background writes already report failures through status and onError.
-      void writeToStorage().catch(() => {});
-      return;
-    }
-
-    if (debounceTimer !== null) {
-      clearTimeout(debounceTimer);
-    }
-    debounceTimer = setTimeout(() => {
-      debounceTimer = null;
-      void writeToStorage().catch(() => {});
-    }, debounceMs);
+    queueAutoSave();
   }
 
   // ── Restore logic ──────────────────────────────────────────────────────
@@ -257,8 +274,14 @@ export function persist<T extends object>(
   /**
    * Parse a raw JSON string from storage, apply migration and transforms,
    * and merge the result into the store proxy. Returns whether data expired.
+   *
+   * `baseline` is the state the stored data is restored over. A field that no
+   * longer matches it was edited locally in the meantime and keeps that edit.
    */
-  function applyPersistedState(raw: string): boolean {
+  function applyPersistedState(
+    raw: string,
+    baseline = snapshot(proxyStore) as Record<string, unknown>,
+  ): boolean {
     const envelope = JSON.parse(raw) as PersistEnvelope;
 
     if (
@@ -279,14 +302,20 @@ export function persist<T extends object>(
       return true;
     }
 
-    const startVersion = getVersion(proxyStore);
-    const baseline = snapshot(proxyStore) as Record<string, unknown>;
     let {state} = envelope;
 
-    // Version migration.
-    if (migrate && envelope.version !== version) {
-      state = migrate(state, envelope.version);
+    // Data stored under another schema version is usable only through
+    // `migrate`. Without one, the store keeps its current state. A record
+    // with no version counts as the default, version 0.
+    const storedVersion =
+      typeof envelope.version === 'number' ? envelope.version : 0;
+    if (storedVersion !== version) {
+      if (!migrate) return false;
+      state = migrate(state, storedVersion);
     }
+
+    const startVersion = getVersion(proxyStore);
+    const current = snapshot(proxyStore) as Record<string, unknown>;
 
     // Per-property deserialize transforms.
     for (const key of Object.keys(state)) {
@@ -302,7 +331,7 @@ export function persist<T extends object>(
       typeof merge === 'function'
         ? merge(
             state,
-            Object.fromEntries(propKeys.map((key) => [key, baseline[key]])),
+            Object.fromEntries(propKeys.map((key) => [key, current[key]])),
           )
         : state;
     const pending = new Set(
@@ -325,7 +354,9 @@ export function persist<T extends object>(
     }
 
     try {
-      if (getVersion(proxyStore) !== startVersion) discardEditedFields();
+      // The cached snapshot keeps its identity until something changes, so
+      // this also covers edits made by `migrate`, a transform or `merge`.
+      if (snapshot(proxyStore) !== baseline) discardEditedFields();
       for (const key of pending) {
         pending.delete(key);
         const before = getVersion(proxyStore);
@@ -353,50 +384,59 @@ export function persist<T extends object>(
   /** Read from storage and apply to the store. */
   async function hydrateFromStorage(): Promise<void> {
     const request = ++hydrationRequest;
-    const storeVersion = getVersion(proxyStore);
-    const isCurrent = () =>
-      !disposed &&
-      request === hydrationRequest &&
-      storeVersion === getVersion(proxyStore);
-    let raw: string | null;
+    // Stored fields are restored over this state. A field edited after this
+    // point keeps its newer local value; every other field is still restored.
+    const baseline = snapshot(proxyStore) as Record<string, unknown>;
+    const isCurrent = () => !disposed && request === hydrationRequest;
+    reading++;
     try {
-      // A read requested after save()/clear() observes those operations' results.
-      if (storageQueue) await storageQueue;
-      if (!isCurrent()) return;
-      raw = await storage.getItem(name);
-    } catch (error) {
-      if (isCurrent()) fail(error, 'read');
-      return;
-    }
-    // Cleanup, a newer request, or a local edit can supersede an in-flight read.
-    // Obsolete data must not replace current state or clear newer stored data.
-    if (!isCurrent()) return;
-    if (raw !== null) {
-      // A debounced local write may be pending from a mutation issued before
-      // we got around to hydrating; the freshly-loaded state would be
-      // overwritten when that timer fires. Cancel it before applying.
-      if (debounceTimer !== null) {
-        clearTimeout(debounceTimer);
-        debounceTimer = null;
-      }
-      let expired: boolean;
+      let raw: string | null;
       try {
-        expired = applyPersistedState(raw);
+        // A read requested after save()/clear() observes those operations' results.
+        if (storageQueue) await storageQueue;
+        if (!isCurrent()) return;
+        raw = await storage.getItem(name);
       } catch (error) {
-        fail(error, 'parse');
+        if (isCurrent()) fail(error, 'read');
+        return;
       }
-      if (expired && clearOnExpire) {
-        const removal = enqueueStorageMutation(
-          () => storage.removeItem(name),
-          'remove',
-        );
-        status.update(readStatus());
-        await removal;
+      // Cleanup or a newer request can supersede an in-flight read. Obsolete
+      // data must not replace current state or clear newer stored data.
+      if (!isCurrent()) return;
+      if (raw !== null) {
+        // A debounced local write may be pending from a mutation issued
+        // before the data arrived. Fold it into the save that follows the read.
+        if (debounceTimer !== null) {
+          clearTimeout(debounceTimer);
+          debounceTimer = null;
+          saveAfterRead = true;
+        }
+        let expired: boolean;
+        try {
+          expired = applyPersistedState(raw, baseline);
+        } catch (error) {
+          fail(error, 'parse');
+        }
+        if (expired && clearOnExpire) {
+          const removal = enqueueStorageMutation(
+            () => storage.removeItem(name),
+            'remove',
+          );
+          status.update(readStatus());
+          await removal;
+        } else {
+          succeeded();
+        }
       } else {
         succeeded();
       }
-    } else {
-      succeeded();
+    } finally {
+      reading--;
+      // Local edits made during the read are saved together with what it restored.
+      if (!reading && saveAfterRead) {
+        saveAfterRead = false;
+        if (!disposed) queueAutoSave();
+      }
     }
   }
 
@@ -486,6 +526,7 @@ export function persist<T extends object>(
     async save() {
       assertActive();
       // Cancel pending debounce and write immediately.
+      saveAfterRead = false;
       if (debounceTimer !== null) {
         clearTimeout(debounceTimer);
         debounceTimer = null;
@@ -496,6 +537,7 @@ export function persist<T extends object>(
     async clear() {
       assertActive();
       hydrationRequest++;
+      saveAfterRead = false;
       clearedVersion = getVersion(proxyStore);
       if (debounceTimer !== null) {
         clearTimeout(debounceTimer);
