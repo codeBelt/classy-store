@@ -1,1 +1,38 @@
-[]
+[
+  {
+    "file": "src/collections/collections.ts",
+    "scope": "indexOfMember > identity",
+    "mutator": "ConditionalExpression",
+    "original": "typeof candidate === 'object' && candidate !== null",
+    "replacement": "true",
+    "occurrence": 1,
+    "reason": "`identityOf` returns anything that is not an object, and null, unchanged, so calling it for every member gives the same identity as before. The check only saves that call for primitive members."
+  },
+  {
+    "file": "src/collections/collections.ts",
+    "scope": "indexOfMember > identity",
+    "mutator": "ConditionalExpression",
+    "original": "typeof candidate === 'object'",
+    "replacement": "true",
+    "occurrence": 1,
+    "reason": "`identityOf` returns anything that is not an object, and null, unchanged, so calling it for every member gives the same identity as before. The check only saves that call for primitive members."
+  },
+  {
+    "file": "src/collections/collections.ts",
+    "scope": "indexOfMember > identity",
+    "mutator": "LogicalOperator",
+    "original": "typeof candidate === 'object' && candidate !== null",
+    "replacement": "typeof candidate === 'object' || candidate !== null",
+    "occurrence": 1,
+    "reason": "`identityOf` returns anything that is not an object, and null, unchanged, so calling it for every member gives the same identity as before. The check only saves that call for primitive members."
+  },
+  {
+    "file": "src/collections/collections.ts",
+    "scope": "indexOfMember > identity",
+    "mutator": "ConditionalExpression",
+    "original": "candidate !== null",
+    "replacement": "true",
+    "occurrence": 1,
+    "reason": "`identityOf` returns anything that is not an object, and null, unchanged, so calling it for every member gives the same identity as before. The check only saves that call for primitive members."
+  }
+]
