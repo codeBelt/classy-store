@@ -116,4 +116,18 @@ describe('an object under a field that was frozen on a parent that had already l
 
     expect(listener).toHaveBeenCalledTimes(0);
   });
+
+  it('returns its earlier snapshot in the same way when the parent lost its last subscriber after it left the store', () => {
+    const {store, panel, form, field} = createWorkspace();
+    expect(snapshot(form).field.value).toBe(0);
+    const unsubscribe = subscribe(panel, () => {});
+    delete store.panel;
+    unsubscribe();
+
+    Object.freeze(panel);
+    field.value = 1;
+
+    expect(snapshot(form).field.value).toBe(0);
+    expect(snapshot(form).field.value).toBe(1);
+  });
 });
