@@ -840,6 +840,13 @@ was too strict: five baseline runs often agree exactly, so their spread is
 zero. `5bc4008` adds a tolerance of one tick or five percent. With it, the same
 run has all 104 figures inside.
 
+**A gap, found on the first push.** The run above built the docs site but did
+not run its browser tests (`bun run docs:test`), which CI's docs job does. CI
+failed there once: a demo trace missed an edit that landed before its effect
+had subscribed. That is a timing bug in the demo, not in the library, and it
+is fixed in the commit after this report. The plan's command list now names
+`bun run docs:test`.
+
 `5bc4008` is the only commit after the matrix run. It changes the comparison
 script and its guide, nothing the matrix exercises; I re-ran the script, lint
 and its typecheck.

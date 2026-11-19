@@ -111,6 +111,14 @@ bun run --filter classy-store-solid-example build
 bun run --filter classy-store-angular-example build
 ```
 
+CI's docs job builds the site and runs its browser tests. Stage 1's matrix run
+left the second command out, and CI then found a timing bug in a demo:
+
+```bash
+bun run docs:build
+bun run docs:test
+```
+
 The stage 1 tooling. Each has a guide beside it under
 `packages/classy-store/tests/` (`mutation`, `size`, `benchmark`):
 
