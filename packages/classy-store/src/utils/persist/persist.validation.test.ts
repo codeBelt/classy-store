@@ -55,6 +55,21 @@ describe('persist stored records that are not an envelope', () => {
     expect(handle.getSnapshot().lastError).toBeNull();
     expect(handle.isExpired).toBe(false);
   });
+
+  // FINDING: an array where the state object should be passes the envelope check, so its length is restored into a field named `length`.
+  test('a record whose state is an array writes the array length into a field named length', async () => {
+    const store = createClassyStore({count: 0, length: 0});
+    const handle = persist(store, {
+      name: 'draft',
+      storage: recordStorage('{"version":0,"state":[1,2,3]}').storage,
+    });
+    handles.push(handle);
+
+    await handle.hydrated;
+
+    expect(store.length).toBe(3);
+    expect(handle.getSnapshot().lastError).toBeNull();
+  });
 });
 
 describe('persist record expiry', () => {
@@ -128,6 +143,44 @@ describe('persist default properties', () => {
 
     expect(store.count).toBe(5);
     expect(typeof store.reset).toBe('function');
+  });
+});
+
+describe('persist explicit properties', () => {
+  // FINDING: a getter named in `properties` is saved, although getters are documented as always excluded, and restoring it fails part-way: the fields after it keep their defaults.
+  test('a getter named in properties is saved and stops the restore at that field with a parse error', async () => {
+    class Counter {
+      count = 1;
+      get doubled() {
+        return this.count * 2;
+      }
+      tail = 0;
+    }
+    const backing = recordStorage();
+    const writer = persist(createClassyStore(new Counter()), {
+      name: 'draft',
+      storage: backing.storage,
+      skipHydration: true,
+      properties: ['count', 'doubled', 'tail'],
+    });
+    handles.push(writer);
+    await writer.save();
+    expect(backing.saved).toBe(
+      '{"version":0,"state":{"count":1,"doubled":2,"tail":0}}',
+    );
+
+    const store = createClassyStore(new Counter());
+    const reader = persist(store, {
+      name: 'draft',
+      storage: recordStorage(stored({count: 5, doubled: 10, tail: 9})).storage,
+      properties: ['count', 'doubled', 'tail'],
+    });
+    handles.push(reader);
+    await reader.hydrated;
+
+    expect(store.count).toBe(5);
+    expect(store.tail).toBe(0);
+    expect(reader.getSnapshot().lastError?.operation).toBe('parse');
   });
 });
 

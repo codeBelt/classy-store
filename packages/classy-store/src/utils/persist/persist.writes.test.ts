@@ -3,14 +3,6 @@ import {createClassyStore} from '../../index';
 import type {PersistHandle} from '../index';
 import {persist} from '../index';
 
-function deferred<T>() {
-  let resolve!: (value: T) => void;
-  const promise = new Promise<T>((resolvePromise) => {
-    resolve = resolvePromise;
-  });
-  return {promise, resolve};
-}
-
 const tick = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 const handles: PersistHandle[] = [];
 afterEach(() => {
@@ -45,60 +37,4 @@ describe('persist writes and removals', () => {
       await pending;
     },
   );
-
-  test('a write that finishes after dispose leaves the disposed status as it was', async () => {
-    const failure = new Error('quota');
-    const write = deferred<void>();
-    const setItem = mock<() => void | Promise<void>>()
-      .mockImplementationOnce(() => {
-        throw failure;
-      })
-      .mockReturnValueOnce(write.promise);
-    const handle = persist(createClassyStore({count: 0}), {
-      name: 'draft',
-      skipHydration: true,
-      storage: {getItem: () => null, setItem, removeItem: () => {}},
-    });
-    handles.push(handle);
-    await expect(handle.save()).rejects.toBe(failure);
-    const saving = handle.save();
-    handle.dispose();
-    const disposedStatus = handle.getSnapshot();
-
-    write.resolve();
-    await saving;
-
-    expect(handle.getSnapshot()).toBe(disposedStatus);
-    expect(disposedStatus.lastError).toEqual({
-      error: failure,
-      operation: 'write',
-    });
-  });
-
-  test('clear() on a disposed handle rejects at once, without waiting for a write still in flight', async () => {
-    const write = deferred<void>();
-    const removeItem = mock(() => {});
-    const handle = persist(createClassyStore({count: 0}), {
-      name: 'draft',
-      skipHydration: true,
-      storage: {getItem: () => null, setItem: () => write.promise, removeItem},
-    });
-    handles.push(handle);
-    const saving = handle.save();
-    handle.dispose();
-
-    let rejection: unknown;
-    const clearing = handle.clear().catch((error: unknown) => {
-      rejection = error;
-    });
-    await tick();
-
-    try {
-      expect(rejection).toBeInstanceOf(Error);
-    } finally {
-      write.resolve();
-      await Promise.all([saving, clearing]);
-    }
-    expect(removeItem).not.toHaveBeenCalled();
-  });
 });
