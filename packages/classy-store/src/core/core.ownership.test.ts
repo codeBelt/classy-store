@@ -75,6 +75,28 @@ describe('shared proxy ownership', () => {
     expect(retained.config.currency).toBe('USD');
   });
 
+  test('a child whose only owner was collected drops that owner when it gains a new one', async () => {
+    const record = {count: 1};
+    const child = (() => createClassyStore({record}).record)();
+    const parents = getInternal(child).parents;
+    // A child with one owner keeps no registry, so a collected owner leaves
+    // its dead reference behind until the child is attached again.
+    const ownerIsDead = () =>
+      [...parents.keys()].every((reference) => reference.deref() === undefined);
+    for (let i = 0; i < 30 && !ownerIsDead(); i++) {
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      Bun.gc(true);
+    }
+    expect(parents.size).toBe(1);
+    expect(ownerIsDead()).toBe(true);
+
+    const next = createClassyStore({record: child});
+
+    expect(next.record).toBe(child);
+    expect(parents.size).toBe(1);
+    expect([...parents.keys()][0]?.deref()).toBe(getInternal(next));
+  });
+
   test('a child subscription observes its own subtree across owner changes', () => {
     const from = createClassyStore<{box?: {row: {n: number}}; other: number}>({
       box: {row: {n: 0}},
