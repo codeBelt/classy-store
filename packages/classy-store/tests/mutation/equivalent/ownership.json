@@ -47,15 +47,6 @@
   {
     "file": "src/core/ownership.ts",
     "scope": "StoreInternal > disconnect",
-    "mutator": "ConditionalExpression",
-    "original": "count === undefined",
-    "replacement": "false",
-    "occurrence": 1,
-    "reason": "Same behaviour: when the owner has no link to the child, the code below deletes a link and a registration that are not there, which does what returning early does."
-  },
-  {
-    "file": "src/core/ownership.ts",
-    "scope": "StoreInternal > disconnect",
     "mutator": "StatementRemoval",
     "original": "child.parentCleanup?.unregister(this.reference);",
     "replacement": ";",
@@ -70,15 +61,6 @@
     "replacement": "false",
     "occurrence": 1,
     "reason": "Performance only: for a node that is not suspended the loop below pops its one frame, finds neither saved versions nor a suspended node, and stops. The guard skips building that frame."
-  },
-  {
-    "file": "src/core/ownership.ts",
-    "scope": "StoreInternal > resume",
-    "mutator": "ConditionalExpression",
-    "original": "!frame",
-    "replacement": "false",
-    "occurrence": 1,
-    "reason": "Unreachable: `pending.pop()` runs only while the list is not empty, so `frame` is never undefined and the `break` never runs. The check only narrows the type."
   },
   {
     "file": "src/core/ownership.ts",

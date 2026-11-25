@@ -76,8 +76,7 @@ export class StoreInternal {
   }
 
   private disconnect(child: StoreInternal): void {
-    const count = child.parents.get(this.reference);
-    if (count === undefined) return;
+    const count = child.parents.get(this.reference) ?? 0;
     if (count > 1) {
       child.parents.set(this.reference, count - 1);
       return;
@@ -121,9 +120,7 @@ export class StoreInternal {
       node: StoreInternal;
       versions?: Map<StoreInternal, number>;
     }[] = [{node: this}];
-    while (pending.length) {
-      const frame = pending.pop();
-      if (!frame) break;
+    for (let frame = pending.pop(); frame; frame = pending.pop()) {
       const {node, versions} = frame;
       if (versions) {
         for (const [child, previous] of versions) {

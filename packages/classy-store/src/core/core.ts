@@ -137,8 +137,7 @@ function areDepsValid(deps: DepEntry[]): boolean {
     } else if (dep.kind === 'computed') {
       // Validate through the computed cache — never re-execute the raw getter.
       const cached = dep.internal.computedCache.get(dep.prop);
-      if (!cached) return false; // no cache → must recompute
-      if (!areDepsValid(cached.deps)) return false; // nested deps changed
+      if (!cached || !areDepsValid(cached.deps)) return false; // no cache, or nested deps changed
       if (!Object.is(cached.value, dep.value)) return false; // value changed
     } else {
       // Check that the property still exists — if it was deleted and
@@ -380,7 +379,7 @@ function linkChild(
     )
       return;
   }
-  const child = existing ?? createNode(value, pending);
+  const child = createNode(value, pending);
   owner.attach(key, child);
   return child;
 }
@@ -602,7 +601,8 @@ export function subscribe(
   const listener = () => callback();
   listeners.add(listener);
   return () => {
-    if (listeners.delete(listener)) internal.suspendIfDetached();
+    listeners.delete(listener);
+    internal.suspendIfDetached();
   };
 }
 

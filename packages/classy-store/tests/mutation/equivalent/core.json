@@ -82,15 +82,6 @@
   },
   {
     "file": "src/core/core.ts",
-    "scope": "areDepsValid",
-    "mutator": "BooleanLiteral",
-    "original": "false",
-    "replacement": "true",
-    "occurrence": 3,
-    "reason": "Unreachable: this is the `return false` under `if (!cached)`. A computed dependency is recorded only after `evaluateComputed` left an entry in the node's `computedCache`, and entries are never removed."
-  },
-  {
-    "file": "src/core/core.ts",
     "scope": "settleTransaction",
     "mutator": "ConditionalExpression",
     "original": "pendingSync.size",

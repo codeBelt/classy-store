@@ -1,15 +1,6 @@
 [
   {
     "file": "src/snapshot/snapshot.ts",
-    "scope": "originalSnapshotAccessor",
-    "mutator": "ConditionalExpression",
-    "original": "getter",
-    "replacement": "true",
-    "occurrence": 1,
-    "reason": "Same behaviour: without a getter the lookup that follows is `WeakMap.get(undefined)`, which returns undefined as the short circuit does."
-  },
-  {
-    "file": "src/snapshot/snapshot.ts",
     "scope": "computeWithTracking > handler > get",
     "mutator": "ConditionalExpression",
     "original": "!readProps.has(prop)",
@@ -29,55 +20,10 @@
   {
     "file": "src/snapshot/snapshot.ts",
     "scope": "markSnapshotForTracking > hasObjectSymbol",
-    "mutator": "ConditionalExpression",
-    "original": "descriptor",
-    "replacement": "true",
+    "mutator": "OptionalChaining",
+    "original": "descriptor?.value",
+    "replacement": "descriptor.value",
     "occurrence": 1,
-    "reason": "Same behaviour: the key comes from `Object.getOwnPropertySymbols` of the plain snapshot object built a moment before, so its descriptor is always there and the condition is always true."
-  },
-  {
-    "file": "src/snapshot/snapshot.ts",
-    "scope": "markSnapshotForTracking > hasObjectSymbol",
-    "mutator": "ConditionalExpression",
-    "original": "'value' in descriptor",
-    "replacement": "true",
-    "occurrence": 1,
-    "reason": "Same behaviour: a descriptor without `value` belongs to an accessor, whose `descriptor.value` is undefined, so the type check that follows rejects it as well."
-  },
-  {
-    "file": "src/snapshot/snapshot.ts",
-    "scope": "installMemoizedGetters",
-    "mutator": "BooleanLiteral",
-    "original": "true",
-    "replacement": "false",
-    "occurrence": 2,
-    "reason": "Same behaviour: this is `configurable` of a getter installed on the snapshot. Each key is installed once, and `Object.freeze(snap)` makes every property non-configurable before the snapshot leaves `createSnapshotRecursive`."
-  },
-  {
-    "file": "src/snapshot/snapshot.ts",
-    "scope": "createSnapshotRecursive",
-    "mutator": "BooleanLiteral",
-    "original": "true",
-    "replacement": "false",
-    "occurrence": 1,
-    "reason": "Same behaviour: this is `configurable` of a data field copied to the snapshot. No field is defined a second time, and `Object.freeze(snap)` makes every property non-configurable before the snapshot is returned."
-  },
-  {
-    "file": "src/snapshot/snapshot.ts",
-    "scope": "createSnapshotRecursive",
-    "mutator": "BooleanLiteral",
-    "original": "true",
-    "replacement": "false",
-    "occurrence": 2,
-    "reason": "Same behaviour: this is `writable` of a data field copied to the snapshot. Nothing writes the field again, and `Object.freeze(snap)` makes every property read-only before the snapshot is returned."
-  },
-  {
-    "file": "src/snapshot/snapshot.ts",
-    "scope": "createSnapshotRecursive",
-    "mutator": "StatementRemoval",
-    "original": "inProgress.delete(target);",
-    "replacement": ";",
-    "occurrence": 1,
-    "reason": "No effect: a finished node is in the snapshot cache at its current version, so a second visit in the same pass returns from the cache before `inProgress` is read, and the set is dropped when the pass ends. Only code that writes to the store in the middle of a snapshot, from a trap of a state object that is itself a Proxy, could reach the check."
+    "reason": "Same behaviour: the key comes from Object.getOwnPropertySymbols() of the same frozen snapshot a line above, so Object.getOwnPropertyDescriptor() always returns a descriptor there. The optional chain is there for the type checker, which types the descriptor as possibly undefined."
   }
 ]
