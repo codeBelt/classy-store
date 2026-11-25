@@ -88,3 +88,29 @@ are not repeated here.
 - **B, 15 to 38: not verified in the decision document**, each with what
   stage 4 does first. These are the same "not run" and "not built" notes the
   decision document carries, collected in one list.
+
+## The stage 4 task list, `review/stage-4-tasks.md`
+
+59 tasks under the twelve steps of the order, a checkpoint after each step,
+a table of ten risks, and a closing table that maps every decision to its
+tasks. Written from the decision document at `c332e5e`.
+
+Its 19 open points are in the file itself, in its section "Open points".
+They are not repeated here. The ones that block the first two steps:
+
+- **The floor guard** (points 1 to 3): where its walk over the commits
+  starts, whether it still judges the working tree, and how it tells a
+  loosened rule in its own file, which is code and not a list.
+- **The production-bundle test** (point 4): how it knows which text is
+  development text before any exists.
+- **The error codes** (points 5 and 17): which of today's messages get one,
+  the names nobody decided, and whether the code of the snapshot cycle is
+  created and then retired. The spec raises the same point.
+- **Dead code** (points 6 and 7): no benchmark row exists for two of the
+  checks decision 20 removes "after a benchmark", and the two React cache
+  traps are covered by direct tests today.
+
+Two points concern a decision's own text: decision 13's baseline (point 11)
+and the option list of `devtools` (point 12). Point 18 is a gap in the
+order: between the snapshot change and the `devtools` change, the DevTools
+tutorial's promise of computed values is false.
