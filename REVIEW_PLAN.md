@@ -177,8 +177,15 @@ commit. Its working results are in `review/stage-4/`.
   killed and its entry stale. Run the file again before you remove an
   entry.
 
-**Next:** T-09, the table per prototype in place of a descriptor lookup on
-every access (decision 12).
+- T-09 at `6052255`: getters are decided from a table per prototype. A
+  field read is 11.8 ns on Bun (was 32.4) and 34.9 on Node (was 46.8). The
+  main entry is 3,768 bytes and its budget 3,844, with the line in record
+  0004. That flaky persist test struck twice more in this task's mutation
+  runs; fixing it is the next commit.
+
+**Next:** make the persist ordering test independent of load (its own
+commit, no assertion removed), then T-10: a delete that removes nothing is
+no change (decision 8).
 
 The throwaway worktrees of the step 7 fixers are in the scratchpad, on the
 branches `step7/fix-spec`, `step7/fix-records` and `step7/fix-tasks`, which
