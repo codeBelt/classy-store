@@ -239,8 +239,7 @@ field recomputes on subsequent reads", and that sentence goes. **Stage 4:**
 yes.
 
 **The snapshot half** (findings 31 and 41: what `this` is inside a snapshot
-getter) is decided with how a snapshot carries class getters. **Open**, with
-the snapshot report.
+getter) is decision 43.
 
 ### 8. A delete that removes nothing is not a change
 
@@ -711,8 +710,139 @@ base-class store inside another store comes back as a frozen copy.
 
 - A selector form, an equality option and an immediate first call (M62) are
   additions and are not part of 1.0.
-- Whether it stops taking a snapshot of the whole store per notification
-  (M61) is **open**, with the snapshot report.
+- It stops taking a snapshot of the whole store on every notification (M61).
+  It reads the live value, and takes a snapshot of that one node only when
+  the node or its version changed. The callbacks and their values are the
+  same in every case that was run; a key beside 1,000 rows goes from 113
+  microseconds to 0.45 on Bun and from 49 to 0.78 on Node. 21 lines, 62
+  bytes on `./utils`, no test fails (`spike-snapshots.md`, N5). Can follow
+  1.0. **Stage 4:** yes.
+
+## Snapshots
+
+### 43. A snapshot carries class getters on one derived prototype per class
+
+**Decision.** A class getter is no longer an enumerable own accessor of
+every snapshot (API question 3, M33). For each class that has getters, one
+object that inherits from the class prototype is made once, with one
+memoizing accessor per getter, and snapshots of that class are created from
+it. Inside a snapshot getter `this` is the frozen snapshot behind a tracker,
+so it has the store's keys and prototype (findings 31 and 41, M34). A getter
+on an object literal stays an own accessor, listed where the store lists it
+(finding 70). `devtools` keeps showing computed values: it adds the getters'
+values to what it sends.
+
+**Why.**
+
+- No compared library lists a class getter among the own enumerable keys of
+  a copy. Today `Object.keys(store)` and `Object.keys(snapshot(store))`
+  differ, and a spread or a `JSON.stringify` of a snapshot runs every getter
+  and throws if one does.
+- It is the only form that also removes a cost on the path every write in
+  every adapter takes: a snapshot of a class with eight getters is four
+  times faster to make and holds sixteen times less memory.
+- It lets the snapshot's `this` match the store with no filtering, and it
+  drops the own key a class setter gets on a snapshot today.
+
+**What it costs a user.**
+
+- A spread or a serialised snapshot no longer carries computed values; they
+  have to be named. `{...snap}.total` still type-checks and is `undefined`,
+  as it is for any class instance in TypeScript. The tutorial documents
+  today's behaviour, so the paragraph changes.
+- `Object.getPrototypeOf(snapshot)` is no longer `Class.prototype` for a
+  class with a getter. `instanceof` and `constructor` are unchanged. The
+  reference's "keep the class prototype" becomes "are instances of the
+  class".
+- A snapshot of a reactive collection no longer lists `size` in
+  `Object.keys` or JSON. `snap.size` reads as before.
+
+**Not taken.** Own accessors that are not enumerable: one line, the same
+visible change for `Object.keys` and JSON, none of the gain in time and
+memory, and `this` then needs a filter to match the store. Keeping today's
+shape, which no report supports.
+
+**Evidence.** `spike-snapshots.md`, N2, form A with S1 of the trap spikes.
+122 lines added, 58 removed, in five files; 239 bytes. 14 tests change with
+S1: fixes, except that the eight tests of today's shape change by decision.
+`persist` saves the same fields as before. The base class of decision 11
+gets a correct snapshot on top of it, in one build.
+
+**Label.** Before 1.0. **Stage 4:** yes. The React tracking path is where
+the risk is: a tracked read and a plain read have to share one cached
+result.
+
+### 44. A snapshot keeps a cycle
+
+**Decision.** `snapshot()` of a store that refers to itself returns a frozen
+snapshot with the same cycle in it, where it throws today (finding 8, M36).
+The React hook, `withHistory` and `cloneSnapshot` are made safe for it.
+
+**Why.** Today the write that closes a cycle succeeds and the store can then
+not be read by any adapter. Refusing that write would need a walk from the
+new parent to the roots on every assignment of an object, and would also
+have to reject a cycle already in the object given to `createClassyStore()`,
+which works on the live side today.
+
+**What it costs a user.** Everything on a cycle gets a new snapshot on every
+write to any of it, so a model with parent pointers loses structural sharing
+for what the pointers connect. The docs say so and name the alternatives:
+hold the parent's id, or hold the parent in an object the store does not
+proxy. `JSON.stringify` of such a snapshot throws, as for any cycle, and
+`persist` reports it through `onError`.
+
+**Evidence.** `spike-snapshots.md`, N3. The main entry is 9 bytes smaller,
+`./utils` 21 larger, `./react` 30 larger. 7 tests change, all of them
+asserting the throw. The guard costs a tracked comparison 14 to 29
+nanoseconds on data without a cycle. Not checked: what the Redux DevTools
+extension does with a cyclic state.
+
+**Label.** Before 1.0: it reverses a documented sentence. **Stage 4:** yes.
+
+### 45. Snapshot types: tuples stay tuples, and a collection snapshot has no mutators
+
+**Decision.**
+
+- `Snapshot<[string, number]>` is `readonly [string, number]` (finding 14,
+  M41).
+- `Snapshot<ReactiveMap<K, V>>` and `Snapshot<ReactiveSet<T>>` are two
+  exported types with the queries and the iterators and without `set`,
+  `add`, `delete` and `clear`. Calling a mutator on a snapshot, through a
+  tracking proxy, or on a collection its owner froze throws a `TypeError`
+  with the code of decision 35 (finding 16, M42).
+- The backing arrays `_entries` and `_items` stay public, read-only in the
+  snapshot types (finding 15, M43). The docs say that writing to them
+  directly, on a live collection, is unspecified: use the methods.
+
+**Why.** A snapshot is frozen, so a mutator in its type promises something
+that throws. One case is worse than a throw today: `add()` on a set that its
+owner froze and placed in a store pushes to the raw array and tells no one.
+The backing arrays stay because the repository's own Next.js example reads
+them from snapshots in four components, and hiding them is a migration with
+nothing behind it.
+
+**Evidence.** `spike-snapshots.md`, N4. No unit test changes. Type tests in 3
+files change, all fixes. `./collections` grows by 32 bytes with a short
+message.
+
+**Label.** Before 1.0: public types. **Stage 4:** yes.
+
+### 46. A snapshot after one row changes still rebuilds the list
+
+**Decision.** Not changed in 1.0 (finding 2, M35). Recording which keys
+changed and rebuilding only those is correct and can follow in a 1.x
+release.
+
+**Why.** On Node it makes a snapshot after one of 1,000 rows changes three
+times faster. On Bun, and so most likely in Safari, it gains nothing at that
+size, because freezing a new 1,000-element array costs about 80 microseconds
+there by itself. It costs 270 bytes, for arrays only. Decision 37 already
+removes the worst case for three of the five adapters without it.
+
+**Evidence.** `spike-snapshots.md`, N1: no difference in 120,000 compared
+snapshots; 8 tests and 9 type errors, all of which read an internal map.
+
+**Label.** Can follow 1.0. **Stage 4:** no.
 
 ## Adapters and collections
 
@@ -826,9 +956,9 @@ client `prepareStoreForHydration(store)` is called before `persist(store)`.
   (M40), built on the second lookup.
 - **No index beside the live array in 1.0.** It is 100 times faster on a hit
   and costs 339 bytes, and it answers wrong after a write to the raw backing
-  array, which today's scan gets right. It waits for a decision on whether
-  the backing arrays stay public (M43), which is **open** with the snapshot
-  report.
+  array, which today's scan gets right. Decision 45 keeps the backing arrays
+  public and says that writing to them directly is unspecified, which leaves
+  room for it later.
 - **Native `Map` and `Set` stay opaque** (API question 5, M38), and
   `reactiveMap` and `reactiveSet` stay separate classes. No library has a
   frozen native `Map`: one can still be written through `Map.prototype.set`.
