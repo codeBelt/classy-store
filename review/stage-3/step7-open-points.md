@@ -57,3 +57,34 @@ against the decision document.
 13. **What "0.11" means.** The records write "0.11" wherever the decision
     document says "today", taking the code on `release/1.0` before the 1.0
     changes to be 0.11.
+
+## The spec, `review/spec.md`
+
+1,958 lines, written from the decision document at `c332e5e`: 43 exports
+across the nine entry points, 173 numbered rules, the rule for functions
+with a table of 59 cases, the 12 guarantees split into 67 statements, 11
+unspecified items, 15 error codes and 18 done conditions. The writer
+compiled the signatures with the package's own TypeScript.
+
+Its 38 open points are in the spec itself, section 12, in two groups. They
+are not repeated here.
+
+- **A, 1 to 14: unclear in the decision document.** These need a decision
+  before stage 4 starts. The ones that block a step:
+  - Eleven of the 15 error codes are names the writer proposed, because the
+    decision document decides that the errors exist and does not name them.
+    Codes are stable from 1.0, and step 2 of the order creates the page of
+    codes, so the names have to be settled first (points 1 to 3).
+  - What a `persist` report carries when the error is not the library's
+    own, and whether `save()` before the first read is reported as well as
+    rejected (point 4).
+  - The names of the two collection snapshot types (point 5).
+  - Guarantee 3 and the unspecified item "which microtask a batched round
+    runs in" overlap (point 8).
+  - A generator method notifies once per write, which rule 2 does not say
+    (point 9).
+  - Rule 10's "the first `save()` reaches a synchronous storage before it
+    returns" against a handle that does not write (point 11).
+- **B, 15 to 38: not verified in the decision document**, each with what
+  stage 4 does first. These are the same "not run" and "not built" notes the
+  decision document carries, collected in one list.

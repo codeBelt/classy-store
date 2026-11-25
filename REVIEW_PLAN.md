@@ -253,13 +253,18 @@ fail in the main checkout, so `.gitignore` lists that folder.
   worktree, installs nothing here and leaves `bun.lock` alone. The one file a
   read-only agent may create here is its own report under `review/`; the
   agent running the stage commits it.
-- Helper agents run on Opus; only the main thread runs on Fable. The owner
-  said on 2026-11-24: "how can I get the subagents to use the Opus model and
-  only have the main thread be Fable. if you can do this. lets do this". This
-  replaces the split in "Agent models" below, which is kept for the record.
-  Pass `model: "opus"` on every agent call. `.claude/settings.local.json`
-  sets `CLAUDE_CODE_SUBAGENT_MODEL=opus` for sessions started after
-  2026-11-24; it is not committed.
+- **Models, from 2026-11-25.** The session that runs the plan is on Opus
+  5.5 at extra-high effort. Every helper agent runs on Opus 5.5 at medium
+  effort: pass `model: "opus"` and `effort: "medium"` on every agent call.
+  The owner asked for it on 2026-11-25: "Are you able to move all the work
+  off this main thread that's using Fable 5.2 to a new session that uses
+  Opus 5.5 max, and then from there that session would orchestrate the
+  sub-agents using Opus 5.5. medium", and then "change the main session from
+  Opus 5.5 Max to Opus 5.5 Extra". Until then the main thread ran on Fable,
+  and from 2026-11-24 the helpers on Opus. This replaces the split in "Agent
+  models" below, which is kept for the record.
+  `.claude/settings.local.json` sets `CLAUDE_CODE_SUBAGENT_MODEL=opus`; it is
+  not committed.
 - `CONSTRAINTS.md` is the quality bar from the end of stage 1. No agent lowers
   a number in it or weakens a check to make something pass. A number moves
   only through a stage 3 decision with a decision record under
@@ -334,6 +339,12 @@ Not for this work: `frontend-ui-engineering`, `frontend-design`, `dataviz`,
 `article-writing`, `find-skills`, and the document-format skills.
 
 ## Agent models
+
+**Replaced on 2026-11-25** by the ground rule on models: the session that
+runs the plan is on Opus 5.5 at extra-high effort, and every helper agent on
+Opus 5.5 at medium effort. What follows is how the models were assigned
+before that, kept for the record. The session that runs the plan is still
+the one writer in stage 4.
 
 The main thread runs Fable, and it is the one writer in stage 4. A helper agent
 runs on Fable, on Opus, or on Sonnet at high effort, and never on anything
