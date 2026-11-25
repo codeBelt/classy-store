@@ -156,26 +156,78 @@ yes, first, because decisions 2 and 12 touch the same traps.
   the next snapshot (finding 25, M17). It is a case of "writes outside the
   proxy are not seen", which the docs already state.
 
-### 4. The size budget moves once, for the whole set
+### 4. The size budgets move once, to a ceiling, for the whole set
 
-**Open.** It waits for the development-build report, which measures how many
-bytes of message text can leave the production build, and for the snapshot
-and class spikes.
+**Decision.** The decided changes do not fit the budgets of
+`CONSTRAINTS.md`, and no subset worth shipping does. Each budget gets a
+ceiling, set here once for the whole set. One decision record carries all of
+them.
 
-What is known:
+| Entry                 | Today | Budget today | Ceiling | What moves it                                                 |
+| --------------------- | ----: | -----------: | ------: | ------------------------------------------------------------- |
+| `.` (the main entry)  | 3,661 |        3,750 |   4,850 | The table below                                               |
+| `./utils` adds        | 2,686 |        2,750 |   3,500 | `persist` and `devtools` (decisions 19 to 28), `subscribeKey` |
+| `./collections` adds  |   727 |          750 |     900 | The snapshot index, the membership rule, the mutator check    |
+| `./react` adds        | 1,662 |        1,700 |   1,725 | The guard for a cyclic snapshot                               |
+| `./vue` adds          |   280 |          300 |     380 | The read-time ref and the server path                         |
+| `./angular` adds      |   271 |          300 |     390 | The read-time signal, `untracked()`, the injector option      |
+| `./solid` adds        |   312 |          335 |     360 | The read-time accessor                                        |
+| `./svelte` adds       |   182 |          200 |     200 | Nothing                                                       |
+| `./react/server` adds |   153 |          175 |     175 | Nothing                                                       |
 
-| Change                                            | Main entry, bytes |
-| ------------------------------------------------- | ----------------: |
-| Today                                             |             3,661 |
-| Proxy traps as decided (decisions 1, 2, 5 to 9)   |    about 550 more |
-| Getters (decision 10)                             |          165 more |
-| Subscriber delivery (decisions 13 to 16)          |          189 more |
-| The descriptor cache (decision 12)                |          119 more |
-| Dead lines and the walk (decisions 3 and 20)      |          68 fewer |
-| The action-name hook for `devtools` (decision 27) |           20 more |
+**How a budget moves in stage 4.** A commit that grows an entry sets that
+entry's budget to its new measured size plus 2%, in the same commit, and
+never above the ceiling. A change that would pass a ceiling stops and needs
+a new decision. When stage 4 ends, every budget is the final measured size
+plus 2%, which will be below these ceilings.
 
-Parts measured alone do not add up exactly, because of how gzip shares
-strings. The sum is near 4,650, before snapshots and classes.
+**The main entry, change by change.** Each figure is that change measured
+alone against today's source. They do not add up exactly, because gzip
+shares strings between them, and the messages were measured as their spikes
+wrote them, before the codes of decision 35 shorten them by about 100 bytes.
+
+| Change                                                                | Decision |  Bytes |
+| --------------------------------------------------------------------- | -------: | -----: |
+| Stored functions returned as they are                                 |        1 |      0 |
+| `defineProperty` as a write                                           |        2 |    +49 |
+| The walk to a detached parent removed                                 |        3 |    −36 |
+| Raw values on write                                                   |        5 |    +36 |
+| Searches that find an object in any form                              |        6 |   +100 |
+| `has` and `ownKeys` traps, a missing property as a value              |        7 |   +156 |
+| A delete that removes nothing                                         |        8 |    +11 |
+| A plain object from another realm, at most                            |        9 |    +40 |
+| Getters: one kind of dependency, errors, the snapshot layer           |       10 |   +165 |
+| The base class and its arrow-function fields, if they ship in 1.0     |       11 |    +96 |
+| A table per prototype in place of a descriptor lookup                 |       12 |   +119 |
+| The delivery queue with its bound, setters, the rejection handler     | 13 to 15 |   +189 |
+| Dead lines removed                                                    |       20 |    −32 |
+| The method name for `devtools`                                        |       27 |    +20 |
+| Class getters on a derived prototype, and `this` in a snapshot getter |       43 |   +239 |
+| A snapshot keeps a cycle                                              |       44 |     −9 |
+| Sum                                                                   |          | +1,143 |
+
+That puts the main entry near 4,700 bytes, 28% above today's.
+
+**Why this is accepted.**
+
+- The plan puts correctness and clarity first. These bytes remove more than
+  thirty findings, among them a read that never returns, a stack overflow,
+  getters that return stale answers, and wrong answers from `includes()`.
+- Two of the larger items buy speed on the hottest paths: a field read gets
+  about 2.5 times faster on JavaScriptCore, and a snapshot of a class with
+  getters four times faster.
+- What was cut to keep it down: long error messages (271 bytes), a
+  development build in 1.0, refusals in the `defineProperty` trap (160),
+  recording reads outside a getter's own node (124), cached getter errors
+  (73), a throw for getters that write on the live store (51), the changed
+  keys rebuild (270), and an index beside live collections (339).
+
+**The cost limits** of `CONSTRAINTS.md` do not move. When stage 4 ends, the
+baselines are recorded again and each limit is tightened to the highest new
+run times 1.2, which needs no decision record.
+
+**The docs.** The README and `CLAUDE.md` say "about 3.7 KB". Stage 5 changes
+that to the measured figure.
 
 ## Bugs
 
