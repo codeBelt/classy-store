@@ -405,6 +405,124 @@ difference is reported only where ranges of the same round do not touch:
 P7 against the base on Node in four rounds of five. Everything else is inside
 the spread.
 
+## Addendum: an undo after an object moved to another store, or is shared
+
+Added by the orchestrating agent on 2026-11-25, for objection 8 of
+`adversarial-edges.md`. Decision 30 restores a live object in place. What
+happens when that object has since moved to another store, or sits in two?
+
+- **Build.** A worktree at `57404c3` with `k1-combined-fixed.patch` (V4,
+  N3 and the guard of K1), and the unmodified source beside it.
+- **Script.** `moved.ts`, below. It imports the source, so no build is
+  needed: `SRC=<worktree>/packages/classy-store/src bun moved.ts`.
+
+| Case                                                                | Unmodified                                                                | Decisions 30 and 44                                                                                                |
+| ------------------------------------------------------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| A card moves from store A to store B, B edits it, A undoes the move | A gets a copy; B keeps its edit and is not told                           | A gets the card itself back; it is the same object in B; B's edit is undone too, and B's subscribers are told once |
+| An object shared by A and B from the start; B edits it; A undoes    | A gets a copy, so the two stores **no longer share it**; B keeps the edit | Still one object; the edit is undone in both; B's subscribers are told once; a redo puts it back in both           |
+| A row is removed from A and nobody else holds it; A undoes          | The row is back as a new object                                           | The row is back as the object the caller held                                                                      |
+| A card moves from A to B with no edit; A undoes                     | A gets a copy; B keeps the card                                           | Both stores hold the one card                                                                                      |
+
+So the restore follows the object, as decision 30 says. The cost is the
+first row: an undo in one store changes an object that another store now
+holds. Today's behaviour has its own defect in the second row, which nobody
+had recorded: an undo silently ends the sharing of an object between two
+stores.
+
+### `moved.ts`
+
+```ts
+// Objection E8: an undo after an object moved to, or is shared with, another store.
+// Run: SRC=<worktree>/packages/classy-store/src bun moved.ts
+const SRC = process.env.SRC;
+const {createClassyStore, snapshot, subscribe} = await import(
+  `${SRC}/index.ts`
+);
+const {withHistory} = await import(`${SRC}/utils/index.ts`);
+const flush = () => new Promise((r) => setTimeout(r, 0));
+const show = (label: string, value: unknown) =>
+  console.log(label.padEnd(58), JSON.stringify(value));
+
+// 1. A card moves from board A to board B, B edits it, A undoes the move.
+{
+  const a = createClassyStore({cards: [{id: 1, title: 'one'}]});
+  const b = createClassyStore({cards: [] as {id: number; title: string}[]});
+  const history = withHistory(a);
+  const card = a.cards[0];
+  await flush();
+  let bCalls = 0;
+  subscribe(b, () => bCalls++, {sync: true});
+  // the move
+  a.cards.splice(0, 1);
+  b.cards.push(card);
+  await flush();
+  b.cards[0].title = 'edited in B';
+  await flush();
+  bCalls = 0;
+  history.undo();
+  show('1 moved: A has the card back', a.cards.length);
+  show('1 moved: it is the same object as before', a.cards[0] === card);
+  show('1 moved: it is the same object as in B', a.cards[0] === b.cards[0]);
+  show('1 moved: title in A after undo', a.cards[0]?.title);
+  show('1 moved: title in B after A undid', b.cards[0]?.title);
+  show('1 moved: B subscribers called by A undo', bCalls);
+  show('1 moved: B snapshot title', snapshot(b).cards[0]?.title);
+}
+
+// 2. An object shared by two stores from the start; B edits it; A undoes.
+{
+  const shared = createClassyStore({n: 1});
+  const a = createClassyStore({shared, own: 0});
+  const b = createClassyStore({shared});
+  const history = withHistory(a);
+  await flush();
+  let bCalls = 0;
+  subscribe(b, () => bCalls++, {sync: true});
+  b.shared.n = 2;
+  await flush();
+  bCalls = 0;
+  history.undo();
+  show('2 shared: n in A after undo', a.shared.n);
+  show('2 shared: n in B after A undid', b.shared.n);
+  show(
+    '2 shared: still one object',
+    a.shared === b.shared && a.shared === shared,
+  );
+  show('2 shared: B subscribers called by A undo', bCalls);
+  history.redo();
+  show('2 shared: n in B after A redid', b.shared.n);
+}
+
+// 3. A row was removed and dropped (nobody else holds it), then undo.
+{
+  const a = createClassyStore({rows: [{id: 1}, {id: 2}]});
+  const history = withHistory(a);
+  const first = a.rows[0];
+  await flush();
+  a.rows.splice(0, 1);
+  await flush();
+  history.undo();
+  show('3 removed: row is back', a.rows.length);
+  show('3 removed: it is the object the caller held', a.rows[0] === first);
+}
+
+// 4. A card moved to B and A's undo, on a card B has since removed again.
+{
+  const a = createClassyStore({cards: [{id: 1, title: 'one'}]});
+  const b = createClassyStore({cards: [] as {id: number; title: string}[]});
+  const history = withHistory(a);
+  const card = a.cards[0];
+  await flush();
+  a.cards.splice(0, 1);
+  b.cards.push(card);
+  await flush();
+  history.undo();
+  show('4 moved, no edit: A has it', a.cards[0] === card);
+  show('4 moved, no edit: B still has it', b.cards[0] === card);
+  show('4 moved, no edit: B length', b.cards.length);
+}
+```
+
 ## Appendix: how to build each spike again
 
 All patches apply to a worktree at `57404c3`; run `bun install
