@@ -51,38 +51,31 @@ pause on 2026-11-24: "The pause is over, carry on with stage 3."
 - The second adversarial review: `adversarial-2-whole.md` (14 objections, 5
   "wrong") and `adversarial-2-core.md` (16 objections, 6 "wrong").
 
-- The answers to the second round that need no build are in the decision
-  document: the `persist` rules (21 to 24), the size ceilings and their
-  tooling (4), the lost-write check (36), `devtools` (27), the order for
-  stage 4 and the list of proposals not taken.
+- The second round is answered in full, in a second table of "Objections
+  and answers". Two more spikes were run for it: `spike-functions-2.md` (the
+  rule for functions, in a form that never changes the object) and
+  `spike-core-3.md` (a snapshot getter that reaches the live store, the
+  table per prototype that grew with absent keys, an undo into a container
+  that cannot be written). Decisions 1, 10, 11, 12, 29 and 30 were decided
+  again from them, and 21 to 24, 4, 27 and 36 from the review itself.
 
-**Running:** two spikes the second review asked for. Their briefs are in
-`review/stage-3/briefs/`, and each report is written as the agent goes:
-
-- `spike-functions-2.md`: the rule for functions in a form that leaves the
-  object and its snapshots as written. A function in a field is a method
-  only when it is read through the store (decisions 1, 11 and 29).
-- `spike-core-3.md`: a snapshot getter that reaches the live store (10), the
-  table per prototype that grows with absent keys (12), and an undo into a
-  container that cannot be written (30).
-
-Five entries of the decision document (1, 10, 12, 29 and 30) are marked
-"under revision". If an agent was cut off, restart it from its brief with
-the report as its starting point.
+**Running:** the third and last adversarial review, by one agent that has
+seen none of the work. Its brief is
+`review/stage-3/briefs/adversarial-3.md` and its report
+`review/stage-3/adversarial-3.md`. If the agent was cut off, restart it from
+its brief with the report as its starting point.
 
 **Then:**
 
-1. Decide the five entries again from the two reports, and write the second
-   round's table into "Objections and answers": 14 objections of
-   `adversarial-2-whole.md` and 16 of `adversarial-2-core.md`.
-2. A third and last round of review, on the entries that changed since the
-   second.
-3. Step 7, by three agents, each with a brief in `review/stage-3/briefs/`:
+1. Answer the third round in a third table of "Objections and answers".
+   There is no fourth round: an objection that cannot be settled by a change
+   to the text or by a short run goes to the owner, with what was tried.
+2. Step 7, by three agents, each with a brief in `review/stage-3/briefs/`:
    the spec at `review/spec.md` (`step7-spec.md`), one decision record per
    decision under `docs/decisions/` (`step7-records.md`), and the stage 4
    task list at `review/stage-4-tasks.md` (`step7-tasks.md`). The
    orchestrating agent checks each against the decision document.
-4. The stage 3 report and the Status table above. A draft of the report is
+3. The stage 3 report and the Status table above. A draft of the report is
    in the scratchpad, `stage-3-finish/stage-3-report.draft.md`, and may be
    gone after a reboot.
 
