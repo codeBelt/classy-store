@@ -124,8 +124,17 @@ commit. Its working results are in `review/stage-4/`.
 - Checkpoint 1: every check passes on the head, and the starting core
   timings are in `review/stage-4/` (`README.md` has the ratios).
 
-**Next:** T-03, today's six messages get their codes and the page of codes
-is created (decision 35).
+- `bd50ec4`: a fix to T-01. On a pull request CI checks out a merge of the
+  head into `main`, and the per-commit guard failed on that merge commit. The
+  guard takes `--head <ref>` now, and `ci.yml` passes the pull request's head.
+- T-03 at `dc2f144`: today's six messages carry their codes, built by
+  `codedMessage()` in the core, and `website/content/docs/ERRORS.md` lists
+  them. The main entry is 12 bytes larger (3,673), under its budget.
+- Every change that alters behaviour adds its line to the 1.0 changeset,
+  `.changeset/stable-one.md`, in its own commit (decision 34 asks for the
+  changelog entry); T-03's line is added after it.
+
+**Next:** T-04, the ten dead lines of the three core files (decision 20).
 
 The throwaway worktrees of the step 7 fixers are in the scratchpad, on the
 branches `step7/fix-spec`, `step7/fix-records` and `step7/fix-tasks`, which

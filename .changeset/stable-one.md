@@ -15,6 +15,7 @@ Release 1.0.0, the first stable version. The public API and its behavior are now
 - `devtools()` returns a handle with `dispose()` instead of a function, and no longer declares anything on the global `Window` type.
 - Angular: `injectStore` is renamed `injectClassyStore`.
 - Solid: the adapter requires Solid 2 (`solid-js@^2.0.0`).
+- Every error message now reads `@codebelt/classy-store [code]: facts`, with a stable code such as `[not-a-store]` or `[getter-cycle]`; the adapters' messages share that prefix. Match on the code, not the text after it. The documentation's "Errors and warnings" page lists every code.
 
 **Other changes**
 
