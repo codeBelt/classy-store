@@ -6,6 +6,10 @@ in brackets: `[D13]` is decision 13 of the stage 3 decision document, `[G5]`
 is rule 5 of its "What 1.0 guarantees". The reasons are in the decision
 records, not here.
 
+"0.11" in this spec means the code on `release/1.0` before stage 4: the
+0.11.0 release plus the unreleased preparation for 1.0. The 0.11.0 package on
+npm has no `batch()` and no transactions.
+
 A word on the terms used below:
 
 - **Store**: the proxy that `createClassyStore()` returns, or a nested proxy
@@ -29,28 +33,30 @@ puts a Proxy in front of it, class getters become memoized computed values,
 and every framework reads frozen snapshots with structural sharing from one
 core. These three things stay fixed in 1.0: a plain class behind a Proxy,
 frozen snapshots with structural sharing, and one core for five frameworks.
-For a user, 1.0 means that the public API in section 3 and the behaviour in
+For a user, 1.0 means that the signatures of section 3 and the behaviour of
 section 5 change only in a major release; what section 6 lists may change in
-a minor release.
+a minor release. A rule of section 3 marked _(build)_ says how stage 4 builds
+a change and promises nothing.
 
 ## 2. Entry points
 
 All peer dependencies are optional. The package keeps `engines.node` at
 `>=22` and one production dependency, `proxy-compare`, pinned to an exact
-version [D33]. **New** marks what 1.0 adds; **changed** marks what 1.0
-changes.
+version [D33]. **New** marks what 1.0 adds; **changed** marks an export
+whose signature or type 1.0 changes. Section 3 lists the behaviour that
+changes under each export's "Changed from 0.11".
 
-| Import path                           | Runtime exports                                                                                                                   | Public types                                                                                                                                                                                                                                          | Peer dependency and range      |
-| ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
-| `@codebelt/classy-store`              | `createClassyStore`, **`ClassyStore` (new)** [D11], `snapshot`, `subscribe`, `batch` (changed) [D16], `shallowEqual`, `PROXYABLE` | `Snapshot` (changed) [D45], `SubscribeOptions`                                                                                                                                                                                                        | None                           |
-| `@codebelt/classy-store/react`        | `useClassyStore`, `useLocalStore`, `createStoreHook`, `useHistoryStatus`, `usePersistStatus`                                      | `UseClassyStoreSelectorOptions`                                                                                                                                                                                                                       | `react` `^18.0.0 \|\| ^19.0.0` |
-| `@codebelt/classy-store/react/server` | `prepareStoreForHydration`                                                                                                        | None                                                                                                                                                                                                                                                  | None: it imports no React      |
-| `@codebelt/classy-store/collections`  | `reactiveMap`, `reactiveSet`                                                                                                      | `ReactiveMap`, `ReactiveSet`, **`ReactiveMapSnapshot` (new)**, **`ReactiveSetSnapshot` (new)** [D45]                                                                                                                                                  | None                           |
-| `@codebelt/classy-store/utils`        | `persist`, `withHistory`, `subscribeKey`, `devtools`                                                                              | `PersistOptions` (changed: `onError`) [D21], `PersistHandle`, `PersistStatus`, `PersistOperation`, `PropertyTransform`, `StorageAdapter`, `HistoryOptions`, `HistoryHandle`, `HistoryStatus`, `DevtoolsOptions`, `DevtoolsHandle`, `SubscribeOptions` | None                           |
-| `@codebelt/classy-store/vue`          | `useClassyStore` (changed: its return type) [D38]                                                                                 | None                                                                                                                                                                                                                                                  | `vue` `^3.2.0`                 |
-| `@codebelt/classy-store/svelte`       | `toSvelteStore`                                                                                                                   | `ClassyReadable`                                                                                                                                                                                                                                      | `svelte` `^4.0.0 \|\| ^5.0.0`  |
-| `@codebelt/classy-store/solid`        | `useClassyStore`                                                                                                                  | None                                                                                                                                                                                                                                                  | `solid-js` `^2.0.0`            |
-| `@codebelt/classy-store/angular`      | `injectClassyStore` (changed: an `options` parameter) [D39]                                                                       | None                                                                                                                                                                                                                                                  | `@angular/core` `^22.0.0`      |
+| Import path                           | Runtime exports                                                                                                                   | Public types                                                                                                                                                                                                                                                                        | Peer dependency and range      |
+| ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
+| `@codebelt/classy-store`              | `createClassyStore`, **`ClassyStore` (new)** [D11], `snapshot`, `subscribe`, `batch` (changed) [D16], `shallowEqual`, `PROXYABLE` | `Snapshot` (changed) [D45], `SubscribeOptions`                                                                                                                                                                                                                                      | None                           |
+| `@codebelt/classy-store/react`        | `useClassyStore`, `useLocalStore`, `createStoreHook`, `useHistoryStatus`, `usePersistStatus`                                      | `UseClassyStoreSelectorOptions`                                                                                                                                                                                                                                                     | `react` `^18.0.0 \|\| ^19.0.0` |
+| `@codebelt/classy-store/react/server` | `prepareStoreForHydration`                                                                                                        | None                                                                                                                                                                                                                                                                                | None: it imports no React      |
+| `@codebelt/classy-store/collections`  | `reactiveMap`, `reactiveSet`                                                                                                      | `ReactiveMap`, `ReactiveSet`, **`ReactiveMapSnapshot` (new)**, **`ReactiveSetSnapshot` (new)** [D45]                                                                                                                                                                                | None                           |
+| `@codebelt/classy-store/utils`        | `persist`, `withHistory`, `subscribeKey`, `devtools`                                                                              | `PersistOptions` (changed: `onError`) [D21], `PersistHandle`, `PersistStatus`, `PersistOperation`, `PropertyTransform`, `StorageAdapter`, `HistoryOptions`, `HistoryHandle`, `HistoryStatus`, `DevtoolsOptions` (changed: five options) [D27], `DevtoolsHandle`, `SubscribeOptions` | None                           |
+| `@codebelt/classy-store/vue`          | `useClassyStore` (changed: its return type) [D38]                                                                                 | None                                                                                                                                                                                                                                                                                | `vue` `^3.2.0`                 |
+| `@codebelt/classy-store/svelte`       | `toSvelteStore`                                                                                                                   | `ClassyReadable`                                                                                                                                                                                                                                                                    | `svelte` `^4.0.0 \|\| ^5.0.0`  |
+| `@codebelt/classy-store/solid`        | `useClassyStore`                                                                                                                  | None                                                                                                                                                                                                                                                                                | `solid-js` `^2.0.0`            |
+| `@codebelt/classy-store/angular`      | `injectClassyStore` (changed: an `options` parameter) [D39]                                                                       | None                                                                                                                                                                                                                                                                                | `@angular/core` `^22.0.0`      |
 
 - No export is renamed or removed [D40, D41]. The list may grow in a minor
   release [G11].
@@ -63,14 +69,13 @@ changes.
 
 Each export has its signature as it is in 1.0, its rules, the errors it
 throws or logs, and what changed from 0.11. An error code is written
-`[code]`; section 7 has the full table, and a code marked "proposed" there
-is a name this spec proposes where the decision document decides that a code
-exists and does not name it.
+`[code]`; section 7 has the full table of the nineteen codes [D35].
 
 Every error and every logged report from the library reads
-`@codebelt/classy-store [code]: facts` [D35]. An adapter keeps its own prefix,
-for example `@codebelt/classy-store/vue`. The facts are the names the user
-wrote: a key, a getter path, the adapter. The same checks throw in every
+`@codebelt/classy-store [code]: facts` [D35]. There is one prefix for every
+message, the adapters' too; the code says where a message comes from, for
+example `@codebelt/classy-store [vue-no-scope]: …` [D35]. The facts are the
+names the user wrote: a key, a getter path. The same checks throw in every
 build [D35].
 
 ### 3.1 Main entry: `@codebelt/classy-store`
@@ -139,7 +144,7 @@ export function createClassyStore<T extends object>(instance: T): T;
     subscriber is told once [D15].
 20. A write to the raw object behind a store is not seen. A raw object changed
     while it is out of the store shows its old content in the next snapshot
-    after it is put back [D3]. The raw object must not be frozen once a store
+    [D3]. The raw object must not be frozen once a store
     holds it [D9].
 
 **Reads**
@@ -164,7 +169,7 @@ export function createClassyStore<T extends object>(instance: T): T;
 25. A getter records one kind of dependency, a value and a version stamp per
     property, each property once per run. A property that was missing is
     recorded as missing, so a getter that reads an absent field is memoized
-    like any other [D10, D7].
+    like any other [D10, D7]. _(build)_
 26. A getter that asks `'b' in this` records a dependency on the key `b`. A
     getter that calls `Object.keys(this)` records a dependency on the node's
     key set. Adding or removing a key, by a write, a `delete` or a definition,
@@ -181,21 +186,23 @@ export function createClassyStore<T extends object>(instance: T): T;
     `TypeError` `[getter-write]` that names the field, also when the write is
     made by a method the getter calls. Nothing is written and nobody is told
     [D10].
-31. Allowed in a getter: a write to another store, a write to a child object,
-    and the construction of a store [D10].
+31. Allowed in a getter, on the store and on a snapshot: a write to another
+    store and the construction of a store [D10]. A write to a child, a parent
+    or the root of the same store is unspecified (section 6).
 32. Whether a key is a class getter is decided from a table per prototype,
     filled on the first miss. A read whose cached result is valid returns it.
-    A recompute asks the prototype for its getter, so a getter redefined on
-    the class runs its new body at its next recompute [D12].
+    A recompute asks the prototype for its getter [D12]. What a getter
+    redefined on the class after its first read does is unspecified (section
+    6). _(build)_
 33. The table of a prototype records a key that is absent everywhere only
-    while it holds fewer than 256 keys [D12].
+    while it holds fewer than 256 keys [D12]. _(build)_
 
 **Errors**
 
 - `[getter-cycle]`, `Error`, thrown by a read of a getter that is on a cycle
   of getters. Facts: the path.
-- `[getter-write]` (proposed), `TypeError`, thrown by a write to a getter's
-  own object while the getter runs. Facts: the field.
+- `[getter-write]`, `TypeError`, thrown by a write to a getter's own object
+  while the getter runs. Facts: the field.
 - The engine's own `TypeError` for a write the raw object refuses (a frozen,
   sealed or read-only target) [G8].
 
@@ -231,7 +238,8 @@ export const ClassyStore: new () => object;
 3. `createClassyStore(new X())` returns the same store [D11].
 4. `instanceof X` and `instanceof ClassyStore` are true on the store and on
    its snapshot [D11, D43].
-5. `super(args)` is a type error: the base takes no arguments [D11].
+5. `super(args)` is a type error: the base takes no arguments
+   (`spike-classes-2.md`).
 6. A store of such a class can be constructed inside a getter, on the live
    store and on a snapshot [D10, D11].
 7. `persist()` is not called inside a constructor. A test pins what happens
@@ -296,29 +304,29 @@ export function snapshot<T extends object>(proxyStore: T): Snapshot<T>;
     by another path (an arrow-function method of a `ClassyStore` subclass, a
     reference to the store, a method called on the store) throws the same
     way, with nothing written and nobody told [D10].
-16. A write to a child object from a snapshot getter throws in strict code,
-    because the child is frozen, and is ignored in code that is not strict
-    [D10].
+16. Today's answer, unspecified (section 6): a write to a child object from a
+    snapshot getter throws in strict code, because the child is frozen, and
+    is ignored in code that is not strict [D10].
 
 **Development check**
 
 17. In development only, when a snapshot is asked for and a field of the raw
     object has changed without a write through the store, the library logs it
-    once with `[lost-write]` and the field's name. The comparison runs at most
-    once per task for a store [D36]. This check ships in 1.0 only if it meets
-    the condition of section 8 [D36].
+    once with `[lost-write]` and the field's name, with `console.warn`. The
+    comparison runs at most once per task for a store [D35, D36]. This check
+    ships in 1.0 only if it meets the condition of section 8 [D36].
 
 **Errors**
 
 - `[not-a-store]`, `Error`, thrown when the argument is not a store.
 - `[getter-cycle]`, `Error`, from a getter read on a snapshot (rule 13).
-- `[getter-write]` (proposed), `TypeError` (rules 14 and 15).
-- `[lost-write]`, logged once, development only (rule 17).
+- `[getter-write]`, `TypeError` (rules 14 and 15).
+- `[lost-write]`, logged once with `console.warn`, development only (rule 17).
 
 **Changed from 0.11**
 
 - A store with a cycle no longer throws `circular reference detected in
-  snapshot` [D44].
+  snapshot`. That message gets no code [D35, D44].
 - Class getters move off the snapshot's own keys onto a derived prototype;
   `this` inside a snapshot getter is right [D43].
 - A snapshot getter cycle throws in place of a stack overflow; nested
@@ -391,8 +399,8 @@ export function subscribe(
 **Errors**
 
 - `[not-a-store]`, `Error`, thrown when `proxy` is not a store.
-- `[delivery-loop]`, logged once, in every build, when delivery reaches 100
-  rounds.
+- `[delivery-loop]`, logged once with `console.error`, in every build, when
+  delivery reaches 100 rounds.
 
 **Changed from 0.11**
 
@@ -417,18 +425,21 @@ type Synchronous<T> =
 export function batch<T>(run: () => Synchronous<T>): T;
 ```
 
-`Synchronous` is not exported.
+`Synchronous` is not exported in 1.0; exporting it later is an addition
+[D16].
 
 1. `batch()` runs `run` as one transaction: synchronous subscribers are told
-   once, when it returns or throws. It covers every store written inside it.
-   Calls nest; the outermost one notifies. Reads inside see every write made
-   so far [G2].
+   once, when it returns [G2], or when it throws (as today). It covers every
+   store written inside it [G2]. Calls nest; the outermost one notifies.
+   Reads inside see every write made so far (as today).
 2. It returns what `run` returns.
 3. A callback whose type returns a promise does not compile, and the error
    text says why [D16].
 4. When `run` is a native `async` function, `batch()` throws a `TypeError`
-   `[batch-async]` before it calls `run`, in every build. Nothing is written
-   [D16].
+   `[batch-async]` before it calls `run`, in every build. Nothing is written.
+   A native `async` function is told by its `Symbol.toStringTag` being exactly
+   `'AsyncFunction'`, the test of `persist`, so a test runner's mock function
+   is accepted; a test pins that [D16, D22].
 5. A callback that returns a promise without being an `async` function, such
    as `() => { store.loading = true; return save(); }`, is accepted at run
    time and batches its synchronous writes. It does not compile [D16].
@@ -453,7 +464,7 @@ export function shallowEqual<T>(a: T, b: T): boolean;
 ```
 
 Its rules are the ones the reference states today. Decision 20 removes
-redundant checks in `equality.ts` with no change of result [D20].
+redundant checks in `equality.ts` with no change of result [D20]. _(build)_
 
 **Errors.** None.
 
@@ -466,7 +477,7 @@ export const PROXYABLE: unique symbol;
 ```
 
 1. A class with `static [PROXYABLE] = true` is proxied wherever its instances
-   sit in a store. Its getters are memoized [D11].
+   sit in a store [D11]. Its getters are memoized (as today).
 2. A snapshot of such an instance is an instance of the class: `instanceof`
    and `constructor` give the class. For a class with a getter, its prototype
    is the derived object of section 3.1, `snapshot`, rule 7 [D43].
@@ -510,7 +521,7 @@ arrays is gone: the mapped type keeps an array an array and a tuple a tuple.
    [D45].
 4. A subclass of a reactive collection has the snapshot type of the
    collection it extends; its own members are not in it [D45].
-5. Methods of other classes keep their signatures [D45].
+5. Methods of other classes keep their signatures (as today).
 
 **Changed from 0.11.** Tuples and reactive collections, as above.
 
@@ -550,10 +561,10 @@ export function reactiveSet<T>(initial?: Iterable<T>): ReactiveSet<T>;
    [D6].
 4. A snapshot of a collection answers `has()` and `get()` from an index,
    built on its second lookup. A read through the tracking proxy of the React
-   hook without a selector still scans [D42].
+   hook without a selector still scans [D42]. _(build)_
 5. A live collection keeps no index; its lookups scan the backing array
-   [D42].
-6. `set`, `add`, `delete` and `clear` throw a `TypeError` `[snapshot-mutator]`
+   [D42]. _(build)_
+6. `set`, `add`, `delete` and `clear` throw a `TypeError` `[frozen-collection]`
    when called on a snapshot, through a tracking proxy, or on a collection its
    owner froze. Nothing is written [D45].
 7. Writing to `_entries` or `_items` directly, on a live collection, is
@@ -563,8 +574,8 @@ export function reactiveSet<T>(initial?: Iterable<T>): ReactiveSet<T>;
 
 **Errors**
 
-- `[snapshot-mutator]` (proposed), `TypeError`, thrown by a mutator on a
-  frozen collection.
+- `[frozen-collection]`, `TypeError`, thrown by a mutator on a frozen
+  collection.
 
 **Changed from 0.11**
 
@@ -619,8 +630,7 @@ export type ReactiveSetSnapshot<T> = {
 2. The backing arrays are read-only members [D45].
 3. `get` and `has` accept a key or a snapshot of it [D45].
 
-**Changed from 0.11.** New. The names come from the report that built them;
-see open point 5.
+**Changed from 0.11.** New. Both are exported from `./collections` [D45].
 
 ### 3.3 Utilities: `@codebelt/classy-store/utils`
 
@@ -703,18 +713,18 @@ is the internal type of today (`getSnapshot`, `getServerSnapshot`,
 | `syncTabs`      | Unchanged. An event from another storage area is ignored [D25]                                         |
 | `expireIn`      | Unchanged. A finite value also stamps a record that has no `expiresAt` [D24]                           |
 | `clearOnExpire` | Unchanged [D26]                                                                                        |
-| `onError`       | Gains the handle as a third argument; replaces the default report to `console.error` [D21]             |
+| `onError`       | Gains the handle as a third argument; replaces the default `[persist-failed]` report [D21]             |
 
-| Handle member                                         | 1.0                                                                                                                          |
-| ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `dispose()`                                           | Unchanged. After it nothing is read, written or scheduled [G10]                                                              |
-| `hydrated`                                            | Settles also when the store cannot be snapshotted at the start of a read [D19]                                               |
-| `isHydrated`                                          | Unchanged meaning; it shows whether the first read has settled [D21]                                                         |
-| `save()`                                              | Rejects before the first read has settled, and, with a `'write'` report, while the handle does not write [D21]               |
-| `clear()`                                             | Works at any time. Afterwards the handle writes again [D21]                                                                  |
-| `rehydrate()`                                         | Rejects, with a `'parse'` report, when it finds a record of a newer version or one it cannot migrate, merge or restore [D21] |
-| `isExpired`                                           | Unchanged                                                                                                                    |
-| `getSnapshot()`, `getServerSnapshot()`, `subscribe()` | Unchanged. `lastError` holds the report for as long as the handle does not write [D21]                                       |
+| Handle member                                         | 1.0                                                                                                                                                                                                  |
+| ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `dispose()`                                           | Unchanged. After it nothing is read, written or scheduled [G10]                                                                                                                                      |
+| `hydrated`                                            | Settles also when the store cannot be snapshotted at the start of a read [D19]                                                                                                                       |
+| `isHydrated`                                          | Unchanged meaning; it shows whether the first read has settled [D21]                                                                                                                                 |
+| `save()`                                              | Every failure is reported as `'write'` and rejects with the same error: before the first read has settled, while the handle does not write, and when the storage fails [D21]                         |
+| `clear()`                                             | Works at any time. Afterwards the handle writes again [D21]                                                                                                                                          |
+| `rehydrate()`                                         | Rejects, with a `'parse'` report, when it finds a record of a newer version, or one whose `migrate`, `merge` or `deserialize` failed; rejects, with a `'read'` report, when its own read fails [D21] |
+| `isExpired`                                           | Unchanged                                                                                                                                                                                            |
+| `getSnapshot()`, `getServerSnapshot()`, `subscribe()` | Unchanged. `lastError` holds the report for as long as the handle does not write [D21]                                                                                                               |
 
 **When it reads** [D19]
 
@@ -743,8 +753,9 @@ is the internal type of today (`getSnapshot`, `getServerSnapshot`,
 6. An edit made before then is kept in the store. When the read restores a
    record, the edit wins for the field it changed, the other fields are
    restored, and the result is saved.
-7. `save()` rejects before the first read has settled. `clear()` works at any
-   time.
+7. `save()` before the first read has settled is reported as `'write'` and
+   rejects, with an `Error` `[persist-unread]`. `clear()` works at any time
+   [D21].
 8. A read that fails counts as no read, so the handle does not write after it
    [D21].
 
@@ -762,8 +773,11 @@ is the internal type of today (`getSnapshot`, `getServerSnapshot`,
 
 9. It saves nothing: on an edit, when the page is hidden, or on `save()`. An
    edit does not repeat the report.
-10. `save()` reports as `'write'` and rejects with the error.
-11. A `rehydrate()` that finds such a record again reports and rejects.
+10. `save()` reports as `'write'` and rejects with the error that `lastError`
+    holds: the report that stopped the handle from writing.
+11. A `rehydrate()` that finds such a record again reports and rejects with
+    that record's error. A `rehydrate()` whose own read fails reports as
+    `'read'` and rejects with that error, as today.
 12. It writes again after `clear()`; after a `rehydrate()` that restores a
     record, finds none, or finds one with nothing to keep; and when such a
     record, or the removal of the record, arrives from another tab.
@@ -778,62 +792,85 @@ is the internal type of today (`getSnapshot`, `getServerSnapshot`,
     argument. With a synchronous storage the first report can come before
     `persist()` has returned.
 16. An error that `onError` throws is logged with `console.error`.
-17. Without `onError`, each report goes to `console.error` with its code, in
-    every build. `onError` replaces that default.
+17. Without `onError`, each report is one `console.error` call, in every
+    build: its first argument is `@codebelt/classy-store [persist-failed]:
+    <operation> "<key>"` and its second is the error. `onError` replaces that
+    default.
+18. What a report carries. When the library did not throw the error, `error`
+    is the value that was thrown, as it is: the storage's error, the error of
+    a `serialize`, `deserialize`, `migrate` or `merge`, or the `SyntaxError`
+    of the default `JSON.parse`. When the library refuses a record or a call
+    itself, `error` is an `Error` whose message carries one of four codes:
+    `[persist-invalid]` for a record that parses and has nothing to keep,
+    `[persist-newer]` for a record of a newer version, `[persist-not-plain]`
+    for a `migrate` or `merge` that returned a thenable or a value that is not
+    a plain object, and `[persist-unread]` for a `save()` before the first
+    read has settled.
+19. Every failure of `save()` is reported as `'write'` and rejects with the
+    same error, as today. A call on a disposed handle rejects with
+    `[persist-disposed]` and is not reported: after `dispose()` the handle
+    reports nothing.
 
 **Versions and migration** [D21]
 
-18. A version is a finite number, zero or above, for the option and for the
+20. A version is a finite number, zero or above, for the option and for the
     record. A record with no `version` field is version 0; any other value,
     `null` and `"2"` included, leaves nothing to keep. `1.1` is a valid
     version.
-19. `migrate` is called only for a lower version.
-20. When `migrate` returns a thenable at run time, a rejection handler is
+21. `migrate` is called only for a lower version.
+22. When `migrate` returns a thenable at run time, a rejection handler is
     attached to it, so no rejection is left unhandled, and the record counts
     as not migrated.
-21. A record whose time has elapsed is expired whatever its version, and is
+23. A record whose time has elapsed is expired whatever its version, and is
     treated as expired before its version is looked at.
 
 **Restore** [D23]
 
-22. A restore copies every value first, writes them in one transaction,
+24. A restore copies every value first, writes them in one transaction,
     checks that the result can be snapshotted, and rolls back if it cannot.
-23. A nested `__proto__` key is dropped.
-24. A synchronous subscriber is told once, after the whole record is in.
+25. A nested `__proto__` key is dropped.
+26. A synchronous subscriber is told once, after the whole record is in.
 
 **Writes at load and when the page is hidden** [D24]
 
-25. A debounced save that is still waiting is written on `pagehide`.
-26. A migrated record is not written back at load; the first save writes it.
-27. One thing is written back at load: a record of the configured version
+27. A debounced save that is still waiting is written on `pagehide`.
+28. A migrated record is not written back at load; the first save writes it.
+29. One thing is written back at load: a record of the configured version
     that has no `expiresAt`, or `null`, read by a handle whose `expireIn` is a
     finite number, is saved again with an `expiresAt`, through the ordinary
     save path and its debounce. Its state and its version are unchanged.
-28. A record that arrives from another tab is never written back.
+30. A record that arrives from another tab is never written back.
 
 **Cross-tab sync** [D25]
 
-29. When `storage` is a `Storage`, an event whose `storageArea` is another
+31. When `storage` is a `Storage`, an event whose `storageArea` is another
     area is ignored. An event without `storageArea` is accepted.
 
 **Use** [D19, D41]
 
-30. `persist()` is called after the store is constructed, never inside a
+32. `persist()` is called after the store is constructed, never inside a
     constructor. On the client, `prepareStoreForHydration(store)` is called
     before `persist(store)`.
 
 **Errors**
 
-- `[persist-option]` (proposed), `TypeError`, thrown by `persist()` for an
-  option of rule 4. Facts: the option or key.
-- `[persist-record]` (proposed), reported as `'parse'` for a record of the
-  first, third or fourth kind of the table when the library itself refuses
-  it. See open point 4 for an error the application's own callback threw.
-- `[persist-unread]` (proposed), the rejection of a `save()` made before the
-  first read has settled (rule 7).
-- `[persist-disposed]` (proposed), the rejection of a call on a disposed
-  handle. Today's text is `Persistence handle has been disposed`.
-- The storage's own error, reported as `'read'`, `'write'` or `'remove'`.
+- `[persist-option]`, `TypeError`, thrown by `persist()` for an option of
+  rule 4. Facts: the option or key.
+- `[persist-invalid]`, an `Error` reported as `'parse'`, for a record that
+  parses and has nothing to keep.
+- `[persist-newer]`, an `Error` reported as `'parse'`, for a record of a newer
+  version.
+- `[persist-not-plain]`, an `Error` reported as `'parse'`, for a `migrate` or
+  `merge` that returned a thenable or a value that is not a plain object.
+- `[persist-unread]`, an `Error` reported as `'write'`, and the rejection of a
+  `save()` made before the first read has settled (rule 7).
+- `[persist-disposed]`, the rejection of a call on a disposed handle, not
+  reported. Today's text is `Persistence handle has been disposed`, without
+  the prefix.
+- `[persist-failed]`, the default report with `console.error` when no
+  `onError` is given (rule 17).
+- The value the application or the storage threw, as it is: reported as
+  `'read'`, `'write'`, `'remove'` or `'parse'` (rule 18).
 
 **Changed from 0.11**
 
@@ -843,8 +880,9 @@ is the internal type of today (`getSnapshot`, `getServerSnapshot`,
   [D21].
 - A record of a newer version, or one that could not be migrated or merged,
   is kept and reported, and blocks writes [D21].
-- A default report to `console.error`; `onError` gains the handle; a throw
-  from `onError` is logged [D21].
+- A default `[persist-failed]` report to `console.error`; `onError` gains the
+  handle; a throw from `onError` is logged; the library's own refusals carry
+  codes [D21, D35].
 - A version is any finite number of zero or more, on both sides [D21].
 - A restore is one transaction and rolls back [D23].
 - The `pagehide` flush and the expiry stamp [D24].
@@ -918,8 +956,8 @@ The types are unchanged.
 
 **Errors**
 
-- `[restore-locked]` (proposed), `TypeError`, thrown by `undo()` or `redo()`
-  when the root fails the check of rule 6.
+- `[restore-locked]`, `TypeError`, thrown by `undo()` or `redo()` when the
+  root fails the check of rule 6.
 
 **Changed from 0.11**
 
@@ -942,6 +980,12 @@ export function devtools<T extends object>(
 export type DevtoolsOptions = {
   name?: string;
   enabled?: boolean;
+  /** Entries the extension keeps, and sent states kept for an exact jump. */
+  maxAge?: number;
+  trace?: boolean;
+  traceLimit?: number;
+  actionsDenylist?: string | string[];
+  actionsAllowlist?: string | string[];
 };
 
 export type DevtoolsHandle = {
@@ -949,12 +993,16 @@ export type DevtoolsHandle = {
 };
 ```
 
-The types are unchanged; the default of `enabled` changes.
+`DevtoolsOptions` gains five options of the extension, and the default of
+`enabled` changes. The list is named, not an index signature, so a misspelt
+option is a type error [D27]. `DevtoolsHandle` is unchanged.
 
-| Option    | 1.0                                                                                                                                                     |
-| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `name`    | Unchanged. Default `'ClassyStore'`                                                                                                                      |
-| `enabled` | Default: on only where `process.env.NODE_ENV` can be read and is not `'production'`; off where there is no `process`. `true` turns it on anywhere [D27] |
+| Option                                                       | 1.0                                                                                                                                                                   |
+| ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`                                                       | Unchanged. Default `'ClassyStore'`                                                                                                                                    |
+| `enabled`                                                    | Default: on only where `process.env.NODE_ENV` can be read and is not `'production'`; off where there is no `process`. `true` turns it on anywhere [D27]               |
+| `maxAge`                                                     | New. Passed to the extension's `connect()`. 50 by default, as in the extension; it also bounds how many sent snapshots this session keeps for exact time travel [D27] |
+| `trace`, `traceLimit`, `actionsDenylist`, `actionsAllowlist` | New. Passed to the extension's `connect()` as they are [D27]                                                                                                          |
 
 1. `devtools` subscribes on the synchronous channel. A store method sends one
    entry, named after the method, when the outermost call returns, with one
@@ -966,27 +1014,34 @@ The types are unchanged; the default of `enabled` changes.
 3. The core holds one place for a naming function, empty unless `devtools` is
    connected. `devtools()` fills it while at least one connection is open and
    empties it when the last one is disposed. A method call without `devtools`
-   runs today's code [D27].
+   runs today's code [D27]. _(build)_
 4. A jump replaces the state exactly, in one transaction, without calling
    setters. A jump to an entry this session sent restores the snapshot that
    was sent, so a `Date` stays a `Date`; a jump the extension sends as JSON
    restores data, not class instances [D27, D30].
 5. The messages `RESET`, `COMMIT`, `ROLLBACK` and `IMPORT_STATE` are handled
    [D27].
-6. What `devtools` sends adds the values of the root store's class getters,
+6. A jump that the shared restore refuses, because the root fails its check
+   (`withHistory`, rule 6), writes nothing: `devtools` catches the
+   `[restore-locked]` error and logs it with `console.error`, and the
+   extension's panel shows the entry it jumped to until the next entry
+   arrives [D27, D30].
+7. What `devtools` sends adds the values of the root store's class getters,
    each read guarded: a class getter of the root that throws shows its error
    text, and the entry is still sent. Nested objects are sent as they are. A
    getter of an object literal that throws still loses the entry [D27, D43].
-7. When the extension is missing or `enabled` is off, the handle is inert.
+8. When the extension is missing or `enabled` is off, the handle is inert.
    `dispose()` again does nothing [D27].
 
-**Errors.** None.
+**Errors.** It throws none. `[restore-locked]` from a refused jump is logged
+with `console.error` (rule 6).
 
 **Changed from 0.11**
 
 - Named entries, one per method call [D27].
 - Exact time travel, and the four messages [D27].
-- The default of `enabled` [D27].
+- The default of `enabled`, and five options of the extension [D27].
+- A refused jump writes nothing and is logged [D27].
 - The root's class getter values are added to each entry [D43].
 
 #### `subscribeKey(store, key, callback, options?)`
@@ -1007,7 +1062,7 @@ export function subscribeKey<
    with the new and the previous value [D31].
 2. It reads the live value and takes a snapshot of that one node only when
    the node or its version changed; it takes no snapshot of the whole store
-   [D31].
+   [D31]. _(build)_
 3. It has no selector form, no equality option and no immediate first call
    in 1.0 [D31].
 
@@ -1054,7 +1109,9 @@ export type UseClassyStoreSelectorOptions<S> = {
    scans, so the tracker sees what was read [D42].
 4. The two traps of the React snapshot cache that `proxy-compare` cannot
    reach are removed if that fails no unit test and no React suite; otherwise
-   each gets a test that reaches it [D20].
+   each gets a test that reaches it. Their direct tests in
+   `snapshotTargetCache.test.ts` are tests of internal state and go with the
+   traps [D20]. _(build)_
 5. Under `StrictMode`, `useLocalStore` makes two stores in development [D11].
 6. React subscribes synchronously, so a loop of direct writes is grouped
    with `batch()`; the guide names it [D37].
@@ -1090,20 +1147,24 @@ export function useClassyStore<T extends object>(
 1. The returned ref is a custom ref. Its listener only marks the value as
    changed; the snapshot is taken at the next read [D37]. `isShallow()` on it
    is `false` [D37].
-2. A write to `.value` throws a `TypeError` `[readonly-ref]` [D38].
+2. A write to `.value` throws a `TypeError` `[vue-readonly]` [D38].
 3. On the server it subscribes to nothing and reads the store at every read.
    A write made in `onServerPrefetch` renders [D38].
-4. On the client it needs an active effect scope, as today, and the scope
-   owns the cleanup.
-5. It has no `active` flag of its own once the core skips a removed
-   subscriber [D42].
+4. The adapter is on the server when it runs inside a component and
+   `inject(ssrContextKey, null)` is set, which is so exactly inside
+   `renderToString` [D38].
+5. It needs an active effect scope, as today, and the scope owns the cleanup
+   on the client. That check stays, and comes before the server test [D38].
+6. It has no `active` flag of its own once the core skips a removed
+   subscriber [D42]. _(build)_
 
 **Errors**
 
 - `[not-a-store]`, `Error`.
-- `[no-scope]` (proposed), `Error`, thrown without an active effect scope.
-  Facts: the adapter. Today's text is `requires an active Vue effect scope`.
-- `[readonly-ref]` (proposed), `TypeError`, thrown by a write to `.value`.
+- `[vue-no-scope]`, `Error`, thrown without an active effect scope. Today's
+  text starts `@codebelt/classy-store/vue: useClassyStore() requires an
+  active Vue effect scope`.
+- `[vue-readonly]`, `TypeError`, thrown by a write to `.value`.
 
 **Changed from 0.11**
 
@@ -1112,6 +1173,7 @@ export function useClassyStore<T extends object>(
 - The snapshot is built when it is read [D37].
 - No listener is left by a server render [D38].
 - A write to the ref throws [D38].
+- The error has the one prefix and the code `[vue-no-scope]` [D35].
 
 ### 3.7 Svelte: `@codebelt/classy-store/svelte`
 
@@ -1129,6 +1191,7 @@ export function toSvelteStore<T extends object>(
    synchronously, as today. It cannot defer the snapshot; `batch()` groups a
    loop of direct writes [D37].
 2. It drops its `active` flag once the core skips a removed subscriber [D42].
+   _(build)_
 
 **Errors.** `[not-a-store]`, `Error`.
 
@@ -1146,16 +1209,20 @@ export function useClassyStore<T extends object>(
 2. The listener only marks the value as changed; the accessor takes the
    snapshot at its next read [D37].
 3. It keeps its `active` flag, which decides what the accessor returns after
-   disposal [D42].
+   disposal [D42]. _(build)_
 4. It needs a live Solid owner, as today.
 
 **Errors**
 
 - `[not-a-store]`, `Error`.
-- `[no-scope]` (proposed), `Error`, thrown without a live owner. Today's text
-  is `requires an active Solid owner`.
+- `[solid-no-owner]`, `Error`, thrown without a live owner. Today's text
+  starts `@codebelt/classy-store/solid: useClassyStore() requires an active
+  Solid owner`.
 
-**Changed from 0.11.** The snapshot is built when it is read [D37].
+**Changed from 0.11**
+
+- The snapshot is built when it is read [D37].
+- The error has the one prefix and the code `[solid-no-owner]` [D35].
 
 ### 3.9 Angular: `@codebelt/classy-store/angular`
 
@@ -1168,6 +1235,8 @@ export function injectClassyStore<T extends object>(
 ): Signal<Snapshot<T>>;
 ```
 
+The type of the options object is not exported in 1.0 [D39].
+
 | Option     | 1.0                                                                                                             |
 | ---------- | --------------------------------------------------------------------------------------------------------------- |
 | `injector` | New. With it, the adapter works outside an injection context and takes its `DestroyRef` from the injector [D39] |
@@ -1177,23 +1246,26 @@ export function injectClassyStore<T extends object>(
 2. The listener only marks the value as changed; the signal takes the
    snapshot at its next read [D37].
 3. Without `injector`, the adapter checks for an injection context itself
-   and throws its own error, with the prefix and a code, in every Angular
-   build [D39].
+   and throws its own error, with the prefix and the code
+   `[angular-no-context]`, in every Angular build. The same code covers a
+   context that is already destroyed [D39].
 4. It drops its `active` flag once the core skips a removed subscriber, and
-   keeps its `destroyed` check [D42].
+   keeps its `destroyed` check [D42]. _(build)_
 
 **Errors**
 
 - `[not-a-store]`, `Error`.
-- `[no-scope]` (proposed), `Error`, thrown without an injection context and
-  without `injector`, and for a destroyed context as today. Today's text is
-  `injectClassyStore requires a live Angular injection context.`
+- `[angular-no-context]`, `Error`, thrown without an injection context and
+  without `injector`, and for a destroyed context. Today's text is
+  `injectClassyStore requires a live Angular injection context.`, without
+  the prefix.
 
 **Changed from 0.11**
 
 - The `options` parameter [D39].
 - The update inside `untracked()` [D39].
-- The adapter's own coded error in place of Angular's `NG0203` [D39].
+- The adapter's own coded error `[angular-no-context]` in place of Angular's
+  `NG0203` [D35, D39].
 - The snapshot is built when it is read [D37].
 
 ## 4. Which function is a method
@@ -1273,7 +1345,9 @@ an array is handed out as it is.
 
 The 0.11 column is today's answer; the 1.0 column is the rule above. The
 rows come from the spikes that built the rule. A row in the shape of an ES5
-compiler's output was written by hand, not compiled.
+compiler's output was written by hand, not compiled. A row marked † is
+unspecified (section 6): its 1.0 cell is the answer of the build, not a
+promise.
 
 | Case                                                                                 | 0.11                     | 1.0                        |
 | ------------------------------------------------------------------------------------ | ------------------------ | -------------------------- |
@@ -1323,18 +1397,18 @@ compiler's output was written by hand, not compiled.
 | A shorthand method in the shape ES5 emits (a `function`), two writes: synchronous    | 1                        | 1                          |
 | A callback in the initial state: `snapshot(store).onSave === cb`                     | true                     | true                       |
 | A getter calling a field function, after the field is replaced: store, snapshot      | `a1, b1`                 | `b1, b1`                   |
-| `snapshot(s).options.ticks.callback.call(scale, 1)`                                  | `$1`                     | `$1`                       |
+| † `snapshot(s).options.ticks.callback.call(scale, 1)`                                | `$1`                     | `$1`                       |
 | ... the same on the store                                                            | `undefined1`             | `undefined1`               |
 | `createClassyStore({...snapshot(e)})`: the first store's and the copy's counters     | 0, 1                     | 0, 1                       |
 | `createClassyStore({...g})`, a copy of the proxy: the same                           | 1, 0                     | 1, 0                       |
 | `Object.defineProperty(s, 'toJSON', {value: fn})`; then a read `=== fn`              | ok; throws               | ok; true                   |
 | A base-class arrow field, two writes; the overriding arrow field                     | needs `ClassyStore`      | 1; 1                       |
 | A base-class arrow field: `snapshot(k).bump === k.bump`                              | needs `ClassyStore`      | false                      |
-| ... `snapshot(k).bump()`, two writes: notifications                                  | needs `ClassyStore`      | 2                          |
-| `name` read on the store: base-class arrow, constructor arrow, literal, anonymous    | needs `ClassyStore`      | `bump`, `set`, `inc`, `go` |
+| † ... `snapshot(k).bump()`, two writes: notifications                                | needs `ClassyStore`      | 2                          |
+| `name` read on the store: base-class arrow, constructor arrow, literal, anonymous    | not run                  | `bump`, `set`, `inc`, `go` |
 | After a first read, `Object.freeze(raw)`: `store.f === fn`                           | throws                   | true                       |
 | After a first read, a read-only definition through the store: `store.f === fn`       | throws                   | true                       |
-| After a first read, a read-only definition on the raw object, behind the store       | throws                   | throws `TypeError`         |
+| † After a first read, a read-only definition on the raw object, behind the store     | throws                   | throws `TypeError`         |
 | After a first read, the function itself frozen: `store.f === fn`                     | false                    | true                       |
 
 ## 5. Guaranteed behaviour
@@ -1349,8 +1423,9 @@ split into statements a test can check, numbered `1.1`, `1.2` and so on.
   synchronous and batched alike.
 - 1.2 A subscriber is not called for a write made before `subscribe()`
   returned.
-- 1.3 A subscriber is not called for a write made after its unsubscribe
-  function returned, also when that write is in the round that is running.
+- 1.3 A subscriber is not called after its unsubscribe function returned,
+  also for a write made before it that the round that is running has not
+  delivered to it yet [D13].
 - 1.4 A subscriber that throws leaves the write applied: the store and the
   next snapshot have it.
 - 1.5 A subscriber that throws does not stop the other subscribers of the
@@ -1372,9 +1447,12 @@ split into statements a test can check, numbered `1.1`, `1.2` and so on.
   that writes store B notifies B's synchronous subscribers once, at its end.
 - 2.6 An `async` method is a transaction up to its first `await`; each write
   after it notifies on its own.
-- 2.7 A write that changes nothing notifies no one: an equal value, and a
+- 2.7 The body of a generator method runs at each `next()`, after the call
+  has returned, so each write in it is a write of its own and notifies on its
+  own.
+- 2.8 A write that changes nothing notifies no one: an equal value, and a
   `delete` that removes nothing [D8].
-- 2.8 Section 4 says which functions are methods.
+- 2.9 Section 4 says which functions are methods.
 
 **3. Delivery.**
 
@@ -1425,8 +1503,8 @@ split into statements a test can check, numbered `1.1`, `1.2` and so on.
   object as its value is handed out as it is, with no proxy.
 - 6.5 `createClassyStore()` on a proxy, or on the raw object behind one,
   returns that proxy.
-- 6.6 A value the store does not proxy reads back as itself. A function is the
-  exception of 6.7.
+- 6.6 A value the store does not proxy reads back as itself, except a function
+  that section 4 makes a method (6.7).
 - 6.7 A function that section 4 makes a method reads back through the store
   as one function for that object, the same on every read.
 - 6.8 The raw object and its snapshots hold the function that was written.
@@ -1475,13 +1553,15 @@ split into statements a test can check, numbered `1.1`, `1.2` and so on.
 - 10.7 An edit made before or during the first read is kept in the store.
 - 10.8 That edit is saved, unless the record is one the handle does not
   write over.
-- 10.9 The first `save()` or `clear()` of a task reaches a synchronous storage
-  before it returns.
+- 10.9 The first `clear()` of a task, and the first `save()` of a task on a
+  handle that writes, reach a synchronous storage before they return.
 - 10.10 After `dispose()` nothing is read, written or scheduled.
 
 **11. Exports.**
 
-- 11.1 Every export of section 2 exists with its signature of section 3.
+- 11.1 Every export that `API_REFERENCE.md` lists exists with the signature
+  it documents. Sections 2 and 3 of this spec are what the reference must
+  list when stage 4 ends.
 - 11.2 The list may grow in a minor release. A type test that asserts an
   exact export list is a change detector.
 
@@ -1497,19 +1577,19 @@ reference is unspecified, and may change in a minor release. A stage 1 test
 of unspecified behaviour stays as a change detector, and its file says so
 (decision document, "What 1.0 guarantees"). The file names are under `packages/classy-store/src/`.
 
-| Unspecified                                                                                                                                                                                                     | Stage 1 tests that pin it today                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| The order in which different nodes, owners and stores are notified                                                                                                                                              | `core/core.characterisation.notifications.test.ts` ("a nested write notifies … from the written node up", "two containers that share a child", "batched subscribers of two stores …" for the order); `core/core.ownerOrder.test.ts`, all; `core/core.characterisation.detached.test.ts` ("a write through a held row reaches … each removed container", the order)                                                                                                                                                                                                                                          |
-| How calls nest when a subscriber writes, which microtask a batched round runs in, and what an adapter of another store shows inside one delivery round                                                          | `core/core.characterisation.notifications.test.ts` ("one microtask serves the batched subscribers of every store", "a write to a second store notifies that store before the first store has finished", "is delivered by a microtask of its own"); `core/core.deliveryTurns.test.ts` ("the answering write after a microtask")                                                                                                                                                                                                                                                                              |
-| Where a subscriber's error is reported, and the text of an error message after its code                                                                                                                         | `core/core.characterisation.notifications.test.ts` ("each subscriber that throws is reported on its own"); `core/core.characterisation.getters.test.ts` ("name a getter that reads itself twice", "name symbol-keyed getters by their description"); `core/core.gettersAcrossNodes.test.ts` ("is reported from the getter where it closes"); `core/core.characterisation.identity.test.ts` ("reject the raw object a store was created from", "reject a snapshot", for the message)                                                                                                                         |
-| Whether a getter re-runs more often than rule 4 requires, and whether a thrown error is cached                                                                                                                  | `core/core.characterisation.getters.test.ts` ("skips the outer levels when the innermost getter was re-read first", the live and snapshot layers not sharing a result, "recomputes for an older snapshot read after a newer one", the re-runs beyond what was read under `this.obj.x` and arrays, "a root getter that reads a child getter re-runs", "the base body is not memoized on its own", "throw a new error on every read", "runs its body and throws a new error on every read"); `core/core.characterisation.identity.test.ts` ("a getter that reads the store through its own cycle recomputes") |
-| What a getter does that writes to another object of the same store: a child, a parent or the root                                                                                                               | None found in the stage 1 map. `core/core.characterisation.getters.test.ts` "re-runs, writes and notifies on every read" and its group pin a getter that writes its own field, which rule 4 now forbids                                                                                                                                                                                                                                                                                                                                                                                                     |
-| What a prototype that is changed after its first read through a store does                                                                                                                                      | `core/core.characterisation.invariants.test.ts` (the seven tests under "assigning `__proto__` or calling Object.setPrototypeOf on a store"); `core/core.characterisation.getters.test.ts` ("keeps returning the old result after the getter is redefined"). Both are defect rows today                                                                                                                                                                                                                                                                                                                      |
-| What a function does when it is read from a snapshot and called                                                                                                                                                 | None found in the stage 1 map                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| What reflection hands out: `Object.getOwnPropertyDescriptor(store, key)` and `structuredClone(store)`                                                                                                           | `core/core.characterisation.invariants.test.ts` ("Object.getOwnPropertyDescriptor hands out the raw object", "structuredClone throws a DataCloneError for a store")                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| Anything reached through the raw object behind a store, and a write to the backing array of a reactive collection; among them a property made read-only on the raw object after the store handed out its method | `core/core.characterisation.detached.test.ts` ("a raw object changed directly while it was out of the store and written back keeps the snapshot"); `core/core.characterisation.invariants.test.ts` ("a nested object throws a TypeError when read, once its raw parent was frozen", a defect row). None for the backing arrays                                                                                                                                                                                                                                                                              |
-| A store made from a function or from a typed array                                                                                                                                                              | `core/core.functionStores.test.ts`, all four; `core/core.typedArrayStores.test.ts`, both                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| Behaviour in a runtime without `WeakRef` or `FinalizationRegistry`, beyond "it works"                                                                                                                           | `core/core.characterisation.noWeakRef.test.ts`; `core/core.noFinalizationRegistry.test.ts`; `core/core.noWeakRefMemory.test.ts`                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| Unspecified                                                                                                                                                                                                                                                            | Stage 1 tests that pin it today                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| The order in which different nodes, owners and stores are notified                                                                                                                                                                                                     | `core/core.characterisation.notifications.test.ts` ("a nested write notifies … from the written node up", "two containers that share a child", "batched subscribers of two stores …" for the order); `core/core.ownerOrder.test.ts`, all; `core/core.characterisation.detached.test.ts` ("a write through a held row reaches … each removed container", the order)                                                                                                                                                                                                                                          |
+| How calls nest when a subscriber writes, where the microtask of a batched round falls among the application's own microtasks (rule 3 says which round a write inside a batched subscriber joins), and what an adapter of another store shows inside one delivery round | `core/core.characterisation.notifications.test.ts` ("one microtask serves the batched subscribers of every store", "a write to a second store notifies that store before the first store has finished", "is delivered by a microtask of its own"); `core/core.deliveryTurns.test.ts` ("the answering write after a microtask")                                                                                                                                                                                                                                                                              |
+| Where a subscriber's error is reported, and the text of an error message after its code                                                                                                                                                                                | `core/core.characterisation.notifications.test.ts` ("each subscriber that throws is reported on its own"); `core/core.characterisation.getters.test.ts` ("name a getter that reads itself twice", "name symbol-keyed getters by their description"); `core/core.gettersAcrossNodes.test.ts` ("is reported from the getter where it closes"); `core/core.characterisation.identity.test.ts` ("reject the raw object a store was created from", "reject a snapshot", for the message)                                                                                                                         |
+| Whether a getter re-runs more often than rule 4 requires, and whether a thrown error is cached                                                                                                                                                                         | `core/core.characterisation.getters.test.ts` ("skips the outer levels when the innermost getter was re-read first", the live and snapshot layers not sharing a result, "recomputes for an older snapshot read after a newer one", the re-runs beyond what was read under `this.obj.x` and arrays, "a root getter that reads a child getter re-runs", "the base body is not memoized on its own", "throw a new error on every read", "runs its body and throws a new error on every read"); `core/core.characterisation.identity.test.ts` ("a getter that reads the store through its own cycle recomputes") |
+| What a getter does that writes to another object of the same store: a child, a parent or the root                                                                                                                                                                      | None found in the stage 1 map. `core/core.characterisation.getters.test.ts` "re-runs, writes and notifies on every read" and its group pin a getter that writes its own field, which rule 4 now forbids                                                                                                                                                                                                                                                                                                                                                                                                     |
+| What a prototype that is changed after its first read through a store does                                                                                                                                                                                             | `core/core.characterisation.invariants.test.ts` (the seven tests under "assigning `__proto__` or calling Object.setPrototypeOf on a store"); `core/core.characterisation.getters.test.ts` ("keeps returning the old result after the getter is redefined"). Both are defect rows today                                                                                                                                                                                                                                                                                                                      |
+| What a function does when it is read from a snapshot and called                                                                                                                                                                                                        | None found in the stage 1 map                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| What reflection hands out: `Object.getOwnPropertyDescriptor(store, key)` and `structuredClone(store)`                                                                                                                                                                  | `core/core.characterisation.invariants.test.ts` ("Object.getOwnPropertyDescriptor hands out the raw object", "structuredClone throws a DataCloneError for a store")                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| Anything reached through the raw object behind a store, and a write to the backing array of a reactive collection; among them a property made read-only on the raw object after the store handed out its method                                                        | `core/core.characterisation.detached.test.ts` ("a raw object changed directly while it was out of the store and written back keeps the snapshot"); `core/core.characterisation.invariants.test.ts` ("a nested object throws a TypeError when read, once its raw parent was frozen", a defect row). None for the backing arrays                                                                                                                                                                                                                                                                              |
+| A store made from a function or from a typed array, beyond decision 1's rule that a function which is a store is handed out as it is                                                                                                                                   | `core/core.functionStores.test.ts`, all four; `core/core.typedArrayStores.test.ts`, both                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| Behaviour in a runtime without `WeakRef` or `FinalizationRegistry`, beyond "it works"                                                                                                                                                                                  | `core/core.characterisation.noWeakRef.test.ts`; `core/core.noFinalizationRegistry.test.ts`; `core/core.noWeakRefMemory.test.ts`                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 
 A few behaviours that the decision document names as unspecified in its
 entries are covered by the rows above:
@@ -1528,34 +1608,50 @@ entries are covered by the rows above:
 ## 7. Error codes
 
 Every error and every logged report reads `@codebelt/classy-store [code]:
-facts`; an adapter's prefix names the adapter [D35]. The advice for each code
-is on one page of the documentation, which also lists what 1.0 does not catch
-(section 9) [D35, D36]. No error subclass and no `code` property is added
-[D35]. "Proposed" marks a name this spec proposes where the decision document
-decides that the error exists and does not name it; open points 1 to 3 say
-what stage 4 settles first.
+facts`. There is one prefix for every message, the adapters' too; the code
+says where it comes from [D35]. The advice for each code is on one page of
+the documentation, which also lists what 1.0 does not catch (section 9)
+[D35, D36]. No error subclass and no `code` property is added [D35].
 
-| Code               | Thrown or logged                                                     | Kind of error                   | Export                                                                                                                 | Condition                                                                                                                                              | Source                                     |
-| ------------------ | -------------------------------------------------------------------- | ------------------------------- | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------ |
-| `getter-cycle`     | Thrown                                                               | `Error`                         | Any read of a getter: the store, `snapshot`, every adapter                                                             | Getters read each other in a cycle, on the live store or on a snapshot. Facts: the path. Today's text: `circular computed getter dependency`           | Today's message [D35], [D10]               |
-| `not-a-store`      | Thrown                                                               | `Error`                         | `snapshot`, `subscribe`, `subscribeKey`, the React hooks, `createStoreHook`, `prepareStoreForHydration`, every adapter | The argument is not a store. Today's text: `object is not a store proxy`                                                                               | Today's message [D35]; proposed name       |
-| `snapshot-cycle`   | Thrown in 0.11; no longer thrown once decision 44 lands              | `Error`                         | `snapshot`                                                                                                             | Today's text: `circular reference detected in snapshot`. See open point 1                                                                              | Today's message [D35, D44]; proposed name  |
-| `getter-write`     | Thrown                                                               | `TypeError`                     | Any read of a getter, on the store and on a snapshot                                                                   | A getter writes to the object it is computed on, by any path. Facts: the field                                                                         | [D10]; proposed name                       |
-| `delivery-loop`    | Logged once, in every build, where a subscriber's error is logged    | None: a report                  | `subscribe`, and every write                                                                                           | Delivery reached 100 rounds                                                                                                                            | [D13]                                      |
-| `batch-async`      | Thrown before the callback is called, in every build                 | `TypeError`                     | `batch`                                                                                                                | The callback is a native `async` function                                                                                                              | [D16]                                      |
-| `lost-write`       | Logged once, in development only                                     | None: a report                  | `snapshot`, and every adapter through it                                                                               | A field of the raw object changed without a write through the store. Facts: the field. Ships only on the condition of section 8                        | [D36]                                      |
-| `snapshot-mutator` | Thrown                                                               | `TypeError`                     | `ReactiveMap.set`, `delete`, `clear`; `ReactiveSet.add`, `delete`, `clear`                                             | Called on a snapshot, through a tracking proxy, or on a collection its owner froze                                                                     | [D45]; proposed name                       |
-| `persist-option`   | Thrown by `persist()` before it reads or writes                      | `TypeError`                     | `persist`                                                                                                              | A prototype key, a getter or a method in `properties`; a half-written transform; a bad `version`; a native `async` `migrate`. Facts: the option or key | [D22]; proposed name                       |
-| `persist-record`   | Reported as `'parse'` to `onError`, or to `console.error` without it | An `Error` passed as the report | `persist`                                                                                                              | The library refuses a stored record: nothing to keep, or a newer version, or a `migrate` or `merge` result that is a thenable or not a plain object    | [D21]; proposed name                       |
-| `persist-unread`   | The rejection of `save()`                                            | `Error`                         | `PersistHandle.save`                                                                                                   | `save()` before the first read has settled                                                                                                             | [D21]; proposed name                       |
-| `persist-disposed` | The rejection of a call on a disposed handle                         | `Error`                         | `PersistHandle.save`, `clear`, `rehydrate`                                                                             | The handle was disposed. Today's text: `Persistence handle has been disposed`, without the prefix                                                      | Today's message [D35]; proposed name       |
-| `restore-locked`   | Thrown before anything is written                                    | `TypeError`                     | `HistoryHandle.undo`, `redo`; the DevTools jump through the same restore                                               | The root of the store fails the check of `withHistory`, rule 6                                                                                         | [D30]; proposed name                       |
-| `readonly-ref`     | Thrown                                                               | `TypeError`                     | Vue `useClassyStore`                                                                                                   | A write to `.value` of the returned ref                                                                                                                | [D38]; proposed name                       |
-| `no-scope`         | Thrown                                                               | `Error`                         | Vue `useClassyStore`, Solid `useClassyStore`, Angular `injectClassyStore`                                              | No active effect scope (Vue), no live owner (Solid), no injection context and no `injector`, or a destroyed context (Angular). Facts: the adapter      | Today's messages [D35, D39]; proposed name |
+1.0 has nineteen codes [D35]. A report made in every build is written with
+`console.error`. The one development-only report, `lost-write`, is written
+with `console.warn`, and nothing else in the library calls `console.warn`
+[D35, D36].
+
+Today's messages get their codes in one commit, step 2 of the order:
+`getter-cycle`, `not-a-store`, `vue-no-scope`, `solid-no-owner`,
+`angular-no-context` and `persist-disposed`. The snapshot's `circular
+reference detected in snapshot` gets no code: decision 44 removes that throw
+before 1.0, and the page never lists a code that 1.0 does not have [D35].
+
+| Code                 | Thrown or logged                                                                       | Kind of error                   | Export                                                                                                                                                                              | Condition                                                                                                                                                        | Source   |
+| -------------------- | -------------------------------------------------------------------------------------- | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| `getter-cycle`       | Thrown                                                                                 | `Error`                         | Any read of a getter: the store, `snapshot`, every adapter                                                                                                                          | Getters read each other in a cycle, on the live store or on a snapshot. Facts: the path. Today's text: `circular computed getter dependency`                     | D10, D35 |
+| `not-a-store`        | Thrown                                                                                 | `Error`                         | `snapshot`, `subscribe`, `subscribeKey`, `prepareStoreForHydration`, every hook and adapter; `persist`, `withHistory` and `devtools` (connected), through `snapshot` or `subscribe` | The argument is not a store. Today's text: `object is not a store proxy`                                                                                         | D35      |
+| `getter-write`       | Thrown                                                                                 | `TypeError`                     | Any read of a getter, on the store and on a snapshot                                                                                                                                | A getter writes to the object it is computed on, by any path. Facts: the field                                                                                   | D10      |
+| `delivery-loop`      | Logged once with `console.error`, in every build, where a subscriber's error is logged | None: a report                  | `subscribe`, and every write                                                                                                                                                        | Delivery reached 100 rounds                                                                                                                                      | D13      |
+| `batch-async`        | Thrown before the callback is called, in every build                                   | `TypeError`                     | `batch`                                                                                                                                                                             | The callback is a native `async` function                                                                                                                        | D16      |
+| `frozen-collection`  | Thrown                                                                                 | `TypeError`                     | `ReactiveMap.set`, `delete`, `clear`; `ReactiveSet.add`, `delete`, `clear`                                                                                                          | Called on a snapshot, through a tracking proxy, or on a collection its owner froze                                                                               | D45      |
+| `persist-option`     | Thrown by `persist()` before it reads or writes                                        | `TypeError`                     | `persist`                                                                                                                                                                           | A prototype key, a getter or a method in `properties`; a half-written transform; a bad `version`; a native `async` `migrate`. Facts: the option or key           | D22      |
+| `persist-invalid`    | A `persist` report, `'parse'`                                                          | An `Error` passed as the report | `persist`                                                                                                                                                                           | A stored record that parses and has nothing to keep, a record nested too deep to restore or whose restore was rolled back included                               | D21, D23 |
+| `persist-newer`      | A `persist` report, `'parse'`                                                          | An `Error` passed as the report | `persist`                                                                                                                                                                           | A stored record of a newer version                                                                                                                               | D21      |
+| `persist-not-plain`  | A `persist` report, `'parse'`                                                          | An `Error` passed as the report | `persist`                                                                                                                                                                           | `migrate` or `merge` returned a thenable or a value that is not a plain object                                                                                   | D21      |
+| `persist-unread`     | A `persist` report, `'write'`, and the rejection of `save()`                           | `Error`                         | `PersistHandle.save`                                                                                                                                                                | `save()` before the first read has settled                                                                                                                       | D21      |
+| `persist-disposed`   | The rejection of a call on a disposed handle; not reported                             | `Error`                         | `PersistHandle.save`, `clear`, `rehydrate`                                                                                                                                          | The handle was disposed. Today's text: `Persistence handle has been disposed`, without the prefix                                                                | D35      |
+| `persist-failed`     | Logged with `console.error`, in every build, when no `onError` is given                | None: a report                  | `persist`                                                                                                                                                                           | Any `persist` report. The first argument is `@codebelt/classy-store [persist-failed]: <operation> "<key>"`; the second is the error                              | D21      |
+| `restore-locked`     | Thrown before anything is written; logged with `console.error` by `devtools`           | `TypeError`                     | `HistoryHandle.undo`, `redo`; a DevTools jump, which writes nothing and logs it                                                                                                     | The root of the store fails the check of the restore (`withHistory`, rule 6)                                                                                     | D27, D30 |
+| `vue-readonly`       | Thrown                                                                                 | `TypeError`                     | Vue `useClassyStore`                                                                                                                                                                | A write to `.value` of the returned ref                                                                                                                          | D38      |
+| `vue-no-scope`       | Thrown                                                                                 | `Error`                         | Vue `useClassyStore`                                                                                                                                                                | No active effect scope. Today's text starts `@codebelt/classy-store/vue: useClassyStore() requires an active Vue effect scope`                                   | D35      |
+| `solid-no-owner`     | Thrown                                                                                 | `Error`                         | Solid `useClassyStore`                                                                                                                                                              | No live owner. Today's text starts `@codebelt/classy-store/solid: useClassyStore() requires an active Solid owner`                                               | D35      |
+| `angular-no-context` | Thrown, in every Angular build                                                         | `Error`                         | `injectClassyStore`                                                                                                                                                                 | No injection context and no `injector`, or a destroyed context. Today's text: `injectClassyStore requires a live Angular injection context.`, without the prefix | D35, D39 |
+| `lost-write`         | Logged once with `console.warn`, in development only                                   | None: a report                  | `snapshot`, and every adapter through it                                                                                                                                            | A field of the raw object changed without a write through the store. Facts: the field. Ships only on the condition of section 8                                  | D36      |
 
 Not library reports, and logged with their own text: a subscriber's error
 and the rejection of an `async` subscriber [D14]; an error that `onError`
-throws [D21]; a status listener's error, as today.
+throws [D21]; a status listener's error, as today. A value that the
+storage or the application's own `serialize`, `deserialize`, `migrate` or
+`merge` threw is passed to `onError` as it is, and the default report passes
+it as its second argument [D21].
 
 ## 8. Limits
 
@@ -1599,62 +1695,119 @@ development check in [D36].
 
 ### Conditions a change must meet to land
 
+Each change is measured against the commit before it, and a difference inside
+the spread that stage 1 recorded is noise. The stage 1 figures themselves are
+no baseline once decision 12 has moved them [D1, order]. Timings recorded
+before and after a change go into its commit message; the figure of the
+`lost-write` check goes into record 0036 [D1, D13, D36].
+
 - **Decision 1.** The core benchmark gains two rows, a call of a method held
   in a field and a read and call of an arrow function held in a field,
-  recorded before and after. The change lands only if `store.method` is
-  inside the spread of the commit before it on both engines, and the new rows
-  are no slower than 10% for the call and 1.6 times for the read and call.
-  The baseline is the commit before, not stage 1 [D1].
+  recorded before and after, in the commit message. The change lands only if
+  `store.method` is inside the spread of the commit before it on both
+  engines, and the new rows are no slower than 10% for the call and 1.6 times
+  for the read and call. The baseline is the commit before, not stage 1 [D1].
 - **Decision 9.** The form without the per-prototype cache is built first;
   the smaller form that leaves store creation inside the spread is kept [D9].
 - **Decision 13.** On a quiet machine `store.write.sync` stays inside the
-  spread of today's on both engines with the variant that reads the owners
-  directly. If not, the plain queue is taken and the slowdown is stated in
-  the reference [D13].
+  spread of the commit before this change on both engines with the variant
+  that reads the owners directly: the same baseline as decision 1, because
+  decisions 12, 1 and 10 move the write path first. If not, the plain queue
+  is taken and the slowdown is stated in the reference. The figures go into
+  the commit message [D13].
+- **Decision 20.** Before the object guard in `indexOfMember` goes, the core
+  benchmark gains two rows: `collection.has.primitive` and
+  `collection.has.object`, `has()` of the last member on a live `reactiveSet`
+  of 1,000 numbers and of 1,000 objects. The guard goes only if both rows stay
+  inside the spread of the commit before on both engines; otherwise it stays
+  as a measured shortcut, and its entry in the list of equivalent mutants
+  gives the figures. It is the only redundant check that sits in a loop; the
+  checks in `equality.ts` and `history.ts` go without a benchmark [D20].
 - **Decision 29.** The tests come first; stage 4 stops if the change in
   `history.ts` turns out larger than a few lines [D29].
 - **Decision 36.** The benchmark first gains a row that takes one cached
   snapshot per task of the 1,000-row store, recorded without the check. The
-  check lands only if that row with the check in stays below
-  `snapshot.afterWrite` for the same store, on both engines. The figure goes
-  into the decision record as the stated cost of the development path. If the
-  check cannot meet that, it does not ship in 1.0 [D36].
+  row awaits a resolved promise between two snapshots, so each snapshot is
+  taken after the microtasks queued before it have run; the await is part of
+  its time. "Once per task" means: the check marks the store as checked, and
+  a microtask it queues clears the mark. The check lands only if that row
+  with the check in stays below `snapshot.afterWrite` for the same store, on
+  both engines. The figure goes into record 0036 as the stated cost of the
+  development path. If the check cannot meet that, it does not ship in 1.0
+  [D36].
 
 ### How a budget moves in stage 4 [D4]
 
-1. The first commit is tooling only. `budgets.json` gets a `ceiling` beside
-   each budget, and the size script fails when a budget is above its ceiling
-   or a measured size above its budget.
-2. The floor guard refuses a commit that changes an existing ceiling together
-   with anything else. The first commit, which adds the ceilings, is the one
-   exception. A ceiling changes only in a commit that holds the new number and
-   the decision record's reason for it, and nothing more.
-3. The floor guard reads `budgets.json` and `limits.json` as well as
-   `CONSTRAINTS.md`, and blocks a budget or a limit that rises unless the same
-   commit adds a line to the decision record.
-4. The guard walks the commits from the merge base with `main` to the head
-   and judges each against the one before. Its own file is in its scope for a
-   rule that is removed or loosened. Its own patterns, in that file and in the
-   fixtures of its tests, are not findings; the fixtures are put together when
-   a test runs.
-5. The first commit adds tests for the size script's two failures and for
-   each rule of the guard, run on throwaway repositories the test makes.
-6. A commit that grows an entry sets that entry's budget to its new measured
+1. **Tooling first.** The first commit is tooling only. `budgets.json` holds
+   each entry as `{"budget": …, "ceiling": …}`. The size script fails when a
+   budget is above its ceiling, when a measured size is above its budget, and
+   when an entry has no ceiling, as one with no budget fails today.
+2. **The size rows of `CONSTRAINTS.md`** stop repeating the numbers and name
+   `budgets.json`, so that a budget that moves changes one file and the two
+   cannot drift apart.
+3. **A ceiling does not move with the work.** The floor guard refuses a
+   commit that changes an existing ceiling together with anything else. The
+   first commit, which adds the ceilings, is the one exception. A ceiling
+   changes only in a commit that holds the new number and the decision
+   record's reason for it, and nothing more.
+4. **A budget moves with a line in the record.** The floor guard reads
+   `budgets.json` and `limits.json` as well as `CONSTRAINTS.md`, and blocks a
+   budget or a limit that rises unless the same commit adds a line to
+   record 0004. A rule of `CONSTRAINTS.md` that is loosened needs a line in
+   any record.
+5. **The guard checks every commit.** It walks the commits from its start to
+   the head and judges each against its parent. Its start is the merge base
+   with `main`, or, while `main` does not hold `CONSTRAINTS.md`, the commit
+   that added that file. The branch is kept linear: the guard fails on a
+   merge commit in its range rather than judge one. Last, it judges the
+   working tree (staged, unstaged and untracked files) against the head. CI
+   runs it on the pull request, and it is run before each push during stage
+   4.
+6. **The bar files.** Every change to `scripts/floor-guard.mjs`, to the
+   coverage settings in `packages/classy-store/bunfig.toml` and to the list
+   of target files in `packages/classy-store/tests/mutation/runMutation.ts`
+   passes only if the commit adds a line to a record under `docs/decisions/`
+   that says what changed and why. A change that tightens asks for the line
+   too. The guard does not scan its own file for its own patterns, and the
+   fixtures of its tests are put together when a test runs, so that no file
+   in the repository holds a line the guard would flag. The first commit
+   passes this rule like any other, with its lines in record 0004.
+7. **A test made smaller.** A commit that deletes a test file or leaves one
+   with fewer assertions passes only if its message has a line
+   `Test-change: <path>: <reason>` for each such file, and the reason names a
+   decision (`decision N`) or the public-behaviour test that covers the same
+   fact (a path to a test file). In the working tree, where no message exists
+   yet, the guard reports it as a note.
+8. **Each rule has a test.** The first commit adds tests for the size
+   script's failures and for each rule of the guard, run on throwaway
+   repositories the test makes.
+9. A commit that grows an entry sets that entry's budget to its new measured
    size plus 2%, adds a line with the measured size to the decision record,
    and stays under the ceiling.
-7. When stage 4 ends, every budget is the final measured size plus 2%. The
-   baselines are recorded again. A cost limit that can be tightened is
-   tightened to the highest new run times 1.2; one that would have to rise
-   needs a line in the decision record.
-8. A development-only check is guarded by an inline read of
-   `process.env.NODE_ENV` at its call site, after a test that is cheap and
-   almost always false, and behind `typeof process`. That form becomes a floor
-   rule of `CONSTRAINTS.md`, held by a test that bundles the built file for
-   production and asserts that no development text and no `console.warn` is
-   left in it [D36].
-9. In the same first commit, the two sentences of `CONSTRAINTS.md` about the
-   owner ("that the owner approved", "The owner has not reviewed it yet") are
-   brought in line with the plan's first ground rule [D4].
+10. When stage 4 ends, every budget is the final measured size plus 2%. The
+    budgets are set to that size after the independent review's fixes are
+    committed and before the full validation matrix runs, so that a fix that
+    moves a size is counted [order]. The baselines are recorded again. A cost
+    limit that can be tightened is tightened to the highest new run times
+    1.2; one that would have to rise needs a line in the decision record.
+11. **The guard form of a development-only check.** A development-only check
+    is guarded by an inline read of `process.env.NODE_ENV` at its call site,
+    after a test that is cheap and almost always false, and behind
+    `typeof process`. That form becomes a floor rule of `CONSTRAINTS.md`,
+    which names both of its checks [D36]:
+    - `bun run size` bundles every entry for production, with `NODE_ENV` set
+      to `production`, and fails when such a bundle holds `console.warn` or a
+      code listed in `packages/classy-store/tests/size/developmentOnly.json`.
+      That file is empty until the `lost-write` check lands.
+    - A unit test bundles a fixture written in the guard form, once for
+      production and once for development, and asserts that its marker text
+      and its `console.warn` are gone from the first and present in the
+      second. So the form is held from the first commit, before any check
+      exists. Step 1 of the order adds both, because decision 27 uses that
+      form long before the check of decision 36.
+12. In the same first commit, the two sentences of `CONSTRAINTS.md` about the
+    owner ("that the owner approved", "The owner has not reviewed it yet") are
+    brought in line with the plan's first ground rule [D4].
 
 ## 9. Documentation that changes
 
@@ -1662,58 +1815,68 @@ The checklist for decision 34. Each change goes in the commit of the code
 change it describes; where no code changes, in stage 5 [D34]. Pages are under
 `website/content/docs/` unless another path is given.
 
-| Page                                                                    | Sentence or section                                                                                                                                                                                                                                                                                                                                                                            | Decision           |
-| ----------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ |
-| `API_REFERENCE.md`, entry table                                         | Add `ClassyStore`, `ReactiveMapSnapshot`, `ReactiveSetSnapshot`; the Vue return type; the Angular `options`                                                                                                                                                                                                                                                                                    | D11, D45, D38, D39 |
-| `API_REFERENCE.md`, adapters paragraph                                  | "Vue returns a `Ref<Snapshot<T>>` backed by `shallowRef`" becomes a read-only custom ref that throws on a write                                                                                                                                                                                                                                                                                | D37, D38           |
-| `API_REFERENCE.md`, `createClassyStore`                                 | "Prototype methods … arrow-function fields cannot be rebound" becomes the rule of section 4, with the statements of section 4, "What follows from it", and `ClassyStore`                                                                                                                                                                                                                       | D1, D11            |
-| `API_REFERENCE.md`, `createClassyStore`                                 | "A live getter that reads an absent field recomputes on subsequent reads" goes                                                                                                                                                                                                                                                                                                                 | D7                 |
-| `API_REFERENCE.md`, `createClassyStore`                                 | Make a property read-only through the store, not on the raw object                                                                                                                                                                                                                                                                                                                             | D1                 |
-| `API_REFERENCE.md`, `createClassyStore`                                 | One sentence: a setter is a transaction                                                                                                                                                                                                                                                                                                                                                        | D15                |
-| `API_REFERENCE.md`, `createClassyStore`                                 | An array in a store carries its indices and `length` only                                                                                                                                                                                                                                                                                                                                      | D34                |
-| `API_REFERENCE.md`, `snapshot`                                          | A spread or a serialised snapshot carries data, not computed values (same sentence in the 1.0 changelog entry)                                                                                                                                                                                                                                                                                 | D34, D43           |
-| `API_REFERENCE.md`, `subscribe`                                         | At the top: the callback runs in a microtask, `{sync: true}` runs it before the write returns, and it receives no arguments. The rules of section 5, rule 1. Adapter values of another store may lag inside one delivery round                                                                                                                                                                 | D17, D34, D13, D14 |
-| `API_REFERENCE.md`, `batch`                                             | The paragraph on `batch(async …)` becomes the refusal; an `async` method is a transaction up to its first `await`                                                                                                                                                                                                                                                                              | D16                |
-| `API_REFERENCE.md`, `PROXYABLE`                                         | "their snapshots keep the class prototype" becomes "are instances of the class"; `static [PROXYABLE] = false` is opaque on purpose                                                                                                                                                                                                                                                             | D43, D11           |
-| `API_REFERENCE.md`, `Snapshot<T>`                                       | Tuples stay tuples; "Methods keep their signatures" gets the exception for collections                                                                                                                                                                                                                                                                                                         | D45                |
-| `API_REFERENCE.md`, `persist`                                           | The `onError` line: the third argument and the default report                                                                                                                                                                                                                                                                                                                                  | D21                |
-| `API_REFERENCE.md`, `withHistory`                                       | "changed fields are replaced with mutable copies" becomes the restore in place                                                                                                                                                                                                                                                                                                                 | D30                |
-| `API_REFERENCE.md`, `devtools`                                          | The default of `enabled`                                                                                                                                                                                                                                                                                                                                                                       | D27                |
-| New page, "Errors and warnings"                                         | One heading per code of section 7, with its advice. Beside the codes, what 1.0 does not catch: a native `Map` or `Set` in a store, an unmarked nested class instance, a `Date` changed in place, a getter that reads another store or a static, a getter result that is mutated, a named property on an array, an own-property check inside a getter, a prototype changed after its first read | D35, D36           |
-| `TUTORIAL.md`, "Keep mutations inside the proxy"                        | "using `Object.defineProperty` to change state bypasses assignment/deletion tracking" goes                                                                                                                                                                                                                                                                                                     | D2                 |
-| `TUTORIAL.md`, "Keep mutations inside the proxy"                        | "Circular references in traversed state are rejected by `snapshot()`" is reversed; the cost of a cycle and the alternatives (hold the parent's id, or hold the parent in an object the store does not proxy)                                                                                                                                                                                   | D44                |
-| `TUTORIAL.md`, "Getters appear as own fields on snapshots"              | The section is rewritten: class getters are not own keys; getters of an object literal and of a class differ on a snapshot                                                                                                                                                                                                                                                                     | D43                |
-| `TUTORIAL.md`, "Keep computed getters pure"                             | "In a snapshot getter, `Object.keys(this)` can return an empty array … `key in this` can miss a field" goes; use `in`, not an own-property check; a getter must not write to the store it reads; a getter that reads another store: hold that store as a field                                                                                                                                 | D43, D7, D10       |
-| `TUTORIAL.md`, "Don't use arrow functions for methods"                  | Rewritten around `ClassyStore` and section 4; the sentences of decision 11 (a callback compared on a snapshot, an arrow method called on the store, `StrictMode`, a class that extends another class)                                                                                                                                                                                          | D11, D1            |
-| `TUTORIAL.md`, `#private`                                               | A `#private` field is never state                                                                                                                                                                                                                                                                                                                                                              | D11                |
-| `TUTORIAL.md`, "Reactive nested classes"                                | "their snapshots keep the class prototype"                                                                                                                                                                                                                                                                                                                                                     | D43                |
-| `TUTORIAL.md`, "Frozen objects are values"                              | The raw object must not be frozen once a store holds it                                                                                                                                                                                                                                                                                                                                        | D9                 |
-| `TUTORIAL.md`, subscriptions                                            | A subscription on a container that has left the store lasts while the caller holds the store, the container or the unsubscribe function                                                                                                                                                                                                                                                        | D3                 |
-| `ARCHITECTURE.md`                                                       | The cache of methods, which is per object                                                                                                                                                                                                                                                                                                                                                      | D1                 |
-| `PERSIST_TUTORIAL.md`, `skipHydration`                                  | "It does not delay writes" is reversed: nothing is saved until `rehydrate()`                                                                                                                                                                                                                                                                                                                   | D21                |
-| `PERSIST_TUTORIAL.md`, migration                                        | "Migration and hydration do not automatically rewrite storage" gets the one exception, the expiry stamp                                                                                                                                                                                                                                                                                        | D24                |
-| `PERSIST_TUTORIAL.md`, restoration                                      | "Synchronous subscribers can also edit a different field during restoration" becomes one notification after the whole record                                                                                                                                                                                                                                                                   | D23                |
-| `PERSIST_TUTORIAL.md`, errors                                           | `onError` with the handle and `clear()`; the default report; the kinds of record; a handle that does not write, what unblocks it, and that its edits are restored over; a record too deep to restore has nothing to keep and is replaced at the next save; the two losses that stay                                                                                                            | D21, D23           |
-| `PERSIST_TUTORIAL.md`, setup                                            | Call `persist()` after the store is constructed, never in a constructor; on the client call `prepareStoreForHydration()` first                                                                                                                                                                                                                                                                 | D19, D41           |
-| `PERSIST_TUTORIAL.md`, cross-tab                                        | An event from another storage area is ignored                                                                                                                                                                                                                                                                                                                                                  | D25                |
-| `PERSIST_ARCHITECTURE.md`                                               | "Invalid envelope … skipped silently" becomes a report                                                                                                                                                                                                                                                                                                                                         | D21                |
-| `HISTORY_TUTORIAL.md`                                                   | "allow the restoration microtask to finish before making another edit" goes                                                                                                                                                                                                                                                                                                                    | D28                |
-| `HISTORY_TUTORIAL.md`                                                   | Function fields are restored by reference; a jump by JSON touches no function field                                                                                                                                                                                                                                                                                                            | D29                |
-| `HISTORY_TUTORIAL.md`                                                   | A history records one store; an object two stores share is undone in both; a move between two stores is undone by a history on a store that holds both; a jump by JSON restores data, not class instances                                                                                                                                                                                      | D30                |
-| `DEVTOOLS_TUTORIAL.md`                                                  | The `enabled` row (default `true`) and "Disable in production"; the builds in which the default is off; the extension receives every state, so a store with secrets passes `enabled: false`                                                                                                                                                                                                    | D27                |
-| `DEVTOOLS_TUTORIAL.md`                                                  | Entries named after the method; the `STORE_UPDATE` examples                                                                                                                                                                                                                                                                                                                                    | D27                |
-| `DEVTOOLS_TUTORIAL.md`                                                  | The panel shows the getter values of the root store only                                                                                                                                                                                                                                                                                                                                       | D43                |
-| `REACTIVE_COLLECTIONS_TUTORIAL.md`                                      | "Primitive members use `Object.is`, which distinguishes `0` and `-0`" changes; two snapshots of one object are one member; the difference from a list, with the test that pins both                                                                                                                                                                                                            | D42, D6            |
-| `REACTIVE_COLLECTIONS_TUTORIAL.md`                                      | Mutators on a snapshot throw; writing to `_entries` or `_items` is unspecified; `size` is not in `Object.keys` or JSON of a snapshot                                                                                                                                                                                                                                                           | D45, D43           |
-| `VUE.md`                                                                | The read-only custom ref; `batch()` named beside the synchronous timing                                                                                                                                                                                                                                                                                                                        | D37, D38, D34      |
-| `SVELTE.md`                                                             | A section on runes; the example value is named `snap`, not `state`; `batch()`                                                                                                                                                                                                                                                                                                                  | D40, D37           |
-| `SOLID.md`                                                              | `batch()`; the object passed to `createClassyStore()` is the store                                                                                                                                                                                                                                                                                                                             | D37, D34           |
-| `ANGULAR.md`                                                            | The `injector` option; `batch()`                                                                                                                                                                                                                                                                                                                                                               | D39, D37           |
-| `REACT_SSR.md`                                                          | On the client, `prepareStoreForHydration()` before `persist()`                                                                                                                                                                                                                                                                                                                                 | D41                |
-| The other items of the stage 2 list of undisputed documentation changes | A frozen value needs the whole value frozen; an unmarked class instance is shared with every snapshot; `persist` recipes and transforms, unknown stored keys, stored data as untrusted input with `merge` as the place to validate it                                                                                                                                                          | D34                |
-| The 1.0 changelog entry                                                 | A spread or a serialised snapshot carries no computed values                                                                                                                                                                                                                                                                                                                                   | D34, D43           |
-| `CONTRIBUTING.md`                                                       | Why `proxy-compare` is pinned to an exact version                                                                                                                                                                                                                                                                                                                                              | D33                |
-| `README.md`, `CLAUDE.md`                                                | "about 3.7 KB" becomes the measured figure, in stage 5                                                                                                                                                                                                                                                                                                                                         | D4                 |
+| Page                                                                                                                  | Sentence or section                                                                                                                                                                                                                                                                                                                                                                            | Decision           |
+| --------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ |
+| `API_REFERENCE.md`, entry table                                                                                       | Add `ClassyStore`, `ReactiveMapSnapshot`, `ReactiveSetSnapshot`                                                                                                                                                                                                                                                                                                                                | D11, D45           |
+| `API_REFERENCE.md`, adapters paragraph                                                                                | "Vue returns a `Ref<Snapshot<T>>` backed by `shallowRef`" becomes a read-only custom ref that throws on a write                                                                                                                                                                                                                                                                                | D37, D38           |
+| `API_REFERENCE.md`, adapters paragraph and Angular paragraph                                                          | "Angular returns a readonly signal and requires an injection context" and "It requires a live injection context" gain "or an `injector` option"                                                                                                                                                                                                                                                | D39                |
+| `API_REFERENCE.md`, `createClassyStore`                                                                               | "Prototype methods … arrow-function fields cannot be rebound" becomes the rule of section 4, with the statements of section 4, "What follows from it", and `ClassyStore`                                                                                                                                                                                                                       | D1, D11            |
+| `API_REFERENCE.md`, `createClassyStore`                                                                               | "A live getter that reads an absent field recomputes on subsequent reads" goes                                                                                                                                                                                                                                                                                                                 | D7                 |
+| `API_REFERENCE.md`, `createClassyStore`                                                                               | Make a property read-only through the store, not on the raw object                                                                                                                                                                                                                                                                                                                             | D1                 |
+| `API_REFERENCE.md`, `createClassyStore`                                                                               | One sentence: a setter is a transaction                                                                                                                                                                                                                                                                                                                                                        | D15                |
+| `API_REFERENCE.md`, `createClassyStore`                                                                               | An array in a store carries its indices and `length` only                                                                                                                                                                                                                                                                                                                                      | D34                |
+| `API_REFERENCE.md`, `snapshot`                                                                                        | A spread or a serialised snapshot carries data, not computed values (same sentence in the 1.0 changelog entry)                                                                                                                                                                                                                                                                                 | D34, D43           |
+| `API_REFERENCE.md`, `subscribe`                                                                                       | At the top: the callback runs in a microtask, `{sync: true}` runs it before the write returns, and it receives no arguments. The rules of section 5, rule 1. Adapter values of another store may lag inside one delivery round                                                                                                                                                                 | D17, D34, D13, D14 |
+| `API_REFERENCE.md`, `batch`                                                                                           | The paragraph on `batch(async …)` becomes the refusal; an `async` method is a transaction up to its first `await`                                                                                                                                                                                                                                                                              | D16                |
+| `API_REFERENCE.md`, `PROXYABLE`                                                                                       | "their snapshots keep the class prototype" becomes "are instances of the class"; `static [PROXYABLE] = false` is opaque on purpose                                                                                                                                                                                                                                                             | D43, D11           |
+| `API_REFERENCE.md`, `Snapshot<T>`                                                                                     | Tuples stay tuples; "Methods keep their signatures" gets the exception for collections                                                                                                                                                                                                                                                                                                         | D45                |
+| `PERSIST_TUTORIAL.md`, the options block and "Handle operation failures"; `PERSIST_ARCHITECTURE.md`, "Error Handling" | `onError` gets the handle as its third argument; without `onError` the report goes to `console.error` with the code `persist-failed`; the library's own refusals carry the four codes of section 7. Optionally add an `onError` line to the reference's `persist` entry                                                                                                                        | D21, D35           |
+| `API_REFERENCE.md`, `withHistory`                                                                                     | "changed fields are replaced with mutable copies" becomes the restore in place                                                                                                                                                                                                                                                                                                                 | D30                |
+| `API_REFERENCE.md`, `devtools`                                                                                        | The default of `enabled`                                                                                                                                                                                                                                                                                                                                                                       | D27                |
+| New page, "Errors and warnings"                                                                                       | One heading per code of section 7, with its advice. Beside the codes, what 1.0 does not catch: a native `Map` or `Set` in a store, an unmarked nested class instance, a `Date` changed in place, a getter that reads another store or a static, a getter result that is mutated, a named property on an array, an own-property check inside a getter, a prototype changed after its first read | D35, D36           |
+| `TUTORIAL.md`, "Keep mutations inside the proxy"                                                                      | "using `Object.defineProperty` to change state bypasses assignment/deletion tracking" goes                                                                                                                                                                                                                                                                                                     | D2                 |
+| `TUTORIAL.md`, "Keep mutations inside the proxy"                                                                      | "Circular references in traversed state are rejected by `snapshot()`" is reversed; the cost of a cycle and the alternatives (hold the parent's id, or hold the parent in an object the store does not proxy)                                                                                                                                                                                   | D44                |
+| `TUTORIAL.md`, "Getters appear as own fields on snapshots"                                                            | The section is rewritten: class getters are not own keys; getters of an object literal and of a class differ on a snapshot                                                                                                                                                                                                                                                                     | D43                |
+| `TUTORIAL.md`, "Keep computed getters pure"                                                                           | "In a snapshot getter, `Object.keys(this)` can return an empty array … `key in this` can miss a field" goes; use `in`, not an own-property check; a getter must not write to the store it reads; a getter that reads another store: hold that store as a field                                                                                                                                 | D43, D7, D10       |
+| `TUTORIAL.md`, "Don't use arrow functions for methods"                                                                | Rewritten around `ClassyStore` and section 4; the sentences of decision 11 (a callback compared on a snapshot, an arrow method called on the store, `StrictMode`, a class that extends another class)                                                                                                                                                                                          | D11, D1            |
+| `TUTORIAL.md`, `#private`                                                                                             | A `#private` field is never state                                                                                                                                                                                                                                                                                                                                                              | D11                |
+| `TUTORIAL.md`, "Reactive nested classes"                                                                              | "their snapshots keep the class prototype"                                                                                                                                                                                                                                                                                                                                                     | D43                |
+| `TUTORIAL.md`, "Frozen objects are values"                                                                            | The raw object must not be frozen once a store holds it                                                                                                                                                                                                                                                                                                                                        | D9                 |
+| `TUTORIAL.md`, subscriptions                                                                                          | A subscription on a container that has left the store lasts while the caller holds the store, the container or the unsubscribe function                                                                                                                                                                                                                                                        | D3                 |
+| `ARCHITECTURE.md`                                                                                                     | The cache of methods, which is per object                                                                                                                                                                                                                                                                                                                                                      | D1                 |
+| `ARCHITECTURE.md`, GET trap step 1                                                                                    | The table per prototype in place of the descriptor walk                                                                                                                                                                                                                                                                                                                                        | D12                |
+| `ARCHITECTURE.md`, DEFINE trap                                                                                        | A definition is a write; a child stays a child through a freeze                                                                                                                                                                                                                                                                                                                                | D2, D5             |
+| `ARCHITECTURE.md`, nested getters                                                                                     | One kind of dependency                                                                                                                                                                                                                                                                                                                                                                         | D10                |
+| `ARCHITECTURE.md`, SET trap step 5 and batching                                                                       | One delivery queue with a bound of 100 rounds                                                                                                                                                                                                                                                                                                                                                  | D13                |
+| `PERSIST_TUTORIAL.md`, `skipHydration`                                                                                | "It does not delay writes" is reversed: nothing is saved until `rehydrate()`                                                                                                                                                                                                                                                                                                                   | D21                |
+| `PERSIST_TUTORIAL.md`, migration                                                                                      | "Migration and hydration do not automatically rewrite storage" gets the one exception, the expiry stamp                                                                                                                                                                                                                                                                                        | D24                |
+| `PERSIST_TUTORIAL.md`, restoration                                                                                    | "Synchronous subscribers can also edit a different field during restoration" becomes one notification after the whole record                                                                                                                                                                                                                                                                   | D23                |
+| `PERSIST_TUTORIAL.md`, errors                                                                                         | `onError` with the handle and `clear()`; the default report; the kinds of record; a handle that does not write, what unblocks it, and that its edits are restored over; a record too deep to restore has nothing to keep and is replaced at the next save; the two losses that stay                                                                                                            | D21, D23           |
+| `PERSIST_TUTORIAL.md`, setup                                                                                          | Call `persist()` after the store is constructed, never in a constructor; on the client call `prepareStoreForHydration()` first                                                                                                                                                                                                                                                                 | D19, D41           |
+| `PERSIST_TUTORIAL.md`, cross-tab                                                                                      | An event from another storage area is ignored                                                                                                                                                                                                                                                                                                                                                  | D25                |
+| `PERSIST_TUTORIAL.md`, "Handle operation failures"                                                                    | "Hydration is asynchronous even with `localStorage` …" is reversed: with a synchronous storage the record is restored before `persist()` returns                                                                                                                                                                                                                                               | D19                |
+| `PERSIST_TUTORIAL.md`, the options block and "version, migrate, & merge"                                              | `migrate` runs only for a lower version; a newer record is reported and not written over; "stored data from another version is ignored … no error is reported" holds for a lower version only                                                                                                                                                                                                  | D21                |
+| `PERSIST_ARCHITECTURE.md`                                                                                             | "Invalid envelope … skipped silently" becomes a report                                                                                                                                                                                                                                                                                                                                         | D21                |
+| `HISTORY_TUTORIAL.md`                                                                                                 | "allow the restoration microtask to finish before making another edit" goes                                                                                                                                                                                                                                                                                                                    | D28                |
+| `HISTORY_TUTORIAL.md`                                                                                                 | Function fields are restored by reference; a jump by JSON touches no function field                                                                                                                                                                                                                                                                                                            | D29                |
+| `HISTORY_TUTORIAL.md`                                                                                                 | A history records one store; an object two stores share is undone in both; a move between two stores is undone by a history on a store that holds both; a jump by JSON restores data, not class instances                                                                                                                                                                                      | D30                |
+| `HISTORY_TUTORIAL.md`, "How It Works", steps 3 to 5                                                                   | Recording suppression, "skipping … methods" and "assigned a mutable copy" are rewritten: one transaction per undo, function fields restored by reference, nested objects restored in place                                                                                                                                                                                                     | D28, D29, D30      |
+| `DEVTOOLS_TUTORIAL.md`                                                                                                | The `enabled` row (default `true`) and "Disable in production"; the builds in which the default is off; the extension receives every state, so a store with secrets passes `enabled: false`                                                                                                                                                                                                    | D27                |
+| `DEVTOOLS_TUTORIAL.md`                                                                                                | Entries named after the method; the `STORE_UPDATE` examples                                                                                                                                                                                                                                                                                                                                    | D27                |
+| `DEVTOOLS_TUTORIAL.md`                                                                                                | The panel shows the getter values of the root store only                                                                                                                                                                                                                                                                                                                                       | D43                |
+| `DEVTOOLS_TUTORIAL.md`, "How it works" and the time-travel steps                                                      | Sending on the synchronous channel, one entry per outermost method; a jump is one transaction through the shared restore, in place, with no setter called and no function field touched; a jump the restore refuses writes nothing and is logged; the four messages handled; the five options of the extension                                                                                 | D27, D29, D30      |
+| `SUBSCRIBE_KEY_TUTORIAL.md`, "How it works"                                                                           | It reads the live value and snapshots the watched node only when it changed                                                                                                                                                                                                                                                                                                                    | D31                |
+| `REACTIVE_COLLECTIONS_TUTORIAL.md`                                                                                    | "Primitive members use `Object.is`, which distinguishes `0` and `-0`" changes; two snapshots of one object are one member; the difference from a list, with the test that pins both; the lookup paragraph and the reference's "Their lookups are linear": a snapshot answers `has()` and `get()` from an index, and the live collection and a tracked read still scan                          | D42, D6            |
+| `REACTIVE_COLLECTIONS_TUTORIAL.md`                                                                                    | Mutators on a snapshot throw; writing to `_entries` or `_items` is unspecified; `size` is not in `Object.keys` or JSON of a snapshot                                                                                                                                                                                                                                                           | D45, D43           |
+| `VUE.md`                                                                                                              | The read-only custom ref; `batch()` named beside the synchronous timing                                                                                                                                                                                                                                                                                                                        | D37, D38, D34      |
+| `SVELTE.md`                                                                                                           | A section on runes; the example value is named `snap`, not `state`; `batch()`                                                                                                                                                                                                                                                                                                                  | D40, D37           |
+| `SOLID.md`                                                                                                            | `batch()`; the object passed to `createClassyStore()` is the store                                                                                                                                                                                                                                                                                                                             | D37, D34           |
+| `ANGULAR.md`                                                                                                          | The `injector` option; `batch()`                                                                                                                                                                                                                                                                                                                                                               | D39, D37           |
+| `REACT_SSR.md`                                                                                                        | On the client, `prepareStoreForHydration()` before `persist()`                                                                                                                                                                                                                                                                                                                                 | D41                |
+| The other items of the stage 2 list of undisputed documentation changes                                               | A frozen value needs the whole value frozen; an unmarked class instance is shared with every snapshot; `persist` recipes and transforms, unknown stored keys, stored data as untrusted input with `merge` as the place to validate it                                                                                                                                                          | D34                |
+| The 1.0 changelog entry                                                                                               | A spread or a serialised snapshot carries no computed values                                                                                                                                                                                                                                                                                                                                   | D34, D43           |
+| `CONTRIBUTING.md`                                                                                                     | Why `proxy-compare` is pinned to an exact version                                                                                                                                                                                                                                                                                                                                              | D33                |
+| `CLAUDE.md`                                                                                                           | "about 3.7 KB" and "about 4.9 KB with the React hooks" become the measured figures, in stage 5. The README gives no figure                                                                                                                                                                                                                                                                     | D4                 |
 
 ## 10. How stage 4 works
 
@@ -1724,16 +1887,23 @@ By reference:
   `bun run benchmark:core --check` and `bun run benchmark:core:node --check`,
   `bun run test:mutation` before a commit that touches a target file,
   `bun run typecheck` (never `bunx tsc`), `bun run check:package`.
-- **The bar.** `CONSTRAINTS.md`, with the ceilings of section 8.
+- **The bar.** `CONSTRAINTS.md`, with `budgets.json` and `limits.json`,
+  which hold its numbers and the ceilings of section 8.
 - **Test first.** Each change starts with the tests that pin the new
   behaviour; a stage 1 test that pins removed behaviour changes in the same
   commit.
-- **One change per commit**, each measured against the commit before.
+- **One change per commit**, each measured against the commit before it; a
+  difference inside the spread that stage 1 recorded is noise (section 8).
 - **The order** of the decision document's "The order for stage 4", steps 1
   to 12, as the task list refines it. Stage 4 writes each change again from
   its decision; it applies no spike patch.
 - **Dead code** that a change makes dead goes in that change's commit [D20].
 - **Documentation** goes with the change it describes (section 9) [D34].
+  Each change corrects every page it makes false, in its own commit, even
+  where a later step puts something back: the snapshot commit of decision 43
+  says on the DevTools page that the panel shows no computed values, and the
+  `devtools` commit that sends the root's getter values changes that sentence
+  again [order].
 
 **Always**, in every commit:
 
@@ -1746,13 +1916,23 @@ By reference:
 - `bun run check:floor` passes, and is run before each push.
 - A new message adds its code and its line on the codes page [D35].
 - Code made dead by the change is removed in it [D20].
-- The documentation of section 9 that belongs to the change is in it.
+- The documentation of section 9 that belongs to the change is in it, with
+  the examples, and every page the change makes false is corrected in it.
+- `bun run test:mutation` runs on the touched target files.
+- A test file that the commit deletes or leaves with fewer assertions has a
+  `Test-change: <path>: <reason>` line in the commit message, naming a
+  decision or the public-behaviour test that covers the same fact (section
+  8).
+- A number of `CONSTRAINTS.md` that the change moves is edited in the same
+  commit, naming the decision.
+- Timings recorded before and after go into the commit message.
 
 **Never:**
 
 - Merge into `main`, release, publish, tag, or run the release workflow.
-- Lower a number of `CONSTRAINTS.md`, or loosen a rule there, without a
-  decision record.
+- Loosen a number of `CONSTRAINTS.md` (raise a budget or a cost limit, lower
+  a coverage figure) or a rule there without a line in the decision record
+  [D4].
 - Commit spike code.
 - Change a ceiling together with anything else [D4].
 
@@ -1767,10 +1947,11 @@ Stage 4 is finished when each of these holds:
 1. `bun run checkall` passes on the branch head.
 2. `bun run test:coverage` passes: 100% of lines and functions in every
    source file.
-3. `bun run check:floor` passes for every commit from the merge base with
-   `main` to the head.
-4. `bun run size` passes; `budgets.json` has a `ceiling` per entry, and every
-   budget is the final measured size plus 2%, at or under its ceiling.
+3. `bun run check:floor` passes for every commit from its start (section 8)
+   to the head, with no merge commit in the range, and for the working tree.
+4. `bun run size` passes; every entry of `budgets.json` is
+   `{"budget": …, "ceiling": …}`, and every budget is the final measured size
+   plus 2%, at or under its ceiling.
 5. `bun run benchmark:core --check` and `bun run benchmark:core:node --check`
    pass, the baselines are recorded again, and `limits.json` is tightened
    where it can be (section 8).
@@ -1780,56 +1961,89 @@ Stage 4 is finished when each of these holds:
 8. The workflows' browser, React, Vue, Svelte, Angular, Solid and Next.js
    suites pass on the pull request, each adapter change with its packed-app
    and browser suite [D37].
-9. The production bundle test of the floor rule for development-only checks
-   passes [D36].
+9. The two checks of the floor rule for development-only checks pass: `bun
+   run size` finds no `console.warn` and no code listed in
+   `developmentOnly.json` in a production bundle, and the unit test of the
+   guard form on its fixture passes [D36].
 10. The type tests list every export of section 2, and a type test covers
     each changed signature of section 3: `batch`, `Snapshot` of a tuple and of
     each collection, Vue's return type, Angular's `options`, `onError` with
     three arguments.
 11. A search of `packages/classy-store/src` for each 0.11 message text of
-    section 7 finds none without its code.
-12. The "Errors and warnings" page exists with every code of section 7.
+    section 7 finds none without its code, and `circular reference detected
+    in snapshot` is gone.
+12. The "Errors and warnings" page exists with every code of section 7 that
+    1.0 has (`lost-write` only if its check landed).
 13. Every row of section 9 is done, or is listed for stage 5 where no code
     changes.
 14. Each stage 1 test file that pins an item of section 6 says that it is a
     change detector.
 15. Each decision with "Stage 4: yes" has its commit or commits; decision 32
     has only the pins and the permissions; decision 46 has none.
-16. Every third-party action in every workflow is pinned to a commit, a
+16. Every third-party action in every workflow (every action the repository
+    does not define, GitHub's own included) is pinned to a commit, a
     Dependabot configuration keeps the pins current, and the three workflows
     without permissions declare `contents: read` [D32]. CI has a `bun audit`
     step that reports and does not fail [D33].
-17. The decision record under `docs/decisions/` holds a line with the
-    measured size for each budget that moved, and the figure of the
-    development path if the `lost-write` check landed [D4, D36].
+17. Record 0004 holds a line with the measured size for each budget that
+    moved, and record 0036 the figure of the development path if the
+    `lost-write` check landed [D4, D36].
 18. Nothing is merged into `main`, and no tag or release exists for 1.0.
+19. After the last refactor commit, the independent review (it reads
+    decision 1 and the `persist` rules first) and a second comparison pass
+    on the changed areas are done, and their findings decided. Then the
+    budgets are set to their final size (section 8, step 10).
+20. The full validation matrix passes on the final commit, and the stage
+    report names that commit.
 
 ## 12. Open points
 
 ### A. What the decision document leaves unclear, or this spec could not resolve
 
-Each needs a decision before stage 4 writes the code it touches.
+Each needed a decision before stage 4 writes the code it touches. All were
+settled on 2026-11-25 in the decision document's "Settled when the step 7
+documents were checked"; the line under each point gives the answer, and the
+sections above follow it.
 
-1. **`snapshot-cycle`.** Decision 35 gives a code to each of the three
-   messages the library has today, one of which is `circular reference
-   detected in snapshot`. Decision 44 removes that throw. Decision 35 also
-   says "the cycle check on snapshots" stays in every build, which this spec
-   reads as the getter cycle on a snapshot of decision 10. Decide, before step
-   2 of the order, whether `snapshot-cycle` is created in step 2 and retired
-   in step 5, or never created, and whether a retired code is listed on the
-   codes page.
+1. **A code for the snapshot's circular reference.** Decision 35 gives a
+   code to each of the three messages the library has today, one of which is
+   `circular reference detected in snapshot`. Decision 44 removes that
+   throw. Decision 35 also says "the cycle check on snapshots" stays in every
+   build, which this spec reads as the getter cycle on a snapshot of
+   decision 10. Decide, before step 2 of the order, whether its code is created in
+   step 2 and retired in step 5, or never created, and whether a retired code
+   is listed on the codes page.
+
+   **Settled:** never created. The snapshot's circular reference gets no
+   code, because decision 44 removes that throw before 1.0, and the page
+   lists no code that 1.0 does not have [D35].
+
 2. **Messages that exist today beyond the three.** The Vue, Solid and Angular
    scope errors, and `Persistence handle has been disposed`, which has no
    prefix. Decision 35 says every error carries a code but names codes only
-   for the three. This spec proposes `no-scope` and `persist-disposed`.
+   for the three. This spec had given names of its own.
+
+   **Settled:** all of today's messages get their codes in one commit:
+   `getter-cycle`, `not-a-store`, `vue-no-scope`, `solid-no-owner`,
+   `angular-no-context` and `persist-disposed`, with one prefix for every
+   message, the adapters' too [D35].
+
 3. **Code names the decision document does not give.** It names
    `getter-cycle`, `delivery-loop`, `batch-async` and `lost-write`. It decides
    that these exist without naming them: the getter write [D10], the
    collection mutator [D45], the `persist` option check [D22], the `persist`
    record reports [D21], the Vue ref write [D38], the Angular context error
    [D39], the restore that the root refuses [D30], and the existing "not a
-   store" message [D35]. Section 7 proposes a name for each. Codes are stable
-   from 1.0, so the names are settled before step 2 creates the codes page.
+   store" message [D35]. Section 7 had given a name of its own to each.
+   Codes are stable from 1.0, so the names are settled before step 2 creates
+   the codes page.
+
+   **Settled:** the nineteen codes of decision 35, in section 7:
+   `getter-write`, `frozen-collection`, `persist-option`, `persist-invalid`,
+   `persist-newer`, `persist-not-plain`, `persist-unread`, `persist-failed`,
+   `vue-readonly`, `angular-no-context`, `restore-locked` and `not-a-store`
+   among them [D35].
+
 4. **What a `persist` report carries.** Decision 21 says that without
    `onError` the report goes to `console.error` "with its code". It does not
    say what `onError` and that default receive when the error is not the
@@ -1838,50 +2052,106 @@ Each needs a decision before stage 4 writes the code it touches.
    value as it is, or a library error with a code that carries it. It does not
    say either whether `save()` before the first read is also reported through
    `onError` (the build reported it as `'write'`; the decision says only that
-   it rejects), or what the facts of `persist-record` are.
+   it rejects), or what the facts of a code for a refused record are.
+
+   **Settled:** a value the library did not throw is passed as it is. A
+   refusal of the library's own is an `Error` with one of four codes:
+   `persist-invalid`, `persist-newer`, `persist-not-plain` and
+   `persist-unread`. The default report is one `console.error` call with the
+   code `persist-failed` and the error. Every failure of `save()` is reported
+   as `'write'` and rejects, a `save()` before the first read included. On a
+   handle that does not write, `save()` and `rehydrate()` reject with the
+   error `lastError` holds; a `rehydrate()` whose read fails reports as
+   `'read'` and rejects [D21].
+
 5. **The names of the two collection snapshot types.** Decision 45 says "two
    exported types" and does not name them. `ReactiveMapSnapshot` and
    `ReactiveSetSnapshot` are the names of the build it cites.
+
+   **Settled:** `ReactiveMapSnapshot<K, V>` and `ReactiveSetSnapshot<T>`,
+   from `./collections` [D45].
+
 6. **How `batch()` tells a native `async` function.** Decision 16 does not
    say. Decision 22 says, for `persist`, that `Symbol.toStringTag` is compared
    with `'AsyncFunction'` exactly because a looser test refused the test
    runner's mock functions. Stage 4 tests that a mock function is accepted by
    `batch()`.
+
+   **Settled:** by `Symbol.toStringTag` equal to `'AsyncFunction'`, as
+   decision 22; a mock function is accepted, and a test pins it. The type of
+   the parameter is not exported [D16].
+
 7. **The channel of `lost-write`.** Decision 36 says the library "logs" it.
    The floor rule's test asserts that no `console.warn` is left in a
-   production bundle, which suggests `console.warn`. Section 7 says "logged".
+   production bundle, which suggests `console.warn`. Section 7 said "logged".
+
+   **Settled:** `console.warn`. A report made in every build is written with
+   `console.error`, and the one development-only report with `console.warn`
+   [D35, D36].
+
 8. **A guarantee and an unspecified item overlap.** Rule 3 guarantees that a
    write made inside a batched subscriber is delivered to batched subscribers
    in the same microtask. The unspecified list includes "which microtask a
    batched round runs in". This spec keeps rule 3 as guaranteed and reads the
    unspecified item as everything rule 3 does not state. Decide which wins.
+
+   **Settled:** rule 3 wins. The unspecified item now names only where the
+   microtask of a batched round falls among the application's own
+   microtasks (decision document, "Unspecified").
+
 9. **A generator method and rule 2.** Decision 1 makes a generator method a
    method. Its body runs on `next()`, after the call returned, so two writes
    in it notify twice, as in 0.11. Rule 2 says a method notifies once and
    names only the `async` exception. Decide whether the reference states it
    like the `async` rule or the case goes into the unspecified list.
+
+   **Settled:** rule 2 says that the body of a generator method runs at each
+   `next()`, after the call has returned, so each write in it is a write of
+   its own (statement 2.7) [G2].
+
 10. **Rule 6 and functions.** Rule 6 says a value the store does not proxy
     reads back as itself; rule 5 counts a function as such a value; decision
     1 hands a function in a field out as a method. This spec reads rule 6's
     sentence about methods as the exception (statements 6.6 and 6.7).
+
+    **Settled:** rule 6 states the method as the exception to "reads back as
+    itself" (statement 6.6) [G6].
+
 11. **Rule 10 and a handle that does not write.** Rule 10 says the first
     `save()` or `clear()` of a task reaches a synchronous storage before it
     returns. Decision 21 makes `save()` reject before the first read and while
     the handle does not write. This spec reads statement 10.9 as holding for
     `save()` on a handle that writes, and for `clear()` always.
+
+    **Settled:** as read here. The first `save()` of a task reaches a
+    synchronous storage on a handle that writes; `clear()` always
+    (statement 10.9) [G10].
+
 12. **Vue on the server.** Decision 38 says the adapter subscribes to nothing
     on the server. It does not say how the adapter knows it is on the server,
     or whether the effect scope check of today still applies there. Stage 4
     takes both from the adapter report it cites, and writes the test first.
+
+    **Settled:** the adapter is on the server when it runs inside a component
+    and `inject(ssrContextKey, null)` is set. Today's check for an active
+    effect scope stays, and comes first [D38].
+
 13. **Types that are not exported.** The `Synchronous<T>` type of `batch()`
     and the options object of `injectClassyStore` are written out in this
     spec and not exported, because the decision document adds neither to the
     export list. A wrapper generic over `batch()` then needs a cast, as
     decision 16 says.
+
+    **Settled:** neither is exported in 1.0 [D16, D39].
+
 14. **A DevTools jump on a frozen root.** Decision 30 makes the shared
     restore throw `restore-locked` when the root fails its check. A jump runs
     inside the listener of the extension's messages; what the user sees of
     that throw is not stated, and the case was not run.
+
+    **Settled:** the jump writes nothing; `devtools` catches the
+    `restore-locked` error and logs it with `console.error`, and the panel
+    shows the entry it jumped to until the next entry arrives [D27].
 
 ### B. What the decision document leaves unverified, and what stage 4 does first
 
@@ -1895,7 +2165,8 @@ Each needs a decision before stage 4 writes the code it touches.
     4 reads.
 17. **Decision 4.** The decided set was never built as one, and the cost
     limits are a forecast. First: the tooling commit; then every commit is
-    measured against the one before.
+    measured against the one before, with the spread of stage 1 as the
+    noise.
 18. **Decision 7.** Its figures are for a design no spike built in decision
     10's single shape. Stage 4 takes its figures from its own build.
 19. **Decision 9.** The form without the per-prototype cache was not
@@ -1905,18 +2176,23 @@ Each needs a decision before stage 4 writes the code it touches.
     this part in step 4 on today's snapshot layer and runs its rows again as
     tests after step 5.
 21. **Decision 11.** The 17 compilations of a subclass ran on an earlier form
-    of the rule for functions. Stage 4 runs them again on the real code.
+    of the rule for functions. Stage 4 runs them again on the real code:
+    TypeScript with class fields as definitions and as assignments, and
+    Bun's transpiler, as committed tests; the other compilers once in a
+    scratch folder, with their results in the commit message.
 22. **Decision 12.** Not measured: a read of an absent key once the table
     holds 256 keys. Not built: this form on top of the getter changes of
     decision 10.
 23. **Decision 13.** Stage 4 confirms on a quiet machine that
-    `store.write.sync` stays inside the spread with the variant (section 8).
+    `store.write.sync` stays inside the spread of the commit before with the
+    variant (section 8).
 24. **Decision 14.** The guard on the report was not spiked. Stage 4 writes
     its test first.
-25. **Decision 20.** The claim that the ternary in `activeTracker()` must
-    stay rests on a patch that changed several things; it is timed alone
-    first. The two React cache traps are deleted only if no unit test and no
-    React suite fails.
+25. **Decision 20.** Done: the ternary in `activeTracker()` was timed alone,
+    and it stays. The two React cache traps are deleted only if no unit test
+    and no React suite fails; their direct tests are tests of internal state
+    and go with them. The object guard in `indexOfMember` goes only after the
+    two benchmark rows of section 8.
 26. **Decision 21.** Three parts were not built: a record nested too deep has
     nothing to keep, the removal of the record in another tab lets a handle
     write again, and the expiry stamp only for a finite `expireIn`. Not run: a
@@ -1937,7 +2213,7 @@ Each needs a decision before stage 4 writes the code it touches.
 30. **Decision 30.** The spike's check counts a function field as a key to
     delete; stage 4 tests the jump by JSON on a sealed store with own-field
     methods first. Not timed on Node. Not run: a DevTools jump on a frozen
-    root.
+    root; what it does is decided (point 14).
 31. **Decision 35.** The count of 29 assertions in 15 test files that match
     today's text comes from a search, not a run.
 32. **Decision 36.** The once-per-task form was not built, and the check was
