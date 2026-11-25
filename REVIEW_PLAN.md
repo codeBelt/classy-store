@@ -183,9 +183,15 @@ commit. Its working results are in `review/stage-4/`.
   0004. That flaky persist test struck twice more in this task's mutation
   runs; fixing it is the next commit.
 
-**Next:** make the persist ordering test independent of load (its own
-commit, no assertion removed), then T-10: a delete that removes nothing is
-no change (decision 8).
+- `b5146a2`: the flaky persist test now waits for the write itself. The
+  failure did not reproduce in sixteen parallel full runs, so if a mutation
+  run still marks an equivalent mutant killed by that test, run the file
+  again before you remove its entry.
+
+**Next:** T-10: a delete that removes nothing is no change (decision 8).
+Then T-11 (`defineProperty` as a write), T-12 (raw values on write), T-13
+(the two benchmark rows decision 1 is measured by) and T-14 (the rule for
+functions).
 
 The throwaway worktrees of the step 7 fixers are in the scratchpad, on the
 branches `step7/fix-spec`, `step7/fix-records` and `step7/fix-tasks`, which
