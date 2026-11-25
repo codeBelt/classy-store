@@ -324,9 +324,11 @@ them.
 
 **A ceiling is an estimate and a tripwire, not a measurement.** The decided
 set was never built as one. Each figure below is one change measured alone
-against today's source, and two combinations that were built came out above
+against today's source. Two combinations that were built came out above
 the sum of their parts (the trap spikes 650 against 617, the snapshot spikes
-243 against 230). So the ceilings sit a little above the sums, and what they
+243 against 230), and one below it (raw values, the searches, the freeze,
+`defineProperty` and the table per prototype, 465 against 486). So the
+ceilings sit a little above the sums, and what they
 are for is to stop the work: a change that would pass one is not committed,
 and the question goes back to a decision.
 
@@ -355,7 +357,7 @@ and the question goes back to a decision.
 | The rule for functions                                                |        1 |   +165 |
 | `defineProperty` as a write                                           |        2 |    +49 |
 | The walk to a detached parent removed                                 |        3 |    −36 |
-| Raw values on write, and a child kept when its container is frozen    |        5 |    +92 |
+| Raw values on write, and a child kept when its container is frozen    |        5 |   +104 |
 | Searches that find the object the caller holds                        |        6 |   +168 |
 | `has` and `ownKeys` traps, a missing property as a value              |        7 |   +156 |
 | A delete that removes nothing                                         |        8 |    +11 |
@@ -369,17 +371,17 @@ and the question goes back to a decision.
 | The slot through which `devtools` names a method                      |       27 |    +12 |
 | Class getters on a derived prototype, and `this` in a snapshot getter |       43 |   +239 |
 | A snapshot keeps a cycle                                              |       44 |     −9 |
-| Sum                                                                   |          | +1,582 |
+| Sum                                                                   |          | +1,594 |
 
-The sum puts the main entry near 5,240 bytes, 43% above today's. The first
-draft of this entry counted 4,820. The 420 bytes since then are what the
-first review asked for: the rule for functions in place of the strict rule
-and its exception (165 against 90), the child kept through a freeze (56),
-the searches that answer correctly for a list of snapshots (68), the throw
-for a getter that writes (74), and the table that does not hold a getter's
-body (46). The messages were measured as their spikes wrote them; the codes
-of decision 35 shorten them, by about 100 bytes for the first set and
-unmeasured for the rest.
+The sum puts the main entry near 5,255 bytes, 44% above today's. The first
+draft of this entry counted 4,820 and left two rows open. The 433 bytes
+since then are what the first review asked for: the rule for functions
+(165, an open row before), the child kept through a freeze (68), the
+searches that answer correctly for a list of snapshots (68), the throw for a
+getter that writes (74), the table that does not hold a getter's body (46),
+and the slot for `devtools` (12, the other open row). The messages were
+measured as their spikes wrote them; the codes of decision 35 shorten them,
+by about 100 bytes for the first set and unmeasured for the rest.
 
 **What `./utils` adds, change by change.**
 
@@ -467,8 +469,8 @@ today's behaviour, and "a frozen object is a value" already says it for the
 first.
 
 **Evidence.** `spike-traps.md`, T2, first part: 12 lines added, 8 removed,
-36 bytes, 3 tests change, all fixes. `spike-core-2.md`, F1: 13 lines added
-and 1 removed in the `defineProperty` trap, 56 bytes, no test changes beyond
+36 bytes, 3 tests change, all fixes. `spike-core-2.md`, F1: 15 lines added
+and 2 removed in the `defineProperty` trap, 68 bytes, no test changes beyond
 those of decisions 2 and 5, typecheck passes, and the reviewer's
 reproduction gives today's answers again. One earlier run had shown store
 creation about 20% slower on Node with raw values on write. A second run,
@@ -2003,7 +2005,7 @@ so. The number in brackets is the decision that carries the change.
 | W13 | Guarantees     | Rules 2, 3 and 5 are false as written; "error text" contradicts the stable codes           | Changed: the rules are rewritten, and rule 12 added                                                                                      |
 | W14 | 20, 24, 28, 34 | Finding 4 and M37 are decided nowhere; 24 and 28 have no decision text                     | Changed: finding 4 in 20, M37 in 34, both texts written                                                                                  |
 | W15 | Not taken      | The list misses choices that 1.0 makes final                                               | Changed: completed, with the final ones marked                                                                                           |
-| W16 | 4, 35          | The figures disagree, and the set was never built or timed                                 | Changed: one sum, 5,240 and 43% after the second set of spikes; the entry says the ceilings are estimates                                |
+| W16 | 4, 35          | The figures disagree, and the set was never built or timed                                 | Changed: one sum, 5,255 and 44% after the second set of spikes; the entry says the ceilings are estimates                                |
 | W17 | 4, 27, 9, 7    | Four items buy little for their bytes, and the hook costs every method call                | Changed: 4 weighs each. The hook is replaced by a slot that costs a method call nothing measurable (27)                                  |
 | W18 | 43             | What `devtools` sends for computed values was never built                                  | Changed after a spike: built and counted, 95 bytes on `./utils` (43, 27)                                                                 |
 | C1  | 30, 44         | The same as W1, reproduced on the library                                                  | Changed, as W1                                                                                                                           |
