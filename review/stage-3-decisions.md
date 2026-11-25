@@ -287,8 +287,8 @@ top of the cache.
 - The snapshot layer keeps the memo map that nested getters filled (finding
   37) and reports a cycle with the live layer's error where it overflows the
   stack today (finding 38).
-- A getter that writes to the store throws, on a snapshot and on the live
-  store.
+- A snapshot getter that writes to `this` throws, where the write is dropped
+  in silence today. On the live store nothing changes.
 
 **Why.**
 
@@ -300,13 +300,9 @@ top of the cache.
   question, and it is now tested: a differential fuzz of 300 seeds compared
   180,112 getter reads with a plain mirror, 55,058 of them on a node outside
   the store, and it holds under decision 3.
-- **A getter that writes throws on both layers**, not only on a snapshot. A
-  snapshot is frozen, so the write cannot happen there, and every adapter
-  reads snapshots. A getter that writes is therefore broken for every
-  component already, in silence. Throwing on the live store too makes the
-  same getter behave the same way wherever it runs, and shows the mistake in
-  the first test that touches it. No getter in the examples, the docs or the
-  library source writes to a store.
+- A snapshot is frozen, so a getter cannot write to it, and every adapter
+  reads snapshots. Today that write is dropped without a word. An error
+  there shows the mistake the first time a component reads the getter.
 
 **Not taken.**
 
@@ -316,19 +312,86 @@ top of the cache.
   hold the other store as a field.
 - Caching a thrown error. 73 bytes and seven pinned behaviours for one gain.
   It can follow 1.0, and whether errors are cached is **unspecified**.
+- Throwing for every write made while any getter runs, on the live store as
+  well. An earlier draft of this entry took it, for the sake of one rule on
+  both layers. It is dropped for three reasons. It would refuse a store that
+  is constructed inside a getter, which the base class of decision 11 does
+  by writing its own fields. It would refuse a getter that calls a method of
+  another store. And it is stricter than three of the four compared
+  libraries, for 51 bytes. The docs say that a getter must not write to the
+  store it reads; a development build can warn where it does.
 
 **Evidence.** `spike-getters.md`. The combination: 182 lines added, 144
-removed, 165 bytes. 16 tests change: 15 fixes and 1 incidental. With the
-throw on the live store: 51 bytes more, and 4 more incidental tests. On Node
-a cached getter read is 26% faster and a recompute 6 to 9% slower; the four
+removed, 165 bytes. 16 tests change: 15 fixes and 1 incidental. On Node a
+cached getter read is 26% faster and a recompute 6 to 9% slower; the four
 cost ratios stay inside their limits on both engines.
 
-**Label.** Before 1.0: a getter that writes becomes an error, and the
-sentence about an absent field goes. **Stage 4:** yes.
+**Label.** Before 1.0: a snapshot getter that writes becomes an error, and
+the sentence about an absent field goes. **Stage 4:** yes.
 
-### 11. A nested class instance without `PROXYABLE`, arrow-function methods and `#private` fields
+### 11. Nested class instances stay opt-in, and a base class makes arrow-function methods work
 
-**Open**, with the class report (M11, M12).
+**Decision.**
+
+- **Nested class instances stay opaque unless the class says otherwise**
+  (API question 6). `static [PROXYABLE] = true` stays, and
+  `static [PROXYABLE] = false` is documented as "opaque on purpose"; it works
+  today.
+- **A base class, `ClassyStore`, is added to the main entry** (API question
+  4). Its constructor returns the store, so a class that extends it is a
+  store from its first line: arrow-function fields, methods bound in the
+  constructor and whatever the constructor starts all write through the
+  store. Such a class is reactive wherever it is placed, with no marker.
+  `createClassyStore(new X())` stays, for a plain object and for a class
+  that cannot extend it.
+- **In such a class an arrow function in a field is a method**: bound to the
+  store and run as one transaction. This is the one exception to decision 1.
+- **A `#private` field is never state.** The docs say so. With the base
+  class it can be used on the live store; a snapshot cannot carry it.
+- **Whether the base class ships in 1.0 or in a 1.x release is open.** It
+  ships in 1.0 only if a second spike confirms what the first only reasoned:
+  real compilers, the four other adapters, undo and time travel of a nested
+  base-class store, and getters that construct one. Adding it later breaks
+  nothing, so nothing forces it.
+
+**Why.**
+
+- An arrow-function method that writes to the raw instance and tells no one
+  is the most prominent silent failure the library has, and the docs can
+  only warn about it today. The base class removes it for 13 bytes.
+- It answers question 6 for a class the user owns. What then stays opaque by
+  default is what the user does not own, and for those objects opaque is
+  right.
+- Wrapping class instances by default was run and is not taken. Eight tests
+  change, six of them the documented rule. A class with `#private` fields
+  throws. An object that changes itself leaves a stale copy that no check
+  can see. A graph of 5,461 objects placed in a store costs 20 milliseconds.
+- Without the exception for arrow functions, an arrow method works and
+  notifies a synchronous subscriber once per write: a loop of 1,000 writes
+  took 150 milliseconds on Bun against 1 in a prototype method, and nothing
+  says so.
+
+**What it costs a user.** A callback assigned to a field of a base-class
+store reads back as its wrapper, not as the function that was assigned. In a
+store made with `createClassyStore()` it reads back as itself. Two rules for
+a function in a field is the price, and the second spike is asked whether
+the exception can be limited to what the constructor installs.
+
+**Not taken.** Detecting an arrow function by its source text: it finds 6 of
+7 lost writes, reports 2 fields that lose nothing, and costs 256 to 342
+bytes. An `opaque()` helper and a mixin form of the base class.
+
+**Evidence.** `spike-classes.md`. The base class: 4 lines, 13 bytes. The
+exception for arrow functions: 83 bytes. With decisions 1 and 2 in one
+build: 28 tests change, 27 of them the trap patches' and 1 the export list.
+Run with React only; the other points are what `spike-classes-2.md` is for.
+
+**Label.** The default for nested instances: before 1.0, and no code. The
+base class: can follow 1.0. **Stage 4:** open, see above.
+
+**For a development build**, if there is one: a warning once per unmarked
+class placed in a store, and a report of a write that was lost because it
+went to the raw object. Decided with the development build.
 
 ## Performance
 
