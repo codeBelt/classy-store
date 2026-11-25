@@ -8,7 +8,8 @@ import {createClassyStore, snapshot, subscribe} from '../index';
 // for the fallback. Each test keeps the real constructor to watch its objects
 // with, and puts it back before it waits for the collector. A comment starting
 // with FINDING marks behaviour that looks like a bug; it is pinned all the
-// same.
+// same. In a runtime without WeakRef only "it works" is promised, so what
+// these tests say about memory detects a change; it is not a guarantee.
 describe('what the collector can free in a runtime without WeakRef', () => {
   const NativeWeakRef = globalThis.WeakRef;
 
@@ -80,8 +81,29 @@ describe('what the collector can free in a runtime without WeakRef', () => {
     expect(snapshot(store)).toEqual({rows: [{n: 1}]});
   });
 
-  // FINDING: without WeakRef, an object held from a removed container keeps that container alive, which the store avoids where WeakRef exists.
-  it('a row held from a removed list keeps that list alive', async () => {
+  it('a list that left the store while it had a subscriber is freed once that subscriber goes, while a row is held', async () => {
+    removeWeakRef();
+    const removeList = () => {
+      const store = createClassyStore({rows: [{n: 1}, {n: 2}]});
+      const list = store.rows;
+      const row = list[0];
+      const unsubscribe = subscribe(list, () => {});
+      store.rows = [];
+      unsubscribe();
+      return {store, row, removed: new NativeWeakRef(list)};
+    };
+    const {store, row, removed} = removeList();
+    restoreWeakRef();
+
+    expect(await isCollected(removed)).toBe(true);
+    row.n = 3;
+    expect(snapshot(row)).toEqual({n: 3});
+    expect(snapshot(store)).toEqual({rows: []});
+  });
+
+  // A suspended row no longer points back at the list it left (decision 3),
+  // so holding the row does not hold the list, with or without WeakRef.
+  it('a row held from a removed list does not keep that list alive, and still works as a store of its own', async () => {
     removeWeakRef();
     const removeList = () => {
       const store = createClassyStore({rows: [{n: 1}, {n: 2}]});
@@ -93,9 +115,13 @@ describe('what the collector can free in a runtime without WeakRef', () => {
     const {store, row, removed} = removeList();
     restoreWeakRef();
 
-    expect(await isCollected(removed, 5)).toBe(false);
+    expect(await isCollected(removed)).toBe(true);
 
+    const calls: number[] = [];
+    subscribe(row, () => calls.push(row.n), {sync: true});
     row.n = 9;
+    expect(row.n).toBe(9);
+    expect(calls).toEqual([9]);
     expect(snapshot(row)).toEqual({n: 9});
     expect(snapshot(store)).toEqual({rows: []});
   });

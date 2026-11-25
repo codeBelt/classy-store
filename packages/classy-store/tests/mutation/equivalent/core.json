@@ -205,5 +205,14 @@
     "replacement": "true",
     "occurrence": 1,
     "reason": "Same behaviour: for an accessor `desc.value` is undefined, and `linkChild` returns at once for anything that is not an object."
+  },
+  {
+    "file": "src/core/core.ts",
+    "scope": "createNode > proxy > deleteProperty",
+    "mutator": "StatementRemoval",
+    "original": "internal.resumeIfDetached();",
+    "replacement": ";",
+    "occurrence": 1,
+    "reason": "Same behaviour: only a node with no subscriber and no parent is suspended, so a delete on it notifies no one whether it resumes first or not. The next touch resumes it, and resuming reconnects the children that are left and compares the versions it saved, which bumps the node's version as often as resuming first would have. Every trap resumes the node it touches, so that no path has to rely on this."
   }
 ]

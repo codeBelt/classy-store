@@ -57,28 +57,10 @@
     "file": "src/core/ownership.ts",
     "scope": "StoreInternal > resume",
     "mutator": "ConditionalExpression",
-    "original": "!this.detachedVersions",
-    "replacement": "false",
-    "occurrence": 1,
-    "reason": "Performance only: for a node that is not suspended the loop below pops its one frame, finds neither saved versions nor a suspended node, and stops. The guard skips building that frame."
-  },
-  {
-    "file": "src/core/ownership.ts",
-    "scope": "StoreInternal > resume",
-    "mutator": "ConditionalExpression",
     "original": "child.detachedVersions",
     "replacement": "true",
     "occurrence": 1,
     "reason": "Performance only: a frame pushed for a child that is not suspended is popped and skipped, because it carries no saved versions and its node is not suspended."
-  },
-  {
-    "file": "src/core/ownership.ts",
-    "scope": "StoreInternal > resumeScope",
-    "mutator": "ConditionalExpression",
-    "original": "!this.detachedVersions",
-    "replacement": "false",
-    "occurrence": 1,
-    "reason": "Performance only: a node that is not suspended has no suspended container above it to walk to, so the walk ends at once and `resume()` returns on its own guard. The one exception is the state left by the frozen-container finding in core.removedContainers.test.ts, where the walk resumes that container one touch early, as a read of it would."
   },
   {
     "file": "src/core/ownership.ts",
@@ -88,5 +70,14 @@
     "replacement": ";",
     "occurrence": 1,
     "reason": "Memory only: the link to a collected owner stays in the child's list and is skipped on every later walk. That link is an internal object no test can watch."
+  },
+  {
+    "file": "src/core/ownership.ts",
+    "scope": "StoreInternal > resumeIfDetached",
+    "mutator": "ConditionalExpression",
+    "original": "this.detachedVersions",
+    "replacement": "true",
+    "occurrence": 1,
+    "reason": "Performance only: resume() on a node that is not suspended takes one frame off its stack, finds no saved versions and no detached state, and returns. The check keeps that work, and the call, off every read and write of the traps; without it a field read on Node was about 9% slower."
   }
 ]

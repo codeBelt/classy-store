@@ -211,7 +211,7 @@ export function codedMessage(code: string, facts?: string): string {
 export function getInternal(proxy: object): StoreInternal {
   const internal = internalsMap.get(proxy);
   if (!internal) throw new Error(codedMessage('not-a-store'));
-  internal.resumeScope();
+  internal.resumeIfDetached();
   return internal;
 }
 
@@ -410,7 +410,7 @@ function createNode(target: object, pending?: StoreInternal[]): StoreInternal {
 
   const proxy = new Proxy(target, {
     set(_target, prop, incoming, receiver) {
-      internal.resumeScope();
+      internal.resumeIfDetached();
       // Store the snapshot itself, never the render-tracking proxy around it.
       const value: unknown =
         typeof incoming === 'object' && incoming !== null
@@ -465,7 +465,7 @@ function createNode(target: object, pending?: StoreInternal[]): StoreInternal {
     },
 
     get(_target, prop, receiver) {
-      internal.resumeScope();
+      internal.resumeIfDetached();
       // 1. Check for getters on the prototype chain (computed values).
       const getterDesc = findPropertyDescriptor(_target, prop);
       if (getterDesc?.get) {
@@ -519,7 +519,7 @@ function createNode(target: object, pending?: StoreInternal[]): StoreInternal {
     },
 
     deleteProperty(_target, prop) {
-      internal.resumeScope();
+      internal.resumeIfDetached();
       const deleted = Reflect.deleteProperty(_target, prop);
       if (deleted) {
         internal.detach(prop);
@@ -572,7 +572,6 @@ function createNode(target: object, pending?: StoreInternal[]): StoreInternal {
 export function createClassyStore<T extends object>(instance: T): T {
   const node = createNode(instance);
   node.isStoreRoot = true;
-  node.resumeScope();
   return node.proxy as T;
 }
 

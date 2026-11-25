@@ -20,7 +20,6 @@ export class StoreInternal {
   // An unobserved, detached container keeps its children but stops receiving
   // their mutations. Retaining one row must not keep every filtered array alive.
   private detachedVersions?: Map<StoreInternal, number>;
-  private detachedParent?: ParentReference;
 
   constructor(
     readonly target: object,
@@ -32,7 +31,7 @@ export class StoreInternal {
     this.detach(key);
     this.childInternals.set(key, child);
     this.connect(child);
-    child.resume();
+    child.resumeIfDetached();
   }
 
   detach(key: string | symbol): void {
@@ -44,7 +43,6 @@ export class StoreInternal {
   }
 
   private connect(child: StoreInternal): void {
-    child.detachedParent = undefined;
     const count = child.parents.get(this.reference) ?? 0;
     if (!count) {
       child.trackSharedParents();
@@ -104,16 +102,22 @@ export class StoreInternal {
       for (const child of node.childInternals.values()) {
         versions.set(child, child.version);
         node.disconnect(child);
-        if (child.canSuspend()) {
-          child.detachedParent = node.reference;
-          pending.push(child);
-        }
+        if (child.canSuspend()) pending.push(child);
       }
     }
   }
 
+  /**
+   * A caller can still read, mutate, or subscribe to a detached subtree. Each
+   * node saved its children's versions when it was suspended, so it catches
+   * up on its own when it is touched. The traps call this on every access,
+   * so the check stays in a method small enough for an engine to inline.
+   */
+  resumeIfDetached(): void {
+    if (this.detachedVersions) this.resume();
+  }
+
   private resume(): void {
-    if (!this.detachedVersions) return;
     // Compare saved versions after resuming descendants. An explicit stack
     // keeps deep detached inputs safe and visits shared descendants once.
     const pending: {
@@ -138,18 +142,6 @@ export class StoreInternal {
         }
       }
     }
-  }
-
-  /** A caller can still read, mutate, or subscribe to a detached subtree. */
-  resumeScope(): void {
-    if (!this.detachedVersions) return;
-    let scope: StoreInternal = this;
-    let parent = scope.detachedParent?.deref();
-    while (parent?.detachedVersions) {
-      scope = parent;
-      parent = scope.detachedParent?.deref();
-    }
-    scope.resume();
   }
 
   /** This node and every container that currently owns it, up to each root. */

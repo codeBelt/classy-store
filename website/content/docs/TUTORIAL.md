@@ -279,6 +279,8 @@ const unsub = subscribe(counterStore, () => {
 
 > **When to use:** Analytics events, `localStorage` persistence, WebSocket bridges, or any side effect that should react to store changes but isn't a React component.
 
+`subscribe()` on a nested object observes that object's subtree. If the object later leaves the store, for example when its list is replaced, the subscription keeps working on the object as a store of its own. It lasts while you hold the store, the object or the unsubscribe function; call the unsubscribe function when you are done with it.
+
 ## Nested State & Structural Sharing
 
 Mutate nested plain objects and arrays through the store proxy to notify subscribers.

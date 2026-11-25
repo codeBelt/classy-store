@@ -78,8 +78,9 @@ describe('an object held from a container that left the store', () => {
     expect(snapshot(inner)).toEqual({leaf: {x: 2}});
   });
 
-  // FINDING: freezing a removed container makes the first snapshot of an object it held stale; the second one is right.
-  it('gives a stale first snapshot, and a current second one, once the container was frozen', () => {
+  // Each object catches up on its own when it is touched, so freezing the
+  // container it came from changes nothing about it (decision 3).
+  it('gives a current first snapshot once the container was frozen', () => {
     const store = createState();
     const outer = present(store.outer);
     const inner = present(outer.inner);
@@ -92,13 +93,12 @@ describe('an object held from a container that left the store', () => {
     const second = snapshot(inner);
 
     expect(inner.leaf.x).toBe(2);
-    expect(first).toBe(before);
-    expect(first).toEqual({leaf: {x: 1}});
-    expect(second).toEqual({leaf: {x: 2}});
+    expect(first).not.toBe(before);
+    expect(first).toEqual({leaf: {x: 2}});
+    expect(second).toBe(first);
   });
 
-  // FINDING: a subscriber added as the first touch after the container was frozen misses writes below the object until something else touches the object.
-  it('does not tell a subscriber added right after the container was frozen about a write to a child it shares with the store', () => {
+  it('tells a subscriber added right after the container was frozen about a write to a child it shares with the store', () => {
     const store = createState();
     const outer = present(store.outer);
     const inner = present(outer.inner);
@@ -108,11 +108,48 @@ describe('an object held from a container that left the store', () => {
     subscribe(inner, () => calls.push('inner'), {sync: true});
 
     store.pinned.x = 2;
-    expect(calls).toEqual([]);
+    expect(calls).toEqual(['inner']);
 
-    // Any later touch of the object repairs it.
     snapshot(inner);
     store.pinned.x = 3;
-    expect(calls).toEqual(['inner']);
+    expect(calls).toEqual(['inner', 'inner']);
+  });
+
+  it('lets a write through a held object reach the store when its parent is still shared with the store', () => {
+    const shared = {leaf: {x: 1}};
+    const store = createClassyStore<{
+      outer?: {inner: typeof shared};
+      pinned: typeof shared;
+    }>({outer: {inner: shared}, pinned: shared});
+    const leaf = store.pinned.leaf;
+    expect(snapshot(store).pinned.leaf.x).toBe(1);
+    const calls: string[] = [];
+    subscribe(store, () => calls.push('store'), {sync: true});
+
+    delete store.outer;
+    leaf.x = 2;
+
+    expect(calls).toEqual(['store', 'store']);
+    expect(snapshot(store).pinned.leaf.x).toBe(2);
+  });
+
+  it('returns from a read below a frozen container that the object points back to', () => {
+    const store = createClassyStore<{
+      outer?: {inner: {x: number; back?: object}};
+    }>({outer: {inner: {x: 1}}});
+    const outer = present(store.outer);
+    const inner = outer.inner;
+    delete store.outer;
+    Object.defineProperty(outer, 'inner', {
+      writable: false,
+      configurable: false,
+    });
+    snapshot(inner);
+    snapshot(inner);
+    inner.back = outer;
+    subscribe(inner, () => {})();
+
+    expect(inner.x).toBe(1);
+    expect(snapshot(inner)).toEqual({x: 1, back: snapshot(outer)});
   });
 });

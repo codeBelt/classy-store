@@ -91,9 +91,10 @@ describe('a store whose only subscriber has left', () => {
   });
 });
 
-// FINDING: freezing an object that has left its store and has no subscriber (or making one of its fields read-only) does not catch it up first, as a read, a write or a delete does. The object under the frozen field then answers its next snapshot from before the change, and a subscriber added to it misses the change.
+// Each object catches up on its own when it is touched, so freezing the
+// parent it came from changes nothing about it (decision 3).
 describe('an object under a field that was frozen on a parent that had already left the store', () => {
-  it('returns its earlier snapshot once after a change under it, and a current one from then on', () => {
+  it('returns a current snapshot after a change under it', () => {
     const {store, panel, form, field} = createWorkspace();
     expect(snapshot(form).field.value).toBe(0);
     delete store.panel;
@@ -101,11 +102,11 @@ describe('an object under a field that was frozen on a parent that had already l
     Object.freeze(panel);
     field.value = 1;
 
-    expect(snapshot(form).field.value).toBe(0);
+    expect(snapshot(form).field.value).toBe(1);
     expect(snapshot(form).field.value).toBe(1);
   });
 
-  it('does not tell a subscriber added after the freeze about a change under it', () => {
+  it('tells a subscriber added after the freeze about a change under it', () => {
     const {store, panel, form, field} = createWorkspace();
     delete store.panel;
 
@@ -114,10 +115,10 @@ describe('an object under a field that was frozen on a parent that had already l
     subscribe(form, listener, {sync: true});
     field.value = 1;
 
-    expect(listener).toHaveBeenCalledTimes(0);
+    expect(listener).toHaveBeenCalledTimes(1);
   });
 
-  it('returns its earlier snapshot in the same way when the parent lost its last subscriber after it left the store', () => {
+  it('returns a current snapshot in the same way when the parent lost its last subscriber after it left the store', () => {
     const {store, panel, form, field} = createWorkspace();
     expect(snapshot(form).field.value).toBe(0);
     const unsubscribe = subscribe(panel, () => {});
@@ -127,7 +128,7 @@ describe('an object under a field that was frozen on a parent that had already l
     Object.freeze(panel);
     field.value = 1;
 
-    expect(snapshot(form).field.value).toBe(0);
+    expect(snapshot(form).field.value).toBe(1);
     expect(snapshot(form).field.value).toBe(1);
   });
 });
