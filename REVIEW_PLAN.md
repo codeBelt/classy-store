@@ -88,15 +88,26 @@ and writes nothing more to this checkout. A new session on Opus 5.5 at
 extra-high effort runs the plan from here, and is the one writer. Its helper
 agents run on Opus 5.5 at medium effort (ground rule "Models").
 
+- The check of the three step 7 documents: four read-only agents compared
+  them with the decision document (`review/stage-3/check-spec-api.md`,
+  `check-spec-rules.md`, `check-records.md`, `check-tasks.md`): 65
+  findings and 13 points the decision document left unclear.
+- **Every open point is settled**, in the decision document at `944a2f7`:
+  its section "Settled when the step 7 documents were checked" indexes them
+  (the nineteen error codes, the floor guard, the production-bundle test,
+  the benchmark rows before the redundant checks go, and the rest).
+- Three helper agents are applying the findings and the settled points to
+  the spec, the records and the task list, each on its own branch in a
+  throwaway worktree (`step7/fix-spec`, `step7/fix-records`,
+  `step7/fix-tasks`). Their commits are brought in by cherry-pick, so the
+  branch stays linear.
+
 **Still to do, in order:**
 
-1. Check the spec, the records and the task list against the decision
-   document, and settle the open points. The ones that block stage 4 are
-   the names of eleven error codes, which the spec proposed and nobody
-   decided, the floor guard, the production-bundle test, and the benchmark
-   before the two redundant checks go.
+1. Review the three fixers' diffs against the decision document and bring
+   them in.
 2. Finish the stage 3 report and fill in the Status table above.
-3. Stage 4.
+3. Stage 4, starting with T-01, the tooling commit (decision 4).
 
 The throwaway worktrees and scripts of the spikes are in the scratchpad, which
 does not survive a reboot. Every patch and number that matters is in the
