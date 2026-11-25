@@ -319,7 +319,7 @@ top of the cache.
   by writing its own fields. It would refuse a getter that calls a method of
   another store. And it is stricter than three of the four compared
   libraries, for 51 bytes. The docs say that a getter must not write to the
-  store it reads; a development build can warn where it does.
+  store it reads; a warning can follow in 1.x (decision 36).
 
 **Evidence.** `spike-getters.md`. The combination: 182 lines added, 144
 removed, 165 bytes. 16 tests change: 15 fixes and 1 incidental. On Node a
@@ -389,9 +389,10 @@ Run with React only; the other points are what `spike-classes-2.md` is for.
 **Label.** The default for nested instances: before 1.0, and no code. The
 base class: can follow 1.0. **Stage 4:** open, see above.
 
-**For a development build**, if there is one: a warning once per unmarked
-class placed in a store, and a report of a write that was lost because it
-went to the raw object. Decided with the development build.
+**After 1.0** (decision 36): a report of a write that was lost because it
+went to the raw object, which is precise, and a warning for an unmarked class
+placed in a store once it can be silenced for a class that is opaque on
+purpose.
 
 ## Performance
 
@@ -532,9 +533,8 @@ write), and would turn the option of `persist`, `withHistory`, `devtools` and
 ### 18. Writes outside a method stay allowed, without a warning
 
 **Decision.** No change (API question 2, M32). `batch()` stays in the API.
-Whether a development build warns when a synchronous subscriber is called
-many times in one task is decided with the development build. **Open** for
-that part.
+A warning when a synchronous subscriber is called many times in one task
+follows in 1.x (decision 36).
 
 ## `persist`, `devtools` and `history`
 
@@ -713,6 +713,81 @@ base-class store inside another store comes back as a frozen copy.
   additions and are not part of 1.0.
 - Whether it stops taking a snapshot of the whole store per notification
   (M61) is **open**, with the snapshot report.
+
+## Diagnostics
+
+### 35. Every error carries a stable code, and throws the same in every build
+
+**Decision.** An error or a logged report from the library reads
+`@codebelt/classy-store [code]: facts`, where the code is a short string such
+as `getter-cycle` and the facts are the names the user wrote. The advice
+that goes with each code is on one page of the documentation. Codes are
+stable from 1.0: renaming one is a breaking change, adding one is not. No
+error subclass and no `code` property are added. No check throws in one
+build and not in another.
+
+**Why.**
+
+- Message text is where the bytes are. Of the 625 bytes the first-wave
+  changes add to the main entry with their messages as written, 271 are
+  text. A code with the names saves those 271 bytes with no build split at
+  all, and a split saves no more on messages.
+- A program that fails in production and not in development, or the other
+  way round, is worse than either. So the bound on delivery rounds and the
+  cycle check on snapshots stay in every build.
+- The three messages the library has today get codes at the same time,
+  because tests and users match on that text and it should change once.
+
+**Evidence.** `devbuild.md`, B1 and B2. 29 assertions in 15 test files match
+today's text and are rewritten to match the code; that count is from a
+search, not from a run.
+
+**Label.** Before 1.0. **Stage 4:** yes, with each change that adds a
+message, and once for the existing three.
+
+### 36. No development build in 1.0; warnings follow in 1.x
+
+**Decision.** 1.0 ships one build with no development-only code. Warnings
+for the silent failures come in a 1.x release, guarded by an inline read of
+`process.env.NODE_ENV` at each call site, after a test that is cheap and
+almost always false. Export conditions are not used.
+
+**Why.**
+
+- A warning changes no behaviour, so it can arrive in any release. Nothing
+  about it has to be settled before the API is frozen, except the rule of
+  decision 35, which is.
+- A warning that fires for correct code and cannot be silenced is worse than
+  none. Of the candidates, two are precise: a write that was lost because it
+  went to the raw object, and a synchronous subscriber called many times in
+  one task. The others are not yet: a warning for an unmarked class instance
+  fires for seven kinds of object that are no mistake, and one for a write
+  after an `await` would fire for the ordinary `async` method. They need a
+  design pass that 1.0 does not have to wait for.
+- The guard has traps of its own. A module-level constant leaked 218 bytes
+  into production where an inline read cost 6, and an inline read on the
+  path of a write cost 184 nanoseconds on unbundled Node. That is a rule for
+  every guard and a test on the built file, and it is better added with the
+  first warning than before it.
+
+**What follows for other entries.**
+
+- `batch()` gets its type and no runtime check (decision 16).
+- `devtools` keeps `enabled: true` as its default, and the guide says that
+  the extension receives every state (decision 27). The library reads no
+  environment in 1.0, so it cannot tell a production page.
+- The unmarked-class and lost-write warnings of decision 11, and the warning
+  for many synchronous calls of decision 18, are the first for 1.x.
+
+**Not taken.** Export conditions (`development` and `production`): plain
+Node, `bun test` and an unminified bundle would load the production build in
+silence, the published files double, and `check:package` does not check the
+second branch.
+
+**Evidence.** `devbuild.md`. The five spiked warnings fail no test and cost
+31 bytes in production together.
+
+**Label.** Can follow 1.0. **Stage 4:** no.
 
 ## The release workflow, dependencies and documentation
 
