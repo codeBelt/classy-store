@@ -72,21 +72,35 @@ pause on 2026-11-24: "The pause is over, carry on with stage 3."
 - The core benchmark's `--only` takes a list of metrics, at the owner's
   request, so a timing of a few metrics takes seconds.
 
-**Running:** step 7, by three agents, each with a brief in
-`review/stage-3/briefs/`: the spec at `review/spec.md` (`step7-spec.md`),
-one decision record per decision under `docs/decisions/`
-(`step7-records.md`), and the stage 4 task list at
-`review/stage-4-tasks.md` (`step7-tasks.md`). If an agent was cut off,
-restart it from its brief with what it wrote as its starting point.
+- Step 7, two of three documents: the spec at `review/spec.md` and 46
+  decision records with an index under `docs/decisions/`. Both are committed
+  as their writers left them and **have not been checked** against the
+  decision document. `review/stage-3/step7-open-points.md` holds what the
+  writers left open; the spec's 38 open points are in its own section 12.
+- A draft of the stage 3 report: `review/stage-3-report.md`.
 
-**Then:**
+**Stopped here by a usage limit on 2026-11-25, in the middle of a
+handover.** The owner approved moving the work to a new session on Opus 5.5
+at extra-high effort, which runs its helper agents on Opus 5.5 at medium
+effort (ground rule "Models"). That session has not been started yet.
 
-1. Check each of the three against the decision document, and settle the
-   open points they list.
-2. The stage 3 report and the Status table above. A draft of the report is
-   in the scratchpad, `stage-3-finish/stage-3-report.draft.md`, and may be
-   gone after a reboot.
-3. Stage 4.
+**Still to do, in order:**
+
+1. The stage 4 task list, `review/stage-4-tasks.md`, was still being written
+   by its agent when the work stopped. If the file is in the working tree
+   and ends with a table of decisions and tasks, format it with Biome,
+   commit it unchecked, and add its open points to
+   `review/stage-3/step7-open-points.md`. If it is cut off, restart the
+   agent from `review/stage-3/briefs/step7-tasks.md` with the file as its
+   starting point.
+2. Start the new session, in this folder and on this branch, and give it
+   this plan as its brief. From then on the old session writes nothing.
+3. In the new session: check the spec, the records and the task list
+   against the decision document, and settle the open points. The ones that
+   block stage 4 are the names of eleven error codes, which the spec
+   proposed and nobody decided.
+4. Finish the stage 3 report and fill in the Status table above.
+5. Stage 4.
 
 The throwaway worktrees and scripts of the spikes are in the scratchpad, which
 does not survive a reboot. Every patch and number that matters is in the
