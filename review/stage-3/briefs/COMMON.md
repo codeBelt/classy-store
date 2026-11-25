@@ -32,9 +32,20 @@ branch is public, and a real path carries the local account name.
    "Contradictions between reports", "Dependencies between entries" and
    "Proposals I think are wrong" sections. It merges the eleven stage 2
    reports into 77 entries (`M1` to `M77`). Cite an entry by its id.
-6. The stage 2 reports and source files your own brief names. The stage 2
-   reports are long because each ends in an appendix of ported tests: read the
-   findings, and open an appendix only for a script you need.
+6. The first-wave reports of stage 3, where your subject touches theirs. Read
+   each one's summary and recommendation sections; their appendices hold
+   patches you can apply with `git apply` to a worktree at `57404c3`.
+   - `review/stage-3/own-code.md`: a reason for every function in `core.ts`,
+     `ownership.ts` and `snapshot.ts`, checked by 101 deletions. Its main
+     result: the walk to a detached parent can go (`x2`), suspension itself
+     should stay (`x1`).
+   - `review/stage-3/spike-traps.md`: stored functions, raw values on write,
+     `defineProperty` as a write, `has` and `ownKeys`, deletes, two guards.
+   - `review/stage-3/spike-getters.md`: one kind of getter dependency, the
+     stamp, errors, the snapshot layer.
+   - `review/stage-3/spike-delivery.md`: one delivery queue, a setter as a
+     transaction, `batch()` and promises.
+7. The stage 2 reports and source files your own brief names.
 
 ## How to work
 
@@ -99,6 +110,20 @@ any branch. Stage 4 writes an approved change again, test first.
      verified".
 5. **Run spikes alone first**, then the combination you would recommend, with
    the same measures.
+6. **What the first wave learned the hard way:**
+   - In a fresh worktree the typecheck fails until `bun run build` has run
+     once.
+   - The built entry loads its runtime through the package import
+     `#store-runtime`. A copy of `dist` saved for a later benchmark needs its
+     own `package.json` beside it, or it loads the worktree's current build
+     and you time the wrong code.
+   - Never stop a process by name (`pkill`, `killall`): other agents run the
+     same benchmark. Stop your own by its process id.
+   - Never run `git stash` in a worktree: the stash list is shared with the
+     main checkout.
+   - The main entry measures 3,661 bytes against a budget of 3,750. Every
+     first-wave combination goes over it. Report your bytes; the decision
+     document sets one new budget for the whole set.
 
 ## The report
 

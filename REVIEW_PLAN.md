@@ -8,53 +8,50 @@ published. Not part of the published docs; delete it when the work is done.
 Read this first. Whoever finishes a stage updates its row: the state, the
 commit it ended on, and where its report is.
 
-| Stage                 | State                                                                                                                                           | Ended on  | Report                                                                   |
-| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | --------- | ------------------------------------------------------------------------ |
-| Plan                  | Revised 2026-11-18 after a check against the repository at `7540662`                                                                            |           |                                                                          |
-| 1. Safety net         | Done 2026-11-18                                                                                                                                 | `5bc4008` | `review/stage-1-report.md`                                               |
-| 2. Library comparison | Done 2026-11-19                                                                                                                                 | `1b426fb` | `review/stage-2-report.md`, with the eleven reports in `review/stage-2/` |
-| 3. Design review      | Paused on 2026-11-19 at the owner's request. Do not resume until the owner says. "Where stage 3 stands" below has what is done and what is next |           | `review/stage-3/`                                                        |
-| 4. Refactor           | Not started                                                                                                                                     |           |                                                                          |
-| 5. Release            | Not started                                                                                                                                     |           |                                                                          |
+| Stage                 | State                                                                                                                                                     | Ended on  | Report                                                                   |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | ------------------------------------------------------------------------ |
+| Plan                  | Revised 2026-11-18 after a check against the repository at `7540662`                                                                                      |           |                                                                          |
+| 1. Safety net         | Done 2026-11-18                                                                                                                                           | `5bc4008` | `review/stage-1-report.md`                                               |
+| 2. Library comparison | Done 2026-11-19                                                                                                                                           | `1b426fb` | `review/stage-2-report.md`, with the eleven reports in `review/stage-2/` |
+| 3. Design review      | In progress since 2026-11-19. Paused from 2026-11-19 to 2026-11-24 at the owner's request. "Where stage 3 stands" below has what is done and what is next |           | `review/stage-3/`                                                        |
+| 4. Refactor           | Not started                                                                                                                                               |           |                                                                          |
+| 5. Release            | Not started                                                                                                                                               |           |                                                                          |
 
 ## Where stage 3 stands
 
-Paused on 2026-11-19. The owner said: "we need to stop working for a couple
-of days. I will let you know when to start working again."
+Updated 2026-11-24. The owner paused the work on 2026-11-19 and lifted the
+pause on 2026-11-24: "The pause is over, carry on with stage 3."
 
 **Done:**
 
 - Step 1, the merge: `review/stage-3/merged.md`. 77 distinct issues (`M1` to
   `M77`), 29 contradictions between reports, and the order the issues depend
   on each other.
+- Step 2, our own code: `review/stage-3/own-code.md`.
+- Step 3, first wave of spikes: `review/stage-3/spike-traps.md`,
+  `review/stage-3/spike-getters.md` and `review/stage-3/spike-delivery.md`.
+  The agents were cut off by the weekly usage limit on 2026-11-19 with the
+  reports nearly complete, and the orchestrating agent finished them.
 
-**In flight when the pause was called, and run to their end:**
-`review/stage-3/own-code.md` (step 2), `review/stage-3/spike-traps.md`,
-`review/stage-3/spike-getters.md` and `review/stage-3/spike-delivery.md`
-(step 3). Each ends with what it did not do.
-
-**Not started.** Their briefs are in `review/stage-3/briefs/`. Start them in
-this order, at most four at once, because each reads the reports before it:
-
-1. `spike-ownership.md`, after `own-code.md`.
-2. `spike-snapshots.md`, after the trap and getter spikes.
-3. `spike-classes.md`, after the trap spikes.
-4. `spike-delivery.md`, if its report says it did not finish.
-5. `persist-devtools.md`, `devbuild.md` and `pinned.md`, which depend on
-   nothing above.
-6. `adapters-collections.md`, after the delivery spikes.
+**In progress.** The second wave, from the briefs in
+`review/stage-3/briefs/`: `spike-snapshots.md` and `spike-classes.md` on
+Fable; `persist-devtools.md`, `pinned.md`, `devbuild.md` and
+`adapters-collections.md` on Opus, which the "Agent models" section allows
+when usage is short. `spike-ownership.md` is not given to an agent: the
+own-code review already ran its main spikes (`x1` to `x3`), and the
+orchestrating agent measures the one it recommends.
 
 **Then:** the decision document `review/stage-3-decisions.md`, the
 adversarial review of it, the spec, the decision records and the stage 4 task
 list, as the stage 3 section below describes.
 
 **Known before deciding:** the main entry has 89 bytes of its size budget
-left and almost every core fix adds code, so the decision document has to set
-a new budget once for the whole set of approved changes, with a decision
-record.
+left and every first-wave combination needs more: getters 165, delivery 189,
+traps 650. The decision document has to set a new budget once for the whole
+set of approved changes, with a decision record.
 
 The throwaway worktrees and scripts of the spikes are in the scratchpad, which
-may not survive the pause. Every patch and number that matters is in the
+does not survive a reboot. Every patch and number that matters is in the
 reports. Run `git worktree prune` if `git worktree list` shows folders that
 no longer exist.
 
