@@ -14,7 +14,7 @@ Bun 1.4.5, as on 1.4.4.
 | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
 | B1. The split                | Of the first wave's 625 bytes, 271 are message text. Short coded messages with no split save the same 271 that either split saves. A split saves more only by dropping checks (58 bytes, D4 and G5) or by keeping warnings out (848 bytes for five) | Shape E: an inline `process.env.NODE_ENV` read at each guard, never a module constant. It gives development to Node, Bun and tests | Can follow 1.0                            |
 | B2. Codes and messages       | A code and the names cost 43 bytes more than a bare code and keep production errors readable                                                                                                                                                        | `@codebelt/classy-store [code]: facts`, advice in development, one docs page. The same throws in both builds (contradiction 18)    | Before 1.0: the codes and the throw rule  |
-| B3. The list and five spikes | 23 diagnostics listed. Five warnings spiked: 0 tests fail, 31 bytes in production together, 848 in development                                                                                                                                      | Ship `arrow-method`, `write-after-await`, `native-collection`, `opaque-instance`, `sync-flood` and the `snapshot-mutator` text     | Can follow 1.0; I would ship them with it |
+| B3. The list and five spikes | 23 diagnostics listed. Five warnings spiked: 0 tests fail, 31 bytes in production together, 848 in development. `spike-classes.md` C3 (a) and C4 (b) are better forms of two of them                                                                | Ship `write-after-await`, `native-collection`, `sync-flood`, the `snapshot-mutator` text, and C3 (a) and C4 (b) for the other two  | Can follow 1.0; I would ship them with it |
 | Budgets                      | The recommended set measures 4,020 bytes on the main entry; every other entry stays inside its budget                                                                                                                                               | Main entry about 4,125, set once by the decision document for the whole approved set                                               | A decision record                         |
 
 Three things the owner should know before the detail:
@@ -115,6 +115,18 @@ these overlap, so they do not add up to the totals): the D1 bound's message
 74 bytes, the three T3 (b) messages 79 together, the D4 message 48. The
 existing messages and the getter messages gain or lose under 10 each; their
 text is already short.
+
+**T3 (b) and (c) alone**, each on the unmodified worktree, with their
+messages as written and in the B2 production form (`t3-codes.py`, appendix):
+
+| Variant | As written | In the B2 form | Saved | Over T3 (a)'s 3,710, as written and in the B2 form |
+| ------- | ---------: | -------------: | ----: | -------------------------------------------------: |
+| T3 (b)  |      3,870 |          3,790 |    80 |                                         +160 / +80 |
+| T3 (c)  |      3,924 |          3,820 |   104 |                                        +214 / +110 |
+
+So half of what (b) and (c) add over (a) is message text, and a code with
+the key removes it with no split. The traps report's recommendation of (a)
+does not change: the rest is the refusal itself.
 
 ### What each toolchain loads
 
@@ -330,31 +342,56 @@ another entry is named; "dev bytes" is what the development branch adds when
 it is kept. A row marked **spiked** was built and measured here; the first
 wave's rows cite their report.
 
-| Code                                                                                                                   | The silent failure it catches                                                                          | Where                                            | Kind                     | Build                     | Production bytes                                                     | Hot path                                                               | Source                                          | For 1.0                                                                           |
-| ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------ | ------------------------ | ------------------------- | -------------------------------------------------------------------- | ---------------------------------------------------------------------- | ----------------------------------------------- | --------------------------------------------------------------------------------- |
-| `delivery-loop`                                                                                                        | A subscriber that writes on every call: stack overflow or a hung event loop (findings 18, 19)          | `drain()` in `core.ts`                           | Error, logged            | Always                    | 75 to 130 as spiked; about 60 with a code                            | One counter per round                                                  | D1; MobX 5, Svelte 11, Vue 9, Signals 8         | Yes, with D1                                                                      |
-| `getter-cycle` on a snapshot                                                                                           | Two getters that read each other overflow the stack on a snapshot (finding 38)                         | `snapshot.ts`                                    | Error                    | Always                    | About 30 for the check                                               | A push and pop per snapshot getter computed                            | G5; MobX                                        | Yes, with G5                                                                      |
-| `getter-write`                                                                                                         | A getter that writes to `this` loses the write on a snapshot (finding 39)                              | Snapshot getter proxy; store `set` trap          | Error                    | Always                    | 20 (G7a, engine error); 51 more for G7b                              | One length check per write (G7b)                                       | G7a, G7b; MobX 6, Solid 8, Signals 7, Svelte 11 | G7a yes; G7b as the getters report decides                                        |
-| `define-accessor`, `define-readonly`                                                                                   | Accessor or read-only definitions through a store                                                      | `defineProperty` trap                            | Error                    | Always                    | Most of T3 (b)'s 160                                                 | None                                                                   | T3 (b); Immer 3, Svelte 2                       | No: the traps report recommends (a)                                               |
-| `set-prototype`                                                                                                        | A prototype swapped through a store (findings 47, 48)                                                  | `setPrototypeOf` trap                            | Error                    | Always                    | Not measured alone                                                   | None                                                                   | T3 (b); Svelte                                  | If the owner takes that part of T3 (b)                                            |
-| `batch-async` (D4's runtime check)                                                                                     | `batch()` given an `async` function                                                                    | `batch()`                                        | Error                    | Always, or not at all     | 50 to 85                                                             | One `instanceof` per call                                              | D4; Legend-State 3, Solid 8                     | No: replaced by `write-after-await`                                               |
-| **`write-after-await`** (spiked, S5)                                                                                   | Writes after an `await` in a store method or a `batch()` callback notify one by one                    | `transactional()`, `batch()`, `notifyMutation()` | Warning                  | Dev                       | 21                                                                   | Production: one `instanceof` per method call, one `Map.size` per write | REVIEW_PLAN "findings in hand"; Solid 8; MobX 6 | Yes                                                                               |
-| **`arrow-method`** (spiked, S1)                                                                                        | An arrow-function method's writes skip the proxy and notify no one                                     | Indexing loop of `createNode()`                  | Warning                  | Dev                       | 6                                                                    | Creation only; production keeps one `typeof` per own key               | REVIEW_PLAN; MobX 8                             | Yes                                                                               |
-| **`native-collection`** (spiked, S2)                                                                                   | A native `Map` or `Set` in a store: `set()` and `add()` notify no one                                  | `linkChild()`                                    | Warning                  | Dev                       | 0                                                                    | None in production; development examines each opaque value once        | Vue 10, MobX Q5                                 | Yes                                                                               |
-| **`opaque-instance`** (spiked, S2)                                                                                     | A class instance without `PROXYABLE`: writes inside it notify no one                                   | `linkChild()`                                    | Warning                  | Dev                       | 0 (with the row above)                                               | As above                                                               | Vue Q8                                          | Yes, unless M11 flips the default                                                 |
-| **`sync-flood`** (spiked, S4)                                                                                          | Many direct writes with a framework binding: one snapshot each (adapters A1, the 640-millisecond case) | `drain()`, or `deliver()` today                  | Warning                  | Dev                       | 8                                                                    | Development on Node: one `process.env` read per sync delivery, 184 ns  | Adapters Q8                                     | Yes                                                                               |
-| **`snapshot-mutator`** (spiked, S3)                                                                                    | A mutator called on a snapshot of a reactive collection; today a bare engine `TypeError`               | `ReactiveMap`, `ReactiveSet`                     | Error                    | Text in dev, error always | 0 on `./collections`; 92 if named always                             | Production: none. Development: one `Object.isFrozen` per mutator call  | Valtio V10, Immer 8                             | Yes, the development form                                                         |
-| `getter-cycle`, `not-a-store`, `snapshot-cycle`                                                                        | Exist today                                                                                            | `core.ts`, `snapshot.ts`                         | Error                    | Always                    | Small change either way                                              | None                                                                   | Today                                           | Codes only                                                                        |
-| `array-named-property`                                                                                                 | A named property written to an array: kept live, dropped from snapshots (M37)                          | `set` trap                                       | Warning                  | Dev                       | Not built; the test has to sit after `Array.isArray`, so a few bytes | One `getArrayIndex` per array write, development only                  | Immer 4                                         | Can follow 1.0                                                                    |
-| A write around the proxy, found per call                                                                               | Bound methods and raw writes, beyond arrow fields                                                      | Method wrapper                                   | Warning                  | Dev                       | Not built                                                            | One pass over own keys per call                                        | Solid 8                                         | No: `arrow-method` covers the common case, and T1 stops wrapping stored functions |
-| Both forms of one object in a collection                                                                               | Finding 34                                                                                             | Collections                                      | Warning                  | Dev                       | Not built                                                            |                                                                        | Vue Q8                                          | No: M39's single membership rule removes the cause                                |
-| Opt-in: a getter that recorded no dependency                                                                           | Findings 30, 36                                                                                        | Getter engine                                    | Warning                  | Dev, opt-in               | Not built                                                            |                                                                        | MobX Q8                                         | No: needs a switch, which is new API                                              |
-| Opt-in: a write outside a transaction                                                                                  | Every direct write to an observed store                                                                | `set` trap                                       | Warning                  | Dev, opt-in               | Not built                                                            |                                                                        | MobX 6                                          | No: `sync-flood` reaches the costly case without a switch                         |
-| `persist`: an unreadable record, a bad `properties` entry                                                              | Records skipped without a report (M44, M45)                                                            | `persist.ts`                                     | Error, through `onError` | Always                    | Not built here                                                       |                                                                        | Security Q8, Zustand and Jotai Q8               | The persist and devtools report's subject                                         |
-| `persist`: `syncTabs` with storage that is not `localStorage`                                                          | Cross-tab sync that never fires (M53)                                                                  | `persist.ts`                                     | Warning                  | Dev                       | Not built here                                                       |                                                                        | Security Q8                                     | The same                                                                          |
-| `devtools`: a malformed message, an unknown key                                                                        | M56                                                                                                    | `devtools.ts`                                    | Warning                  | Dev                       | Not built here                                                       |                                                                        | Security Q8                                     | The same                                                                          |
-| Angular: name the caller in the injection error                                                                        | Adapters N2                                                                                            | `angular.ts`                                     | Error                    | Always                    | A few bytes on `./angular`                                           | None                                                                   | Adapters N2                                     | Yes, with the code `no-scope`                                                     |
-| The four tools: listener count, tracked paths through `useDebugValue`, write-cause hooks, a replaceable error reporter | Test suites, React DevTools, debugging                                                                 | New API                                          | Tools                    |                           |                                                                      |                                                                        | MobX Q8, Valtio Q8, Vue Q8, Legend-State 1      | No, after 1.0 (item 21; agreed)                                                   |
+| Code                                                                                                                   | The silent failure it catches                                                                          | Where                                                     | Kind                               | Build                     | Production bytes                                                          | Hot path                                                                           | Source                                          | For 1.0                                                                           |
+| ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | --------------------------------------------------------- | ---------------------------------- | ------------------------- | ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- | ----------------------------------------------- | --------------------------------------------------------------------------------- |
+| `delivery-loop`                                                                                                        | A subscriber that writes on every call: stack overflow or a hung event loop (findings 18, 19)          | `drain()` in `core.ts`                                    | Error, logged                      | Always                    | 75 to 130 as spiked; about 60 with a code                                 | One counter per round                                                              | D1; MobX 5, Svelte 11, Vue 9, Signals 8         | Yes, with D1                                                                      |
+| `getter-cycle` on a snapshot                                                                                           | Two getters that read each other overflow the stack on a snapshot (finding 38)                         | `snapshot.ts`                                             | Error                              | Always                    | About 30 for the check                                                    | A push and pop per snapshot getter computed                                        | G5; MobX                                        | Yes, with G5                                                                      |
+| `getter-write`                                                                                                         | A getter that writes to `this` loses the write on a snapshot (finding 39)                              | Snapshot getter proxy; store `set` trap                   | Error                              | Always                    | 20 (G7a, engine error); 51 more for G7b                                   | One length check per write (G7b)                                                   | G7a, G7b; MobX 6, Solid 8, Signals 7, Svelte 11 | G7a yes; G7b as the getters report decides                                        |
+| `define-accessor`, `define-readonly`                                                                                   | Accessor or read-only definitions through a store                                                      | `defineProperty` trap                                     | Error                              | Always                    | Most of T3 (b)'s 160                                                      | None                                                                               | T3 (b); Immer 3, Svelte 2                       | No: the traps report recommends (a)                                               |
+| `set-prototype`                                                                                                        | A prototype swapped through a store (findings 47, 48)                                                  | `setPrototypeOf` trap                                     | Error                              | Always                    | Not measured alone                                                        | None                                                                               | T3 (b); Svelte                                  | If the owner takes that part of T3 (b)                                            |
+| `batch-async` (D4's runtime check)                                                                                     | `batch()` given an `async` function                                                                    | `batch()`                                                 | Error                              | Always, or not at all     | 50 to 85                                                                  | One `instanceof` per call                                                          | D4; Legend-State 3, Solid 8                     | No: replaced by `write-after-await`                                               |
+| **`write-after-await`** (spiked, S5)                                                                                   | Writes after an `await` in a store method or a `batch()` callback notify one by one                    | `transactional()`, `batch()`, `notifyMutation()`          | Warning                            | Dev                       | 21                                                                        | Production: one `instanceof` per method call, one `Map.size` per write             | REVIEW_PLAN "findings in hand"; Solid 8; MobX 6 | Yes                                                                               |
+| **`arrow-method`** (spiked, S1; C4 (b) in `spike-classes.md`)                                                          | An arrow-function method's writes skip the proxy and notify no one                                     | S1: indexing loop of `createNode()`. C4 (b): `snapshot()` | Warning                            | Dev                       | S1: 6. C4 (b): 168 to 309 always on; behind the inline guard not measured | Development: C4 (b) makes a cached snapshot 11 to 13 times dearer                  | REVIEW_PLAN; MobX 8; C4                         | Yes, as C4 (b)                                                                    |
+| **`native-collection`** (spiked, S2)                                                                                   | A native `Map` or `Set` in a store: `set()` and `add()` notify no one                                  | `linkChild()`                                             | Warning                            | Dev                       | 0                                                                         | None in production; development examines each opaque value once                    | Vue 10, MobX Q5                                 | Yes                                                                               |
+| **`opaque-instance`** (spiked, S2; C3 (a) in `spike-classes.md`)                                                       | A class instance without `PROXYABLE`: writes inside it notify no one                                   | `linkChild()`, where a value enters only (C3 (a))         | Warning                            | Dev                       | 0 (with the row above); C3 (a) always on: 108 to 209                      | Development only; C3 (a) always on: 8 to 10% on a write of an opaque value on Node | Vue Q8; C3                                      | Yes, as C3 (a), once per class                                                    |
+| **`sync-flood`** (spiked, S4)                                                                                          | Many direct writes with a framework binding: one snapshot each (adapters A1, the 640-millisecond case) | `drain()`, or `deliver()` today                           | Warning                            | Dev                       | 8                                                                         | Development on Node: one `process.env` read per sync delivery, 184 ns              | Adapters Q8                                     | Yes                                                                               |
+| **`snapshot-mutator`** (spiked, S3)                                                                                    | A mutator called on a snapshot of a reactive collection; today a bare engine `TypeError`               | `ReactiveMap`, `ReactiveSet`                              | Error                              | Text in dev, error always | 0 on `./collections`; 92 if named always                                  | Production: none. Development: one `Object.isFrozen` per mutator call              | Valtio V10, Immer 8                             | Yes, the development form                                                         |
+| `getter-cycle`, `not-a-store`, `snapshot-cycle`                                                                        | Exist today                                                                                            | `core.ts`, `snapshot.ts`                                  | Error                              | Always                    | Small change either way                                                   | None                                                                               | Today                                           | Codes only                                                                        |
+| `array-named-property`                                                                                                 | A named property written to an array: kept live, dropped from snapshots (M37)                          | `set` trap                                                | Warning                            | Dev                       | Not built; the test has to sit after `Array.isArray`, so a few bytes      | One `getArrayIndex` per array write, development only                              | Immer 4                                         | Can follow 1.0                                                                    |
+| A write around the proxy, found per call                                                                               | Bound methods and raw writes, beyond arrow fields                                                      | Method wrapper                                            | Warning                            | Dev                       | Not built                                                                 | One pass over own keys per call                                                    | Solid 8                                         | No: `arrow-method` covers the common case, and T1 stops wrapping stored functions |
+| Both forms of one object in a collection                                                                               | Finding 34                                                                                             | Collections                                               | Warning                            | Dev                       | Not built                                                                 |                                                                                    | Vue Q8                                          | No: M39's single membership rule removes the cause                                |
+| Opt-in: a getter that recorded no dependency                                                                           | Findings 30, 36                                                                                        | Getter engine                                             | Warning                            | Dev, opt-in               | Not built                                                                 |                                                                                    | MobX Q8                                         | No: needs a switch, which is new API                                              |
+| Opt-in: a write outside a transaction                                                                                  | Every direct write to an observed store                                                                | `set` trap                                                | Warning                            | Dev, opt-in               | Not built                                                                 |                                                                                    | MobX 6                                          | No: `sync-flood` reaches the costly case without a switch                         |
+| `persist-record`, `persist-option` (P2, P3 in `persist-devtools.md`)                                                   | Records skipped without a report (M44, M45); a `properties` list `persist` cannot honour               | `persist.ts`                                              | Error: `onError` (P2), thrown (P3) | Always                    | `./utils`: P2 and P3 together +214; +158 with codes (below)               | None                                                                               | Security Q8, Zustand and Jotai Q8; P2, P3       | Yes, with P2 and P3, in the B2 format                                             |
+| `persist`: `syncTabs` with storage that is not `localStorage`                                                          | Cross-tab sync that never fires (M53)                                                                  | `persist.ts`                                              | Warning                            | Dev                       | Not built here                                                            |                                                                                    | Security Q8                                     | No: P6 ignores events from another area instead                                   |
+| `devtools`: a malformed message, an unknown key                                                                        | M56                                                                                                    | `devtools.ts`                                             | Warning                            | Dev                       | Not built here                                                            |                                                                                    | Security Q8                                     | The same                                                                          |
+| Angular: name the caller in the injection error                                                                        | Adapters N2                                                                                            | `angular.ts`                                              | Error                              | Always                    | A few bytes on `./angular`                                                | None                                                                               | Adapters N2                                     | Yes, with the code `no-scope`                                                     |
+| The four tools: listener count, tracked paths through `useDebugValue`, write-cause hooks, a replaceable error reporter | Test suites, React DevTools, debugging                                                                 | New API                                                   | Tools                              |                           |                                                                           |                                                                                    | MobX Q8, Valtio Q8, Vue Q8, Legend-State 1      | No, after 1.0 (item 21; agreed)                                                   |
+
+### The `persist` messages of P2 and P3
+
+`persist-devtools.md` says about 100 of its `./utils` growth are error text in
+P2 and P3, and could go if a development build keeps messages. Measured here
+by applying `p2.patch` and `p3.patch` from its appendix (one import line
+conflicts; the resolution imports `findGetterDescriptor`,
+`findPropertyDescriptor` and `isPlainObject`), then rewriting the two
+messages into the B2 format with `persist-codes.py` (appendix):
+
+| Form                                                                            | `./utils` adds | Against today's 2,686 |
+| ------------------------------------------------------------------------------- | -------------: | --------------------: |
+| P2 and P3 as the report wrote them                                              |          2,900 |                  +214 |
+| The B2 format, no split: `[persist-record]: version`, `[persist-option]: "key"` |          2,844 |                  +158 |
+| Shape E, advice in development                                                  |          2,844 |                  +158 |
+
+So the codes save 56 bytes, the same with or without a split, as for the
+core. The four reasons of P2 become one word each (`shape`, `expiresAt`,
+`version`, `migrate`); the sentence that explains each is the documentation's.
+Both reports keep these as errors in every build, which is B2's rule: a record
+that cannot be used reaches `onError` in production too.
+
+`persist-devtools.md` keeps `devtools({enabled})` defaulting to `true`,
+because "the library has no portable way to know it runs in production". Under
+shape E it has one, the same as its own warnings; see contradiction 19 below.
 
 ### The five spikes
 
@@ -404,7 +441,44 @@ Bun 1.4.5, nanoseconds per operation:
 | Ratio: getter         | 32.3 (15.2 to 38.7)        | 29.9 (26.4 to 37.2)       | same               |
 | Ratio: snapshot       | 6.83 (6.12 to 26)          | 7.58 (7.21 to 7.91)       | same               |
 
-NODE_TIMINGS
+Node 24.21.0, nanoseconds per operation, the same build and conditions:
+
+| Metric                | Unmodified                   | The five warnings            | Against unmodified |
+| --------------------- | ---------------------------- | ---------------------------- | ------------------ |
+| `store.read`          | 45.5 (45.4 to 47.7)          | 46.1 (45.8 to 48)            | same               |
+| `store.write`         | 204 (196 to 214)             | 209 (202 to 214)             | same               |
+| `store.write.sync`    | 248 (236 to 258)             | 438 (423 to 469)             | **slower, +190**   |
+| `store.write.batched` | 206 (205 to 219)             | 219 (216 to 228)             | slower, +13        |
+| `store.write.nested`  | 485 (482 to 507)             | 513 (495 to 520)             | same               |
+| `store.method`        | 281 (278 to 291)             | 289 (276 to 294)             | same               |
+| `store.batch10`       | 1610 (1598 to 1687)          | 1842 (1775 to 1880)          | **slower, +232**   |
+| `array.pushPop`       | 3361 (3110 to 3494)          | 3745 (3173 to 3850)          | same               |
+| `create.small`        | 5772 (5034 to 5875)          | 5691 (5249 to 5818)          | same               |
+| `create.rows`         | 1223998 (1068448 to 1436019) | 1085197 (1007682 to 1605742) | same               |
+| `snapshot.cached`     | 31.3 (28.2 to 31.8)          | 32 (31.5 to 34.6)            | same               |
+| `getter.cached`       | 78.8 (77.9 to 81.3)          | 81 (78.9 to 83.8)            | same               |
+| Ratio: read           | 2.03 (1.96 to 2.08)          | 2.03 (2.01 to 2.08)          | same               |
+| Ratio: write          | 1.34 (1.32 to 1.4)           | 1.33 (1.12 to 1.38)          | same               |
+| Ratio: getter         | 3.49 (3.4 to 3.54)           | 3.57 (3.43 to 3.7)           | same               |
+| Ratio: snapshot       | 1.36 (1.23 to 1.42)          | 1.42 (1.38 to 1.51)          | same               |
+
+The two slower rows are the `process.env` read measured in B1, paid
+unbundled: `store.write.sync` reads it once per synchronous delivery (S4's
+guard), and `store.batch10` once in `batch()` (S5's guard, which puts the read
+first) and once for its delivery. 190 and 232 nanoseconds match one and two
+reads of 184. No ratio in `limits.json` moves, because none of them has a
+synchronous subscriber. In a bundled production build the reads are gone; in
+unbundled Node they are paid whatever `NODE_ENV` says, because the read is
+the cost. Checked: the same build run with `NODE_ENV=production`, three
+runs, gave `store.write.sync` 442 (439 to 458) and `store.batch10` 1,848
+(1,836 to 1,912). For stage 4: S5's guard in `batch()` should test
+`instanceof Promise` first, which removes one read for a few bytes. S4 has no
+cheap test that is usually false: it either pays the read per synchronous
+delivery in unbundled code (development and unbundled production on Node, not
+Bun), or keeps its counter and the microtask that resets it in every build so
+that the read happens only at the hundredth delivery. I would take the
+first: unbundled Node with a framework binding is server rendering, where a
+synchronous subscriber is rare. Neither variant was measured.
 
 - **No test fails.** A warning changes no behaviour, and S3 throws the same
   `TypeError` class that the engine throws today.
@@ -437,8 +511,31 @@ NODE_TIMINGS
   instances the store indexes, only at their fields at creation, so a
   callback assigned later (`form.onSubmit = fn`) is not reported, which the
   reproduction checks. A class that keeps a callback in a field from its
-  constructor gets one warning per instance and field. That is the price of
-  the most common silent failure of this library.
+  constructor gets one warning per instance and field.
+- **S1 against `spike-classes.md` C4, which finished after this spike.** C4
+  ran fourteen kinds of function field. S1's test, "an own function field at
+  creation", is broader than the bare MobX test C4 rejects: it reports all
+  fourteen, seven of them fields that lose no write. C4 (b) compares a
+  cached snapshot with the raw object's own fields when the snapshot is handed
+  out, finds six of the seven lost writes and reports nothing else, and also
+  catches a constructor's timer and a write through the raw object (stage 1
+  finding 11). It costs a cached snapshot eleven to thirteen times more, which
+  in a development build is acceptable. **So `arrow-method` should be C4 (b),
+  not S1.** S1's own result that stands: its guard costs 6 bytes in
+  production in the inline form, where C4 measured 168 to 309 bytes for an
+  always-on check; C4 (b) behind the same inline guard should cost about as
+  little, not measured.
+- **S2 against `spike-classes.md` C3 (a).** C3 (a) is the better form of
+  `opaque-instance`: it looks only where a value enters the store (creation,
+  `set`, `defineProperty`), never on a read; it warns once per class, by
+  prototype; it skips any object whose tag is not `[object Object]`, frozen
+  objects and stores; and `static [PROXYABLE] = false` silences it, which
+  is the documented way to say "opaque on purpose". S2's test for a platform
+  object, `[native code]` in the constructor's source, is weaker than the tag.
+  C3 (a) found it warns for seven kinds of object that are no mistake out of
+  27 tried, once per class; that noise is the reason it belongs in
+  development only, which C3 also concludes. S2's `native-collection` part is
+  not in C3 (a `Map`'s tag is `[object Map]`) and stays as spiked.
 
 ## Recommendation
 
@@ -488,11 +585,14 @@ production; the D1 bound stays in production.
 
 ### Contradiction 19: `devtools({enabled})`
 
-Shape E makes a default read from `NODE_ENV` possible, so all three options
-of M57 are open. Which one is the persist and devtools report's subject. I
-lean to "on in development, off in production" (Valtio V9), because shape E
-gives the library the same signal for its own warnings, and DevTools in a
-production page hands the whole state to any extension that asks.
+`persist-devtools.md` P7 keeps `true` as the default because the library has
+no portable way to know it runs in production. If shape E is taken, it has
+the same way its warnings use, and every bundler measured in B1 resolves it.
+I lean to "on in development, off in production" (Valtio V9): DevTools in a
+production page hands the whole state to any extension that asks, and the
+user who wants it there writes `enabled: true`. It is a change of a default,
+so **before 1.0** if taken. The persist and devtools report weighs the other
+side (security 7: keep it and document); the decision document picks.
 Reasoning, not measured.
 
 ### Diagnostics for 1.0
@@ -501,11 +601,12 @@ Take, in the order of what they catch:
 
 1. `delivery-loop`, `getter-cycle` on snapshots, `getter-write` (G7a), with
    their first-wave changes. Always on. Before 1.0 with those changes.
-2. `arrow-method`, `write-after-await`, `native-collection`,
-   `opaque-instance`, `sync-flood`, and the development text of
-   `snapshot-mutator`. Development only. Can follow 1.0, but they cost 31
-   bytes in production together and are the first answer to the two silent
-   failures named in `REVIEW_PLAN.md`; I would ship them with 1.0.
+2. `arrow-method` in C4 (b)'s form, `write-after-await`, `native-collection`,
+   `opaque-instance` in C3 (a)'s form, `sync-flood`, and the development text
+   of `snapshot-mutator`. Development only. Can follow 1.0, but the five as
+   spiked cost 31 bytes in production together and are the first answer to
+   the two silent failures named in `REVIEW_PLAN.md`; I would ship them with
+   1.0.
 3. Codes for the existing errors and the adapters' scope errors.
 
 Not for 1.0: the opt-in warnings (they need a switch), the per-call
@@ -513,9 +614,9 @@ detection of writes around the proxy, the both-forms warning (M39 removes its
 cause), D4's runtime check, and the four tools. On item 21 of "Proposals I
 think are wrong" I agree: each tool is new public surface and can follow 1.0.
 
-One change to S1 before stage 4: key its "once" on the class, not on the
-instance. As spiked, a class with an arrow field warns once per instance,
-which a list of rows would turn into a flood.
+S1 itself should not go to stage 4: C4 (b) replaces it (B3). Whatever form
+is taken, its "once" should be per class or per object as C4 (b) has it, not
+per instance and field, or a list of rows turns it into a flood.
 
 ### The size budgets
 
@@ -534,10 +635,24 @@ check replaced by the `write-after-await` warning, and the five warnings.
 | `./angular` adds      |                  271 |                       270 |          300 | Unchanged                                                           |
 | `./solid` adds        |                  312 |                       310 |          335 | Unchanged                                                           |
 
+Tests on the recommended set: 1,260 pass, 81 fail; typecheck passes. 55 of
+the 81 are the first-wave set's own failures (its 57, less the two D4 tests,
+since D4's check is gone). The other 26 are **incidental**: tests that match
+today's message text with a regular expression, such as `toThrow(/not a
+store proxy/)`, `/circular computed getter dependency/` and
+`/circular reference/`, in the core, snapshot and every adapter's test file.
+They are the rewrite B2 announces; judged by their names and assertions, none is a regression. The full list is in
+`<scratch>/stage-3-devbuild/repro/rec-fails.txt`, not copied here.
+
 Of the 359 bytes: the first-wave checks in the B2 format, about 330 (D1's
 queue and bound, T3 (b), G7b with G7a, G5, without D4's check); the five
 warnings, 31. With T3 (a) in place of T3 (b), as the traps report
 recommends, the number is lower; not measured in this combination.
+
+The `./utils` row holds only because this set has none of the persist and
+devtools changes. With them, `persist-devtools.md` measures 3,396 bytes added
+and proposes a budget of 3,500; the B2 format takes 56 bytes off that (P2 and
+P3 above).
 
 These numbers hold only for the first-wave items in the set above. The
 decision document sets the budget once, for the whole set it approves; the
@@ -576,12 +691,15 @@ change this report adds to that set is 31 bytes for the five warnings, and
   global. `bun run size` for the unmodified worktree, shape C, each B3 spike,
   the B3 combination and the recommended set.
 - The first-wave set: 1,284 pass and 57 fail, the failures of its five
-  patches alone. Each B3 spike and the B3 combination: 1,341 pass, typecheck
+  patches alone. The recommended set: 1,260 pass and 81 fail, the extra 26
+  all matching old message text. Each B3 spike and the B3 combination: 1,341 pass, typecheck
   passes.
 - Which build each toolchain loads, for shape E and shape C, by running the
   bundle or the server and reading the error it threw (the table in B1);
   which bundlers remove each guard form; the cost of a `process.env` read.
 - `bun run check:package` for shape C.
+- `persist-devtools.md`'s `p2.patch` and `p3.patch` together, and in the B2
+  format: `./utils` sizes only, no tests run on them.
 - The reproductions of B3, before and after.
 - `benchmark:core` on Bun and on Node for the B3 combination against the
   unmodified build, on a heavily loaded machine.
@@ -614,7 +732,8 @@ change this report adds to that set is 31 bytes for the five warnings, and
   enter a budget.
 - **T3 (a) in the recommended set** in place of T3 (b). The traps report
   recommends (a); the set here uses (b) because the brief asked for the
-  messages of (b) and (c) to be measured.
+  messages of (b) and (c) to be measured. (b) and (c) were also measured
+  alone (B1).
 - **`array-named-property`**, the per-call detection of writes around the
   proxy and the opt-in warnings were listed and not built.
 - **The `persist` and `devtools` diagnostics** are listed only; the persist
@@ -1385,6 +1504,42 @@ rep("""        if (desc && 'value' in desc)
           linkChild(owner, key, desc.value, nodes, desc);
 """, grab("        if (desc && 'value' in desc)\n          linkChild(owner, key, desc.value, nodes, desc);\n", "      }\n    }\n  }\n  return internal;"))
 open(p,'w').write(s)
+```
+
+### `t3-codes.py`: T3 (b) and (c) in the B2 format
+
+```python
+# usage: t3-codes.py FILE — T3 (b) or (c) messages to the B2 production form
+import sys
+p=sys.argv[1]; s=open(p).read()
+for old,new in [
+ ('`@codebelt/classy-store: cannot define the accessor "${String(prop)}" on a store. Define it on the class, or on the object before createClassyStore()`','`@codebelt/classy-store [define-accessor]: ${String(prop)}`'),
+ ('`@codebelt/classy-store: cannot define "${String(prop)}" on a store as read-only. Pass writable: true, or assign a frozen value`','`@codebelt/classy-store [define-readonly]: ${String(prop)}`'),
+ ("'@codebelt/classy-store: a store cannot be frozen, sealed or made non-extensible. Assign a frozen value instead'","'@codebelt/classy-store [freeze-store]'"),
+ ("'@codebelt/classy-store: the prototype of a store cannot be changed'","'@codebelt/classy-store [set-prototype]'")]:
+    s=s.replace(old,new)
+open(p,'w').write(s)
+```
+
+### `persist-codes.py`: P2 and P3 in the B2 format
+
+```python
+# usage: persist-codes.py MODE IN OUT ; MODE code | env
+import sys
+mode, src, out = sys.argv[1:4]
+s=open(src).read()
+DEV="process.env.NODE_ENV !== 'production'"
+def m(code, facts, advice):
+    prod=f'`@codebelt/classy-store [{code}]: {facts}`'
+    if mode=='code': return prod
+    return f'({DEV} ? `@codebelt/classy-store [{code}]: {facts}. {advice}` : {prod})'
+def rep(o,n):
+    global s; assert s.count(o)==1,o; s=s.replace(o,n)
+rep('`persist(): cannot persist "${String(key)}"`', m('persist-option','${String(key)}','persist() cannot save a prototype key, an accessor, a method, or a transform without both serialize and deserialize'))
+rep('`persist(): the stored record ${why}`', m('persist-record','${why}','The stored record could not be used and was not restored'))
+for long, short in [("'is not {version, state}'","'shape'"),("'has an expiresAt that is not a number'","'expiresAt'"),("'has a version that is not an integer'","'version'"),("'was not migrated: migrate must return a plain object'","'migrate'")]:
+    rep(f"unreadable({long})", f"unreadable({short})")
+open(out,'w').write(s)
 ```
 
 ### `b3.ts`: the reproductions of B3
