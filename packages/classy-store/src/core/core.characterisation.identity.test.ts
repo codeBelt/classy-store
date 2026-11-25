@@ -13,7 +13,7 @@ import {batch, createClassyStore, snapshot, subscribe} from '../index';
 /** Flush the microtask that delivers batched notifications. */
 const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 
-const NOT_A_STORE = '@codebelt/classy-store: object is not a store proxy';
+const NOT_A_STORE = '@codebelt/classy-store [not-a-store]';
 const CIRCULAR =
   '@codebelt/classy-store: circular reference detected in snapshot';
 

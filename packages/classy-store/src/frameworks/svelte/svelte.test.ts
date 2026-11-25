@@ -4,7 +4,9 @@ import {toSvelteStore} from './svelte';
 
 describe('toSvelteStore', () => {
   it('throws when given a non-store object', () => {
-    expect(() => toSvelteStore({count: 0})).toThrow(/not a store proxy/);
+    expect(() => toSvelteStore({count: 0})).toThrow(
+      /^@codebelt\/classy-store \[not-a-store\]$/,
+    );
   });
 
   it('immediately delivers the current immutable snapshot to each subscriber', () => {

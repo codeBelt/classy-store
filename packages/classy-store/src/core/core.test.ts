@@ -653,18 +653,20 @@ describe('createClassyStore() — core reactivity', () => {
     it('getInternal throws for a non-store object', () => {
       const plainObject = {count: 0};
       expect(() => subscribe(plainObject, () => {})).toThrow(
-        /not a store proxy/,
+        /^@codebelt\/classy-store \[not-a-store\]$/,
       );
     });
 
     it('getInternal throws for a primitive wrapper', () => {
       expect(() => subscribe({} as object, () => {})).toThrow(
-        /not a store proxy/,
+        /^@codebelt\/classy-store \[not-a-store\]$/,
       );
     });
 
     it('getVersion throws for a non-store object', () => {
-      expect(() => getVersion({})).toThrow(/not a store proxy/);
+      expect(() => getVersion({})).toThrow(
+        /^@codebelt\/classy-store \[not-a-store\]$/,
+      );
     });
   });
 
@@ -1089,7 +1091,7 @@ describe('createClassyStore() — core reactivity', () => {
       }
       const s = createClassyStore(new Store());
 
-      expect(() => s.a).toThrow(/circular computed getter dependency/);
+      expect(() => s.a).toThrow(/^@codebelt\/classy-store \[getter-cycle\]: /);
       expect(() => s.a).toThrow(/a → b → a/);
     });
 
@@ -1100,7 +1102,9 @@ describe('createClassyStore() — core reactivity', () => {
         }
       }
       const s = createClassyStore(new Store());
-      expect(() => s.loop).toThrow(/circular computed getter dependency/);
+      expect(() => s.loop).toThrow(
+        /^@codebelt\/classy-store \[getter-cycle\]: /,
+      );
     });
   });
 

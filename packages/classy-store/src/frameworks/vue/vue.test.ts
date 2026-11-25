@@ -9,7 +9,9 @@ describe('vue useClassyStore', () => {
     const scope = effectScope();
     try {
       scope.run(() =>
-        expect(() => useClassyStore({count: 0})).toThrow(/not a store proxy/),
+        expect(() => useClassyStore({count: 0})).toThrow(
+          /^@codebelt\/classy-store \[not-a-store\]$/,
+        ),
       );
     } finally {
       scope.stop();
@@ -18,7 +20,9 @@ describe('vue useClassyStore', () => {
 
   it('rejects calls without an active scope before subscribing', () => {
     const store = createClassyStore({count: 0});
-    expect(() => useClassyStore(store)).toThrow(/active.*scope/i);
+    expect(() => useClassyStore(store)).toThrow(
+      /^@codebelt\/classy-store \[vue-no-scope\]: useClassyStore\(\)$/,
+    );
     expect(getInternal(store).syncListeners.size).toBe(0);
     expect(getInternal(store).batchedListeners.size).toBe(0);
   });
@@ -28,7 +32,9 @@ describe('vue useClassyStore', () => {
     const scope = effectScope();
     scope.run(() => {
       scope.stop();
-      expect(() => useClassyStore(store)).toThrow(/active.*scope/i);
+      expect(() => useClassyStore(store)).toThrow(
+        /^@codebelt\/classy-store \[vue-no-scope\]: useClassyStore\(\)$/,
+      );
     });
     expect(getInternal(store).syncListeners.size).toBe(0);
     expect(getInternal(store).batchedListeners.size).toBe(0);

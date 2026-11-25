@@ -1,5 +1,10 @@
 import {DestroyRef, inject, type Signal, signal} from '@angular/core';
-import {getInternal, snapshot, subscribe} from '../../storeRuntime';
+import {
+  codedMessage,
+  getInternal,
+  snapshot,
+  subscribe,
+} from '../../storeRuntime';
 import type {Snapshot} from '../../types';
 
 /**
@@ -14,9 +19,7 @@ export function injectClassyStore<T extends object>(
   getInternal(proxyStore);
   const destroyRef = inject(DestroyRef);
   if (destroyRef.destroyed) {
-    throw new Error(
-      'injectClassyStore requires a live Angular injection context.',
-    );
+    throw new Error(codedMessage('angular-no-context', 'injectClassyStore()'));
   }
 
   const state = signal(snapshot(proxyStore));

@@ -594,7 +594,9 @@ describe('useClassyStore — error handling', () => {
     }
 
     setup();
-    expect(() => render(<BadComponent />)).toThrow(/not a store proxy/);
+    expect(() => render(<BadComponent />)).toThrow(
+      /^@codebelt\/classy-store \[not-a-store\]$/,
+    );
   });
 });
 
@@ -1058,7 +1060,7 @@ describe('createStoreHook', () => {
     // No setup()/teardown needed — this throws before any DOM interaction.
     setup();
     expect(() => createStoreHook(plainObj as never)).toThrow(
-      /not a store proxy/,
+      /^@codebelt\/classy-store \[not-a-store\]$/,
     );
   });
 });

@@ -53,7 +53,7 @@ describe('a cycle of getters that is reached through a getter outside it', () =>
     });
 
     expect(messageThrownBy(() => store.entry)).toBe(
-      '@codebelt/classy-store: circular computed getter dependency: first → second → first',
+      '@codebelt/classy-store [getter-cycle]: first → second → first',
     );
   });
 });

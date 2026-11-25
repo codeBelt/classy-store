@@ -2,6 +2,7 @@
 export {createProxy, isChanged} from 'proxy-compare';
 export {
   batch,
+  codedMessage,
   createClassyStore,
   getInternal,
   getVersion,

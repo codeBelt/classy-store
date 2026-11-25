@@ -1,4 +1,9 @@
-import {getVersion, snapshot, subscribe} from '../../storeRuntime';
+import {
+  codedMessage,
+  getVersion,
+  snapshot,
+  subscribe,
+} from '../../storeRuntime';
 import {cloneSnapshotValue} from '../cloneSnapshot/cloneSnapshot';
 import {findGetterDescriptor} from '../internal/internal';
 import {createUtilityStatus} from '../utilityStatus/utilityStatus';
@@ -142,7 +147,7 @@ export function persist<T extends object>(
   }
 
   function assertActive() {
-    if (disposed) throw new Error('Persistence handle has been disposed');
+    if (disposed) throw new Error(codedMessage('persist-disposed', name));
   }
 
   function succeeded() {

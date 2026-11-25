@@ -1055,10 +1055,10 @@ describe('getters that read each other in a cycle', () => {
 
     expect(Object.getPrototypeOf(fromA)).toBe(Error.prototype);
     expect((fromA as Error).message).toBe(
-      '@codebelt/classy-store: circular computed getter dependency: a → b → a',
+      '@codebelt/classy-store [getter-cycle]: a → b → a',
     );
     expect((fromB as Error).message).toBe(
-      '@codebelt/classy-store: circular computed getter dependency: b → a → b',
+      '@codebelt/classy-store [getter-cycle]: b → a → b',
     );
   });
 
@@ -1066,7 +1066,7 @@ describe('getters that read each other in a cycle', () => {
     const store = createCycle();
 
     expect((thrownBy(() => store.self) as Error).message).toBe(
-      '@codebelt/classy-store: circular computed getter dependency: self → self',
+      '@codebelt/classy-store [getter-cycle]: self → self',
     );
   });
 
@@ -1093,7 +1093,7 @@ describe('getters that read each other in a cycle', () => {
     });
 
     expect((thrownBy(() => store[alpha]) as Error).message).toBe(
-      '@codebelt/classy-store: circular computed getter dependency: Symbol(alpha) → Symbol() → Symbol(alpha)',
+      '@codebelt/classy-store [getter-cycle]: Symbol(alpha) → Symbol() → Symbol(alpha)',
     );
   });
 
@@ -1111,10 +1111,10 @@ describe('getters that read each other in a cycle', () => {
 
     store.closed = true;
     expect((thrownBy(() => store.x) as Error).message).toBe(
-      '@codebelt/classy-store: circular computed getter dependency: x → y → x',
+      '@codebelt/classy-store [getter-cycle]: x → y → x',
     );
     expect((thrownBy(() => store.y) as Error).message).toBe(
-      '@codebelt/classy-store: circular computed getter dependency: y → x → y',
+      '@codebelt/classy-store [getter-cycle]: y → x → y',
     );
 
     store.closed = false;
@@ -1393,7 +1393,7 @@ describe('a getter that writes to the store while it runs', () => {
       expect(report).toHaveBeenCalledTimes(1);
       const [reported] = report.mock.calls[0];
       expect((reported as Error).message).toBe(
-        '@codebelt/classy-store: circular computed getter dependency: counted → counted',
+        '@codebelt/classy-store [getter-cycle]: counted → counted',
       );
     } finally {
       report.mockRestore();

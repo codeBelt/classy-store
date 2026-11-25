@@ -177,9 +177,7 @@ function evaluateComputed(
         .map((f) => String(f.prop))
         .concat(String(prop))
         .join(' → ');
-      throw new Error(
-        `@codebelt/classy-store: circular computed getter dependency: ${cycle}`,
-      );
+      throw new Error(codedMessage('getter-cycle', cycle));
     }
   }
 
@@ -198,13 +196,22 @@ function evaluateComputed(
 // ── Public helpers ────────────────────────────────────────────────────────────
 
 /**
+ * The text of every error and logged report of the library:
+ * `@codebelt/classy-store [code]: facts`. The code is stable from 1.0 and the
+ * documentation's page of codes gives the advice for it; the facts are the
+ * names the user wrote, when there are any.
+ */
+export function codedMessage(code: string, facts?: string): string {
+  return `@codebelt/classy-store [${code}]${facts === undefined ? '' : `: ${facts}`}`;
+}
+
+/**
  * Retrieve the internal bookkeeping for a store proxy.
  * Throws if the object was not created with `createClassyStore()`.
  */
 export function getInternal(proxy: object): StoreInternal {
   const internal = internalsMap.get(proxy);
-  if (!internal)
-    throw new Error('@codebelt/classy-store: object is not a store proxy');
+  if (!internal) throw new Error(codedMessage('not-a-store'));
   internal.resumeScope();
   return internal;
 }

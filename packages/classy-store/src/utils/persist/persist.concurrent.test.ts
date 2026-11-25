@@ -357,7 +357,12 @@ describe('persist async operation ordering', () => {
     const second = handle.save();
     handle.dispose();
     pending.resolve();
-    await Promise.all([first, expect(second).rejects.toThrow('disposed')]);
+    await Promise.all([
+      first,
+      expect(second).rejects.toThrow(
+        '@codebelt/classy-store [persist-disposed]',
+      ),
+    ]);
     expect(storage.setItem).toHaveBeenCalledTimes(1);
   });
 

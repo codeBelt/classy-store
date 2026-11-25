@@ -1,5 +1,10 @@
 import {createSignal, getOwner, isDisposed, onCleanup} from 'solid-js';
-import {getInternal, snapshot, subscribe} from '../../storeRuntime';
+import {
+  codedMessage,
+  getInternal,
+  snapshot,
+  subscribe,
+} from '../../storeRuntime';
 import type {Snapshot} from '../../types';
 
 /**
@@ -13,9 +18,7 @@ export function useClassyStore<T extends object>(
   getInternal(proxyStore);
   const owner = getOwner();
   if (!owner || isDisposed(owner)) {
-    throw new Error(
-      '@codebelt/classy-store/solid: useClassyStore() requires an active Solid owner; call it in a component or createRoot()',
-    );
+    throw new Error(codedMessage('solid-no-owner', 'useClassyStore()'));
   }
 
   // Snapshot construction returns an object/array; select the plain-value overload.

@@ -3,6 +3,7 @@
   "pages": [
     "index",
     "API_REFERENCE",
+    "ERRORS",
     "---Frameworks---",
     "TUTORIAL",
     "REACT_SCOPING",

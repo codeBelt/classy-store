@@ -3,6 +3,10 @@ title: "API reference"
 description: "Public entry points, types, hooks, and utility signatures for Classy Store."
 ---
 
+Every error the library throws carries a stable code, such as
+`[not-a-store]`. [Errors and warnings](./ERRORS.md) lists each code with what
+to do about it.
+
 ## Choosing an API
 
 | What you need                                            | API                                                                                   |
@@ -305,7 +309,7 @@ function Summary() {
 }
 ```
 
-Validates at creation time — throws if the argument is not a store proxy.
+Validates at creation time — throws `[not-a-store]` if the argument is not a store proxy.
 
 ### `snapshot(store)`
 

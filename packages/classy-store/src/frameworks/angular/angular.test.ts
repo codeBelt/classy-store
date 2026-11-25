@@ -32,7 +32,7 @@ function expectNoListeners(store: object) {
 describe('angular injectClassyStore', () => {
   it('rejects non-store objects', () => {
     expect(() => withInjector(() => injectClassyStore({count: 0}))).toThrow(
-      /not a store proxy/,
+      /^@codebelt\/classy-store \[not-a-store\]$/,
     );
   });
 
@@ -64,7 +64,9 @@ describe('angular injectClassyStore', () => {
 
     expect(() =>
       runInInjectionContext(viewInjector, () => injectClassyStore(store)),
-    ).toThrow(/live Angular injection context/);
+    ).toThrow(
+      /^@codebelt\/classy-store \[angular-no-context\]: injectClassyStore\(\)$/,
+    );
     expect(onDestroy).not.toHaveBeenCalled();
     expectNoListeners(store);
   });
