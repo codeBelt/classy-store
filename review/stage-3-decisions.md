@@ -3,14 +3,11 @@
 Stage 3 of the pre-1.0 review. No library source has been changed. Stage 4
 implements what is decided here, one change per commit, test first.
 
-**Status: under revision after the second adversarial review.** Two rounds
-of review by agents that took no part in the work raised 58 and then 30
-objections. The first round is answered in full, and nine entries were
-decided again from three spikes. Of the second round, the answers that need
-no build are in the entries; five entries (1, 10, 12, 29 and 30) are marked
-"under revision" and wait for two more spikes. "Objections and answers" at
-the end has the first round; the second round's table follows when the
-spikes have reported.
+**Status: revised after two adversarial reviews; the third and last is to
+follow.** Two rounds of review by agents that took no part in the work
+raised 58 and then 30 objections. After each, the entries they touched were
+decided again, ten of them from five more spikes. "Objections and answers" at
+the end has a table for each round.
 
 ## How to read this
 
@@ -43,200 +40,212 @@ the library's behaviour: "repository" for the workflows and dependencies,
 "Stage 4" says whether the change is scheduled now. The entries are grouped
 by subject below, so their numbers are not in order there.
 
-| No. | Decision                                                                     | Kind                    | Label                                          | Stage 4              |
-| --: | ---------------------------------------------------------------------------- | ----------------------- | ---------------------------------------------- | -------------------- |
-|   1 | A function an object is born with is a method; one written later is data     | Public API, bug         | Before 1.0                                     | Yes                  |
-|   2 | `Object.defineProperty` through a store is a write                           | Bug                     | Before 1.0                                     | Yes                  |
-|   3 | Suspension stays; the walk to a detached parent goes                         | Bug, simplification     | Can follow 1.0                                 | Yes                  |
-|   4 | Size ceilings for every entry, and the tooling that holds them               | Constraint              | Before 1.0                                     | Yes, first           |
-|   5 | Raw values on write, one node per raw object                                 | Bug                     | Before 1.0                                     | Yes                  |
-|   6 | `includes`, `indexOf`, `lastIndexOf` find the object the caller holds        | Bug                     | Before 1.0                                     | Yes                  |
-|   7 | `has` and `ownKeys` traps; a missing property is a value                     | Bug                     | Before 1.0                                     | Yes                  |
-|   8 | A delete that removes nothing is not a change                                | Bug                     | Before 1.0                                     | Yes                  |
-|   9 | A plain object from another realm is state                                   | Bug                     | Before 1.0                                     | Yes                  |
-|  10 | Getters: one kind of dependency; errors; the snapshot layer                  | Bug, simplification     | Before 1.0                                     | Yes                  |
-|  11 | Nested instances stay opt-in; the base class `ClassyStore`                   | Public API              | Before 1.0                                     | Yes                  |
-|  12 | A table per prototype in place of a descriptor lookup                        | Performance             | Can follow 1.0                                 | Yes                  |
-|  13 | One delivery queue, with a bound                                             | Bug                     | Before 1.0                                     | Yes                  |
-|  14 | A subscriber's error is caught and logged, a rejection too                   | Public API, bug         | Before 1.0                                     | Yes                  |
-|  15 | A setter is a transaction                                                    | Bug                     | Before 1.0                                     | Yes                  |
-|  16 | `batch()` refuses a promise by its type and an `async` function when it runs | Public API              | Before 1.0                                     | Yes                  |
-|  17 | `subscribe()` stays batched by default                                       | Public API              | No change                                      | Docs                 |
-|  18 | Writes outside a method stay allowed                                         | Public API              | No change                                      | No                   |
-|  19 | `persist()` restores before it returns when the storage is synchronous       | Public API              | Before 1.0                                     | Yes                  |
-|  20 | Dead and redundant code goes, in the commit that makes it dead               | Simplification          | Can follow 1.0                                 | Yes                  |
-|  21 | Nothing `persist` cannot use is skipped in silence                           | Bug, diagnostics        | Before 1.0                                     | Yes                  |
-|  22 | `persist()` validates its options                                            | Bug                     | Before 1.0                                     | Yes                  |
-|  23 | A restore is all or nothing                                                  | Bug                     | Before 1.0                                     | Yes                  |
-|  24 | A migrated record is written back; a pending save is flushed                 | Bug                     | Before 1.0                                     | Yes                  |
-|  25 | Cross-tab sync ignores an event from another storage area                    | Bug                     | Can follow 1.0                                 | Yes                  |
-|  26 | `persist` options stay as they are                                           | Public API              | No change                                      | No                   |
-|  27 | `devtools`: named entries, exact time travel, off in production              | Public API, bug         | Before 1.0                                     | Yes                  |
-|  28 | An edit made in the same tick as `undo()` is recorded                        | Bug                     | Before 1.0                                     | Yes                  |
-|  29 | `withHistory` restores a function held in an own field                       | Public API              | Before 1.0                                     | Yes                  |
-|  30 | Undo and time travel change a nested object in place                         | Bug, performance        | Before 1.0                                     | Yes                  |
-|  31 | `subscribeKey` without a snapshot of the whole store; no selector form       | Performance             | Can follow 1.0                                 | Yes                  |
-|  32 | The workflows are hardened now; the release job is split after 1.0           | Repository              | Can follow 1.0                                 | Pins and permissions |
-|  33 | Dependencies: exact pin, an audit step                                       | Repository              | Can follow 1.0                                 | Yes                  |
-|  34 | Documentation                                                                | Docs                    | With each                                      | Yes                  |
-|  35 | Every error carries a stable code                                            | Diagnostics             | Before 1.0                                     | Yes                  |
-|  36 | One build, and one development-only check                                    | Diagnostics             | Before 1.0 for the guard; the check can follow | Yes                  |
-|  37 | Vue, Angular and Solid build the snapshot when it is read                    | Performance             | Before 1.0 for Vue; the others can follow      | Yes                  |
-|  38 | Vue: no listener left by a server render; a read-only ref                    | Bug, public API         | Before 1.0                                     | Yes                  |
-|  39 | Angular: `untracked()`, an injector option, its own context error            | Bug, public API         | Can follow 1.0                                 | Yes                  |
-|  40 | The adapter names stay                                                       | Public API              | No change                                      | Docs                 |
-|  41 | `prepareStoreForHydration` stays explicit; `isEqual` stays                   | Public API              | No change                                      | Docs                 |
-|  42 | Collections: one membership rule, a snapshot index                           | Bug, performance        | Before 1.0 for the rule; the index can follow  | Yes                  |
-|  43 | Class getters on one derived prototype per class                             | Public API, performance | Before 1.0                                     | Yes                  |
-|  44 | A snapshot keeps a cycle                                                     | Bug, public API         | Before 1.0                                     | Yes                  |
-|  45 | Snapshot types: tuples, collection snapshots without mutators                | Public API              | Before 1.0                                     | Yes                  |
-|  46 | A snapshot after one row changes still rebuilds the list                     | Performance             | Can follow 1.0                                 | No                   |
+| No. | Decision                                                                                   | Kind                    | Label                                          | Stage 4              |
+| --: | ------------------------------------------------------------------------------------------ | ----------------------- | ---------------------------------------------- | -------------------- |
+|   1 | A function in a field is a method when read through the store; the object is never changed | Public API, bug         | Before 1.0                                     | Yes                  |
+|   2 | `Object.defineProperty` through a store is a write                                         | Bug                     | Before 1.0                                     | Yes                  |
+|   3 | Suspension stays; the walk to a detached parent goes                                       | Bug, simplification     | Can follow 1.0                                 | Yes                  |
+|   4 | Size ceilings for every entry, and the tooling that holds them                             | Constraint              | Before 1.0                                     | Yes, first           |
+|   5 | Raw values on write, one node per raw object                                               | Bug                     | Before 1.0                                     | Yes                  |
+|   6 | `includes`, `indexOf`, `lastIndexOf` find the object the caller holds                      | Bug                     | Before 1.0                                     | Yes                  |
+|   7 | `has` and `ownKeys` traps; a missing property is a value                                   | Bug                     | Before 1.0                                     | Yes                  |
+|   8 | A delete that removes nothing is not a change                                              | Bug                     | Before 1.0                                     | Yes                  |
+|   9 | A plain object from another realm is state                                                 | Bug                     | Before 1.0                                     | Yes                  |
+|  10 | Getters: one kind of dependency; errors; the snapshot layer                                | Bug, simplification     | Before 1.0                                     | Yes                  |
+|  11 | Nested instances stay opt-in; the base class `ClassyStore`                                 | Public API              | Before 1.0                                     | Yes                  |
+|  12 | A table per prototype in place of a descriptor lookup                                      | Performance             | Can follow 1.0                                 | Yes                  |
+|  13 | One delivery queue, with a bound                                                           | Bug                     | Before 1.0                                     | Yes                  |
+|  14 | A subscriber's error is caught and logged, a rejection too                                 | Public API, bug         | Before 1.0                                     | Yes                  |
+|  15 | A setter is a transaction                                                                  | Bug                     | Before 1.0                                     | Yes                  |
+|  16 | `batch()` refuses a promise by its type and an `async` function when it runs               | Public API              | Before 1.0                                     | Yes                  |
+|  17 | `subscribe()` stays batched by default                                                     | Public API              | No change                                      | Docs                 |
+|  18 | Writes outside a method stay allowed                                                       | Public API              | No change                                      | No                   |
+|  19 | `persist()` restores before it returns when the storage is synchronous                     | Public API              | Before 1.0                                     | Yes                  |
+|  20 | Dead and redundant code goes, in the commit that makes it dead                             | Simplification          | Can follow 1.0                                 | Yes                  |
+|  21 | Nothing `persist` cannot use is skipped in silence                                         | Bug, diagnostics        | Before 1.0                                     | Yes                  |
+|  22 | `persist()` validates its options                                                          | Bug                     | Before 1.0                                     | Yes                  |
+|  23 | A restore is all or nothing                                                                | Bug                     | Before 1.0                                     | Yes                  |
+|  24 | A migrated record is written back; a pending save is flushed                               | Bug                     | Before 1.0                                     | Yes                  |
+|  25 | Cross-tab sync ignores an event from another storage area                                  | Bug                     | Can follow 1.0                                 | Yes                  |
+|  26 | `persist` options stay as they are                                                         | Public API              | No change                                      | No                   |
+|  27 | `devtools`: named entries, exact time travel, off in production                            | Public API, bug         | Before 1.0                                     | Yes                  |
+|  28 | An edit made in the same tick as `undo()` is recorded                                      | Bug                     | Before 1.0                                     | Yes                  |
+|  29 | `withHistory` restores a function held in an own field                                     | Public API              | Before 1.0                                     | Yes                  |
+|  30 | Undo and time travel change a nested object in place                                       | Bug, performance        | Before 1.0                                     | Yes                  |
+|  31 | `subscribeKey` without a snapshot of the whole store; no selector form                     | Performance             | Can follow 1.0                                 | Yes                  |
+|  32 | The workflows are hardened now; the release job is split after 1.0                         | Repository              | Can follow 1.0                                 | Pins and permissions |
+|  33 | Dependencies: exact pin, an audit step                                                     | Repository              | Can follow 1.0                                 | Yes                  |
+|  34 | Documentation                                                                              | Docs                    | With each                                      | Yes                  |
+|  35 | Every error carries a stable code                                                          | Diagnostics             | Before 1.0                                     | Yes                  |
+|  36 | One build, and one development-only check                                                  | Diagnostics             | Before 1.0 for the guard; the check can follow | Yes                  |
+|  37 | Vue, Angular and Solid build the snapshot when it is read                                  | Performance             | Before 1.0 for Vue; the others can follow      | Yes                  |
+|  38 | Vue: no listener left by a server render; a read-only ref                                  | Bug, public API         | Before 1.0                                     | Yes                  |
+|  39 | Angular: `untracked()`, an injector option, its own context error                          | Bug, public API         | Can follow 1.0                                 | Yes                  |
+|  40 | The adapter names stay                                                                     | Public API              | No change                                      | Docs                 |
+|  41 | `prepareStoreForHydration` stays explicit; `isEqual` stays                                 | Public API              | No change                                      | Docs                 |
+|  42 | Collections: one membership rule, a snapshot index                                         | Bug, performance        | Before 1.0 for the rule; the index can follow  | Yes                  |
+|  43 | Class getters on one derived prototype per class                                           | Public API, performance | Before 1.0                                     | Yes                  |
+|  44 | A snapshot keeps a cycle                                                                   | Bug, public API         | Before 1.0                                     | Yes                  |
+|  45 | Snapshot types: tuples, collection snapshots without mutators                              | Public API              | Before 1.0                                     | Yes                  |
+|  46 | A snapshot after one row changes still rebuilds the list                                   | Performance             | Can follow 1.0                                 | No                   |
 
 ## The four decisions the rest hangs on
 
-### 1. A function an object is born with is a method; one written later to a field that exists is data
+### 1. A function in a field is a method when it is read through the store, and the object is never changed
 
-**Under revision**, with `spike-functions-2.md`. The second review showed
-what it costs that the store writes its wrapper into the object it is given:
-a store made from a copy of that object or of a snapshot runs the old
-store's methods, and a callback on a snapshot ignores the `this` its caller
-passes (`adversarial-2-core.md`, objections 1, 2, 6, 7 and 8). The spike
-builds the rule in a form that leaves the object and its snapshots as they
-were written: a function in a field is a method only when it is read through
-the store.
+**Decision.** A function is a **method**, bound to the proxy of the object
+that holds it and run as one transaction, in two cases:
 
-**Decision.** One rule for every store. It replaces the "strict" rule this
-entry held in its first draft, and the exception decision 11 made for the
-base class.
+1. It is found on the prototype chain, under any key but `constructor`. Any
+   kind of function. This is today's rule.
+2. It is the value of an own data property of an object that is not an
+   array, **and it is read through the store**.
 
-A function is a **method** of the object that holds it, bound to that
-object's store and run as one transaction, when it has no `prototype`
-property of its own and it is one of:
+Case 2 does not apply, and the function is handed out as it is, when the
+function has its own `prototype` property (a class, a `function` declaration
+or expression, a generator, and every method a store handed out before),
+when it is frozen, when it is a store, and when the property is read-only
+and not configurable.
 
-1. found on the prototype chain, under any key but `constructor`;
-2. an own property of the object when the object becomes part of a store;
-3. written through the store to a key the object does not have yet;
-4. written through the store over a method of the same object.
+**The rule never changes the object.** The raw object and every snapshot
+hold each function as it was written. Only a read through the store hands
+out the method. There is one method per object and function, so
+`store.f === store.f`, and it takes the name of the key it was read under.
 
-Everything else is **data** and is returned as it is: an element of a list,
-a function that has its own `prototype` (a class, a `function` declaration
-or expression, a generator), a frozen function, a function in a property
-that cannot be written, a store, and a function written to a field that
-holds anything but a method.
+Two rules for a method that is written back:
 
-The store keeps a method of kinds 2 to 4 in the object itself. The store,
-the raw object and every snapshot then hold one function, and it writes the
-store wherever it is called from.
+- A method that the same object handed out is stored as the function it
+  wraps. `store.f = store.f` is no change, and `store.b = store.a` stores
+  `a`'s function.
+- A method that another object handed out is stored as it is. It is data
+  there, and stays bound to the object it came from.
 
-"No `prototype` of its own" is the test, not "an arrow function". A method of
-a class, a shorthand method (`inc() {…}`), an arrow function, an `async`
-function and a bound function pass it.
+A read of a function in a field counts as a read for a getter, so a getter
+that calls a function held in a field sees a later replacement.
+
+**How this entry got here.** It is the third form. The first draft took the
+"strict" rule: only a function on the prototype chain is a method. The first
+review showed that a method in an object literal then loses its transaction
+in silence. The second form made a function an object is "born with" a
+method and wrote the store's wrapper into the object. The second review
+showed what that write costs (objections 1, 2, 3, 6, 7 and 8 of
+`adversarial-2-core.md`, each with a script): a store made from a copy of the
+object or of a snapshot ran the old store's methods; a callback on a snapshot
+ignored the `this` its caller passed; a getter read on a snapshot could write
+the live store through an object's own method; a callback restored by
+`withHistory` came back wrapped; and a read-only definition threw after it
+was made. This form was then built and run against every case table of the
+two earlier forms and against the reviewers' scripts.
 
 **Why.**
 
-- The strict rule added a silent failure, and two reviewers found it
-  (objections W8 and C14). A method in an object literal stopped being a
-  transaction, so a loop of writes inside one told every adapter once per
-  write, and each adapter rebuilt its snapshot each time. A plain object is a
-  documented input.
-- It needs no exception. "An arrow function that creates a field is a
-  method", which decision 11 allowed only in a class that extends the base
-  class, is clause 3 for every store.
-- On the store it takes away no identity that holds today. Today every
-  function read through a store comes back as a wrapper. Under this rule a
-  function an object is born with still does. The rest becomes right: a
-  callback assigned to a declared field, an element of a list, a class or a
-  constructor held as a value, a frozen function, a store held as a value,
-  and `store.cb = store.cb`, which is no longer a change. The two identities
-  it does take away are off the store, on the raw object and on a snapshot;
-  they are the two marked "new" below.
-- It keeps what the strict rule fixed: findings 5, 6 and 42, the wrapper that
-  got stored when a function was copied between fields, and the getter that
-  called a function in a field and went stale.
-- It removes three defects that were reproduced in decision 11 as first
-  spiked (objections C3, C4 and C17): one function installed in two stores
-  wrote the first store, a subclass that overrides an arrow method lost the
-  transaction, and such a method had no name for `devtools`. Wrappers are now
-  kept per object, clause 4 covers the override under every compiler, and a
-  method takes the name of its key.
-- MobX does the same: it wraps a function once, where it is stored, and
-  leaves the wrapper in the object.
+- It is today's behaviour with today's defects removed, so it adds no silent
+  failure. Wherever today's answer and the second form's differ and today's
+  is right, this form gives today's: the four copies, the caller's `this` on
+  a snapshot and on the object, the restore, the read-only definition.
+- It keeps every fix. A method in an object literal is one transaction and
+  works detached. A class, a `function`, a frozen function and a store held
+  as a value, and a function in a list, are handed out as they are (findings
+  5, 6 and 42). `store.f = store.f` is no change. A getter that calls a
+  function in a field does not go stale. One function held by two stores
+  writes the store it is called on. A subclass's arrow field that overrides
+  the parent's is one transaction, with class fields compiled as assignments
+  and as definitions. A method has a name for `devtools`.
+- It has no rule about when a function was written, so the result does not
+  depend on how a compiler emits a class field, and decision 11 needs no rule
+  of its own.
+- It is the smallest of the three forms that keep an object-literal method a
+  transaction.
 
 **What it costs a user.**
 
-- `store.onSave === cb` is false for a callback that is in the initial state,
-  written to a new key, written over a method or over a function used as a
-  default, and for a bound function. That is so today as well. A callback
-  that has to keep its identity goes in a field declared first,
-  `onSave: (() => void) | null = null`, and is assigned later.
-- **New:** the object passed to the store is changed. Its own functions are
-  replaced by the store's methods, and `snapshot(store).onSave === cb`, true
-  today, becomes false.
-- **New:** a method read from a snapshot writes the live store. Today a
-  snapshot holds the original function, and one that writes through `this`
-  throws there. A prototype method read from a snapshot still runs against
-  the frozen snapshot and still throws on a write.
-- A method stays bound to the store that made it, also after it is copied
-  somewhere else: by a spread, by `Object.assign`, out of a snapshot, or
-  into another store, where it is data. So a method can be handed to other
-  code as a callback, and a new store built from a copy of an old one calls
-  the old store's methods. That is so today. A store is copied by its data.
+- **A function read through the store is not the function that was stored.**
+  `store.onSave === cb` is false for an arrow function, a shorthand method,
+  an `async` function and a bound function. That is so today. The identity
+  is kept where a component reads it: `snapshot(store).onSave === cb` is
+  true. The second form kept it on the store for a callback assigned to a
+  field declared `= null`, and lost it on the snapshot for everything else.
+- **A method read through the store ignores the `this` its caller passes.**
+  It always runs on the store. That is so today. A function read from a
+  snapshot or from the object itself runs with the `this` its caller gives,
+  so an object of callbacks for another library is handed over from a
+  snapshot.
+- **A method is called on the store, not on a snapshot.** A snapshot holds
+  the plain function. A shorthand method that writes `this` throws there. An
+  arrow-function field of a `ClassyStore` subclass writes the live store
+  from there, one write at a time and not as one transaction; a component
+  that takes such a method from the hook's snapshot and calls it causes one
+  notification per write. Nothing reports it. The reference already says to
+  call methods on the store.
+- **A method copied through the store stays bound to the store it came
+  from.** `{...store}` reads through the store, so it copies methods, and a
+  new store built from that copy calls the old store's methods. That is so
+  today. A copy of a snapshot or of the object itself copies plain
+  functions, and a store built from it is independent.
+- A property that is read-only and not configurable, for example after
+  `Object.freeze(store)`, hands out its function as it is, unbound. Today
+  that read throws.
 - `inc: function () {…}` in an object literal has a `prototype`, so it is
   data: it works when called on the store, and it is neither bound nor a
   transaction. The shorthand `inc() {…}` and an arrow function are methods.
-  Code compiled to ES5 turns both into `function` expressions.
+  Code compiled to ES5 turns both into `function` expressions. A method of a
+  class is case 1 and is not affected.
 - A class that does not extend the base class and has an arrow-function field
-  still writes to the raw instance, and no subscriber hears it. No rule about
-  wrapping can change what `this` is inside that arrow function. Decision 11
-  is the answer to it.
+  still writes to the raw instance, and no subscriber hears it. No rule
+  about wrapping can change what `this` is inside that arrow function.
+  Decision 11 is the answer to it, and decision 36 reports it.
 
 **Not taken.**
 
-- **Strict:** only a function on the prototype chain is a method. It gives a
-  callback in the initial state its identity, and it is the fallback if this
-  rule fails in stage 4. It would then need the same per-object cache, the
-  name and clause 4 for the base class, and the reference would say that a
-  function in an object literal is not a method.
-- **Lenient:** wrap every function on every read, except an element of a
-  list, a class and `constructor`. It keeps the copied wrapper and the stale
-  getter.
-- **Clause 4 only for a definition, not for an assignment.** It keeps the
-  identity of a callback written over a function default, and it fixes the
-  subclass override only where the compiler emits class fields as
-  definitions. TypeScript's default and the Angular example emit
-  assignments.
-- **The wrapper in a table beside the object**, with the raw object left as
-  it was. The store and the snapshot then hold different functions, and
-  `form.onSave = form.onSave` is a change that stores a wrapper.
+- **Strict:** only a function on the prototype chain is a method. A method
+  in an object literal is then not a transaction and throws when detached,
+  and the base class needs an exception of its own.
+- **Born with, written into the object** (the second form). It keeps the
+  identity of a callback assigned to a declared field, and costs the five
+  failures listed above.
+- **Lenient as first spiked:** wrap every function on every read except an
+  element of a list, a class and `constructor`. It keeps the copied wrapper
+  and the stale getter, which this form removes.
+- **A fast path that skips the descriptor** once an object has handed out a
+  method and no definition through the store has locked a property. It
+  makes a call of a method held in a field as fast as under the second
+  form, for 43 bytes. It was built, and it has a gap: after a read-only
+  definition made on the raw object behind the store, the read throws,
+  where the form taken hands out the function. A read that cannot throw is
+  worth 28 nanoseconds. It can follow 1.0 if the gap is closed.
 - **Telling a bound function by its name.** A user can fake the name.
 
-**Evidence.** `spike-functions.md`, built on the strict rule, decision 2 and
-the base class. 71 lines added and 13 removed in `core.ts`. 27 tests change
-against 28 on that base: the nine fixes of the strict rule stay fixes, and
-its one incidental change, the object-literal method that stopped being a
-transaction, passes again. One regression showed on the first run and is
-fixed in the patch: a store made from a function and held by another store
-was wrapped. The main entry is 3,888 bytes with all three in: 170 more than
-the strict rule, and 81 more than the strict rule with decision 11's
-exception.
+**Evidence.** `spike-functions-2.md`, built on the strict rule, decision 2
+and the base class. 67 lines added and 18 removed in `core.ts`. 27 tests
+change against 28 on that base, the same 27 as the second form: the nine
+fixes of the strict rule stay fixes, and its one incidental change, the
+object-literal method that stopped being a transaction, passes again. No
+regression. The typecheck shows only the base class's new export. The main
+entry is 3,873 bytes with all three in: 155 more than the strict rule and 15
+fewer than the second form. Fifty-odd rows were run on today's source, the
+strict rule, the second form and this one, among them the reviewers' five
+scripts. Not run: the browser, framework and mutation suites;
+the naming hook of decision 27 reading the key; a component that calls an
+arrow method taken from a snapshot; compilers other than Bun's transpiler
+for the override case.
 
-Timed in two rounds on both engines, against the strict rule and against the
-strict rule with the exception. One row differs in both rounds: **a method
-call on Node is about 5% slower** (310 to 333 nanoseconds against 296 to
-304). A method read finds the object's table of wrappers through a
-module-wide map first, where the strict rule had one map in the object's own
-closure. Keeping the table on the object itself should take that back; that
-form was not run. Stage 4 builds it that way and does not land the change
-while `store.method` is outside the spread of today's on either engine; if
-it cannot be brought back, this entry is decided again. Every other row
-touches, store creation included, and the four cost ratios stay inside their
-limits.
+Timed in two rounds on both engines against the strict rule and the second
+form. Every range touches the strict rule's, store creation included, and
+the 5% that the second form cost a method call on Node is gone, because the
+table of methods is kept on the object itself. A call of a method held in a
+field costs about what a call of a method of a class costs: 200 nanoseconds
+on Bun and 288 on Node. That is 28 and 20 more than under the second form,
+because each such read asks for the property's descriptor, which is also
+what makes a read-only property safe to read.
 
-**Label.** Before 1.0. **Stage 4:** yes.
+**Label.** Before 1.0. **Stage 4:** yes. The change lands only if
+`store.method` is inside the spread of the commit before it on both engines;
+the baseline is that commit, not the figures of stage 1, which decision 12
+has moved by then.
 
-**Docs.** The six sentences at the end of `spike-functions.md` go into the
-tutorial and the reference. The architecture page describes the cache of
-wrappers, which is per object.
+**Docs.** The nine sentences at the end of `spike-functions-2.md` go into
+the tutorial and the reference. The architecture page describes the cache of
+methods, which is per object.
 
 ### 2. `Object.defineProperty` through a store is a write, and nothing is refused
 
@@ -325,8 +334,8 @@ them.
 
 | Entry                 | Today | Budget today | Estimate | Ceiling | What moves it                                                    |
 | --------------------- | ----: | -----------: | -------: | ------: | ---------------------------------------------------------------- |
-| `.` (the main entry)  | 3,661 |        3,750 |    5,255 |   5,450 | The first table below                                            |
-| `./utils` adds        | 2,686 |        2,750 |    3,760 |   4,000 | The second table below                                           |
+| `.` (the main entry)  | 3,661 |        3,750 |    5,297 |   5,500 | The first table below                                            |
+| `./utils` adds        | 2,686 |        2,750 |    3,971 |   4,225 | The second table below                                           |
 | `./collections` adds  |   727 |          750 |      911 |     950 | The snapshot index, the membership rule, the mutator check       |
 | `./react` adds        | 1,662 |        1,700 |    1,693 |   1,750 | The guard for a cyclic snapshot                                  |
 | `./vue` adds          |   280 |          300 |      369 |     400 | The read-time ref, the server path, the setter that throws       |
@@ -394,7 +403,7 @@ committed, and the question goes back to a decision.
 
 | Change                                                                | Decision |  Bytes |
 | --------------------------------------------------------------------- | -------: | -----: |
-| The rule for functions                                                |        1 |   +165 |
+| The rule for functions                                                |        1 |   +150 |
 | `defineProperty` as a write                                           |        2 |    +49 |
 | The walk to a detached parent removed                                 |        3 |    −36 |
 | Raw values on write, and a child kept when its container is frozen    |        5 |   +104 |
@@ -402,31 +411,31 @@ committed, and the question goes back to a decision.
 | `has` and `ownKeys` traps, a missing property as a value              |        7 |   +156 |
 | A delete that removes nothing                                         |        8 |    +11 |
 | A plain object from another realm                                     |        9 |    +81 |
-| Getters: one kind of dependency, errors, a getter that writes         |       10 |   +239 |
+| Getters: one kind of dependency, errors, a getter that writes         |       10 |   +281 |
 | The base class                                                        |       11 |    +13 |
-| A table per prototype in place of a descriptor lookup                 |       12 |   +165 |
+| A table per prototype in place of a descriptor lookup                 |       12 |   +180 |
 | The delivery queue with its bound, setters, the rejection handler     | 13 to 15 |   +219 |
 | The check for an `async` function in `batch()`                        |       16 |    +50 |
 | Dead lines removed                                                    |       20 |    −32 |
 | The slot through which `devtools` names a method                      |       27 |    +12 |
 | Class getters on a derived prototype, and `this` in a snapshot getter |       43 |   +239 |
 | A snapshot keeps a cycle                                              |       44 |     −9 |
-| Sum                                                                   |          | +1,594 |
+| Sum                                                                   |          | +1,636 |
 
 Measured on top of another change, not alone: decision 1 (on the strict
-rule, decision 2 and the base class; the row is the three together less the
-other two), the second parts of decisions 5, 6 and 10 (on the first parts),
-and decision 27 (on the first form of its entries). The row of decision 1
-is the form spiked first and is measured again by the spike that follows
-the second review.
+rule, decision 2 and the base class; the row is the three together, 3,873
+bytes, less the other two), the later parts of decisions 5, 6, 10 and 12
+(each on the part before it), and decision 27 (on the first form of its
+entries).
 
-The sum puts the main entry near 5,255 bytes, 44% above today's. The first
-draft of this entry counted 4,820 and left two rows open. The 433 bytes
-since then are what the first review asked for: the rule for functions
-(165, an open row before), the child kept through a freeze (68), the
-searches that answer correctly for a list of snapshots (68), the throw for a
-getter that writes (74), the table that does not hold a getter's body (46),
-and the slot for `devtools` (12, the other open row). The messages were
+The sum puts the main entry near 5,297 bytes, 45% above today's. The first
+draft of this entry counted 4,820 and left two rows open. The 475 bytes
+since then are what the two reviews asked for: the rule for functions (150,
+an open row before), the child kept through a freeze (68), the searches that
+answer correctly for a list of snapshots (68), the throw for a getter that
+writes, by any path (116), the table that holds no getter body and cannot
+grow without bound (61), and the hook for `devtools` (12, the other open
+row). The messages were
 measured as their spikes wrote them; the codes of decision 35 shorten them,
 by about 100 bytes for the first set and unmeasured for the rest. (The
 report that measured the messages gives 271 bytes of text in all; the
@@ -441,15 +450,16 @@ difference is the text of refusals this document does not take.)
 | The root store's getter values in what `devtools` sends |       27, 43 |    +95 |
 | Restore in place                                        |           30 |   +113 |
 | Each object entered once per restore                    |           30 |    +16 |
+| A container that would refuse the restore is replaced   |           30 |   +211 |
 | `cloneSnapshot` made safe for a cycle                   |           44 |    +21 |
 | `subscribeKey` without a snapshot of the whole store    |           31 |    +62 |
-| Sum                                                     |              | +1,074 |
+| Sum                                                     |              | +1,285 |
 
-The sum is 3,760 bytes. Not in it, because they were decided after the
-first review and never built: the default report of `persist` when no
-`onError` is given, the rule for the version, and the refusal of an `async`
-`migrate` (decision 21). The first draft's ceiling of 3,700 did not hold the
-sum; this one does, with room for those three.
+The sum is 3,971 bytes. Not in it, because they were decided from the
+reviews and never built: the default report of `persist` when no `onError`
+is given, the rule for the version, the checks made when `persist()` is
+called, and the handle that does not write over a record it could not use
+(decisions 21 and 22). The ceiling has 150 bytes for them.
 
 **What each of the larger items buys, so that it can be weighed.**
 
@@ -458,15 +468,17 @@ sum; this one does, with room for those three.
   snapshot getter is right.
 - 219 bytes (decisions 13 to 15): no stack overflow and no hung event loop
   when a subscriber writes, and faster ordinary writes.
-- 239 bytes (decision 10): five getter defects, a cached getter read a
-  quarter faster, and a getter that writes its own store told so.
+- 281 bytes (decision 10): five getter defects, a cached getter read a
+  quarter faster, and a getter that writes its own store told so on both
+  layers.
 - 168 bytes (decision 6): `includes()` and `indexOf()` find the object the
   caller holds, in about 1% of today's time.
-- 165 bytes (decision 1): one rule for every function a store holds, and
-  arrow-function methods that work.
+- 150 bytes (decision 1): one rule for every function a store holds, a
+  method in an object literal that stays a transaction, and arrow-function
+  methods that work.
 - 156 bytes (decision 7): getters that use `in` or `Object.keys(this)` stop
   returning stale answers. It serves fewer users than the others.
-- 165 bytes (decision 12): a field read 2.7 times faster on JavaScriptCore
+- 180 bytes (decision 12): a field read 2.7 times faster on JavaScriptCore
   and a fifth faster on V8.
 - 81 bytes (decision 9): a rare case. It is taken because it cannot be added
   later; stage 4 tries the form without the cache first.
@@ -656,10 +668,6 @@ test changes. The form without the cache was not measured.
 
 ### 10. Getters: one kind of dependency, on both layers what the other has
 
-**Under revision** for one part, with `spike-core-3.md`, G1: on a snapshot,
-a getter can still write the live store through an arrow-function method or
-a reference to its store (`adversarial-2-core.md`, objection 3).
-
 **Decision.** Take the combination of the getter spikes:
 
 - One kind of getter dependency, `{value, version}` by property. It contains
@@ -670,15 +678,22 @@ a reference to its store (`adversarial-2-core.md`, objection 3).
 - The snapshot layer keeps the memo map that nested getters filled (finding
   37) and reports a cycle with the live layer's error where it overflows the
   stack today (finding 38).
-- **A getter must not write to the store it is computed on.**
-  - On a snapshot, a write to `this` throws a `TypeError` that names the
-    field: an assignment, a `delete`, a definition, also through a method
-    the getter calls. The traps throw themselves, so it holds in code that
-    is not in strict mode too. A write to a child throws in strict code, because the child
-    is frozen; in code that is not strict it is ignored.
-  - On the live store, a write to the getter's own object throws the same
-    way. A write to a child, to another store, and the construction of a
-    store inside a getter are allowed.
+- **A getter must not write to the object it is computed on, by any path.**
+  - On the live store, a write to the getter's own object throws a
+    `TypeError` that names the field: an assignment, a `delete`, a
+    definition, also through a method the getter calls.
+  - On a snapshot, a write to `this` throws the same way; the traps throw
+    themselves, so it holds in code that is not in strict mode too. And
+    while a snapshot getter runs, the live object the snapshot was taken
+    from counts as having a getter running. So a write that reaches the live
+    store around `this` throws as well, with nothing written and nobody
+    told: through an arrow-function method of a `ClassyStore` subclass,
+    through a reference to the store, or through a method called on the
+    store.
+  - Allowed on both layers: a write to another store, and the construction
+    of a store inside a getter. A write to a child object is allowed on the
+    live store; on a snapshot it throws in strict code, because the child is
+    frozen, and is ignored in code that is not strict.
 
 **Why.**
 
@@ -701,15 +716,21 @@ a reference to its store (`adversarial-2-core.md`, objection 3).
   throw on the live store is the narrow one, for the getter's own object, so
   the two reasons the first draft gave against a throw no longer apply: a
   store built inside a getter and a call into another store both work.
+- The second review found the path the first fix left open (objection 3 of
+  `adversarial-2-core.md`): a getter read on a snapshot that calls an
+  arrow-function method of its own class, or writes through a reference to
+  its store, wrote the live store and told its subscribers while a component
+  was reading. With the base class of decision 11 that is an ordinary way to
+  write a class, and every adapter reads snapshots.
 - A throw that is added after 1.0 is a breaking change. Dropping one is not.
 
 **What it costs a user.** A getter that fills a cache field on its own
-store, or calls a method that writes its own store, throws on the live store
-where it worked. It already failed in every component. A getter that writes
-to a child object still works on the live store and throws on a snapshot;
-covering that would mean walking the parents on each write made while a
-getter runs. It is **unspecified**, and the docs say that a getter must not
-write to the store it reads.
+store, or calls a method that writes its own store, throws where it worked
+on the live store. It already failed in every component. A getter that
+writes to a child object still differs between the layers, as described
+above; covering that would mean walking the parents on each write made while
+a getter runs. It is **unspecified**, and the docs say that a getter must
+not write to the store it reads.
 
 **Not taken.**
 
@@ -727,12 +748,18 @@ write to the store it reads.
 **Evidence.** `spike-getters.md`. The combination: 182 lines added, 144
 removed, 165 bytes. 16 tests change: 15 fixes and 1 incidental. On Node a
 cached getter read is 26% faster and a recompute 6 to 9% slower; the four
-cost ratios stay inside their limits on both engines. `spike-core-2.md`,
-F4, on top of that combination: 9 lines in `snapshot.ts` and 16 in
-`core.ts`, 74 bytes with the two messages as written. Nine kinds of write
-were run on both layers. 3 more tests change, all incidental: they pin
-today's behaviour of a getter that writes a field of its own store. A write
-and a recompute are inside the spread of the combination's on both engines.
+cost ratios stay inside their limits on both engines. `spike-core-2.md`, F4,
+on top of that combination: 9 lines in `snapshot.ts` and 16 in `core.ts`, 74
+bytes with the two messages as written. Nine kinds of write were run on both
+layers. 3 more tests change, all incidental: they pin today's behaviour of a
+getter that writes a field of its own store. `spike-core-3.md`, G1, on top of
+that: 18 lines in `core.ts` and 21 in `snapshot.ts`, 42 bytes, no test
+changes. Three snapshot getters that wrote the live store and notified now
+throw: one that calls a base-class arrow method, one that writes through a
+reference to the store, and one that calls a method on the store. A write, a
+cached snapshot getter and a recomputed one are inside the spread on both
+engines; on Bun the recomputed one is a steady 4% higher. Not built: these
+rows on top of decision 1.
 
 **Label.** Before 1.0: a getter that writes becomes an error, and the
 sentence about an absent field goes. **Stage 4:** yes.
@@ -753,10 +780,10 @@ sentence about an absent field goes. **Stage 4:** yes.
   `createClassyStore(new X())` stays, for a plain object and for a class
   that cannot extend it.
 - **The base class has no rule of its own for functions.** Decision 1 covers
-  it: an arrow-function field is written to a key that does not exist yet,
-  so it is a method, and a subclass's field that overrides the parent's is
-  written over a method, so it is one too. The first draft made these an
-  exception that held only here.
+  it: an arrow-function field is a function in a field, so it is a method
+  when it is read through the store, and so is a subclass's field that
+  overrides the parent's. The first draft made these an exception that held
+  only here.
 - **A `#private` field is never state.** The docs say so. With the base
   class it can be used on the live store; a snapshot cannot carry it.
 - **The base class ships in 1.0.** A second spike ran what the first only
@@ -778,10 +805,10 @@ sentence about an absent field goes. **Stage 4:** yes.
 **What it costs a user.** A class has to extend `ClassyStore` for its
 arrow-function fields to work, and the docs gain these sentences:
 
-- A callback field is declared with an initialiser, such as
-  `onSave: (() => void) | null = null`. A function assigned to it later is
-  then data and keeps its identity. Without the initialiser, whether the
-  field exists at that point depends on the compiler.
+- A callback held in a field is compared on a snapshot, where it is the
+  function that was stored (decision 1).
+- An arrow method is called on the store. Taken from a snapshot it still
+  writes the store, one write at a time and not as one transaction.
 - Code compiled to ES5 turns an arrow function into an ordinary function,
   which is data under decision 1: an arrow method then notifies once per
   write.
@@ -800,9 +827,10 @@ was compiled 17 ways (TypeScript with class fields as definitions and as
 assignments, Bun, Oxc, esbuild, the SWC of Next.js with the example's
 configuration, Babel in spec and loose mode), and in every output the first
 snapshot is right, an arrow method notifies once, and a field write and a
-timer's write are seen. Those 17 outputs were run on the first draft's rule;
-under decision 1 the path they exercise is the same, and the override case
-was run again both ways with Bun's transpiler. Seven throwaway tests pass
+timer's write are seen. Those 17 outputs were run on the first draft's rule.
+Decision 1 as it now stands changes nothing when an object is created, so
+what they showed still holds, and the override case was run again both ways
+with Bun's transpiler. Seven throwaway tests pass
 for Vue, Svelte, Solid, Angular, `createStoreHook` and `useLocalStore`. A
 base-class store made inside a getter works on both layers.
 
@@ -818,10 +846,6 @@ store, once it can be silenced for a class that is opaque on purpose.
 
 ### 12. A table per prototype answers "is this key a getter?"
 
-**Under revision**, with `spike-core-3.md`, G2: the table as spiked keeps an
-entry for every key that was looked up and not found, for good
-(`adversarial-2-core.md`, objection 5).
-
 **Decision.** The `get` and `set` traps stop walking the prototype chain with
 `Object.getOwnPropertyDescriptor` on every access. An own key is decided with
 `hasOwnProperty` and one flag per node. An inherited key is decided from a
@@ -830,6 +854,11 @@ prototype object carries an accessor for it, or that none does. The table
 holds no function. A read whose cached result is still valid returns it;
 only a recompute asks that prototype for its getter, so the function that
 runs is the one the class has now.
+
+**The table cannot grow without bound.** A key the prototype chain has is
+always recorded. A key that is absent everywhere is recorded only while the
+table holds fewer than 256 keys; after that such a key is looked up at each
+read, as today.
 
 **Why.** A read is the hottest operation the library has, and this is the
 largest gain any spike measured: a field read goes from 31.9 to 11.5
@@ -850,7 +879,19 @@ added to a prototype, or an override nearer the instance, is not seen; a
 getter removed or replaced by a value is seen at its next recompute, where
 today it is seen at once.
 
-**Not taken.** The table that caches the descriptor: 46 bytes smaller and
+The bound answers objection 5 of the second review. As first spiked, the
+table kept an entry for every key that was ever looked up and not found, and
+the table of `Object.prototype` is shared by every plain object of every
+store. A dictionary read by keys it does not have yet grew it by 88 MB for a
+million keys, with no key left in the store. With the bound the same run
+grows the heap by 0.2 MB, as today.
+
+**Not taken.** Never recording an absent key: a read of a key that a class
+instance does not have is then slower than today on Node (107 to 116
+nanoseconds against 97 to 100). No table for `Object.prototype` and
+`Array.prototype`: the tables of class prototypes still grow, and
+`Object.prototype` does carry an accessor, `__proto__`, which needs an
+exception that is easy to miss. The table that caches the descriptor: 46 bytes smaller and
 wrong as described. A table that names the prototype and reads the getter
 at every read: 23 bytes smaller than the form taken, and a cached getter
 read is then 19% slower on Node than today.
@@ -860,9 +901,14 @@ removed in `core.ts`, 1 line in `ownership.ts`, 165 bytes, no test fails,
 typecheck and lint pass. Timed in three rounds of five processes per engine,
 back to back with the unmodified source and the other two forms. The
 orchestrating agent's own run of the descriptor form agrees: a field read
-19% faster on Node and 66% on Bun. Not built: this form on top of the getter
-combination of decision 10, where the getter is read after that
-combination's own validation.
+19% faster on Node and 66% on Bun. `spike-core-3.md`, G2, form (c), on top
+of it: 5 lines added and 2 removed, 15 bytes, no test fails, and every
+timing of the lazy form kept, a read of an absent key included. Not
+measured: a read of an absent key once the table holds 256; from the form
+that never records one it is about today's cost on Node for a plain object
+and up to 10% above today's for a class instance. Not built: this form on
+top of the getter combination of decision 10, where the getter is read
+after that combination's own validation.
 
 **Label.** Can follow 1.0. **Stage 4:** yes, before decisions 1 and 2,
 because the trap then already knows "own or inherited", which decision 1
@@ -1094,7 +1140,11 @@ reason in the message. No new operation name is added.
 - **A handle that does not write** saves nothing, on an edit or on `save()`.
   It writes again after `clear()`, after a `rehydrate()` that restores a
   record or finds none, and after a record that can be restored arrives from
-  another tab. The report says that saving has stopped.
+  another tab. The report says that saving has stopped. An edit does not
+  repeat it; a call of `save()` reports again, as `'write'`, each time it
+  writes nothing, and `lastError` of the status holds it.
+- **Expiry comes first.** A record whose time has elapsed is treated as
+  expired whatever its version, as the build that wrote it would treat it.
 - **When no `onError` is given, the report goes to `console.error`** with
   its code, in every build. `onError` replaces that default. An application
   that prefers to lose the old record calls `clear()` there.
@@ -1329,8 +1379,6 @@ that sentence goes. **Stage 4:** yes.
 
 ### 29. `withHistory` restores a function held in an own field, by reference
 
-**Under revision** with decision 1 (`adversarial-2-core.md`, objection 6).
-
 **Decision.** Undo removes a function that was added to a field and puts
 back one that was replaced, by reference (finding 60, M59). Methods on the
 prototype are untouched, as today.
@@ -1341,25 +1389,27 @@ neither deletes nor writes a function field for such a state, so a jump
 cannot remove the arrow methods or the callbacks of a store. Only a state the
 library recorded itself restores function fields, by reference.
 
-**Why.** It follows from decision 1. A field holds one function, a method or
-a callback, and the store, the raw object and every snapshot hold that same
-function. History records the field, so it has to restore it, and it has the
-value to put back. A method that is put back is the store's own wrapper,
-which decision 1 keeps as it is, so nothing is wrapped twice.
+**Why.** It follows from decision 1. A snapshot holds each function as it
+was written, so a recorded entry has the value to put back, and history
+records the field, so it has to restore it. After the restore a read through
+the store hands out the same method as before, because there is one method
+per object and function.
 
-**Evidence.** None beyond the stage 1 test that pins today's behaviour. It
-was reasoned, not spiked, so stage 4 writes the test first and stops if the
-change turns out larger than a few lines in `history.ts`. The tests cover a
-callback that is replaced, a method that is replaced, and a jump by JSON on
-a store whose methods are own fields, which decision 1 makes common.
+**Evidence.** The write-back was run on the form of decision 1 that is now
+taken (`spike-functions-2.md`, the rows of `restore-fn.ts`): a callback whose
+key was deleted is written back by assignment and by a definition, and the
+snapshot holds the callback itself both times. Under the second form of
+decision 1 it came back wrapped, which was objection 6 of
+`adversarial-2-core.md`. The change in `history.ts` itself was not built:
+undo skips functions on every build today. Stage 4 writes the tests first
+and stops if the change turns out larger than a few lines there. The tests
+cover a callback that is replaced, a callback whose key was deleted, a
+function field that held another function at the time of the undo, and a
+jump by JSON on a store whose methods are own fields.
 
 **Label.** Before 1.0. **Stage 4:** yes, after decision 1.
 
 ### 30. Undo and time travel change a nested object in place
-
-**Under revision**, with `spike-core-3.md`, G3: an undo into a container
-that was frozen through the store after the entry was recorded fails
-part-way (`adversarial-2-core.md`, objection 4).
 
 **Decision.** A restore goes down while both sides are containers of the
 same kind and writes only what differs. Where a restored value is the
@@ -1367,6 +1417,15 @@ snapshot of an object that is still live, the live object is put back. Undo,
 redo and a DevTools jump share that one function (M60). The function enters
 each live object at most once per restore, and treats the recorded root as
 the store, so a store that refers to itself is restored like any other.
+
+**A container that would refuse the restore is replaced, as today.** Before
+an object is restored in place, one check asks whether every write the
+restore would make there is allowed. A key to add to an object that is not
+extensible, a read-only key whose value differs, and a key that cannot be
+deleted each fail it. The object is then replaced at its parent by a copy.
+The root cannot be replaced: when the root fails the check, the restore
+throws a `TypeError` before it writes anything, and the history does not
+move.
 
 **Why.**
 
@@ -1383,6 +1442,13 @@ the store, so a store that refers to itself is restored like any other.
   object on a cycle overflowed the stack, left the store half restored and
   moved the history pointer all the same.
 
+The check answers objection 4 of the second review. Decision 5 keeps the
+children of a container that is frozen through the store, and decision 2
+keeps that freeze silent, so no history entry records it. Without the check
+an undo into such a container was refused part-way: the store was half
+restored, its one notification carried the half state, and the history had
+moved. Today the same undo works, because it replaces the branch.
+
 **An object that has moved or is shared.** The restore follows the object,
 not the place it was recorded in (objection E8). An object that was in the
 store when the entry was recorded and is still live is put back and restored
@@ -1394,6 +1460,11 @@ object two stores share is undone in both, and a move between two stores is
 undone by a history on a store that holds both. Today an undo puts a copy in
 place of a shared object, which ends the sharing without a word.
 
+**What it costs a user.** A container that was locked after the entry comes
+back as a new copy without the lock, child objects included, so a reference
+to the old container no longer points into the store. That is today's
+behaviour for every restored branch.
+
 **What stays.** A DevTools jump that the extension sends as JSON restores
 data, not class instances. The guide says so.
 
@@ -1404,14 +1475,23 @@ those of the two decisions. Six stores with a cycle were undone, redone and
 jumped back: all return, each object is the one that was made, and each undo
 notifies once. An undo of 1,000 plain rows is inside the spread with the mark
 (264 microseconds against 263); 1,000 rows that point back to their store
-take 1.9 milliseconds, which is decision 44's cost, not the restore's. Not
-timed on Node. The addendum of that report ran four cases of an object that
-moved to another store or is shared by two, on the same build and on the
-unmodified source.
+take 1.9 milliseconds, which is decision 44's cost, not the restore's. The
+addendum of that report ran four cases of an object that moved to another
+store or is shared by two, on the same build and on the unmodified source.
+
+`spike-core-3.md`, G3, on that same build: 44 lines in `cloneSnapshot.ts`
+and 5 in `history.ts`, 211 bytes on `./utils`, no test changes. Seven kinds
+of locked container that threw part-way now return with the recorded values
+and one notification. A frozen root throws with nothing written and the
+history unmoved, where today it throws with the history moved. The six rows
+of K1 and the four of the addendum give the same output. The 1,000-row undo
+is inside the spread, with medians 5 to 8% higher. Not timed on Node. Not
+run: a DevTools jump on a frozen root.
 
 **Label.** Before 1.0: the reference says "changed fields are replaced with
 mutable copies". **Stage 4:** yes, on top of decision 27. Its tests are the
-six rows of K1 for undo, redo and a jump, and the four rows of the addendum.
+six rows of K1 for undo, redo and a jump, the four rows of the addendum and
+the ten rows of G3.
 
 ### 31. `subscribeKey`
 
@@ -1947,7 +2027,8 @@ detector, and its file says so.
    changed. An own-property check (`Object.hasOwn`, `hasOwnProperty`) is not
    a read in that sense. A cycle of getters throws, and the other getters
    keep working. A getter that writes to the object it is computed on
-   throws a `TypeError`, on the store and on a snapshot.
+   throws a `TypeError`, on the store and on a snapshot, whichever way the
+   write gets there.
 5. **Snapshots.** The root of a snapshot, and every plain object, array and
    reactive collection in it, is frozen. A value the store does not proxy (a
    class instance without the marker, a native `Map`, `Set` or `Date`, a
@@ -1961,9 +2042,9 @@ detector, and its file says so.
    was defined with the object as its value. `createClassyStore()` on a
    proxy, or on the raw object behind one, returns that proxy. A value the
    store does not proxy reads back as itself. A function that decision 1
-   makes a method is replaced once, when the store first holds it; from then
-   on the store, the raw object and every snapshot hold that one function,
-   and it writes the store wherever it is called from.
+   makes a method reads back through the store as one function for that
+   object, the same on every read; the object and its snapshots hold the
+   function that was written.
 7. **An object that has left the store** stays a working store of its own:
    reads, writes, subscriptions and snapshots work, and the store it left is
    no longer told. Put back, it is the same proxy.
@@ -2001,9 +2082,10 @@ detector, and its file says so.
   it works on the store and throws on a snapshot.
 - What a prototype that is changed after its first read through a store
   does (findings 44 and 47). Decision 12 gives today's answers.
-- What a method of the prototype does when it is called on a snapshot, and
-  what a store built from a copy of another store's methods does (decision
-  1).
+- What a function does when it is read from a snapshot and called. Today's
+  answers: a method of the class or of an object literal that writes `this`
+  throws, and an arrow-function field of a `ClassyStore` subclass writes the
+  live store without a transaction (decision 1).
 - What reflection hands out: `Object.getOwnPropertyDescriptor(store, key)`
   and `structuredClone(store)` (findings 50 and 51).
 - Anything reached through the raw object behind a store (finding 11), and
@@ -2015,11 +2097,11 @@ detector, and its file says so.
 ### Where this differs from `pinned.md`
 
 - **Functions.** `pinned.md` recommends wrapping every function a store
-  holds, on every read. Decision 1 wraps a function once, and only one the
-  object is born with. The rows that pin a new wrapper for a callback
-  assigned to a declared field, for an element of a list, and for a class or
-  a constructor held as a value change. A method of an object literal stays
-  a transaction, as that report asks.
+  holds, on every read. Decision 1 does that for an arrow function, a
+  shorthand method, an `async` function and a bound function held in a
+  field, as that report asks, and hands out the rest as they are. The rows
+  that pin a new wrapper for a `function` declaration, for an element of a
+  list, and for a class or a constructor held as a value change.
 - **The shape of a snapshot.** The rows that pin a class getter as an own key
   of a snapshot, and `Class.prototype` as its prototype, change with decision
   43. The rows that pin the throw on a cycle change with decision 44.
@@ -2039,13 +2121,12 @@ Each is named in the entry it belongs to. In one list, with **(final)** on
 the ones that 1.0 settles for good, because taking them later would break a
 consumer:
 
-- Two other rules for a stored function (M1): "lenient", which wraps every
-  function on every read but list elements, classes and `constructor`, and
-  "strict", under which only a function on the prototype chain is a method.
-  Decision 1 takes the third, MobX's way: wrap once, where the function is
-  stored. Also not taken: wrapping a function written over a method only
-  when the write is a definition, and keeping the wrapper in a table beside
-  the object. **(final)**
+- Three other rules for a function held in a field (M1): "strict", under
+  which only a function on the prototype chain is a method; "lenient" as
+  first spiked, which wraps every function on every read and keeps a copied
+  wrapper and a stale getter; and "born with", which writes the store's
+  wrapper into the object. Decision 1 keeps the object as it is and hands
+  out the method on a read through the store. **(final)**
 - Refusing accessor and read-only definitions, `setPrototypeOf`, or
   `Object.freeze(store)` (M2, M8). **(final)**
 - A Proxy target of the library's own (M7): both reports that describe it
@@ -2164,8 +2245,9 @@ The task list that follows refines it.
    in the core and the getter values it sends (43). Restore in place (30),
    which takes over the line decision 44 added to `history.ts`. `history`
    (28, 29). `subscribeKey` (31).
-9. **The base class** (11), which needs 1, 2 and 30, and with it the test of
-   `persist()` called in a constructor (19).
+9. **The base class** (11), which needs 1, 2 and 30, and with it the tests
+   that need it: `persist()` called in a constructor (19), and a getter read
+   on a snapshot that calls an arrow-function method (10).
 10. **Adapters.** Vue (37, 38). Angular (37, 39). Solid (37). The `active`
     flags of Vue, Angular and Svelte (42).
 11. **The lost-write check** (36), measured against the cost limits before
@@ -2178,12 +2260,16 @@ Documentation changes go with the change they describe (34).
 
 ## Objections and answers
 
-Three agents that took no part in the spikes or in writing this document
-reviewed its first complete draft as adversaries:
+Agents that took no part in the spikes or in writing this document reviewed
+it as adversaries, in rounds. Every objection was checked against the text
+and its evidence. None was dismissed as noise.
+
+### The first round
+
+Three reviewers read the first complete draft:
 `review/stage-3/adversarial-whole.md` (W), `adversarial-core.md` (C) and
 `adversarial-edges.md` (E). They raised 58 objections; 28 were rated
-"wrong", 4 "mislabelled", 13 "unsupported" and 13 "unclear". Every one was
-checked against the text and its evidence. None was dismissed as noise.
+"wrong", 4 "mislabelled", 13 "unsupported" and 13 "unclear".
 
 "Changed" means the entry was rewritten to answer it. "Changed after a
 spike" means the objection could not be settled by reading, a spike was run
@@ -2191,69 +2277,114 @@ for it, and the entry was decided again from the result. "Accepted" means
 the objection is right, the cost is taken on purpose, and the entry now says
 so. The number in brackets is the decision that carries the change.
 
-| No. | Against        | Objection                                                                                  | Answer                                                                                                                                   |
-| --- | -------------- | ------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| W1  | 30, 44         | Undo on a store with a cycle never returns                                                 | Changed after a spike: the restore enters each object once (30); six stores with a cycle undo, redo and jump                             |
-| W2  | 27             | Named entries need the synchronous channel the entry ruled out                             | Changed: 27 says what the spike did; 17 no longer lists `devtools` as batched                                                            |
-| W3  | 11, 30         | The base class is ordered before the restore it needs                                      | Changed: the base class follows the utilities in the order                                                                               |
-| W4  | 4              | Nothing enforces the ceilings, and one record switches the guard off                       | Changed: stage 4 starts with the tooling; the guard works per commit                                                                     |
-| W5  | 4, 45          | The collections ceiling rests on 32 bytes where the report says 55                         | Changed: 55, and a ceiling of 950                                                                                                        |
-| W6  | 32             | The split does not stop a rewritten `dist`, and its first run would be the 1.0 publish     | Changed: pins and permissions now, the split after 1.0, and the "why" corrected                                                          |
-| W7  | 20             | Dead code removed last breaks the mutation rule in between                                 | Changed: dead code goes in the commit that makes it dead                                                                                 |
-| W8  | 1              | An object-literal method stops being a transaction, in silence                             | Changed after a spike: decision 1 is a new rule, under which that method is a transaction again                                          |
-| W9  | 36, 11         | Thirteen silent failures remain in 1.0, and the base class covers only classes that change | Changed: the lost-write check ships in 1.0; the rest are listed in the docs. Accepted for the rest                                       |
-| W10 | 27, 36         | `enabled: true` is locked in for all of 1.x                                                | Changed: on, except where `NODE_ENV` is `production`                                                                                     |
-| W11 | 42, 37         | Solid's flag cannot go, and the change sits in two steps                                   | Changed: Vue, Angular and Svelte drop theirs; one place in the order                                                                     |
-| W12 | 8, 9, 28, 37   | Four labels contradict the definition                                                      | Changed: 8, 9, 28 and the Vue half of 37 are "before 1.0"; 9 ships in 1.0                                                                |
-| W13 | Guarantees     | Rules 2, 3 and 5 are false as written; "error text" contradicts the stable codes           | Changed: the rules are rewritten, and rule 12 added                                                                                      |
-| W14 | 20, 24, 28, 34 | Finding 4 and M37 are decided nowhere; 24 and 28 have no decision text                     | Changed: finding 4 in 20, M37 in 34, both texts written                                                                                  |
-| W15 | Not taken      | The list misses choices that 1.0 makes final                                               | Changed: completed, with the final ones marked                                                                                           |
-| W16 | 4, 35          | The figures disagree, and the set was never built or timed                                 | Changed: one sum, 5,255 and 44% after the second set of spikes; the entry says the ceilings are estimates                                |
-| W17 | 4, 27, 9, 7    | Four items buy little for their bytes, and the hook costs every method call                | Changed: 4 weighs each. The hook is replaced by a slot that costs a method call nothing measurable (27)                                  |
-| W18 | 43             | What `devtools` sends for computed values was never built                                  | Changed after a spike: built and counted, 95 bytes on `./utils` (43, 27)                                                                 |
-| C1  | 30, 44         | The same as W1, reproduced on the library                                                  | Changed, as W1                                                                                                                           |
-| C2  | 5              | After a freeze through the store a child reads back raw and its writes are lost            | Changed after a spike: the trap puts the proxy in the raw slot before the property locks (5). Two cases stay raw and are stated          |
-| C3  | 11             | One function in two stores writes the first store                                          | Changed after a spike: wrappers are kept per object (1)                                                                                  |
-| C4  | 11             | A subclass that overrides an arrow method loses the transaction                            | Changed after a spike: a function written over a method is a method (1). Accepted: a callback over a function default loses its identity |
-| C5  | 11             | The same as W3                                                                             | Changed                                                                                                                                  |
-| C6  | 12             | A getter redefined on the class keeps its old body on the live store                       | Changed after a spike: the table holds no function (12)                                                                                  |
-| C7  | 6              | A list of saved snapshots gets wrong answers from the searches                             | Changed after a spike: a value is found by reference, an object in a store by any form (6)                                               |
-| C8  | 7              | `Object.hasOwn(this, …)` in a getter stays stale, against rule 4                           | Changed: 7 and rule 4 name it as not tracked. Accepted: a trap for it can follow                                                         |
-| C9  | 43             | The same as W18                                                                            | Changed, as W18                                                                                                                          |
-| C10 | 43             | A spread loses computed values with no error                                               | Accepted: every compared library does this; 34 adds the sentence and the changelog note                                                  |
-| C11 | 43             | `this` does not have the store's prototype                                                 | Changed: the sentence says keys, constructor and `instanceof`                                                                            |
-| C12 | 10             | The throw on a snapshot holds in strict code only                                          | Changed after a spike: the traps throw themselves (10)                                                                                   |
-| C13 | 10             | The own-node form of the live-store throw was never weighed                                | Changed after a spike: taken, for the getter's own object (10). Accepted: a write to a child still differs between the layers            |
-| C14 | 1              | The tie-breaker is false: the strict rule's cost is silent too                             | Changed, as W8                                                                                                                           |
-| C15 | 7, 10, 43      | The three were never run together, and 7's figures are for a design nobody will build      | Changed: 7 and 4 say so; stage 4 takes its figures from its own build                                                                    |
-| C16 | 29, 30, 11     | A jump by JSON could delete every arrow method                                             | Changed: 29 says a restore from outside never touches a function field                                                                   |
-| C17 | 11, 27         | An arrow method gets no name for `devtools`                                                | Changed after a spike: a method takes the name of its key (1, 27)                                                                        |
-| C18 | 45             | A subclass of a collection loses its members in the snapshot type                          | Changed: 45 says so, and that a hook for it can follow                                                                                   |
-| E1  | 21, rule 10    | Without `onError` a refused record is still silent, and the next save replaces it          | Changed: a default report to `console.error`; rule 10 says what happens to it                                                            |
-| E2  | 19, 11         | A restore inside a constructor is lost to a subclass's initialisers                        | Accepted: nothing can detect it; 19 names it, the guide forbids it, and a test pins it                                                   |
-| E3  | 27             | The same as W2                                                                             | Changed                                                                                                                                  |
-| E4  | 14, rule 1     | A console that throws sends its error to the writer and stops the round                    | Changed: the report is guarded                                                                                                           |
-| E5  | 16             | The type cannot see most callers, and a runtime refusal can only come before 1.0           | Changed: an `async` function is refused when it arrives, in every build                                                                  |
-| E6  | 21             | An `async` `migrate` is called and its rejection left unhandled                            | Changed: refused before the call, and a handler on a returned thenable                                                                   |
-| E7  | 26             | Removing `clearOnExpire` deletes data, and was never spiked                                | Changed: it stays                                                                                                                        |
-| E8  | 30             | An undo writes into an object that now lives in another store                              | Accepted: the restore follows the object, and 30 says so. Run: four cases, and today ends a sharing in silence                           |
-| E9  | 30             | The same as W1                                                                             | Changed, as W1                                                                                                                           |
-| E10 | 11, 30         | The same as W3                                                                             | Changed                                                                                                                                  |
-| E11 | Rule 3         | False for a write made inside a batched subscriber                                         | Changed: one sentence per path                                                                                                           |
-| E12 | Rule 5         | Contradicts decision 44                                                                    | Changed: "and is not on a cycle"                                                                                                         |
-| E13 | Rule 10        | A second `save()` in one task reaches storage a microtask later                            | Changed: "the first of a task"                                                                                                           |
-| E14 | Rule 6         | An object reached through a frozen container reads back raw                                | Changed: rule 6 names the two ways an object is handed out raw. The behaviour is changed after a spike (5)                               |
-| E15 | Rule 2         | Leaves out arrow methods and the `async` method rule                                       | Changed                                                                                                                                  |
-| E16 | 38             | A write to the Vue ref is ignored in silence                                               | Changed: it throws                                                                                                                       |
-| E17 | 37             | The Vue half changes a documented shape                                                    | Changed: "before 1.0" for Vue                                                                                                            |
-| E18 | 42             | The index is skipped for tracked React reads; Solid's flag stays                           | Changed: both stated                                                                                                                     |
-| E19 | 39             | The Angular message names the function in development mode only                            | Changed: the adapter throws its own coded error                                                                                          |
-| E20 | 21             | The version rule is stated three ways                                                      | Changed: one rule, with `null` refused                                                                                                   |
-| E21 | 19             | The spike's gap, a `hydrated` that never settles, was dropped                              | Changed: 19 carries it                                                                                                                   |
-| E22 | 13             | What an adapter of another store shows inside a round, and no criterion for the variant    | Changed: stated, and the variant is taken on a stated condition                                                                          |
+| No. | Against        | Objection                                                                                  | Answer                                                                                                                          |
+| --- | -------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
+| W1  | 30, 44         | Undo on a store with a cycle never returns                                                 | Changed after a spike: the restore enters each object once (30); six stores with a cycle undo, redo and jump                    |
+| W2  | 27             | Named entries need the synchronous channel the entry ruled out                             | Changed: 27 says what the spike did; 17 no longer lists `devtools` as batched                                                   |
+| W3  | 11, 30         | The base class is ordered before the restore it needs                                      | Changed: the base class follows the utilities in the order                                                                      |
+| W4  | 4              | Nothing enforces the ceilings, and one record switches the guard off                       | Changed: stage 4 starts with the tooling; the guard works per commit                                                            |
+| W5  | 4, 45          | The collections ceiling rests on 32 bytes where the report says 55                         | Changed: 55, and a ceiling of 950                                                                                               |
+| W6  | 32             | The split does not stop a rewritten `dist`, and its first run would be the 1.0 publish     | Changed: pins and permissions now, the split after 1.0, and the "why" corrected                                                 |
+| W7  | 20             | Dead code removed last breaks the mutation rule in between                                 | Changed: dead code goes in the commit that makes it dead                                                                        |
+| W8  | 1              | An object-literal method stops being a transaction, in silence                             | Changed after two spikes: a method in an object literal is a transaction again under decision 1 as it now stands                |
+| W9  | 36, 11         | Thirteen silent failures remain in 1.0, and the base class covers only classes that change | Changed: the lost-write check ships in 1.0; the rest are listed in the docs. Accepted for the rest                              |
+| W10 | 27, 36         | `enabled: true` is locked in for all of 1.x                                                | Changed: on, except where `NODE_ENV` is `production`                                                                            |
+| W11 | 42, 37         | Solid's flag cannot go, and the change sits in two steps                                   | Changed: Vue, Angular and Svelte drop theirs; one place in the order                                                            |
+| W12 | 8, 9, 28, 37   | Four labels contradict the definition                                                      | Changed: 8, 9, 28 and the Vue half of 37 are "before 1.0"; 9 ships in 1.0                                                       |
+| W13 | Guarantees     | Rules 2, 3 and 5 are false as written; "error text" contradicts the stable codes           | Changed: the rules are rewritten, and rule 12 added                                                                             |
+| W14 | 20, 24, 28, 34 | Finding 4 and M37 are decided nowhere; 24 and 28 have no decision text                     | Changed: finding 4 in 20, M37 in 34, both texts written                                                                         |
+| W15 | Not taken      | The list misses choices that 1.0 makes final                                               | Changed: completed, with the final ones marked                                                                                  |
+| W16 | 4, 35          | The figures disagree, and the set was never built or timed                                 | Changed: one sum, 5,255 and 44% after the second set of spikes; the entry says the ceilings are estimates                       |
+| W17 | 4, 27, 9, 7    | Four items buy little for their bytes, and the hook costs every method call                | Changed: 4 weighs each. The hook is replaced by a slot that costs a method call nothing measurable (27)                         |
+| W18 | 43             | What `devtools` sends for computed values was never built                                  | Changed after a spike: built and counted, 95 bytes on `./utils` (43, 27)                                                        |
+| C1  | 30, 44         | The same as W1, reproduced on the library                                                  | Changed, as W1                                                                                                                  |
+| C2  | 5              | After a freeze through the store a child reads back raw and its writes are lost            | Changed after a spike: the trap puts the proxy in the raw slot before the property locks (5). Two cases stay raw and are stated |
+| C3  | 11             | One function in two stores writes the first store                                          | Changed after a spike: one method per object and function (1)                                                                   |
+| C4  | 11             | A subclass that overrides an arrow method loses the transaction                            | Changed after two spikes: an arrow field is a method when it is read through the store, whichever way it was written (1)        |
+| C5  | 11             | The same as W3                                                                             | Changed                                                                                                                         |
+| C6  | 12             | A getter redefined on the class keeps its old body on the live store                       | Changed after a spike: the table holds no function (12)                                                                         |
+| C7  | 6              | A list of saved snapshots gets wrong answers from the searches                             | Changed after a spike: a value is found by reference, an object in a store by any form (6)                                      |
+| C8  | 7              | `Object.hasOwn(this, …)` in a getter stays stale, against rule 4                           | Changed: 7 and rule 4 name it as not tracked. Accepted: a trap for it can follow                                                |
+| C9  | 43             | The same as W18                                                                            | Changed, as W18                                                                                                                 |
+| C10 | 43             | A spread loses computed values with no error                                               | Accepted: every compared library does this; 34 adds the sentence and the changelog note                                         |
+| C11 | 43             | `this` does not have the store's prototype                                                 | Changed: the sentence says keys, constructor and `instanceof`                                                                   |
+| C12 | 10             | The throw on a snapshot holds in strict code only                                          | Changed after a spike: the traps throw themselves (10)                                                                          |
+| C13 | 10             | The own-node form of the live-store throw was never weighed                                | Changed after a spike: taken, for the getter's own object (10). Accepted: a write to a child still differs between the layers   |
+| C14 | 1              | The tie-breaker is false: the strict rule's cost is silent too                             | Changed, as W8                                                                                                                  |
+| C15 | 7, 10, 43      | The three were never run together, and 7's figures are for a design nobody will build      | Changed: 7 and 4 say so; stage 4 takes its figures from its own build                                                           |
+| C16 | 29, 30, 11     | A jump by JSON could delete every arrow method                                             | Changed: 29 says a restore from outside never touches a function field                                                          |
+| C17 | 11, 27         | An arrow method gets no name for `devtools`                                                | Changed after a spike: a method takes the name of the key it was read under (1, 27)                                             |
+| C18 | 45             | A subclass of a collection loses its members in the snapshot type                          | Changed: 45 says so, and that a hook for it can follow                                                                          |
+| E1  | 21, rule 10    | Without `onError` a refused record is still silent, and the next save replaces it          | Changed: a default report to `console.error`; rule 10 says what happens to it                                                   |
+| E2  | 19, 11         | A restore inside a constructor is lost to a subclass's initialisers                        | Accepted: nothing can detect it; 19 names it, the guide forbids it, and a test pins it                                          |
+| E3  | 27             | The same as W2                                                                             | Changed                                                                                                                         |
+| E4  | 14, rule 1     | A console that throws sends its error to the writer and stops the round                    | Changed: the report is guarded                                                                                                  |
+| E5  | 16             | The type cannot see most callers, and a runtime refusal can only come before 1.0           | Changed: an `async` function is refused when it arrives, in every build                                                         |
+| E6  | 21             | An `async` `migrate` is called and its rejection left unhandled                            | Changed: refused before the call, and a handler on a returned thenable                                                          |
+| E7  | 26             | Removing `clearOnExpire` deletes data, and was never spiked                                | Changed: it stays                                                                                                               |
+| E8  | 30             | An undo writes into an object that now lives in another store                              | Accepted: the restore follows the object, and 30 says so. Run: four cases, and today ends a sharing in silence                  |
+| E9  | 30             | The same as W1                                                                             | Changed, as W1                                                                                                                  |
+| E10 | 11, 30         | The same as W3                                                                             | Changed                                                                                                                         |
+| E11 | Rule 3         | False for a write made inside a batched subscriber                                         | Changed: one sentence per path                                                                                                  |
+| E12 | Rule 5         | Contradicts decision 44                                                                    | Changed: "and is not on a cycle"                                                                                                |
+| E13 | Rule 10        | A second `save()` in one task reaches storage a microtask later                            | Changed: "the first of a task"                                                                                                  |
+| E14 | Rule 6         | An object reached through a frozen container reads back raw                                | Changed: rule 6 names the two ways an object is handed out raw. The behaviour is changed after a spike (5)                      |
+| E15 | Rule 2         | Leaves out arrow methods and the `async` method rule                                       | Changed                                                                                                                         |
+| E16 | 38             | A write to the Vue ref is ignored in silence                                               | Changed: it throws                                                                                                              |
+| E17 | 37             | The Vue half changes a documented shape                                                    | Changed: "before 1.0" for Vue                                                                                                   |
+| E18 | 42             | The index is skipped for tracked React reads; Solid's flag stays                           | Changed: both stated                                                                                                            |
+| E19 | 39             | The Angular message names the function in development mode only                            | Changed: the adapter throws its own coded error                                                                                 |
+| E20 | 21             | The version rule is stated three ways                                                      | Changed: one rule, with `null` refused                                                                                          |
+| E21 | 19             | The spike's gap, a `hydrated` that never settles, was dropped                              | Changed: 19 carries it                                                                                                          |
+| E22 | 13             | What an adapter of another store shows inside a round, and no criterion for the variant    | Changed: stated, and the variant is taken on a stated condition                                                                 |
 
 Of the 58, 55 are answered by a change to the document, 17 of those after
 a spike, and 3 are accepted as costs. Four of the changes leave a part that
-is accepted as a cost. Each accepted cost is stated in its entry. A second
-round of review, by agents that have seen none of this, follows on the
-revised document.
+is accepted as a cost. Each accepted cost is stated in its entry.
+
+### The second round
+
+Two reviewers read the document as revised after the first round:
+`adversarial-2-whole.md` (2W) and `adversarial-2-core.md` (2C). They raised
+30 objections; 11 were rated "wrong", 1 "mislabelled", 5 "unsupported" and
+13 "unclear". Two more spikes were run for the ones that needed a build:
+`spike-functions-2.md` and `spike-core-3.md`.
+
+| No.  | Against         | Objection                                                                          | Answer                                                                                                                              |
+| ---- | --------------- | ---------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| 2W1  | 24, 21, rule 10 | An older build writes over a newer record when it loads                            | Changed: a newer record is never used or written over, and a record is written back only after an upgrade (21, 24). Not built       |
+| 2W2  | 21, 22          | The integer rule refuses a record the application saved itself                     | Changed: a version is a finite number on both sides; the option and an `async` `migrate` are checked when `persist()` is called     |
+| 2W3  | 36, 4           | The lost-write check breaks the cost limits as the benchmark runs today            | Changed: once per task for a store, and the limits come first: the check gives way if it cannot hold them (36). Not built           |
+| 2W4  | 4               | Nothing stops a ceiling from rising                                                | Changed: a ceiling moves only in a commit of its own; the guard covers itself and every commit, and has tests (4)                   |
+| 2W5  | 4               | The React ceiling is below its own estimate plus 2%                                | Changed: every ceiling follows one stated rule (4)                                                                                  |
+| 2W6  | 24, 23          | Both change a documented sentence and are labelled "can follow 1.0"                | Changed: both are "before 1.0"                                                                                                      |
+| 2W7  | 27              | The naming reads a name that is empty; the evidence names the wrong build          | Changed: the key is handed over with the call, and the hook form is named (27). Passing the key was not built                       |
+| 2W8  | 27              | The default of `devtools` where there is no `process`                              | Changed: off (27)                                                                                                                   |
+| 2W9  | 27, 43          | A getter of an object literal that throws still loses the entry                    | Accepted: the guard covers the root's class getters only, and both entries say so                                                   |
+| 2W10 | Pinned          | A guaranteed row that decision 43 breaks is missing                                | Changed: the line is added                                                                                                          |
+| 2W11 | 21              | An unusable `expiresAt`: restored, or refused                                      | Changed: missing or `null` is restored; any other value that is not a number leaves nothing to keep (21)                            |
+| 2W12 | 4, 35           | 100 against 271 bytes for the codes; rows that are not measured alone              | Changed: 35 gives both figures, and 4 says which rows are measured on top of another                                                |
+| 2W13 | Order           | Four steps need something a later step brings                                      | Changed: the guard rule and the codes page come first, the constructor test moves, and 2 and 5 are two commits                      |
+| 2W14 | Not taken       | Two wrong "(final)" marks, three final choices missing, M23 listed twice           | Changed                                                                                                                             |
+| 2C1  | 1, rule 6       | A store made from a copy of an object or a snapshot runs the old store's methods   | Changed after a spike: the object is never changed, so a copy holds plain functions (1). A copy made through the store is stated    |
+| 2C2  | 1               | A function on a snapshot or on the object ignores the `this` its caller passes     | Changed after a spike: both hold the function as written (1). Accepted for a read through the store, as today                       |
+| 2C3  | 10, 1, rule 4   | A snapshot getter that calls an own method writes the live store                   | Changed after two spikes: a method of an object literal throws there (1), and any path to the live object throws (10)               |
+| 2C4  | 30, 5, 2        | An undo into a container frozen through the store fails part-way                   | Changed after a spike: a container that would refuse a write is replaced, and a root that would throws before anything is written   |
+| 2C5  | 12              | The table grows with every absent key, for good                                    | Changed after a spike: an absent key is recorded only while the table is small (12)                                                 |
+| 2C6  | 29, 1           | A callback that is restored comes back wrapped                                     | Changed after a spike: a restore writes the function back as it was written (1, 29). The change to `history.ts` itself is not built |
+| 2C7  | 1               | The rule's text and the spike's code differ for a prototype method                 | Changed: case 1 is any function on the prototype chain, in the text and in the code                                                 |
+| 2C8  | 1, 2            | A read-only function definition throws after it is made                            | Changed after a spike: nothing is wrapped at a definition, and such a property hands out its function as it is                      |
+| 2C9  | 43, 27          | The same as 2W9                                                                    | Accepted, as 2W9                                                                                                                    |
+| 2C10 | 6, 42           | A list and a reactive collection answer differently for a snapshot kept as a value | Accepted: on purpose. Both entries say why, and a test pins both answers                                                            |
+| 2C11 | 1, 12           | The timing condition names a baseline that decision 12 has moved                   | Changed: the baseline is the commit before the change (1)                                                                           |
+| 2C12 | 27              | "The slot form" is cited with the hook form's figures                              | Changed, as 2W7                                                                                                                     |
+| 2C13 | 5, 4            | 56 bytes where the report gives 68                                                 | Changed: 68, and the sum with it                                                                                                    |
+| 2C14 | 10              | "A write to a child throws" is false outside strict code                           | Changed: the entry says what happens in each kind of code, and that it is unspecified                                               |
+| 2C15 | 43              | Its figures come from a layer that decision 10 changes first                       | Changed: 43 says its figures are a forecast                                                                                         |
+| 2C16 | Rule 6          | Rule 6 and the unspecified list disagree with decision 1 on prototype methods      | Changed: rule 6 speaks of a read through the store only, and a call on a snapshot is in the unspecified list                        |
+
+Of the 30, 27 are answered by a change, 7 of those after a spike, and 3 are
+accepted as costs. Three decisions changed in substance: the rule for
+functions (1), what `persist` does with a record it could not use (21), and
+what an undo does with a container it cannot write (30). A third and last
+round of review follows on what changed.
