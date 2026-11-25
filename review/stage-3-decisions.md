@@ -1401,7 +1401,7 @@ The task list that follows the adversarial review refines it.
 7. **Utilities.** `persist` (19, 21 to 26). `devtools` (27). Restore in place
    (30). `history` (28, 29). `subscribeKey` (31).
 8. **Adapters.** Vue (37, 38). Angular (37, 39). Solid (37). The `active`
-   flags, in the same change as the queue's adapters work (42).
+   flags go once the queue (13) is in.
 9. **Codes** for the three messages the library has today (35); every new
    message carries its code from the commit that adds it.
 10. **Cleanup.** Dead and redundant code (20), last among the code changes.
