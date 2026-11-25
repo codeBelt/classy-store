@@ -40,6 +40,7 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 # Worktrees of helper agents. Each holds its own biome.json, which Biome
 # refuses as a nested root configuration.
 .claude/worktrees/
+.claude/settings.local.json
 
 # Browser test artifacts
 playwright-report

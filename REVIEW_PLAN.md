@@ -33,13 +33,23 @@ pause on 2026-11-24: "The pause is over, carry on with stage 3."
   The agents were cut off by the weekly usage limit on 2026-11-19 with the
   reports nearly complete, and the orchestrating agent finished them.
 
-**In progress.** The second wave, from the briefs in
-`review/stage-3/briefs/`: `spike-snapshots.md` and `spike-classes.md` on
-Fable; `persist-devtools.md`, `pinned.md`, `devbuild.md` and
-`adapters-collections.md` on Opus, which the "Agent models" section allows
-when usage is short. `spike-ownership.md` is not given to an agent: the
-own-code review already ran its main spikes (`x1` to `x3`), and the
-orchestrating agent measures the one it recommends.
+**Stopped by a usage limit on 2026-11-24, to be resumed on Opus.** Four
+second-wave reports are partly written and committed as they stood:
+`spike-classes.md` (its status line says complete for the brief; check its
+"Not done" list), `spike-snapshots.md` (in progress), `devbuild.md` (in
+progress) and `adapters-collections.md` (barely started). Done in the second
+wave: `pinned.md` and `persist-devtools.md`. Restart each unfinished one from
+its brief in `review/stage-3/briefs/` with the report as its starting point.
+`spike-ownership.md` is not given to an agent: the own-code review ran its
+main spikes.
+
+**Also open:** the timing of the trap combination, of the ownership patch
+`x2`, of the dead-code patch `r5` and of the `activeTracker()` ternary alone.
+A first run was too noisy to use, because five agents shared the machine. Run
+them when it is quiet.
+
+**The decision document** `review/stage-3-decisions.md` is a draft with 28
+entries. Its open sections wait for the four reports above.
 
 **Then:** the decision document `review/stage-3-decisions.md`, the
 adversarial review of it, the spec, the decision records and the stage 4 task
@@ -215,8 +225,13 @@ fail in the main checkout, so `.gitignore` lists that folder.
   worktree, installs nothing here and leaves `bun.lock` alone. The one file a
   read-only agent may create here is its own report under `review/`; the
   agent running the stage commits it.
-- A helper agent runs on Fable, on Opus or on Sonnet at high effort, never on
-  anything lower. "Agent models" below says which.
+- Helper agents run on Opus; only the main thread runs on Fable. The owner
+  said on 2026-11-24: "how can I get the subagents to use the Opus model and
+  only have the main thread be Fable. if you can do this. lets do this". This
+  replaces the split in "Agent models" below, which is kept for the record.
+  Pass `model: "opus"` on every agent call. `.claude/settings.local.json`
+  sets `CLAUDE_CODE_SUBAGENT_MODEL=opus` for sessions started after
+  2026-11-24; it is not committed.
 - `CONSTRAINTS.md` is the quality bar from the end of stage 1. No agent lowers
   a number in it or weakens a check to make something pass. A number moves
   only through a stage 3 decision with a decision record under
