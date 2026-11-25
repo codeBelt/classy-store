@@ -86,13 +86,9 @@ effort (ground rule "Models"). That session has not been started yet.
 
 **Still to do, in order:**
 
-1. The stage 4 task list, `review/stage-4-tasks.md`, was still being written
-   by its agent when the work stopped. If the file is in the working tree
-   and ends with a table of decisions and tasks, format it with Biome,
-   commit it unchecked, and add its open points to
-   `review/stage-3/step7-open-points.md`. If it is cut off, restart the
-   agent from `review/stage-3/briefs/step7-tasks.md` with the file as its
-   starting point.
+1. Done: the stage 4 task list, `review/stage-4-tasks.md`, 59 tasks, is
+   committed as its writer left it and has not been checked. Its 19 open
+   points are in its own section "Open points".
 2. Start the new session, in this folder and on this branch, and give it
    this plan as its brief. From then on the old session writes nothing.
 3. In the new session: check the spec, the records and the task list
