@@ -8,7 +8,10 @@ the work raised 58, 30 and 17 objections. After each, the entries they
 touched were decided again, most of them from a spike that built what the
 objection asked for: seven more spikes in all. "Objections and answers" at
 the end has a table for each round, and says what was decided after the
-last round and has not been reviewed.
+last round and has not been reviewed. The points left open by the spec, the
+decision records and the task list were settled on 2026-11-25, when those
+three were checked against this document; "Settled when the step 7
+documents were checked" lists them.
 
 ## How to read this
 
@@ -291,7 +294,8 @@ each compiler's shape).
 
 **Label.** Before 1.0. **Stage 4:** yes. The task adds two rows to the core
 benchmark, a call of a method held in a field and a read and call of an arrow
-function held in a field, and records them before and after. The change lands
+function held in a field, and records them before and after, in the commit
+message. The change lands
 only if `store.method` is inside the spread of the commit before it on both
 engines, and the two new rows are no slower than the figures above allow: 10%
 for the call and 1.6 times for the read and call. The baseline is the commit
@@ -368,14 +372,21 @@ on the unmodified source and returns with the patch.
 **Label.** Can follow 1.0: no documented behaviour changes. **Stage 4:**
 yes, first, because decisions 2 and 12 touch the same traps.
 
+**The test of a runtime without `WeakRef`** (finding 68), whose pin flips
+with this change, asserts what the change makes true: with `WeakRef`
+removed, a row that is held after its list was replaced no longer keeps that
+list alive, and the row still reads, writes, notifies and snapshots as a
+store of its own. Only "it works" is guaranteed in such a runtime, so the
+memory half is a change detector and its file says so.
+
 **Left as it is.**
 
 - The order in which owners are notified (findings 24 and 69, M16) is
   **unspecified**.
 - A subscription on a container that has left the store lasts while the
   caller holds the store, the container or the unsubscribe function (M15).
-  The docs say so. Holding a subscribed node strongly would turn a forgotten
-  unsubscribe into a leak.
+  The tutorial gains that sentence in this change (decision 34). Holding a
+  subscribed node strongly would turn a forgotten unsubscribe into a leak.
 - A raw object changed while it is out of the store shows its old content in
   the next snapshot (finding 25, M17). It is a case of "writes outside the
   proxy are not seen", which the docs already state.
@@ -439,14 +450,46 @@ committed, and the question goes back to a decision.
   decision record. Today it reads `CONSTRAINTS.md` only, and one record
   anywhere on the branch would switch it off for every later change.
 - **The guard checks every commit, itself included.** It walks the commits
-  from the merge base with `main` to the head and judges each against the one
-  before it; today it sees one difference for the whole branch. Its own file
-  comes into its scope for a rule that is removed or loosened: today it
-  leaves itself out, so a later commit could weaken it unseen. The text of
-  its own patterns, in that file and in the fixtures of its tests, is not a
-  finding; the fixtures are put together when a test runs, so that no file in
-  the repository holds a line the guard would flag. CI runs it on the pull
-  request, and it is run before each push during stage 4.
+  from its start to the head and judges each against its parent; today it
+  sees one difference for the whole branch. Its start is the merge base with
+  `main`, or, while `main` does not hold `CONSTRAINTS.md`, the commit that
+  added that file, as today: the commits before it were made with no bar.
+  The branch is kept linear, and the guard fails on a merge commit in its
+  range rather than judge one. Last, it judges the working tree (staged,
+  unstaged and untracked files) against the head, so that it is useful
+  before a commit too. CI runs it on the pull request, and it is run before
+  each push during stage 4.
+- **Its own file is a bar file.** The guard cannot read a loosened rule out
+  of its own regular expressions, so every change to `scripts/floor-guard.mjs`
+  counts as one: the commit passes only if it adds a line to a record under
+  `docs/decisions/` that says what changed in the guard and why. Today it
+  leaves itself out, so a later commit could weaken it unseen. The same
+  holds for the two files that hold a part of the bar outside
+  `CONSTRAINTS.md` and that nothing else checks: the coverage settings in
+  `packages/classy-store/bunfig.toml` and the list of target files in
+  `packages/classy-store/tests/mutation/runMutation.ts`. A change that
+  tightens asks for the line too; it is one line. The text of the guard's
+  own patterns is not a finding: the guard does not scan its own file for
+  them, and the fixtures of its tests are put together when a test runs, so
+  that no file in the repository holds a line the guard would flag. The
+  first commit passes this rule like any other, with its lines in record
+  0004.
+- **A test made smaller is named in the commit message.** The floor forbids
+  a deleted test file and a test file left with fewer assertions. Judged per
+  commit, that rule would also block what the plan allows stage 4: a test of
+  public behaviour that a decision changes, and a test of internal state
+  rewritten when the internals change. Such a commit passes only if its
+  message has a line `Test-change: <path>: <reason>` for each such file, and
+  the reason names a decision (`decision N`) or the public-behaviour test
+  that covers the same fact (a path to a test file). In the working tree,
+  where no message exists yet, the guard reports it as a note.
+- **Where the numbers live.** `budgets.json` holds each entry as
+  `{"budget": …, "ceiling": …}`. An entry with no ceiling fails the size
+  script, as one with no budget does today. The size rows of
+  `CONSTRAINTS.md` stop repeating the numbers and name `budgets.json`, so
+  that a budget that moves changes one file and the two cannot drift apart.
+  A budget or a limit that rises needs its line in record 0004; a rule of
+  `CONSTRAINTS.md` that is loosened needs a line in any record.
 - **Each rule has a test.** The first commit adds tests for the size
   script's two failures and for each rule of the guard, run on throwaway
   repositories made by the test.
@@ -554,8 +597,9 @@ are recorded again. A limit that can be tightened is tightened to the highest
 new run times 1.2. A limit that would have to rise needs a line in the
 decision record, like a budget.
 
-**The docs.** The README and `CLAUDE.md` say "about 3.7 KB". Stage 5 changes
-that to the measured figure.
+**The docs.** `CLAUDE.md` says "about 3.7 KB" and "about 4.9 KB with the
+React hooks"; the README gives no figure. Stage 5 changes both to the
+measured figures.
 
 ## Bugs
 
@@ -903,7 +947,11 @@ base-class store made inside a getter works on both layers.
 **Label.** The default for nested instances: before 1.0, and no code. The
 base class: an addition. **Stage 4:** yes, after decisions 1 and 2, and
 after decision 30, which it needs. Stage 4 runs the 17 compilations again
-on the real code.
+on the real code. The forms the repository can compile with what it already
+installs, TypeScript with class fields as definitions and as assignments
+and Bun's transpiler, become committed tests. The other compilers run once
+in a scratch folder, because adding them would change `bun.lock`; the
+commit message carries their results.
 
 **After 1.0** (decision 36): a warning for an unmarked class placed in a
 store, once it can be silenced for a class that is opaque on purpose.
@@ -1011,8 +1059,11 @@ Four choices inside it:
   as fast as today. A direct write while a component is mounted is the most
   common write an application makes, so it is not the one to slow down.
   Stage 4 confirms on a quiet machine that `store.write.sync` stays inside
-  the spread of today's on both engines; if the variant does not achieve
-  that, the plain queue is taken and the slowdown stated in the reference.
+  the spread of the commit before this change on both engines, the same
+  baseline as decision 1, because decisions 12, 1 and 10 move the write path
+  first; if the variant does not achieve that, the plain queue is taken and
+  the slowdown stated in the reference. The figures go into the commit
+  message.
 
 **Why.** It removes findings 18 to 22, among them a stack overflow and an
 event loop that never drains. MobX, Preact Signals, Vue and Svelte reach the
@@ -1083,7 +1134,12 @@ fixes.
   promise, with a type whose error message says why.
 - At run time, `batch()` throws a `TypeError` with the code `batch-async`
   when it is given a native `async` function, before the function is called,
-  in every build.
+  in every build. It tells one by `Symbol.toStringTag` equal to
+  `'AsyncFunction'`, the test decision 22 uses, because a looser test
+  refuses the mock functions of the test runner; a test pins that a mock
+  function is accepted.
+- The type of the parameter is not exported in 1.0. Exporting it later is
+  an addition.
 
 **Why.** `batch(async () => …)` groups only the writes before the first
 `await` and hands back the promise as if it had worked. The type stops that
@@ -1132,6 +1188,13 @@ write), and would turn the option of `persist`, `withHistory` and
 A warning when a synchronous subscriber is called many times in one task
 follows in 1.x (decision 36).
 
+**Why.** A direct write is a documented way to change a store, and the
+ordinary one in an event handler: `store.count++`. A warning for it would
+fire for correct code and could not be silenced, which decision 36 rules out
+for every warning. What a direct write costs is one notification per write
+on the synchronous channel, and `batch()` is the answer to that cost, so it
+stays.
+
 ## `persist`, `devtools` and `history`
 
 ### 19. When hydration happens
@@ -1179,7 +1242,14 @@ gap is the spike's own note.
   accepts, the dead blocks of `persist.ts` (M54, finding 54), and the
   redundant checks stage 1 listed in `equality.ts`, `history.ts` and
   `collections.ts` (finding 59), each after a benchmark where it sits in a
-  loop.
+  loop. Only one sits in a loop: the object guard in `indexOfMember`, which
+  runs once per member. Before it goes, the core benchmark gains two rows,
+  `collection.has.primitive` and `collection.has.object`: `has()` of the
+  last member on a live `reactiveSet` of 1,000 numbers and of 1,000 objects.
+  The guard goes only if both rows stay inside the spread of the commit
+  before on both engines; otherwise it stays as a measured shortcut, and its
+  entry in the list of equivalent mutants gives the figures. The checks in
+  `equality.ts` and `history.ts` sit in no loop and go without a benchmark.
 - **Code that a later change makes dead is removed in that change's
   commit.** That holds for the per-field bookkeeping of a restore, which
   decisions 22 and 23 make unreachable, and for `resumeScope()` in
@@ -1188,14 +1258,23 @@ gap is the spike's own note.
   cannot wait for a cleanup step.
 - **The two traps of the React snapshot cache that proxy-compare cannot
   reach** (finding 4) are removed if deleting them fails no unit test and no
-  React suite; otherwise each gets a test that reaches it.
+  React suite; otherwise each gets a test that reaches it. Deleting them
+  fails only two assertions of `snapshotTargetCache.test.ts`, which reach
+  the private copy through the cache itself; stage 1 added them for
+  coverage. They are tests of internal state and do not count. They go with
+  the traps, and the commit message names the assertions in the same file
+  that cover the public fact: a write and a delete through the tracking
+  proxy are refused.
 - **The ternary in `activeTracker()` stays.** It looks dead and is on the
-  path of every read.
+  path of every read. It was timed alone after this entry was first written
+  (`own-code.md`, `c06`): without it a field read goes from 45.3 to 82.6
+  nanoseconds on Node and from 31.9 to 59.2 on Bun, and the read ratio on
+  Node is 3.55, above its limit of 2.5.
 
 **Evidence.** `own-code.md`, `r5`: 8 lines added, 17 removed, 32 bytes
 smaller, no test fails, typecheck passes. `persist-devtools.md`, "Seen on the
-way". The claim about `activeTracker()` rests on a patch that changed several
-things at once and is timed alone before stage 4 relies on it.
+way". The claim about `activeTracker()` first rested on a patch that changed
+several things at once; the timing alone, above, confirms it.
 
 **Label.** Can follow 1.0. **Stage 4:** yes.
 
@@ -1223,8 +1302,11 @@ the result is saved. `save()` rejects before the first read has settled.
 
 - **A handle that does not write** saves nothing: on an edit, when the page
   is hidden, or on `save()`. An edit does not repeat the report. `save()`
-  reports as `'write'` and rejects with the error. A `rehydrate()` that
-  finds such a record again reports and rejects. The handle writes again
+  reports as `'write'` and rejects with the error that `lastError` holds,
+  the report that stopped the handle from writing. A `rehydrate()` that
+  finds such a record again reports and rejects with that record's error. A
+  `rehydrate()` whose own read fails reports as `'read'` and rejects with
+  that error, as today. The handle writes again
   after `clear()`, after a `rehydrate()` that restores a record, finds none
   or finds one with nothing to keep, and when such a record, or the removal
   of the record, arrives from another tab. `lastError` of the status holds
@@ -1236,6 +1318,22 @@ the result is saved. `save()` rejects before the first read has settled.
   is logged with `console.error`; today it is swallowed.
 - **When no `onError` is given, the report goes to `console.error`** with
   its code, in every build. `onError` replaces that default.
+- **What a report carries.** `onError(error, operation, handle)` receives
+  the value that was thrown when the library did not throw it: the storage's
+  error, the error of a `serialize`, `deserialize`, `migrate` or `merge`, or
+  the `SyntaxError` of the default `JSON.parse`. When the library refuses a
+  record or a call itself, `error` is an `Error` whose message carries one of
+  these codes (decision 35): `persist-invalid` for a record with nothing to
+  keep that parses, `persist-newer` for a record of a newer version,
+  `persist-not-plain` for a `migrate` or `merge` that returned a thenable or
+  a value that is not a plain object, and `persist-unread` for a `save()`
+  before the first read has settled. The default report is one
+  `console.error` call: its first argument is `@codebelt/classy-store
+[persist-failed]: <operation> "<key>"` and its second is the error.
+- **Every failure of `save()` is reported as `'write'` and rejects with the
+  same error**, as today; that includes a `save()` before the first read has
+  settled. A call on a disposed handle rejects with `persist-disposed` and
+  is not reported, because after `dispose()` the handle reports nothing.
 - **The version rule is one rule, on both sides.** A version is a finite
   number, zero or above. A record with no `version` field counts as version
   0; any other value, `null` and `"2"` included, leaves nothing to keep. The
@@ -1461,6 +1559,17 @@ tidier option list is not worth a deletion that was never tested.
   snapshot that was sent, so a `Date` stays a `Date`; a jump the extension
   sends as JSON restores data.
 - **Messages.** `RESET`, `COMMIT`, `ROLLBACK` and `IMPORT_STATE` are handled.
+  A jump that the shared restore refuses, because the root fails its check
+  (decision 30), writes nothing: `devtools` catches the `restore-locked`
+  error and logs it with `console.error`, and the extension's panel shows
+  the entry it jumped to until the next entry arrives.
+- **Options.** `devtools(store, options)` takes `name` and `enabled` as
+  today, and five options of the extension that the build passed to its
+  `connect()`: `maxAge`, `trace`, `traceLimit`, `actionsDenylist` and
+  `actionsAllowlist`. `maxAge`, 50 by default as in the extension, also
+  bounds how many sent snapshots this session keeps for exact time travel.
+  The list is named, not an index signature, so a misspelt option is a type
+  error. Their bytes are inside the figures of decision 4.
 - **`enabled` defaults to on only where `NODE_ENV` can be read and is not
   `production`.** It reads the environment the way decision 36 does. Where
   there is no `process` to read, the default is off: a bundle in which
@@ -1769,8 +1878,9 @@ extension does with a cyclic state.
 - `Snapshot<[string, number]>` is `readonly [string, number]` (finding 14,
   M41).
 - `Snapshot<ReactiveMap<K, V>>` and `Snapshot<ReactiveSet<T>>` are two
-  exported types with the queries and the iterators and without `set`,
-  `add`, `delete` and `clear`. Calling a mutator on a snapshot, through a
+  exported types, `ReactiveMapSnapshot<K, V>` and `ReactiveSetSnapshot<T>`
+  from `./collections`, with the queries and the iterators and without
+  `set`, `add`, `delete` and `clear`. Calling a mutator on a snapshot, through a
   tracking proxy, or on a collection its owner froze throws a `TypeError`
   with the code of decision 35 (finding 16, M42).
 - The backing arrays `_entries` and `_items` stay public, read-only in the
@@ -1839,8 +1949,11 @@ framework's packed-app and browser suite, which the spike did not.
 
 **Decision.** On the server the Vue adapter subscribes to nothing and reads
 the store at every read. The returned ref is typed
-`Readonly<Ref<Snapshot<T>>>`, and a write to it throws a `TypeError` with a
-code.
+`Readonly<Ref<Snapshot<T>>>`, and a write to it throws a `TypeError` with the
+code `vue-readonly`. The adapter is on the server when it runs inside a
+component and `inject(ssrContextKey, null)` is set, which is so exactly
+inside `renderToString`; that is the test the spike ran. Today's check for an
+active effect scope stays, and comes first.
 
 **Why.** Vue does not dispose component scopes during a server render, so a
 store that outlives the request gains one listener per render (M64). The fix
@@ -1865,7 +1978,9 @@ one change with decision 37 for Vue.
 **Decision.** The adapter updates its signal inside `untracked()`.
 `injectClassyStore(store, {injector})` works outside an injection context.
 The adapter checks for an injection context itself and throws its own error,
-with the prefix and a code, in every Angular build.
+with the prefix and the code `angular-no-context`, in every Angular build;
+the same code covers a context that is already destroyed, which today's
+message reports. The type of the options object is not exported in 1.0.
 
 **Why.** Today a store write made while a `computed` runs makes Angular
 throw inside the listener; the core logs it and the signal stays stale until
@@ -1902,6 +2017,9 @@ example value `snap`, not `state`.
 **Decision.** The server snapshot is not captured automatically (M70). The
 equality option keeps the name `isEqual` (M71). The guide says that on the
 client `prepareStoreForHydration(store)` is called before `persist(store)`.
+`REACT_SSR.md` already says that it captures the snapshot "before
+persistence or other live updates begin"; the change of decision 19 names
+`persist()` there, and the persist tutorial gains the same sentence.
 
 **Why.**
 
@@ -1947,6 +2065,10 @@ client `prepareStoreForHydration(store)` is called before `persist(store)`.
   frozen native `Map`: one can still be written through `Map.prototype.set`.
 - **Three adapters drop their `active` flags** once decision 13 is in,
   because the core then skips a removed subscriber: Vue, Angular and Svelte.
+  They go in the adapter step of the order, not in the commit of decision
+  13: the adapter files are not mutation targets, so nothing in
+  `CONSTRAINTS.md` fails in between, and each adapter change runs its own
+  framework's suites once.
   Solid keeps its flag, which under decision 37 decides what the accessor
   returns after disposal, and Angular keeps its `destroyed` check.
 
@@ -1972,6 +2094,48 @@ stable from 1.0: renaming one is a breaking change, adding one is not. No
 error subclass and no `code` property are added. No check throws in one
 build and not in another.
 
+**One prefix.** Every message starts with `@codebelt/classy-store`, the
+adapters' too; the code says where it comes from. Today the Vue and Solid
+messages start with their entry point and the Angular one has no prefix.
+
+**The codes of 1.0.** Nineteen. A report made in every build is written with
+`console.error`; the one development-only report with `console.warn`
+(decision 36).
+
+| Code                 | Thrown or logged by                                                                         | When                                                                                                                             | Decision |
+| -------------------- | ------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | -------: |
+| `getter-cycle`       | A read of a getter, on the store or a snapshot                                              | Getters read each other in a cycle. Facts: the path                                                                              |   10, 35 |
+| `not-a-store`        | `snapshot`, `subscribe`, `subscribeKey`, `prepareStoreForHydration`, every hook and adapter | The argument is not a store                                                                                                      |       35 |
+| `getter-write`       | A getter, on the store or a snapshot                                                        | It writes to the object it is computed on. Facts: the field                                                                      |       10 |
+| `delivery-loop`      | Logged where a subscriber's error is logged                                                 | Delivery reached 100 rounds                                                                                                      |       13 |
+| `batch-async`        | `batch`                                                                                     | The callback is a native `async` function                                                                                        |       16 |
+| `frozen-collection`  | The mutators of `ReactiveMap` and `ReactiveSet`                                             | Called on a snapshot, through a tracking proxy, or on a collection its owner froze                                               |       45 |
+| `persist-option`     | `persist()`, before it reads or writes                                                      | A key in `properties` that is a prototype key, a getter or a method; a half-written transform; a `version`; an `async` `migrate` |       22 |
+| `persist-invalid`    | A `persist` report, `'parse'`                                                               | A stored record that parses and has nothing to keep                                                                              |   21, 23 |
+| `persist-newer`      | A `persist` report, `'parse'`                                                               | A stored record of a newer version                                                                                               |       21 |
+| `persist-not-plain`  | A `persist` report, `'parse'`                                                               | `migrate` or `merge` returned a thenable or a value that is not a plain object                                                   |       21 |
+| `persist-unread`     | A `persist` report, `'write'`, and the rejection of `save()`                                | `save()` before the first read has settled                                                                                       |       21 |
+| `persist-disposed`   | The rejection of a call on a disposed handle                                                | The handle was disposed                                                                                                          |       35 |
+| `persist-failed`     | The default `persist` report, without `onError`                                             | Any report; the error is its second argument                                                                                     |       21 |
+| `restore-locked`     | `undo()`, `redo()`, and a DevTools jump                                                     | The root of the store fails the check of the restore                                                                             |       30 |
+| `vue-readonly`       | A write to the ref the Vue adapter returns                                                  | Always                                                                                                                           |       38 |
+| `vue-no-scope`       | The Vue `useClassyStore`                                                                    | No active effect scope                                                                                                           |       35 |
+| `solid-no-owner`     | The Solid `useClassyStore`                                                                  | No live owner                                                                                                                    |       35 |
+| `angular-no-context` | `injectClassyStore`                                                                         | No injection context and no `injector`, or a destroyed context                                                                   |   35, 39 |
+| `lost-write`         | Development only, logged once                                                               | A field of the raw object changed without a write through the store. Facts: the field. Only if decision 36's check lands         |       36 |
+
+Not reports of the library, and logged as they are: a subscriber's error and
+the rejection of an `async` subscriber (decision 14), an error that
+`onError` throws (decision 21), and a status listener's error.
+
+**Today's messages get their codes in one commit**, step 2 of the order:
+`getter-cycle`, `not-a-store`, `vue-no-scope`, `solid-no-owner`,
+`angular-no-context` and `persist-disposed`. The snapshot's `circular
+reference detected in snapshot` gets no code: decision 44 removes that throw
+before 1.0, so no user would ever see a code for it, and the page never
+lists a code that 1.0 does not have. Every later commit that adds a message
+adds its code and its line on the page.
+
 **Why.**
 
 - Message text is where the bytes are. Of the 625 bytes the first-wave
@@ -1981,17 +2145,24 @@ build and not in another.
   belonged to refusals that are not taken. A split saves no more on
   messages.
 - A program that fails in production and not in development, or the other
-  way round, is worse than either. So the bound on delivery rounds and the
-  cycle check on snapshots stay in every build.
-- The three messages the library has today get codes at the same time,
-  because tests and users match on that text and it should change once.
+  way round, is worse than either. So the bound on delivery rounds, the
+  check for a cycle of getters on a snapshot (decision 10) and the handling
+  of a cyclic store in `snapshot()` (decision 44) stay in every build.
+- The messages the library has today get codes at the same time, because
+  tests and users match on that text and it should change once.
+- Codes are named subject first, then what went wrong, in the form of the
+  four that were named first. A `persist` record has three codes, not one,
+  because what happens next differs: a record with nothing to keep is
+  replaced at the next save, and the other two stop the handle from writing,
+  so an `onError` that decides whether to call `clear()` has to tell them
+  apart, and the text after a code is not stable.
 
 **Evidence.** `devbuild.md`, B1 and B2. 29 assertions in 15 test files match
 today's text and are rewritten to match the code; that count is from a
 search, not from a run.
 
 **Label.** Before 1.0. **Stage 4:** yes, with each change that adds a
-message, and once for the existing three.
+message, and once for today's messages.
 
 ### 36. One build, and one development-only check in 1.0
 
@@ -2025,12 +2196,30 @@ for the check than it costs after a write. The figure goes into the decision
 record as the stated cost of the development path. If the check cannot meet
 that, it does not ship in 1.0; it is a report and can arrive in any release.
 
+The row awaits a resolved promise between two snapshots, so each snapshot is
+taken after the microtasks queued before it have run; the await is part of
+its time. "Once per task" therefore means: the check marks the store as
+checked, and a microtask it queues clears the mark. The figure goes into
+record 0036.
+
 A development-only check is guarded by an inline read of
 `process.env.NODE_ENV` at its call site, after a test that is cheap and
 almost always false, and behind `typeof process`. That form becomes a floor
 rule of `CONSTRAINTS.md`, held by a test that bundles the built file for
 production and asserts that no development text and no `console.warn` is
 left in it.
+
+**How the test knows development text.** A development-only report is
+written with `console.warn`, and nothing else in the library calls
+`console.warn`. Its code is listed in
+`packages/classy-store/tests/size/developmentOnly.json`, which is empty until
+the check of this entry lands. `bun run size` already bundles every entry
+for production, with `NODE_ENV` set to `production`; it fails when such a
+bundle holds `console.warn` or a listed code. A unit test bundles a fixture
+written in the guard form, once for production and once for development,
+and asserts that its marker text and its `console.warn` are gone from the
+first and present in the second. So the form is held from the first commit,
+before any check exists, and the floor rule names both.
 
 **Why.**
 
@@ -2067,8 +2256,10 @@ no build split (decision 16).
 **Not taken.** Export conditions (`development` and `production`): plain
 Node, `bun test` and an unminified bundle would load the production build in
 silence, the published files double, and `check:package` does not check the
-second branch. Shipping the five warnings the development-build report
-spiked, for the reason above.
+second branch. Shipping the five warnings as the development-build report
+spiked them: one of them, the report of a lost write, ships in the better
+form of `spike-classes.md`, C4 (b), and the other four are not ready, for the
+reason above.
 
 **Evidence.** `devbuild.md` for the guard and its traps: a module-level
 constant leaked 218 bytes into production where an inline read cost 6, and an
@@ -2086,8 +2277,10 @@ check: can follow 1.0. **Stage 4:** yes.
 **Decision.**
 
 - **In stage 4:** every third-party action in every workflow is pinned to
-  the commit its tag points to today, with a Dependabot configuration that
-  keeps the pins current. The three workflows that declare no permissions
+  the commit its tag points to today. "Third-party" means every action this
+  repository does not define, GitHub's own `actions/*` included: a moved tag
+  is the same risk whoever owns it. A Dependabot configuration keeps the
+  pins current. The three workflows that declare no permissions
   get `contents: read`. Neither changes what a run does.
 - **After 1.0:** `release.yml` is split into a job that installs, builds,
   runs Changesets and packs the tarball, and a job that holds
@@ -2168,8 +2361,10 @@ detector, and its file says so.
    notify synchronous subscribers once, when the outermost call returns, and
    that covers every store written inside it. An `async` method is a
    transaction up to its first `await`; each write after it is a write of
-   its own. A write that changes nothing notifies no one. Decision 1 says
-   which functions are methods.
+   its own. The body of a generator method runs at each `next()`, after the
+   call has returned, so each write in it is a write of its own. A write
+   that changes nothing notifies no one. Decision 1 says which functions are
+   methods.
 3. **Delivery.** A write made while synchronous subscribers are being called
    is delivered to them after the round that is running, and before the
    outermost write returns, for up to 100 rounds. A write made inside a
@@ -2194,10 +2389,10 @@ detector, and its file says so.
    frozen before it reached the store, and through a read-only property that
    was defined with the object as its value. `createClassyStore()` on a
    proxy, or on the raw object behind one, returns that proxy. A value the
-   store does not proxy reads back as itself. A function that decision 1
-   makes a method reads back through the store as one function for that
-   object, the same on every read; the object and its snapshots hold the
-   function that was written.
+   store does not proxy reads back as itself, except a function that
+   decision 1 makes a method: it reads back through the store as one
+   function for that object, the same on every read, and the object and its
+   snapshots hold the function that was written.
 7. **An object that has left the store** stays a working store of its own:
    reads, writes, subscriptions and snapshots work, and the store it left is
    no longer told. Put back, it is the same proxy.
@@ -2220,8 +2415,8 @@ detector, and its file says so.
     that returns a wrong result without throwing is saved at the next edit.
     An edit made before or during the first read is kept in the store, and
     saved unless the record is one the handle does not write over. The
-    first `save()` or `clear()` of a task reaches a synchronous storage
-    before it returns. After `dispose()` nothing is read, written or
+    first `clear()` of a task, and the first `save()` of a task on a handle
+    that writes, reaches a synchronous storage before it returns. After `dispose()` nothing is read, written or
     scheduled.
 11. **Exports.** Every export the reference lists exists with its documented
     signature. The list may grow in a minor release.
@@ -2231,9 +2426,10 @@ detector, and its file says so.
 
 - The order in which different nodes, owners and stores are notified
   (findings 24 and 69).
-- How calls nest when a subscriber writes, which microtask a batched round
-  runs in, and what an adapter of another store shows inside one delivery
-  round.
+- How calls nest when a subscriber writes, where the microtask of a
+  batched round falls among the application's own microtasks (rule 3 says
+  which round a write inside a batched subscriber joins), and what an
+  adapter of another store shows inside one delivery round.
 - Where a subscriber's error is reported, and the text of an error message
   after its code.
 - Whether a getter re-runs more often than rule 4 requires, and whether a
@@ -2255,7 +2451,9 @@ detector, and its file says so.
   a write to the backing array of a reactive collection. One case of it is
   named in decision 1: a property made read-only on the raw object after
   the store has handed out its method throws on the next read.
-- A store made from a function or from a typed array (findings 62 and 63).
+- A store made from a function or from a typed array (findings 62 and 63),
+  beyond decision 1's rule that a function which is a store is handed out as
+  it is.
 - Behaviour in a runtime without `WeakRef` or `FinalizationRegistry`, beyond
   "it works" (finding 68).
 
@@ -2386,9 +2584,11 @@ Finding 59 is in decision 20.
 
 ## The order for stage 4
 
-One change per commit, test first, each measured against the stage 1
-baselines. Stage 4 writes each change again from its decision; it applies no
-spike patch. The order follows what each change touches and what it needs.
+One change per commit, test first. Each is measured against the commit
+before it, and a difference inside the spread that stage 1 recorded is
+noise; decision 1 says why the stage 1 figures themselves are no baseline
+once decision 12 has moved them. Stage 4 writes each change again from its
+decision; it applies no spike patch. The order follows what each change touches and what it needs.
 The task list that follows refines it.
 
 1. **Tooling.** The ceilings in `budgets.json`, the size script and the
@@ -2432,7 +2632,66 @@ The task list that follows refines it.
     and permissions of the workflows (32).
 
 A change that makes other code dead removes it in the same commit (20).
-Documentation changes go with the change they describe (34).
+Documentation changes go with the change they describe (34), and a change
+corrects every page it makes false in that commit, even where a later step
+puts something back: the snapshot commit of decision 43 says on the
+DevTools page that the panel shows no computed values, and the `devtools`
+commit that sends the root's getter values changes that sentence again.
+
+Budgets are set to their final size plus 2% (decision 4) after the
+independent review's fixes are committed and before the full validation
+matrix runs, so that a fix that moves a size is counted.
+
+## Settled when the step 7 documents were checked
+
+The spec, the decision records and the task list were written from this
+document and then checked against it by four agents
+(`review/stage-3/check-spec-api.md`, `check-spec-rules.md`,
+`check-records.md` and `check-tasks.md`). Their writers and checkers listed
+what this document left open. Each point is settled here, and the entry it
+belongs to now says it. Where a point changed an entry, the entry carries
+the full text; this list is the index.
+
+| Point                                                                       | Settled                                                                                                                                                                                                                                                                                                              |        Entry |
+| --------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -----------: |
+| The names of the error codes, and which of today's messages get one         | Nineteen codes, listed in decision 35. All of today's messages get theirs in one commit, except the snapshot's circular reference, which decision 44 removes before 1.0 and which therefore gets none. One prefix for every message, the adapters' too                                                               |           35 |
+| What a `persist` report carries                                             | A value the library did not throw is passed as it is. A refusal of the library's own is an `Error` with one of four codes. The default report is one `console.error` line with the code `persist-failed` and the error. Every failure of `save()` is reported and rejects, a `save()` before the first read included |           21 |
+| What `save()` and `rehydrate()` reject with on a handle that does not write | The error `lastError` holds. A `rehydrate()` whose read fails reports as `'read'` and rejects                                                                                                                                                                                                                        |           21 |
+| How the floor guard walks the commits                                       | From the merge base with `main`, or from the commit that added `CONSTRAINTS.md` while `main` does not hold it; each commit against its parent; a merge commit in the range fails; then the working tree against the head                                                                                             |            4 |
+| How the guard judges its own file                                           | Its own file, the coverage settings and the list of mutation targets are bar files: every change to one needs a line in a decision record. Its own patterns are not scanned for                                                                                                                                      |            4 |
+| A test made smaller in a commit                                             | Allowed when the commit message has a `Test-change:` line for the file that names a decision or the public test that covers the fact                                                                                                                                                                                 |            4 |
+| Where the ceilings live, and an entry without one                           | Beside each budget in `budgets.json`; an entry without a ceiling fails. The size rows of `CONSTRAINTS.md` name the file and stop repeating its numbers                                                                                                                                                               |            4 |
+| What the production-bundle test looks for                                   | `console.warn`, which only a development-only report uses, and the codes listed in `tests/size/developmentOnly.json`, checked by `bun run size`; plus a unit test of the guard form on a fixture                                                                                                                     |           36 |
+| How the benchmark row takes one snapshot per task                           | It awaits a resolved promise between two snapshots, and the await is in its time                                                                                                                                                                                                                                     |           36 |
+| Which benchmark comes before a redundant check goes                         | Only the guard in `indexOfMember` sits in a loop; two rows, `collection.has.primitive` and `collection.has.object`, come first                                                                                                                                                                                       |           20 |
+| The direct tests of the two React cache traps                               | Tests of internal state; they go with the traps                                                                                                                                                                                                                                                                      |           20 |
+| The `activeTracker()` timing                                                | Already timed alone; the line stays                                                                                                                                                                                                                                                                                  |           20 |
+| Which baseline a change is measured against                                 | The commit before it, with the spread of stage 1 as the noise; decision 13's condition too                                                                                                                                                                                                                           | Order, 1, 13 |
+| Where timings recorded before and after are kept                            | In the commit message; the lost-write figure in record 0036                                                                                                                                                                                                                                                          |    1, 13, 36 |
+| The test of a runtime without `WeakRef` after the walk goes                 | It asserts that a held row no longer keeps its replaced list alive and still works; the memory half is a change detector                                                                                                                                                                                             |            3 |
+| The 17 compilations                                                         | Committed tests for TypeScript both ways and Bun; the other compilers in a scratch folder                                                                                                                                                                                                                            |           11 |
+| The options of `devtools`                                                   | `maxAge`, `trace`, `traceLimit`, `actionsDenylist` and `actionsAllowlist` are taken, as built                                                                                                                                                                                                                        |           27 |
+| A DevTools jump on a frozen root                                            | It writes nothing; `devtools` logs the `restore-locked` error                                                                                                                                                                                                                                                        |           27 |
+| How `batch()` tells an `async` function, and its exported types             | By `Symbol.toStringTag`, as decision 22; a mock function is accepted. The type of its parameter is not exported                                                                                                                                                                                                      |           16 |
+| The names of the collection snapshot types                                  | `ReactiveMapSnapshot<K, V>` and `ReactiveSetSnapshot<T>`, from `./collections`                                                                                                                                                                                                                                       |           45 |
+| How the Vue adapter knows it is on the server                               | Inside a component with `inject(ssrContextKey, null)` set; the scope check stays first                                                                                                                                                                                                                               |           38 |
+| The Angular options type and a destroyed context                            | The options type is not exported; a destroyed context has the same code                                                                                                                                                                                                                                              |           39 |
+| When the adapters' `active` flags go                                        | In the adapter step, as the order says                                                                                                                                                                                                                                                                               |           42 |
+| Rule 3 against "which microtask a batched round runs in"                    | Rule 3 wins; the unspecified item now names only where that microtask falls among the application's own                                                                                                                                                                                                              |        Lists |
+| A generator method                                                          | Rule 2 says that each write in its body is a write of its own                                                                                                                                                                                                                                                        |       Rule 2 |
+| Rule 6 and functions                                                        | Rule 6 states the method as the exception to "reads back as itself"                                                                                                                                                                                                                                                  |       Rule 6 |
+| Rule 10 and a handle that does not write                                    | The first `save()` of a task reaches a synchronous storage on a handle that writes; `clear()` always                                                                                                                                                                                                                 |      Rule 10 |
+| A store made from a function                                                | Unspecified, beyond decision 1's rule that a function which is a store is handed out as it is                                                                                                                                                                                                                        |        Lists |
+| Which actions are third-party                                               | Every action the repository does not define, GitHub's own included                                                                                                                                                                                                                                                   |           32 |
+| A page that is false between two steps                                      | Each change corrects every page it makes false, in its own commit                                                                                                                                                                                                                                                    |        Order |
+| When the budgets are set to their final size                                | After the independent review's fixes, before the full validation matrix                                                                                                                                                                                                                                              |        Order |
+| A reason for decision 18                                                    | Written                                                                                                                                                                                                                                                                                                              |           18 |
+| The labels of decisions without a **Label** paragraph                       | Their records take the label of the index table; decisions 11 and 39 keep their split labels                                                                                                                                                                                                                         |        Index |
+| "The five warnings" against "four of the five"                              | Four: the fifth ships as the lost-write report in a better form                                                                                                                                                                                                                                                      |           36 |
+| 57 or 49 bytes for the naming of `devtools`                                 | 57 is right: it is what `./utils` adds to the main entry, as every row of that table counts; the totals differ by 49 because the main entry is 8 bytes smaller with the hook                                                                                                                                         |            4 |
+| The README and "about 3.7 KB"                                               | Only `CLAUDE.md` gives the figure                                                                                                                                                                                                                                                                                    |            4 |
+| The sentence decision 3 said the docs already have                          | They do not; the tutorial gains it with decision 3                                                                                                                                                                                                                                                                   |            3 |
+| "0.11" in the records                                                       | Wrong: 0.11.0 has no `batch()` and no transactions. A record says "before 1.0" for the code on the 1.0 branch before its change                                                                                                                                                                                      |      Records |
 
 ## Objections and answers
 
@@ -2599,4 +2858,5 @@ after the third round and have not been read by a reviewer: the fourth form
 of the rule for functions (decision 1) and the `persist` rules as built
 (decisions 19 and 21 to 24). Both were built and run, each against the
 scripts of the reviews that came before. They are the first things the
-independent review of stage 4 reads.
+independent review of stage 4 reads, together with the points settled when
+the step 7 documents were checked.
