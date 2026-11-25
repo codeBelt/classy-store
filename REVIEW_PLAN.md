@@ -155,9 +155,15 @@ commit. Its working results are in `review/stage-4/`.
   new row `collection.has.primitive` is 5.6 times slower on Bun and 5% on
   Node. The list of equivalent mutants is 51 entries.
 
-**Next:** T-07, the two traps of the React snapshot cache (decision 20):
-they go with their two direct assertions, which need a `Test-change:` line
-naming the public test in the same file.
+- T-07 at `06ceaa8`: the two snapshot-cache traps that proxy-compare
+  cannot reach are gone, with the one test that reached them through the
+  cache. Its commit carries the first `Test-change:` line, and the guard
+  accepts it. The React compatibility suite (four versions) and the Compiler
+  suite pass.
+
+**Next:** checkpoint 2 (the full mutation run and both core benchmarks are
+running), then step 3, starting with T-08: the walk to a detached parent
+goes (decision 3).
 
 The throwaway worktrees of the step 7 fixers are in the scratchpad, on the
 branches `step7/fix-spec`, `step7/fix-records` and `step7/fix-tasks`, which
