@@ -18,7 +18,7 @@ the normal source suite also runs in Firefox and WebKit.
 
 ## Signals, inputs, and lists
 
-Call `injectStore(store)` in an Angular injection context, such as a component
+Call `injectClassyStore(store)` in an Angular injection context, such as a component
 field initializer, constructor, or provider factory. It returns a readonly
 `Signal<Snapshot<T>>`. Read `state()` in templates and Angular `computed()`
 functions; write through the original store or its methods.
@@ -26,7 +26,7 @@ functions; write through the original store or its methods.
 ```ts
 import {ChangeDetectionStrategy, Component, computed} from '@angular/core';
 import {createClassyStore} from '@codebelt/classy-store';
-import {injectStore} from '@codebelt/classy-store/angular';
+import {injectClassyStore} from '@codebelt/classy-store/angular';
 
 class FormStore {
   text = 'Hello';
@@ -67,7 +67,7 @@ const formStore = createClassyStore(new FormStore());
   `,
 })
 export class FormComponent {
-  readonly state = injectStore(formStore);
+  readonly state = injectClassyStore(formStore);
   readonly uppercase = computed(() => this.state().text.toUpperCase());
 
   setText(event: Event) {
@@ -104,7 +104,7 @@ When testing scheduled rendering, wait for `ApplicationRef.whenStable()` or
 `ComponentFixture.whenStable()` instead of masking scheduling with manual
 `detectChanges()` calls.
 
-## Cleanup and migration
+## Cleanup
 
 The subscription belongs to the injected `DestroyRef`. A component-scoped call
 unsubscribes when that component is destroyed; a service or provider factory
@@ -115,11 +115,6 @@ independently. Remounting reads the store's current state.
 Calls outside an injection context or after its destruction throw without
 registering a listener. Destroyed consumers ignore pending notifications,
 including destruction during an in-progress store notification.
-
-To migrate, update your Angular packages to the same stable Angular 22 release
-and use its compatible TypeScript toolchain. The `injectStore(store)` signature and `/angular` import
-path are unchanged. Signal reads now update immediately rather than waiting for
-the core subscription microtask. There is no adapter timing option.
 
 See the [Angular example](https://github.com/codeBelt/classy-store/tree/main/examples/angular)
 for a zoneless application with inputs, a class getter, Angular computed state,

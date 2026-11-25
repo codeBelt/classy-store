@@ -41,12 +41,12 @@ function DevtoolsCounter() {
 
   // #region connect
   useEffect(() => {
-    const dispose = devtools(devtoolsCounterStore, {
+    const connection = devtools(devtoolsCounterStore, {
       name: 'DemoCounter',
     });
-    setConnected(Boolean(window.__REDUX_DEVTOOLS_EXTENSION__));
+    setConnected('__REDUX_DEVTOOLS_EXTENSION__' in window);
     return () => {
-      dispose();
+      connection.dispose();
       setConnected(false);
     };
   }, []);

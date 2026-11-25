@@ -71,7 +71,7 @@ describe('prepareStoreForHydration lifecycle', () => {
   test('validates proxies, preserves identity, and does not subscribe', () => {
     expect(() =>
       prepareStoreForHydration(new HydrationQaStore('invalid')),
-    ).toThrow('object is not a store proxy');
+    ).toThrow('@codebelt/classy-store [not-a-store]');
     const store = createClassyStore(new HydrationQaStore('initial'));
     const internal = getInternal(store);
 

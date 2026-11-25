@@ -129,3 +129,15 @@ using auto-tracking need a runtime with `WeakRef` support. TypeScript compilatio
 does not supply this runtime feature, and a strong-reference shim would defeat
 the memory guarantee. The harness uses the installed Playwright Chromium, which
 supports it. This requirement is separate from the supported React version range.
+
+## Baseline
+
+[`baseline.json`](./baseline.json) holds the count of live stores, collections
+and tracking read maps at each checkpoint of every case. Five full-size runs
+gave identical counts. After `bun run test:react:memory`, run
+`bun run test:react:memory:compare`: it fails when any count is higher than
+the baseline.
+
+To record a new baseline, keep each run's folder with `MEMORY_OUTPUT` and pass
+the `report.json` files to
+`bun packages/classy-store/tests/memory/baseline.ts record`.

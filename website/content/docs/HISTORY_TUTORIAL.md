@@ -151,19 +151,20 @@ function withHistory<T extends object>(
 
 1. **Init:** captures an initial snapshot as `history[0]` and sets `pointer = 0`.
 2. **Record:** on each `subscribe()` callback (when not paused), captures a new snapshot, truncates any redo entries after the current pointer, pushes the snapshot, and enforces the limit by shifting from the front.
-3. **Undo:** decrements the pointer, suppresses recording during restoration, and applies `history[pointer]` back to the store proxy (skipping getters and methods).
+3. **Undo:** if the store holds an edit that no notification has recorded yet, records it first. Then decrements the pointer, suppresses recording during restoration, and applies `history[pointer]` back to the store proxy (skipping getters and methods).
 4. **Redo:** increments the pointer and restores `history[pointer]` with the same recording suppression.
-5. **State restoration:** iterates the snapshot's own enumerable string keys. It skips keys that resolve to a getter or function on the live store, then assigns mutable copies of the remaining values through the proxy. Subscribers observe the resulting mutations.
+5. **State restoration:** makes the store's data fields match the entry. Keys that resolve to a getter or function on the live store are skipped. A top-level field the entry does not have is deleted. A field whose current snapshot is the entry's own snapshot is left untouched, which keeps its identity and leaves selectors that read it quiet. Every other field is assigned a mutable copy through the proxy. Subscribers observe the resulting mutations.
 
 Undo and redo themselves do **not** create new history entries. Restoration does not change the explicit `isPaused` status set by `pause()` and `resume()`.
 
-Restoration assigns snapshot fields back as mutable copies; it does not delete
-top-level keys absent from the restored snapshot. Prefer a stable store shape,
-and keep dynamically keyed data inside a declared object field. Opaque snapshot
-leaves (for example native `Map`, `Set`, and `Date`) retain references, so use
-replacement updates or reactive collections when those values need undo support.
+Opaque snapshot leaves (for example native `Map`, `Set`, and `Date`) retain
+references, so use replacement updates or reactive collections when those values
+need undo support.
 
-Wait for the batched notification before programmatically undoing a new edit.
+Recording is batched, but you do not need to wait for it: calling `undo()` in the
+same tick as an edit records that edit first and then steps back over it, and
+`redo()` returns to it. While history is paused, edits are not recorded this way
+either.
 After undo/redo, allow the restoration microtask to finish before making another
 edit that must be recorded. Separate user events naturally provide that boundary.
 
@@ -343,14 +344,14 @@ import {devtools, withHistory} from '@codebelt/classy-store/utils';
 
 const store = createClassyStore(new MyStore());
 
-const disconnect = devtools(store, {name: 'MyStore'});
+const connection = devtools(store, {name: 'MyStore'});
 const history = withHistory(store);
 
 // DevTools receives batched updates, including undo/redo restores.
 // A DevTools jump mutates the same store and can create a history entry.
 
 // When the owner is torn down:
-disconnect();
+connection.dispose();
 history.dispose();
 ```
 

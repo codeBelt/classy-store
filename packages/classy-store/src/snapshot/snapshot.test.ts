@@ -481,6 +481,38 @@ describe('snapshot()', () => {
       const keys = Object.keys(snap);
       expect(keys).not.toContain('increment');
     });
+
+    it('exposes class getters as enumerable own properties', () => {
+      class Cart {
+        prices = [2, 3];
+        get total() {
+          return this.prices.reduce((sum, price) => sum + price, 0);
+        }
+      }
+      const snap = snapshot(createClassyStore(new Cart()));
+
+      expect(Object.keys(snap).sort()).toEqual(['prices', 'total']);
+      expect({...snap}).toEqual({prices: [2, 3], total: 5});
+      expect(JSON.parse(JSON.stringify(snap))).toEqual({
+        prices: [2, 3],
+        total: 5,
+      });
+    });
+
+    it('keeps an own getter as enumerable as it was declared', () => {
+      const source = {count: 2};
+      Object.defineProperty(source, 'hidden', {
+        get() {
+          return 'secret';
+        },
+        enumerable: false,
+        configurable: true,
+      });
+      const snap = snapshot(createClassyStore(source));
+
+      expect(Object.keys(snap)).toEqual(['count']);
+      expect((snap as {hidden?: string}).hidden).toBe('secret');
+    });
   });
 
   // ── Untracked nested objects ──────────────────────────────────────────
@@ -617,6 +649,22 @@ describe('snapshot data properties and accessors', () => {
     expect(snapshot(store).user.name).toBe('after');
     expect(snapshot(store).name).toBe('after');
     expect(old.name).toBe('before');
+  });
+
+  it('reads a setter-only accessor as undefined on a snapshot', () => {
+    class Form {
+      stored = 'before';
+      set draft(value: string) {
+        this.stored = value;
+      }
+    }
+    const store = createClassyStore(new Form());
+    store.draft = 'after';
+    const snap = snapshot(store);
+
+    expect(snap.stored).toBe('after');
+    expect('draft' in snap).toBe(true);
+    expect((snap as {draft?: unknown}).draft).toBeUndefined();
   });
 
   it('memoizes object-literal getters on the immutable snapshot', () => {

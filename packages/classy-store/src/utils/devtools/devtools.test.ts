@@ -64,11 +64,11 @@ describe('devtools', () => {
     }
 
     const store = createClassyStore(new Store());
-    const dispose = devtools(store);
+    const handle = devtools(store);
 
-    // Should not throw and return a function
-    expect(typeof dispose).toBe('function');
-    dispose(); // noop
+    // Should not throw and return an inert handle
+    expect(typeof handle.dispose).toBe('function');
+    handle.dispose(); // noop
   });
 
   it('returns a noop when enabled is false', () => {
@@ -81,10 +81,10 @@ describe('devtools', () => {
     }
 
     const store = createClassyStore(new Store());
-    const dispose = devtools(store, {enabled: false});
+    const handle = devtools(store, {enabled: false});
 
     expect(ext.connect).not.toHaveBeenCalled();
-    dispose();
+    handle.dispose();
   });
 
   it('connects with a custom name and sends init state', () => {
@@ -283,6 +283,12 @@ describe('devtools', () => {
       type: 'ACTION',
       state: JSON.stringify({count: 999}),
     });
+    // Only a DISPATCH may time-travel, even when the rest looks like a jump.
+    conn._listener?.({
+      type: 'ACTION',
+      payload: {type: 'JUMP_TO_STATE'},
+      state: JSON.stringify({count: 999}),
+    });
     await tick();
 
     expect(store.count).toBe(0);
@@ -404,13 +410,14 @@ describe('devtools', () => {
     }
 
     const store = createClassyStore(new Store());
-    const dispose = devtools(store);
+    const handle = devtools(store);
 
     store.count = 1;
     await tick();
     expect(conn.send).toHaveBeenCalledTimes(1);
 
-    dispose();
+    handle.dispose();
+    handle.dispose(); // Disposing twice disconnects once.
 
     store.count = 2;
     await tick();

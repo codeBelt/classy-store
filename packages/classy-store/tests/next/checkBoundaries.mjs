@@ -102,7 +102,7 @@ function runProbe(mode, serverCondition) {
       await Promise.resolve();
       stop();
       history.dispose();
-      utils.devtools(first)();
+      utils.devtools(first).dispose();
       assert.equal(calls, 1);
       assert.equal(core.snapshot(first).count, 2);
       assert.equal(core.snapshot(second).count, 10);

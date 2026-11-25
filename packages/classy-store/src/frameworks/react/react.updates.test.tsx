@@ -191,6 +191,82 @@ describe('useClassyStore update consistency', () => {
     expect(childRenders).toHaveBeenCalledTimes(2);
   });
 
+  test('a field its memoized child never read does not re-render the parent', async () => {
+    const store = createClassyStore({node: {name: 'First', unrelated: 0}});
+    const parentRenders = mock(() => {});
+    const Child = memo(function Child({node}: {node: {readonly name: string}}) {
+      return <span>{node.name}</span>;
+    });
+
+    function Display({label}: {label: string}) {
+      const state = useClassyStore(store);
+      parentRenders();
+      return (
+        <div>
+          {label}:<Child node={state.node} />
+        </div>
+      );
+    }
+
+    // The second parent render reuses the child, so `name` is not read again.
+    const {root, container} = mount(<Display label="Original" />);
+    act(() => root.render(<Display label="Parent update" />));
+    parentRenders.mockClear();
+
+    await act(async () => {
+      store.node.unrelated++;
+    });
+    expect(parentRenders).not.toHaveBeenCalled();
+
+    await act(async () => {
+      store.node.name = 'Store update';
+    });
+    expect(container.textContent).toBe('Parent update:Store update');
+  });
+
+  test('re-renders when a frozen value it read through is replaced', () => {
+    type Config = {readonly theme: {readonly name: string}};
+    const first: Config = Object.freeze({theme: {name: 'light'}});
+    const store = createClassyStore({config: first, unrelated: 0});
+    const renders = mock(() => {});
+    const selected: Config[] = [];
+
+    function Display() {
+      const state = useClassyStore(store);
+      renders();
+      return <span>{state.config.theme.name}</span>;
+    }
+    function Selected() {
+      selected.push(useClassyStore(store, (snap) => snap.config));
+      return null;
+    }
+
+    const {container} = mount(
+      <>
+        <Display />
+        <Selected />
+      </>,
+    );
+    expect(container.textContent).toBe('light');
+    // A selector receives the frozen object itself, not a copy of it.
+    expect(selected).toEqual([first]);
+    expect(selected[0]).toBe(first);
+    renders.mockClear();
+
+    act(() => {
+      store.unrelated++;
+    });
+    expect(renders).not.toHaveBeenCalled();
+    expect(selected).toHaveLength(1);
+
+    const second: Config = Object.freeze({theme: {name: 'dark'}});
+    act(() => {
+      store.config = second;
+    });
+    expect(container.textContent).toBe('dark');
+    expect(selected.at(-1)).toBe(second);
+  });
+
   test('tracks nested object values held by class symbol fields', () => {
     const key = Symbol('state');
     class SymbolStore {

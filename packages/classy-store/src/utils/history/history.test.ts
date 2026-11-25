@@ -1,6 +1,6 @@
 import {describe, expect, it} from 'bun:test';
 import {reactiveMap, reactiveSet} from '../../collections/collections';
-import {createClassyStore} from '../../core/core';
+import {createClassyStore, getInternal} from '../../core/core';
 import {snapshot} from '../../snapshot/snapshot';
 import {withHistory} from './history';
 
@@ -584,5 +584,42 @@ describe('withHistory', () => {
     // After dispose, canUndo/canRedo should reflect empty state
     expect(h.canUndo).toBe(false);
     expect(h.canRedo).toBe(false);
+  });
+
+  it('starts with nothing to undo or redo', () => {
+    const h = withHistory(createClassyStore({count: 0}));
+    const initial = {
+      canUndo: false,
+      canRedo: false,
+      isPaused: false,
+      isDisposed: false,
+    };
+
+    expect(h.getSnapshot()).toEqual(initial);
+    expect(h.getServerSnapshot()).toEqual(initial);
+    expect(h.canUndo).toBe(false);
+    expect(h.canRedo).toBe(false);
+
+    h.dispose();
+  });
+
+  it('dispose releases its store subscription', async () => {
+    const store = createClassyStore({count: 0});
+    const listeners = () =>
+      getInternal(store).syncListeners.size +
+      getInternal(store).batchedListeners.size;
+    expect(listeners()).toBe(0);
+
+    const h = withHistory(store);
+    expect(listeners()).toBe(1);
+
+    h.dispose();
+    expect(listeners()).toBe(0);
+
+    // A second dispose is harmless, and later edits record nothing.
+    h.dispose();
+    store.count = 1;
+    await tick();
+    expect(h.canUndo).toBe(false);
   });
 });

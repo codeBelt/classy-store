@@ -1,0 +1,47 @@
+[
+  {
+    "file": "src/utils/equality/equality.ts",
+    "scope": "remainingIndices",
+    "mutator": "ConditionalExpression",
+    "original": "index !== undefined",
+    "replacement": "true",
+    "occurrence": 1,
+    "reason": "Same behaviour: A key that is not an array index gives undefined, and `undefined > after` is false, so the filter drops it with or without this check."
+  },
+  {
+    "file": "src/utils/equality/equality.ts",
+    "scope": "remainingIndices",
+    "mutator": "LogicalOperator",
+    "original": "index !== undefined && index > after",
+    "replacement": "index !== undefined || index > after",
+    "occurrence": 1,
+    "reason": "Performance only: Indices before the first hole are occupied in both arrays and were already found equal, so listing them adds the same keys to both lists and compares the same pairs a second time, with the same answer."
+  },
+  {
+    "file": "src/utils/equality/equality.ts",
+    "scope": "remainingIndices",
+    "mutator": "ConditionalExpression",
+    "original": "index > after",
+    "replacement": "true",
+    "occurrence": 1,
+    "reason": "Performance only: Indices before the first hole are occupied in both arrays and were already found equal, so listing them adds the same keys to both lists and compares the same pairs a second time, with the same answer."
+  },
+  {
+    "file": "src/utils/equality/equality.ts",
+    "scope": "remainingIndices",
+    "mutator": "EqualityOperator",
+    "original": "index > after",
+    "replacement": "index >= after",
+    "occurrence": 1,
+    "reason": "Same behaviour: The function is only called with the index of a hole that both arrays share, so neither array has an own key equal to `after` to let through."
+  },
+  {
+    "file": "src/utils/equality/equality.ts",
+    "scope": "shallowEqual",
+    "mutator": "EqualityOperator",
+    "original": "i < a.length",
+    "replacement": "i <= a.length",
+    "occurrence": 1,
+    "reason": "Same behaviour: The extra pass looks at the slot one past the end. Both arrays have that length, so neither owns the slot: the loop breaks at once with `i` still equal to the length and the result is the same."
+  }
+]

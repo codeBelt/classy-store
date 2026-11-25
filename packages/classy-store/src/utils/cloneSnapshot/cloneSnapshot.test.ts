@@ -97,6 +97,30 @@ describe('cloneSnapshotValue', () => {
     expect(old.record.value).toBe(2);
   });
 
+  it('leaves a cloned accessor removable and replaceable', () => {
+    const store = createClassyStore({
+      record: {
+        count: 2,
+        get value() {
+          return this.count;
+        },
+      },
+    });
+    const clone = () =>
+      cloneSnapshotValue(snapshot(store).record, new WeakMap()) as {
+        count: number;
+        value?: number;
+      };
+
+    const replaced = clone();
+    Object.defineProperty(replaced, 'value', {value: 9, writable: true});
+    expect(replaced.value).toBe(9);
+
+    const removed = clone();
+    expect(delete removed.value).toBe(true);
+    expect('value' in removed).toBe(false);
+  });
+
   it('restores live prototype getters from memoized snapshots', () => {
     class Profile {
       static [PROXYABLE] = true;

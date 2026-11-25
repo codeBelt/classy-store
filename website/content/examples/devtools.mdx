@@ -18,6 +18,6 @@ Connect any store to Redux DevTools for state inspection and time-travel debuggi
 
 </DemoContainer>
 
-**API** · `devtools(store, options?): () => void` from `@codebelt/classy-store/utils`.
+**API** · `devtools(store, options?): DevtoolsHandle` from `@codebelt/classy-store/utils`.
 
-Call the disposer in effect cleanup to disconnect the component. The `name` option identifies the store in Redux DevTools.
+Call the handle's `dispose()` in effect cleanup to disconnect the component. The `name` option identifies the store in Redux DevTools.

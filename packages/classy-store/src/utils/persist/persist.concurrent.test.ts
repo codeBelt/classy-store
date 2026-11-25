@@ -36,6 +36,13 @@ describe('persist async operation ordering', () => {
         state: {count: 1, tail: 2},
       });
       const events: string[] = [];
+      // Wait for a write itself, not for a fixed time: a debounced write
+      // armed after a timer of the test can fire after it on a busy machine.
+      let writeArrived = deferred<void>();
+      const nextWrite = async () => {
+        await writeArrived.promise;
+        writeArrived = deferred<void>();
+      };
       const store = createClassyStore({label: 'initial', count: 0, tail: 0});
       const handle = persist(store, {
         name: 'draft',
@@ -47,6 +54,7 @@ describe('persist async operation ordering', () => {
           setItem: (_key, value) => {
             saved = value;
             events.push('write');
+            writeArrived.resolve();
           },
           removeItem: () => {
             saved = null;
@@ -77,7 +85,9 @@ describe('persist async operation ordering', () => {
           await handle.hydrated;
         }
         await cleared;
-        await new Promise((resolve) => setTimeout(resolve, debounce + 5));
+        if (editAfterClear) await nextWrite();
+        // No write is expected otherwise; give a wrong one the time to arrive.
+        else await new Promise((resolve) => setTimeout(resolve, debounce + 5));
         expect(store.tail).toBe(2);
         expect(events).toEqual(editAfterClear ? ['clear', 'write'] : ['clear']);
         if (editAfterClear) {
@@ -85,7 +95,7 @@ describe('persist async operation ordering', () => {
         } else {
           expect(saved).toBeNull();
           store.label = 'next edit';
-          await new Promise((resolve) => setTimeout(resolve, debounce + 5));
+          await nextWrite();
           expect(JSON.parse(String(saved)).state.label).toBe('next edit');
         }
       } finally {
@@ -357,7 +367,12 @@ describe('persist async operation ordering', () => {
     const second = handle.save();
     handle.dispose();
     pending.resolve();
-    await Promise.all([first, expect(second).rejects.toThrow('disposed')]);
+    await Promise.all([
+      first,
+      expect(second).rejects.toThrow(
+        '@codebelt/classy-store [persist-disposed]',
+      ),
+    ]);
     expect(storage.setItem).toHaveBeenCalledTimes(1);
   });
 
@@ -505,5 +520,48 @@ describe('persist async operation ordering', () => {
       await Promise.all([saving, reading]);
     }
     expect(store.count).toBe(1);
+  });
+
+  test('a third write waits for the second after the first has finished', async () => {
+    const gates = [deferred<void>(), deferred<void>(), deferred<void>()];
+    const started: number[] = [];
+    const store = createClassyStore({count: 0});
+    const handle = persist(store, {
+      name: 'draft',
+      skipHydration: true,
+      storage: {
+        getItem: () => null,
+        setItem: () => {
+          const index = started.length;
+          started.push(index);
+          return gates[index].promise;
+        },
+        removeItem: () => {},
+      },
+    });
+    handles.push(handle);
+
+    const first = handle.save();
+    const second = handle.save();
+    await tick();
+    expect(started).toEqual([0]);
+
+    gates[0].resolve();
+    await first;
+    await tick();
+    expect(started).toEqual([0, 1]);
+
+    // The second write is in flight, so the third must queue behind it.
+    const third = handle.save();
+    await tick();
+    expect(started).toEqual([0, 1]);
+
+    gates[1].resolve();
+    await second;
+    await tick();
+    expect(started).toEqual([0, 1, 2]);
+
+    gates[2].resolve();
+    await third;
   });
 });

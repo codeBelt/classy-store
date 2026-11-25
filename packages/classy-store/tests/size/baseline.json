@@ -1,0 +1,50 @@
+{
+  "bun": "1.4.4",
+  "entries": {
+    ".": {
+      "minified": 10709,
+      "gzip": 3661,
+      "added": 0
+    },
+    "./utils": {
+      "minified": 17828,
+      "gzip": 6347,
+      "added": 2686
+    },
+    "./collections": {
+      "minified": 13460,
+      "gzip": 4388,
+      "added": 727
+    },
+    "./react": {
+      "minified": 15247,
+      "gzip": 5323,
+      "added": 1662
+    },
+    "./react/server": {
+      "minified": 11063,
+      "gzip": 3814,
+      "added": 153
+    },
+    "./vue": {
+      "minified": 11322,
+      "gzip": 3941,
+      "added": 280
+    },
+    "./svelte": {
+      "minified": 11126,
+      "gzip": 3843,
+      "added": 182
+    },
+    "./angular": {
+      "minified": 11301,
+      "gzip": 3932,
+      "added": 271
+    },
+    "./solid": {
+      "minified": 11361,
+      "gzip": 3973,
+      "added": 312
+    }
+  }
+}

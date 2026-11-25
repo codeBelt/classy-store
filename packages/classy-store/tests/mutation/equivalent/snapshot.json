@@ -1,0 +1,29 @@
+[
+  {
+    "file": "src/snapshot/snapshot.ts",
+    "scope": "computeWithTracking > handler > get",
+    "mutator": "ConditionalExpression",
+    "original": "!readProps.has(prop)",
+    "replacement": "true",
+    "occurrence": 1,
+    "reason": "Performance only: a property the getter reads twice is recorded twice with the same value, because the snapshot is frozen and its getters are memoized. The later check compares that value twice and reaches the same answer."
+  },
+  {
+    "file": "src/snapshot/snapshot.ts",
+    "scope": "computeWithTracking > handler > get",
+    "mutator": "StatementRemoval",
+    "original": "readProps.add(prop);",
+    "replacement": ";",
+    "occurrence": 1,
+    "reason": "Performance only: with nothing remembered as read, a property the getter reads twice is recorded twice with the same value, because the snapshot is frozen and its getters are memoized. The later check compares that value twice and reaches the same answer."
+  },
+  {
+    "file": "src/snapshot/snapshot.ts",
+    "scope": "markSnapshotForTracking > hasObjectSymbol",
+    "mutator": "OptionalChaining",
+    "original": "descriptor?.value",
+    "replacement": "descriptor.value",
+    "occurrence": 1,
+    "reason": "Same behaviour: the key comes from Object.getOwnPropertySymbols() of the same frozen snapshot a line above, so Object.getOwnPropertyDescriptor() always returns a descriptor there. The optional chain is there for the type checker, which types the descriptor as possibly undefined."
+  }
+]

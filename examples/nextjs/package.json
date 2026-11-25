@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "bun --bun next dev",
     "build": "bun --bun next build",
-    "start": "bun --bun next start"
+    "start": "bun --bun next start",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@codebelt/classy-store": "workspace:*",

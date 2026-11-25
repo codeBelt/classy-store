@@ -1,0 +1,38 @@
+{
+  ".": {
+    "budget": 3924,
+    "ceiling": 5575
+  },
+  "./utils": {
+    "budget": 2750,
+    "ceiling": 4350
+  },
+  "./collections": {
+    "budget": 750,
+    "ceiling": 950
+  },
+  "./react": {
+    "budget": 1700,
+    "ceiling": 1750
+  },
+  "./react/server": {
+    "budget": 175,
+    "ceiling": 175
+  },
+  "./vue": {
+    "budget": 300,
+    "ceiling": 400
+  },
+  "./svelte": {
+    "budget": 200,
+    "ceiling": 200
+  },
+  "./angular": {
+    "budget": 300,
+    "ceiling": 425
+  },
+  "./solid": {
+    "budget": 335,
+    "ceiling": 375
+  }
+}

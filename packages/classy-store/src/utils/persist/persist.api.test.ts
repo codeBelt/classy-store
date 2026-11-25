@@ -457,8 +457,14 @@ describe('persist public API', () => {
       isDisposed: true,
       isHydrated: handle.isHydrated,
     });
-    await expect(handle.save()).rejects.toThrow('disposed');
-    await expect(handle.clear()).rejects.toThrow('disposed');
-    await expect(handle.rehydrate()).rejects.toThrow('disposed');
+    await expect(handle.save()).rejects.toThrow(
+      '@codebelt/classy-store [persist-disposed]',
+    );
+    await expect(handle.clear()).rejects.toThrow(
+      '@codebelt/classy-store [persist-disposed]',
+    );
+    await expect(handle.rehydrate()).rejects.toThrow(
+      '@codebelt/classy-store [persist-disposed]',
+    );
   });
 });

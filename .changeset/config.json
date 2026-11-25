@@ -14,6 +14,7 @@
   "updateInternalDependencies": "patch",
   "ignore": [
     "classy-store-angular-example",
+    "classy-store-docs",
     "classy-store-nextjs-example",
     "classy-store-solid-example",
     "classy-store-svelte-example",

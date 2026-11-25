@@ -148,7 +148,11 @@ test('Solid 2 validates owners and cleans up nested and independent consumers', 
   const result = await page.evaluate(() => window.solidProbe.lifecycle());
   expect(result.errors).toHaveLength(2);
   expect(
-    result.errors.every((message) => message.includes('active Solid owner')),
+    result.errors.every((message) =>
+      message.includes(
+        '@codebelt/classy-store [solid-no-owner]: useClassyStore()',
+      ),
+    ),
   ).toBe(true);
   expect(result.listenersAfterRejection).toBe(0);
   expect(result.firstValues).toEqual([0, 1]);

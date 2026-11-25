@@ -7,12 +7,16 @@ import {useClassyStore} from './solid';
 // Bun resolves Solid's server runtime. Client scheduling is tested in Playwright.
 describe('solid useClassyStore', () => {
   it('validates the store before checking ownership', () => {
-    expect(() => useClassyStore({count: 0})).toThrow(/not a store proxy/);
+    expect(() => useClassyStore({count: 0})).toThrow(
+      /^@codebelt\/classy-store \[not-a-store\]$/,
+    );
   });
 
   it('rejects calls without an owner before subscribing', () => {
     const store = createClassyStore({count: 0});
-    expect(() => useClassyStore(store)).toThrow(/active Solid owner/);
+    expect(() => useClassyStore(store)).toThrow(
+      /^@codebelt\/classy-store \[solid-no-owner\]: useClassyStore\(\)$/,
+    );
     expect(getInternal(store).syncListeners.size).toBe(0);
     expect(getInternal(store).batchedListeners.size).toBe(0);
   });
@@ -25,7 +29,9 @@ describe('solid useClassyStore', () => {
       return current;
     });
     runWithOwner(owner, () => {
-      expect(() => useClassyStore(store)).toThrow(/active Solid owner/);
+      expect(() => useClassyStore(store)).toThrow(
+        /^@codebelt\/classy-store \[solid-no-owner\]: useClassyStore\(\)$/,
+      );
     });
     expect(getInternal(store).syncListeners.size).toBe(0);
     expect(getInternal(store).batchedListeners.size).toBe(0);

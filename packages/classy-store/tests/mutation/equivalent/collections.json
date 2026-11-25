@@ -1,0 +1,38 @@
+[
+  {
+    "file": "src/collections/collections.ts",
+    "scope": "indexOfMember > identity",
+    "mutator": "ConditionalExpression",
+    "original": "typeof candidate === 'object' && candidate !== null",
+    "replacement": "true",
+    "occurrence": 1,
+    "reason": "Performance only: `identityOf` returns anything that is not an object, and null, unchanged, so calling it for every member gives the same identity as before. The check saves that call for primitive members, in a loop over every member, and it is measured: without it, `has()` of the last of 1,000 numbers in a reactiveSet in a store took 3,312 ns against 593 on Bun and 2,325 against 2,213 on Node, outside both spreads (core benchmark, collection.has.primitive). The object row did not move."
+  },
+  {
+    "file": "src/collections/collections.ts",
+    "scope": "indexOfMember > identity",
+    "mutator": "ConditionalExpression",
+    "original": "typeof candidate === 'object'",
+    "replacement": "true",
+    "occurrence": 1,
+    "reason": "Performance only: `identityOf` returns anything that is not an object, and null, unchanged, so calling it for every member gives the same identity as before. The check saves that call for primitive members, in a loop over every member, and it is measured: without it, `has()` of the last of 1,000 numbers in a reactiveSet in a store took 3,312 ns against 593 on Bun and 2,325 against 2,213 on Node, outside both spreads (core benchmark, collection.has.primitive). The object row did not move."
+  },
+  {
+    "file": "src/collections/collections.ts",
+    "scope": "indexOfMember > identity",
+    "mutator": "LogicalOperator",
+    "original": "typeof candidate === 'object' && candidate !== null",
+    "replacement": "typeof candidate === 'object' || candidate !== null",
+    "occurrence": 1,
+    "reason": "Performance only: `identityOf` returns anything that is not an object, and null, unchanged, so calling it for every member gives the same identity as before. The check saves that call for primitive members, in a loop over every member, and it is measured: without it, `has()` of the last of 1,000 numbers in a reactiveSet in a store took 3,312 ns against 593 on Bun and 2,325 against 2,213 on Node, outside both spreads (core benchmark, collection.has.primitive). The object row did not move."
+  },
+  {
+    "file": "src/collections/collections.ts",
+    "scope": "indexOfMember > identity",
+    "mutator": "ConditionalExpression",
+    "original": "candidate !== null",
+    "replacement": "true",
+    "occurrence": 1,
+    "reason": "Performance only: `identityOf` returns anything that is not an object, and null, unchanged, so calling it for every member gives the same identity as before. The check saves that call for primitive members, in a loop over every member, and it is measured: without it, `has()` of the last of 1,000 numbers in a reactiveSet in a store took 3,312 ns against 593 on Bun and 2,325 against 2,213 on Node, outside both spreads (core benchmark, collection.has.primitive). The object row did not move."
+  }
+]

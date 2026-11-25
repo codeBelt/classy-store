@@ -12,14 +12,6 @@
 
 Visit the **[Documentation Website](https://codebelt.github.io/classy-store/)** for tutorials, API reference, and examples.
 
-## Upgrading to 0.11.0
-
-Applications upgrading from 0.10.x can keep their existing public imports. For behavior changes and framework support, see the [0.11.0 release notes](https://codebelt.github.io/classy-store/docs/UPGRADING_0_11).
-
-When upgrading from 0.7.x, replace persistence `unsubscribe()` with `dispose()`, handle rejected promises from explicit persistence operations, and import hydration preparation from `@codebelt/classy-store/react/server`. The `useHistoryStatus` and `usePersistStatus` hooks keep utility metadata reactive in React.
-
-See the [0.8.0 upgrade guide](https://codebelt.github.io/classy-store/docs/UPGRADING_0_8) for the removal of `getVersion` and migration examples. If upgrading from 0.6.x or earlier, also read the [0.7.0 upgrade guide](https://codebelt.github.io/classy-store/docs/UPGRADING_0_7).
-
 ## 🚀 Features
 
 - **Class-Based**: Define state and logic using standard ES6 classes.
@@ -75,8 +67,9 @@ the original instance, so their writes can bypass reactivity. Mutate through the
 store proxy and read render data through the hook.
 
 Nested plain objects, arrays, and the library's reactive collections support deep
-updates. Native `Date`, `Map`, `Set`, and other nested class instances remain opaque:
-replace their property to notify subscribers. Snapshots freeze copied state, but
+updates. Native `Date`, `Map`, `Set`, frozen objects, and other nested class instances
+remain opaque: replace their property to notify subscribers. A class of your own can opt into deep
+updates with `static [PROXYABLE] = true`. Snapshots freeze copied state, but
 retain opaque values by reference. Keep computed getters pure and based on store
 property reads; changes to time or external variables do not invalidate their cache.
 
@@ -94,6 +87,7 @@ property reads; changes to time or external variables do not invalidate their ca
 | Read state outside React or observe mutations            | `snapshot(store)`, `subscribe(store, listener)`, `subscribeKey(store, key, listener)` |
 | Persist state, record history, or inspect it in DevTools | `persist(store, options)`, `withHistory(store)`, `devtools(store)`                    |
 | Track changes inside Map-like or Set-like collections    | `reactiveMap()`, `reactiveSet()`                                                      |
+| Group direct writes into one notification                | `batch(run)`                                                                          |
 | Compare selector results one level deep                  | `shallowEqual(previous, next)`                                                        |
 
 `useClassyStore` is the starting point for React components. The two status hooks
@@ -117,7 +111,7 @@ return (
 );
 ```
 
-Ordinary `subscribe(store, listener)` callbacks still batch in a microtask. React batches renders within event handlers, while selectors can run after each mutation.
+Ordinary `subscribe(store, listener)` callbacks still batch in a microtask. A store method or an array operation such as `sort` is one transaction: React is notified once when it returns, however many fields it wrote. A write made outside a method notifies on its own, so put a loop of writes in a store method or wrap it in `batch()`.
 
 For server-rendered React apps, call `prepareStoreForHydration(store)` from `@codebelt/classy-store/react/server` on matching server/client stores before persistence starts. Delayed Suspense boundaries then hydrate from the original data and catch up to live state. See the [SSR guide](https://codebelt.github.io/classy-store/docs/REACT_SSR).
 
@@ -134,26 +128,26 @@ Most components only need `useClassyStore(store)` to render application data. Us
 ## Angular 22 integration
 
 The `/angular` adapter supports **all stable Angular 22 releases** (`^22.0.0`).
-The library and example pin the Angular framework to `22.2.6`. Call `injectStore(store)`
+The library and example pin the Angular framework to `22.2.6`. Call `injectClassyStore(store)`
 in a live Angular injection context to get a readonly snapshot signal. Store
 writes update the signal and dependent computed reads immediately; Angular
 schedules rendering, including in zoneless applications. The subscription is
 removed with its `DestroyRef` lifecycle. Ordinary core subscriptions remain
 batched. See the [Angular guide](https://codebelt.github.io/classy-store/docs/ANGULAR)
-for inputs, keyed lists, cleanup, and migration requirements.
+for inputs, keyed lists, and cleanup.
 
 ## Solid 2 integration
 
-The `/solid` adapter is **in preview** and targets **Solid 2.0.0-rc.18 only**; Solid 1 is no longer
-supported. Pin `solid-js` and the browser renderer `@solidjs/web` to that exact
-release candidate. `useClassyStore(store)` returns an immutable snapshot accessor
-and requires a live component or `createRoot()` owner for automatic cleanup.
+The `/solid` adapter supports **Solid 2** (`solid-js@^2.0.0`). Keep `solid-js` and
+the browser renderer `@solidjs/web` on the same version. `useClassyStore(store)`
+returns an immutable snapshot accessor and requires a live component or
+`createRoot()` owner for automatic cleanup.
 
 Store changes reach Solid synchronously, while Solid 2 batches its reactive
 updates. Use Solid's `flush()` when imperative code needs updated computed values
 or DOM immediately. Ordinary core subscriptions remain batched. See the
-[Solid 2 guide](https://codebelt.github.io/classy-store/docs/SOLID) for inputs,
-keyed lists, ownership, and migration of the example toolchain.
+[Solid 2 guide](https://codebelt.github.io/classy-store/docs/SOLID) for setup,
+inputs, keyed lists, and ownership.
 
 ## 📦 Installation
 
@@ -165,13 +159,13 @@ bun add @codebelt/classy-store
 
 Framework peers are optional; install only what your application uses.
 
-| Framework       | Supported peer range             |
-| --------------- | -------------------------------- |
-| React           | `^18.0.0 \|\| ^19.0.0`           |
-| Vue             | `^3.2.0`                         |
-| Svelte          | `^4.0.0 \|\| ^5.0.0`             |
-| Angular         | `^22.0.0`                        |
-| Solid (preview) | `2.0.0-rc.18` (exact prerelease) |
+| Framework | Supported peer range   |
+| --------- | ---------------------- |
+| React     | `^18.0.0 \|\| ^19.0.0` |
+| Vue       | `^3.2.0`               |
+| Svelte    | `^4.0.0 \|\| ^5.0.0`   |
+| Angular   | `^22.0.0`              |
+| Solid     | `^2.0.0`               |
 
 Use matching `react` and `react-dom` versions for React applications. These
 ranges exclude untested future majors. Development dependency pins are separate

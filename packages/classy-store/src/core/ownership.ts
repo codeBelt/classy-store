@@ -6,12 +6,12 @@ type ParentReference = {deref(): StoreInternal | undefined};
 export class StoreInternal {
   version = 0;
   isStoreRoot = false;
-  readonly batchedListeners = new Map<() => void, () => void>();
-  readonly syncListeners = new Map<() => void, () => void>();
-  // A subscribed child observes siblings within each nearest root. Keep its
-  // current paths alive and update the routes when a parent edge changes.
-  private subscriptionPath?: Set<StoreInternal>;
-  private pathObservers?: Set<StoreInternal>;
+  /** Set once the raw object has an own accessor, so an own key may be one. */
+  ownAccessors?: true;
+  // Each subscribe() call owns one entry, so the same callback can be
+  // registered more than once and released independently.
+  readonly batchedListeners = new Set<() => void>();
+  readonly syncListeners = new Set<() => void>();
   readonly computedCache = new Map<string | symbol, ComputedEntry>();
   readonly childInternals = new Map<string | symbol, StoreInternal>();
   readonly parents = new Map<ParentReference, number>();
@@ -22,24 +22,18 @@ export class StoreInternal {
   // An unobserved, detached container keeps its children but stops receiving
   // their mutations. Retaining one row must not keep every filtered array alive.
   private detachedVersions?: Map<StoreInternal, number>;
-  private detachedParent?: ParentReference;
 
   constructor(
     readonly target: object,
     readonly proxy: object,
   ) {}
 
-  get scopedSubscribers(): ReadonlySet<StoreInternal> | undefined {
-    if (this.isStoreRoot || !this.parents.size) return this.pathObservers;
-    return undefined;
-  }
-
   attach(key: string | symbol, child: StoreInternal): void {
     if (this.childInternals.get(key) === child) return;
     this.detach(key);
     this.childInternals.set(key, child);
     this.connect(child);
-    child.resume();
+    child.resumeIfDetached();
   }
 
   detach(key: string | symbol): void {
@@ -51,14 +45,12 @@ export class StoreInternal {
   }
 
   private connect(child: StoreInternal): void {
-    child.detachedParent = undefined;
     const count = child.parents.get(this.reference) ?? 0;
     if (!count) {
       child.trackSharedParents();
       child.parentCleanup?.register(this, this.reference, this.reference);
     }
     child.parents.set(this.reference, count + 1);
-    if (!count && !child.isStoreRoot) child.ownershipChanged();
   }
 
   // A single-owner node has at most one stale reference. Start collecting
@@ -84,15 +76,13 @@ export class StoreInternal {
   }
 
   private disconnect(child: StoreInternal): void {
-    const count = child.parents.get(this.reference);
-    if (count === undefined) return;
+    const count = child.parents.get(this.reference) ?? 0;
     if (count > 1) {
       child.parents.set(this.reference, count - 1);
       return;
     }
     child.parents.delete(this.reference);
     child.parentCleanup?.unregister(this.reference);
-    if (!child.isStoreRoot) child.ownershipChanged();
   }
 
   private canSuspend(): boolean {
@@ -101,8 +91,7 @@ export class StoreInternal {
       !this.parents.size &&
       !this.isStoreRoot &&
       !this.syncListeners.size &&
-      !this.batchedListeners.size &&
-      !this.pathObservers?.size
+      !this.batchedListeners.size
     );
   }
 
@@ -115,25 +104,29 @@ export class StoreInternal {
       for (const child of node.childInternals.values()) {
         versions.set(child, child.version);
         node.disconnect(child);
-        if (child.canSuspend()) {
-          child.detachedParent = node.reference;
-          pending.push(child);
-        }
+        if (child.canSuspend()) pending.push(child);
       }
     }
   }
 
+  /**
+   * A caller can still read, mutate, or subscribe to a detached subtree. Each
+   * node saved its children's versions when it was suspended, so it catches
+   * up on its own when it is touched. The traps call this on every access,
+   * so the check stays in a method small enough for an engine to inline.
+   */
+  resumeIfDetached(): void {
+    if (this.detachedVersions) this.resume();
+  }
+
   private resume(): void {
-    if (!this.detachedVersions) return;
     // Compare saved versions after resuming descendants. An explicit stack
     // keeps deep detached inputs safe and visits shared descendants once.
     const pending: {
       node: StoreInternal;
       versions?: Map<StoreInternal, number>;
     }[] = [{node: this}];
-    while (pending.length) {
-      const frame = pending.pop();
-      if (!frame) break;
+    for (let frame = pending.pop(); frame; frame = pending.pop()) {
       const {node, versions} = frame;
       if (versions) {
         for (const [child, previous] of versions) {
@@ -153,58 +146,10 @@ export class StoreInternal {
     }
   }
 
-  /** A caller can still read, mutate, or subscribe to a detached subtree. */
-  resumeScope(): void {
-    if (!this.detachedVersions) return;
-    let scope: StoreInternal = this;
-    let parent = scope.detachedParent?.deref();
-    while (parent?.detachedVersions) {
-      scope = parent;
-      parent = scope.detachedParent?.deref();
-    }
-    scope.resume();
-  }
-
-  markAsRoot(): void {
-    if (this.isStoreRoot) return;
-    this.isStoreRoot = true;
-    this.ownershipChanged();
-  }
-
-  private ownershipChanged(): void {
-    if (this.pathObservers?.size) {
-      for (const child of [...this.pathObservers])
-        child.refreshSubscriptionScope();
-    }
-  }
-
-  refreshSubscriptionScope(): void {
-    const previous = this.subscriptionPath;
-    const needsScope =
-      !this.isStoreRoot &&
-      (this.syncListeners.size || this.batchedListeners.size);
-    const next = needsScope ? this.ancestors(true) : undefined;
-    this.subscriptionPath = next;
-    if (next) {
-      for (const owner of next) {
-        owner.pathObservers ??= new Set();
-        owner.pathObservers.add(this);
-      }
-    }
-    if (previous) {
-      for (const owner of previous) {
-        if (!next?.has(owner)) {
-          owner.pathObservers?.delete(this);
-          owner.suspendIfDetached();
-        }
-      }
-    }
-  }
-
-  ancestors(stopAtStoreRoots = false): Set<StoreInternal> {
+  /** This node and every container that currently owns it, up to each root. */
+  ancestors(): Set<StoreInternal> {
     const visited = new Set<StoreInternal>([this]);
     for (const node of visited) {
-      if (stopAtStoreRoots && node.isStoreRoot) continue;
       for (const reference of node.parents.keys()) {
         const parent = reference.deref();
         if (parent) visited.add(parent);

@@ -1,5 +1,10 @@
 import {getCurrentScope, onScopeDispose, type Ref, shallowRef} from 'vue';
-import {getInternal, snapshot, subscribe} from '../../storeRuntime';
+import {
+  codedMessage,
+  getInternal,
+  snapshot,
+  subscribe,
+} from '../../storeRuntime';
 import type {Snapshot} from '../../types';
 
 /**
@@ -12,9 +17,7 @@ export function useClassyStore<T extends object>(
 ): Ref<Snapshot<T>> {
   getInternal(proxyStore);
   if (!getCurrentScope()?.active) {
-    throw new Error(
-      '@codebelt/classy-store/vue: useClassyStore() requires an active Vue effect scope; call it in setup() or effectScope().run()',
-    );
+    throw new Error(codedMessage('vue-no-scope', 'useClassyStore()'));
   }
 
   const state = shallowRef(snapshot(proxyStore)) as unknown as Ref<Snapshot<T>>;

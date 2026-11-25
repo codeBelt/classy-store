@@ -1,5 +1,5 @@
 import {markToTrack} from 'proxy-compare';
-import {getInternal} from '../core/core';
+import {getInternal, registerSnapshot} from '../core/core';
 import type {StoreInternal} from '../core/ownership';
 import type {Snapshot} from '../types';
 import {mapOwnArrayElements} from '../utils/internal/internal';
@@ -29,7 +29,7 @@ const originalAccessors = new WeakMap<
 >();
 
 export function originalSnapshotAccessor(getter: (() => unknown) | undefined) {
-  return getter && originalAccessors.get(getter);
+  return originalAccessors.get(getter as () => unknown);
 }
 
 // ── Cross-snapshot getter memoization ─────────────────────────────────────────
@@ -169,12 +169,7 @@ function markSnapshotForTracking(value: object): void {
   // invariants. Compare those nodes as a whole until that dependency is fixed.
   const hasObjectSymbol = Object.getOwnPropertySymbols(value).some((key) => {
     const descriptor = Object.getOwnPropertyDescriptor(value, key);
-    return (
-      descriptor &&
-      'value' in descriptor &&
-      typeof descriptor.value === 'object' &&
-      descriptor.value !== null
-    );
+    return typeof descriptor?.value === 'object' && descriptor.value !== null;
   });
   markToTrack(value, !hasObjectSymbol);
 }
@@ -213,7 +208,6 @@ function installMemoizedGetters(snap: object, target: object): void {
       Object.defineProperty(snap, key, {
         get: memoizedGetter,
         enumerable: own ? descriptor.enumerable : true,
-        configurable: true,
       });
     }
     proto = Object.getPrototypeOf(proto);
@@ -253,8 +247,11 @@ function createSnapshotRecursive<T extends object>(
   let snap: Record<string | symbol, unknown> | unknown[];
 
   if (Array.isArray(target)) {
-    snap = mapOwnArrayElements(target, (value, key) =>
-      snapshotValue(value, internal, key, inProgress),
+    // Only objects can be child nodes; primitives need no key lookup.
+    snap = mapOwnArrayElements(target, (value, index) =>
+      typeof value === 'object' && value !== null
+        ? snapshotValue(value, internal, String(index), inProgress)
+        : value,
     );
   } else {
     // Preserve the prototype chain and install memoized getters on the snapshot.
@@ -266,8 +263,6 @@ function createSnapshotRecursive<T extends object>(
       Object.defineProperty(snap, key, {
         value: snapshotValue(desc.value, internal, key, inProgress),
         enumerable: desc.enumerable,
-        configurable: true,
-        writable: true,
       });
     }
 
@@ -277,9 +272,9 @@ function createSnapshotRecursive<T extends object>(
 
   markSnapshotForTracking(snap);
   Object.freeze(snap);
+  registerSnapshot(snap, target);
   // Cache AFTER populating + freezing. The reference is stable.
   snapshotCache.set(target, [internal.version, snap]);
-  inProgress.delete(target);
   return snap as T;
 }
 

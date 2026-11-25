@@ -17,12 +17,24 @@ export function getArrayIndex(key: string | symbol): number | undefined {
 /** Visit only present indices, including non-enumerable ones. Keep trailing holes. */
 export function mapOwnArrayElements<T, U>(
   source: readonly T[],
-  project: (value: T, key: string) => U,
+  project: (value: T, index: number) => U,
 ): U[] {
-  const result = new Array<U>(source.length);
+  const length = source.length;
+  const result = new Array<U>(length);
+  // Nearly every array is dense: walk it by index up to the first hole. A
+  // sparse array reaches its first hole within its populated count, so a
+  // trailing hole spanning billions of slots still costs no length-sized scan.
+  // `in` is an order of magnitude cheaper here than an own-property check.
+  let index = 0;
+  for (; index < length && index in source; index++) {
+    result[index] = project(source[index], index);
+  }
+  if (index === length) return result;
   for (const key of Object.getOwnPropertyNames(source)) {
-    const index = getArrayIndex(key);
-    if (index !== undefined) result[index] = project(source[index], key);
+    const later = getArrayIndex(key);
+    if (later !== undefined && later > index) {
+      result[later] = project(source[later], later);
+    }
   }
   return result;
 }

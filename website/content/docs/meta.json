@@ -3,6 +3,7 @@
   "pages": [
     "index",
     "API_REFERENCE",
+    "ERRORS",
     "---Frameworks---",
     "TUTORIAL",
     "REACT_SCOPING",
@@ -19,10 +20,6 @@
     "HISTORY_TUTORIAL",
     "SUBSCRIBE_KEY_TUTORIAL",
     "DEVTOOLS_TUTORIAL",
-    "---Upgrading---",
-    "UPGRADING_0_11",
-    "UPGRADING_0_8",
-    "UPGRADING_0_7",
     "---Architecture---",
     "ARCHITECTURE",
     "PERSIST_ARCHITECTURE",

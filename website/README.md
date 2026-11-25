@@ -1,13 +1,13 @@
 # Classy Store documentation
 
-Edit pages in `website/content/docs/` and use `meta.json` there to order the sidebar. Set each page’s title and description in its frontmatter. Link between sources with relative Markdown links such as `./REACT_SSR.md`. Published paths and heading fragments are used by npm and earlier release notes.
+Edit pages in `website/content/docs/` and use `meta.json` there to order the sidebar. Set each page’s title and description in its frontmatter. Link between sources with relative Markdown links such as `./REACT_SSR.md`. Published paths and heading fragments are linked from the npm README, so keep them stable.
 
 The homepage, docs, and interactive examples use one Next.js dev server and static export. Edit example pages in `website/content/examples/` and their live React controls in `website/examples/`. Code fences inside each example are highlighted at build time and share the guide theme.
 
 From the repository root:
 
 ```sh
-bun install --cwd website --frozen-lockfile
+bun install
 bun run docs:dev
 ```
 

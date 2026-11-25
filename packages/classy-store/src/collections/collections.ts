@@ -1,4 +1,36 @@
+import {identityOf, isTrackingProxy, unwrap} from '../storeRuntime';
 import {PROXYABLE} from '../utils/internal/internal';
+
+// ── Lookup ────────────────────────────────────────────────────────────────────
+
+/**
+ * Find a key (map) or value (set) in a backing array.
+ *
+ * Members are compared by identity, so an object matches whether it is given
+ * raw, as a store proxy, or as a snapshot of the same object; primitives use
+ * `Object.is`. Live state and plain snapshots are scanned on the raw array,
+ * with no proxy work per entry. A tracked read in a React component still goes
+ * entry by entry through its proxy, so that the component records what it
+ * compared.
+ */
+function indexOfMember(
+  backing: readonly unknown[],
+  member: unknown,
+  keyed: boolean,
+): number {
+  const wanted = identityOf(member);
+  const source = isTrackingProxy(backing) ? backing : unwrap(backing);
+  for (let index = 0; index < source.length; index++) {
+    const entry = source[index];
+    const candidate = keyed ? (entry as readonly unknown[])[0] : entry;
+    const identity =
+      typeof candidate === 'object' && candidate !== null
+        ? identityOf(candidate)
+        : candidate;
+    if (Object.is(identity, wanted)) return index;
+  }
+  return -1;
+}
 
 // ── ReactiveMap ───────────────────────────────────────────────────────────────
 
@@ -45,31 +77,35 @@ export class ReactiveMap<K, V> {
 
   /** Returns the value for `key`, or `undefined`. O(n) linear scan. */
   get(key: K): V | undefined {
-    const entry = this._entries.find(([k]) => Object.is(k, key));
-    return entry ? entry[1] : undefined;
+    const entries = this._entries;
+    const index = indexOfMember(entries, key, true);
+    // Read the hit through `entries`: a live value comes back reactive.
+    return index === -1 ? undefined : entries[index][1];
   }
 
   /** Returns `true` if `key` exists. O(n) linear scan. */
   has(key: K): boolean {
-    return this._entries.some(([k]) => Object.is(k, key));
+    return indexOfMember(this._entries, key, true) !== -1;
   }
 
-  /** Sets `key` to `value`. Updates in-place if key exists, appends otherwise. */
+  /** Sets `key` to `value`. Keeps the existing key and position if present, appends otherwise. */
   set(key: K, value: V): this {
-    const index = this._entries.findIndex(([k]) => Object.is(k, key));
+    const entries = this._entries;
+    const index = indexOfMember(entries, key, true);
     if (index !== -1) {
-      this._entries[index] = [key, value];
+      entries[index][1] = value;
     } else {
-      this._entries.push([key, value]);
+      entries.push([key, value]);
     }
     return this;
   }
 
   /** Removes the entry for `key`. Returns `true` if found. */
   delete(key: K): boolean {
-    const index = this._entries.findIndex(([k]) => Object.is(k, key));
+    const entries = this._entries;
+    const index = indexOfMember(entries, key, true);
     if (index === -1) return false;
-    this._entries.splice(index, 1);
+    entries.splice(index, 1);
     return true;
   }
 
@@ -193,7 +229,7 @@ export class ReactiveSet<T> {
 
   /** Returns `true` if `value` exists. O(n) linear scan. */
   has(value: T): boolean {
-    return this._items.some((item) => Object.is(item, value));
+    return indexOfMember(this._items, value, false) !== -1;
   }
 
   /** Adds `value` if not already present (no-op for duplicates). */
@@ -206,9 +242,10 @@ export class ReactiveSet<T> {
 
   /** Removes `value`. Returns `true` if found. */
   delete(value: T): boolean {
-    const index = this._items.findIndex((item) => Object.is(item, value));
+    const items = this._items;
+    const index = indexOfMember(items, value, false);
     if (index === -1) return false;
-    this._items.splice(index, 1);
+    items.splice(index, 1);
     return true;
   }
 
