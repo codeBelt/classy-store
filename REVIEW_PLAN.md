@@ -51,60 +51,38 @@ pause on 2026-11-24: "The pause is over, carry on with stage 3."
 - The second adversarial review: `adversarial-2-whole.md` (14 objections, 5
   "wrong") and `adversarial-2-core.md` (16 objections, 6 "wrong").
 
-**Stopped here by a usage limit on 2026-11-25.** Neither report is answered
-in the decision document yet. Next:
+- The answers to the second round that need no build are in the decision
+  document: the `persist` rules (21 to 24), the size ceilings and their
+  tooling (4), the lost-write check (36), `devtools` (27), the order for
+  stage 4 and the list of proposals not taken.
 
-1. Answer the second round in the decision document, and add its rows to
-   "Objections and answers". The answers already decided for
-   `adversarial-2-whole.md`, by its objection numbers:
-   - 1: a stored record with a version above the configured one is not
-     used, `migrate` is not called with it, and the handle does not write
-     over it; decision 24 writes back only after an upgrade. Rule 10 is
-     worded again. Not built: stage 4 writes the tests first.
-   - 2: a version is a finite number, zero or above, on both sides. The
-     option and a native `async` `migrate` are checked when `persist()` is
-     called (decision 22). A record that could not be migrated or restored
-     is not written over either; only a record that is not a record is
-     replaced by the next save.
-   - 3: the lost-write check runs at most once per task per store, behind
-     that cheap test. The cost limits win: if the check cannot hold them as
-     the benchmark runs today, it does not ship in 1.0.
-   - 4: a ceiling changes only in a commit that changes nothing but the
-     decision record and the ceiling; the guard has its own file in scope,
-     loops over each commit of `base..HEAD`, and each rule gets a test.
-   - 5: every ceiling is the estimate, plus what was not built, plus 2%,
-     rounded up: main 5,450, `./react` 1,750, `./vue` 425, `./angular` 450.
-   - 6: decisions 23 and 24 are "before 1.0"; both tutorial sentences change.
-   - 7: the key is passed to the naming hook for every kind of method, and
-     decision 27 names K2's hook form, not its slot form.
-   - 8: when `process` is undefined, `devtools` is off unless `enabled` is
-     passed.
-   - 9: the guard covers the root's class getters only; decisions 27 and 43
-     say so.
-   - 10: a line in "Where this differs from `pinned.md`" for accessors of an
-     object literal against those of a class.
-   - 11: a record without `expiresAt`, or with `null`, is restored; any
-     other value that is not a number makes it not a record.
-   - 12: decision 35 says the codes save about 100 bytes of the messages
-     kept; decision 4's rows say "measured on top of" where they are.
-   - 13: the guard rule of decision 36 and the codes page of decision 35
-     move to the first two steps; the constructor test of decision 19 moves
-     to the base-class step; decisions 2 and 5 are two commits.
-   - 14: `reportError()` and awaiting an `async` `migrate` lose "(final)";
-     three final choices are added; M23 gets one home; the index defines
-     "constraint" and "docs".
-2. Read `adversarial-2-core.md` and decide each of its 16 objections. Its
-   three most serious: a store made from a copy runs the old store's methods
-   (decision 1); a snapshot getter that calls an own method writes the live
-   store (decision 10); an undo into a container frozen through the store
-   fails half-way (decisions 30, 5 and 2). The first may reopen decision 1.
-3. A third round of review only if a decision is changed again; three
-   rounds at most.
-4. Step 7, by three agents, each with a brief in `review/stage-3/briefs/`:
+**Running:** two spikes the second review asked for. Their briefs are in
+`review/stage-3/briefs/`, and each report is written as the agent goes:
+
+- `spike-functions-2.md`: the rule for functions in a form that leaves the
+  object and its snapshots as written. A function in a field is a method
+  only when it is read through the store (decisions 1, 11 and 29).
+- `spike-core-3.md`: a snapshot getter that reaches the live store (10), the
+  table per prototype that grows with absent keys (12), and an undo into a
+  container that cannot be written (30).
+
+Five entries of the decision document (1, 10, 12, 29 and 30) are marked
+"under revision". If an agent was cut off, restart it from its brief with
+the report as its starting point.
+
+**Then:**
+
+1. Decide the five entries again from the two reports, and write the second
+   round's table into "Objections and answers": 14 objections of
+   `adversarial-2-whole.md` and 16 of `adversarial-2-core.md`.
+2. A third and last round of review, on the entries that changed since the
+   second.
+3. Step 7, by three agents, each with a brief in `review/stage-3/briefs/`:
    the spec at `review/spec.md` (`step7-spec.md`), one decision record per
    decision under `docs/decisions/` (`step7-records.md`), and the stage 4
-   task list at `review/stage-4-tasks.md` (`step7-tasks.md`).
-5. The stage 3 report and the Status table above. A draft of the report is
+   task list at `review/stage-4-tasks.md` (`step7-tasks.md`). The
+   orchestrating agent checks each against the decision document.
+4. The stage 3 report and the Status table above. A draft of the report is
    in the scratchpad, `stage-3-finish/stage-3-report.draft.md`, and may be
    gone after a reboot.
 
