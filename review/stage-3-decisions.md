@@ -714,6 +714,137 @@ base-class store inside another store comes back as a frozen copy.
 - Whether it stops taking a snapshot of the whole store per notification
   (M61) is **open**, with the snapshot report.
 
+## Adapters and collections
+
+### 37. The Vue, Angular and Solid adapters build the snapshot when it is read
+
+**Decision.** In these three adapters the listener only marks the value as
+changed, and the snapshot is taken at the next read (M63).
+
+**Why.** Every adapter takes a snapshot inside its listener today, so a loop
+of direct writes takes one snapshot per write. With the change, 2,000 direct
+row writes followed by one read go from about 650 milliseconds to 2.4 in each
+of the three. React and Svelte cannot defer in this way, because their
+contracts hand the value to the framework at once; for them the answer is the
+cost of a snapshot itself (the snapshot decisions) and `batch()`, which the
+guides name.
+
+**Evidence.** `adapters-collections.md`, A1. 34 to 44 bytes per entry. 1 test
+changes, incidental: `isShallow` on the Vue ref, which is no longer a shallow
+ref.
+
+**Label.** Can follow 1.0. **Stage 4:** yes. Each adapter change runs its
+framework's packed-app and browser suite, which the spike did not.
+
+### 38. Vue: no listener is left by a server render, and the ref is read-only
+
+**Decision.** On the server the Vue adapter subscribes to nothing and reads
+the store at every read. The returned ref is typed
+`Readonly<Ref<Snapshot<T>>>`, and a write to it is ignored.
+
+**Why.** Vue does not dispose component scopes during a server render, so a
+store that outlives the request gains one listener per render (M64). The fix
+stage 2 proposed, subscribing in `onMounted`, removes the leak and breaks
+something else: a store written in `onServerPrefetch`, Vue's own way to load
+data on the server, then renders its old value. Reading at the read removes
+the leak and keeps that write. A snapshot is frozen, so a writable ref
+promises something the value cannot do (finding 17, M65).
+
+**Evidence.** `adapters-collections.md`, A2: 0 listeners after three server
+renders against 1, 2, 3, and the `onServerPrefetch` write still renders. The
+type was not compiled against Vue 3.2.0, the floor of the peer range; stage 4
+does that first.
+
+**Label.** Before 1.0, for the documented return type. **Stage 4:** yes, in
+one change with decision 37 for Vue.
+
+### 39. Angular: a store write inside a `computed` is not lost, and `injectClassyStore` takes an injector
+
+**Decision.** The adapter updates its signal inside `untracked()`.
+`injectClassyStore(store, {injector})` works outside an injection context,
+and the error for a missing context names `injectClassyStore()`.
+
+**Why.** Today a store write made while a `computed` runs makes Angular
+throw inside the listener; the core logs it and the signal stays stale until
+the next write (M66). The option is an addition, and is cheapest to add
+while the signature is being written down for 1.0 (M67).
+
+**Evidence.** `adapters-collections.md`, A3. 19 bytes for the fix, 51 more
+for the option and the message.
+
+**Label.** The fix: can follow 1.0. The option: an addition. **Stage 4:**
+both.
+
+### 40. The adapter names stay
+
+**Decision.** No adapter is renamed (API question 7, M68). The Solid adapter
+keeps `useClassyStore`.
+
+**Why.** Two reports lean towards `fromClassyStore` for Solid, because the
+adapter behaves like Solid's `from()` and `use*` there usually means a
+context lookup. The Solid report disagrees: the function has to be called
+under an owner and returns an accessor, which is what a Solid user expects
+of it. Where the precedent is split, a rename is a cost with no behaviour
+behind it: eleven files and every Solid import. The name is also the one a
+user of the React or the Vue adapter already knows. The same reasoning keeps
+`isEqual` (decision 41).
+
+**Also.** The Svelte guide gets a section on runes (M69) and names its
+example value `snap`, not `state`.
+
+### 41. React: `prepareStoreForHydration` stays an explicit call
+
+**Decision.** The server snapshot is not captured automatically (M70). The
+equality option keeps the name `isEqual` (M71). The guide says that on the
+client `prepareStoreForHydration(store)` is called before `persist(store)`.
+
+**Why.**
+
+- Both automatic forms were built, and both break the pattern the guide
+  teaches: create the store, load the request's data, then render. The
+  capture fires on the first load write, so the server renders the empty
+  store, and a later explicit call cannot undo it. A store that refers to
+  itself throws on its first write or cannot be created. Memory grows by 19
+  megabytes per 100,000 rows. 12 and 20 tests fail, all regressions.
+- With decision 19, a store restored by `persist()` holds its saved state
+  when `persist()` returns. Prepared afterwards, it would capture that state
+  and not the one the server rendered. Hence the sentence in the guide.
+- React's own `useSyncExternalStoreWithSelector` calls the parameter
+  `isEqual`. Zustand and Jotai say `equalityFn`. A breaking rename for a
+  split precedent is not worth it.
+
+**Evidence.** `adapters-collections.md`, A5.
+
+### 42. Reactive collections: one membership rule now, an index for snapshots, native `Map` and `Set` stay opaque
+
+**Decision.**
+
+- **One membership rule** (findings 33 and 34, M39). `-0` and `+0` are one
+  key, as in a native `Map`, and a collection constructed from a raw object
+  and its proxy holds it once.
+- **A snapshot of a collection answers `has()` and `get()` from an index**
+  (M40), built on the second lookup.
+- **No index beside the live array in 1.0.** It is 100 times faster on a hit
+  and costs 339 bytes, and it answers wrong after a write to the raw backing
+  array, which today's scan gets right. It waits for a decision on whether
+  the backing arrays stay public (M43), which is **open** with the snapshot
+  report.
+- **Native `Map` and `Set` stay opaque** (API question 5, M38), and
+  `reactiveMap` and `reactiveSet` stay separate classes. No library has a
+  frozen native `Map`: one can still be written through `Map.prototype.set`.
+- **The adapters drop their `active` flags** once decision 13 is in, because
+  the core then skips a removed subscriber. Angular's `destroyed` check
+  stays.
+
+**Evidence.** `adapters-collections.md`, A6 and A7. The membership rule: 13
+bytes, and the 2 tests that pin findings 33 and 34 change. The snapshot
+index: lookups among 10,000 members go from 160 to 525 microseconds to under
+0.1, and `./collections` grows from 727 to about 843 bytes.
+
+**Label.** The membership rule: before 1.0, because the collections guide
+documents today's `-0`. The index: can follow 1.0. **Stage 4:** both, and the
+flags in the same change as decision 13.
+
 ## Diagnostics
 
 ### 35. Every error carries a stable code, and throws the same in every build
