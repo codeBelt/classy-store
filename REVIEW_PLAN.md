@@ -8,16 +8,16 @@ published. Not part of the published docs; delete it when the work is done.
 Read this first. Whoever finishes a stage updates its row: the state, the
 commit it ended on, and where its report is.
 
-| Stage                 | State                                                                                                                                                     | Ended on  | Report                                                                   |
-| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | ------------------------------------------------------------------------ |
-| Plan                  | Revised 2026-11-18 after a check against the repository at `7540662`                                                                                      |           |                                                                          |
-| 1. Safety net         | Done 2026-11-18                                                                                                                                           | `5bc4008` | `review/stage-1-report.md`                                               |
-| 2. Library comparison | Done 2026-11-19                                                                                                                                           | `1b426fb` | `review/stage-2-report.md`, with the eleven reports in `review/stage-2/` |
-| 3. Design review      | In progress since 2026-11-19. Paused from 2026-11-19 to 2026-11-24 at the owner's request. "Where stage 3 stands" below has what is done and what is next |           | `review/stage-3/`                                                        |
-| 4. Refactor           | Not started                                                                                                                                               |           |                                                                          |
-| 5. Release            | Not started                                                                                                                                               |           |                                                                          |
+| Stage                 | State                                                                                        | Ended on  | Report                                                                                                                    |
+| --------------------- | -------------------------------------------------------------------------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Plan                  | Revised 2026-11-18 after a check against the repository at `7540662`                         |           |                                                                                                                           |
+| 1. Safety net         | Done 2026-11-18                                                                              | `5bc4008` | `review/stage-1-report.md`                                                                                                |
+| 2. Library comparison | Done 2026-11-19                                                                              | `1b426fb` | `review/stage-2-report.md`, with the eleven reports in `review/stage-2/`                                                  |
+| 3. Design review      | Done 2026-11-25. Paused from 2026-11-19 to 2026-11-24 at the owner's request                 | `b080def` | `review/stage-3-report.md`, the decision document `review/stage-3-decisions.md`, the working reports in `review/stage-3/` |
+| 4. Refactor           | In progress since 2026-11-25. "Where stage 4 stands" below has what is done and what is next |           |                                                                                                                           |
+| 5. Release            | Not started                                                                                  |           |                                                                                                                           |
 
-## Where stage 3 stands
+## Where stage 3 ended
 
 Updated 2026-11-25. The owner paused the work on 2026-11-19 and lifted the
 pause on 2026-11-24: "The pause is over, carry on with stage 3."
@@ -96,33 +96,31 @@ agents run on Opus 5.5 at medium effort (ground rule "Models").
   its section "Settled when the step 7 documents were checked" indexes them
   (the nineteen error codes, the floor guard, the production-bundle test,
   the benchmark rows before the redundant checks go, and the rest).
-- Three helper agents are applying the findings and the settled points to
-  the spec, the records and the task list, each on its own branch in a
-  throwaway worktree (`step7/fix-spec`, `step7/fix-records`,
-  `step7/fix-tasks`). Their commits are brought in by cherry-pick, so the
-  branch stays linear.
+- Three helper agents applied the findings and the settled points to the
+  spec, the records and the task list, each on its own branch in a
+  throwaway worktree. Each diff was read against the decision document and
+  brought in as one commit: `737512e` (spec), `da08e4b` (records),
+  `b89f479` (task list).
+- The stage 3 report is final: `review/stage-3-report.md`, at `b080def`.
 
-- The stage 3 report is finished in the working tree except the number of
-  tasks, which waits for the corrected task list.
+## Where stage 4 stands
+
+Updated 2026-11-25. Stage 4 follows `review/stage-4-tasks.md`, one task per
+commit.
+
 - T-01, the tooling commit, is written in the working tree and not yet
   committed: the per-commit floor guard and its 32 tests
   (`packages/classy-store/tests/floor/`), the ceilings in `budgets.json`,
-  `checkSizes()` in the size script and its 7 tests, the new `CONSTRAINTS.md`
-  floor. It waits for its line in record 0004, which the records fixer is
-  rewriting, and for stage 3 to end first. All 1,380 tests, lint, typecheck
-  and `bun run size` pass with it.
+  `checkSizes()` in the size script and its 7 tests, and the new floor of
+  `CONSTRAINTS.md`. All 1,380 tests, lint, typecheck and `bun run size`
+  pass with it. It still needs its lines in record 0004.
 
-**Still to do, in order:**
+**Next:** commit T-01, then T-02, then checkpoint 1.
 
-1. Review the three fixers' diffs against the decision document and bring
-   them in.
-2. Commit the stage 3 report and fill in the Status table above.
-3. Stage 4: commit T-01 with its lines in record 0004, then T-02.
-
-The throwaway worktrees and scripts of the spikes are in the scratchpad, which
-does not survive a reboot. Every patch and number that matters is in the
-reports. Run `git worktree prune` if `git worktree list` shows folders that
-no longer exist.
+The throwaway worktrees of the step 7 fixers are in the scratchpad, on the
+branches `step7/fix-spec`, `step7/fix-records` and `step7/fix-tasks`, which
+are local only. Run `git worktree prune` if `git worktree list` shows
+folders that no longer exist.
 
 ## Starting point (read this if you are new to the work)
 
