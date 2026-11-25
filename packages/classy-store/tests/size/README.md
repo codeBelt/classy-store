@@ -27,8 +27,16 @@ The numbers repeat exactly for a given Bun version and source.
 - [`baseline.json`](./baseline.json) holds the sizes that later changes are
   compared with. The "Against baseline" column is the difference in gzipped
   bytes.
-- `budgets.json` holds the limits, in gzipped bytes. The main entry is held to
-  its whole size and every other entry to what it adds. An entry with no budget
-  fails the run, so a new entry point cannot ship unmeasured. `CONSTRAINTS.md`
-  at the repository root says where each number comes from.
+- `budgets.json` holds a `budget` and a `ceiling` per entry, in gzipped
+  bytes. The main entry is held to its whole size and every other entry to
+  what it adds. The run fails when a measured size is over its budget, when a
+  budget is above its ceiling, and when an entry has no budget or no ceiling,
+  so a new entry point cannot ship unmeasured.
+- A budget moves with the work: a commit that grows an entry sets its budget
+  to the new measured size plus 2% and adds a line with the measured size to
+  decision record 0004. A ceiling does not move with the work: it changes only
+  in a commit of its own, with its reason in record 0004. `bun run
+check:floor` enforces both, and `CONSTRAINTS.md` at the repository root says
+  where the numbers come from.
+- `runSize.test.ts` tests the checks without a build.
 - `test-results/size/size.json` (ignored by Git) holds the last measurement.

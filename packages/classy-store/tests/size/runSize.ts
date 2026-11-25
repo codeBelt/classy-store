@@ -1,6 +1,6 @@
 import {existsSync, mkdirSync, readFileSync, writeFileSync} from 'node:fs';
 import {dirname, join, resolve} from 'node:path';
-import type {SizeBaseline, Sizes} from './size.types';
+import type {Budgets, SizeBaseline, Sizes} from './size.types';
 
 const sizeDirectory = import.meta.dir;
 const packageDirectory = resolve(sizeDirectory, '../..');
@@ -17,7 +17,8 @@ dependency inside and the framework left out. Reports the minified and gzipped
 size in bytes, and how much each entry adds to the main entry.
 
 Fails when the main entry is larger than its budget in tests/size/budgets.json,
-when another entry adds more than its budget, or when an entry has no budget.
+when another entry adds more than its budget, when a budget is above its
+ceiling, or when an entry has no budget or no ceiling.
 
   --update-baseline  Record the measured sizes in tests/size/baseline.json.
 `;
@@ -119,6 +120,50 @@ function writeFormatted(path: string, value: unknown): void {
 
 const signed = (bytes: number) => (bytes > 0 ? `+${bytes}` : String(bytes));
 
+const isBytes = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isFinite(value) && value >= 0;
+
+/**
+ * Every way the measured sizes break `budgets.json`. The main entry is held to
+ * its whole size and every other entry to what it adds. Each entry needs a
+ * budget and a ceiling, and a budget may not be above its ceiling.
+ */
+export function checkSizes(sizes: Sizes, budgets: Budgets): string[] {
+  const problems: string[] = [];
+  for (const [name, size] of Object.entries(sizes)) {
+    const entry = budgets[name];
+    const budget = entry?.budget;
+    const ceiling = entry?.ceiling;
+    if (!isBytes(budget)) {
+      problems.push(`${name} has no budget in tests/size/budgets.json`);
+    }
+    if (!isBytes(ceiling)) {
+      problems.push(`${name} has no ceiling in tests/size/budgets.json`);
+    }
+    if (isBytes(budget) && isBytes(ceiling) && budget > ceiling) {
+      problems.push(
+        `${name} has a budget of ${budget}, ${budget - ceiling} above its ceiling of ${ceiling}`,
+      );
+    }
+    if (!isBytes(budget)) continue;
+    const isMain = name === mainEntry;
+    const measured = isMain ? size.gzip : size.added;
+    if (measured > budget) {
+      problems.push(
+        isMain
+          ? `${name} is ${measured} bytes gzipped, ${measured - budget} over its budget of ${budget}`
+          : `${name} adds ${measured} bytes gzipped to the main entry, ${measured - budget} over its budget of ${budget}`,
+      );
+    }
+  }
+  for (const name of Object.keys(budgets)) {
+    if (!(name in sizes)) {
+      problems.push(`budgets.json names ${name}, which is not an entry point`);
+    }
+  }
+  return problems;
+}
+
 async function main(): Promise<number> {
   const flags = process.argv.slice(2);
   if (flags.includes('--help')) {
@@ -162,38 +207,21 @@ async function main(): Promise<number> {
   }
 
   const baseline = readJson<SizeBaseline>(baselinePath);
-  const budgets = readJson<Record<string, number>>(budgetsPath);
-  const problems: string[] = [];
+  const budgets = readJson<Budgets>(budgetsPath);
 
   console.log(
-    '| Entry | Minified | Gzipped | Adds to main | Against baseline | Budget |',
+    '| Entry | Minified | Gzipped | Adds to main | Against baseline | Budget | Ceiling |',
   );
-  console.log('| --- | ---: | ---: | ---: | ---: | ---: |');
+  console.log('| --- | ---: | ---: | ---: | ---: | ---: | ---: |');
   for (const [name, size] of Object.entries(sizes)) {
     const isMain = name === mainEntry;
-    // The main entry is held to its whole size, the others to what they add.
-    const measured = isMain ? size.gzip : size.added;
     const before = baseline?.entries[name];
-    const budget = budgets?.[name];
+    const entry = budgets?.[name];
     console.log(
-      `| \`${name}\` | ${size.minified} | ${size.gzip} | ${isMain ? '' : size.added} | ${before ? signed(size.gzip - before.gzip) : 'none'} | ${budget ?? 'none'} |`,
+      `| \`${name}\` | ${size.minified} | ${size.gzip} | ${isMain ? '' : size.added} | ${before ? signed(size.gzip - before.gzip) : 'none'} | ${entry?.budget ?? 'none'} | ${entry?.ceiling ?? 'none'} |`,
     );
-    if (!budgets) continue;
-    if (budget === undefined) {
-      problems.push(`${name} has no budget in tests/size/budgets.json`);
-    } else if (measured > budget) {
-      problems.push(
-        isMain
-          ? `${name} is ${measured} bytes gzipped, ${measured - budget} over its budget of ${budget}`
-          : `${name} adds ${measured} bytes gzipped to the main entry, ${measured - budget} over its budget of ${budget}`,
-      );
-    }
   }
-  for (const name of Object.keys(budgets ?? {})) {
-    if (!(name in sizes)) {
-      problems.push(`budgets.json names ${name}, which is not an entry point`);
-    }
-  }
+  const problems = budgets ? checkSizes(sizes, budgets) : [];
 
   console.log(
     `\nBun ${Bun.version}. Sizes are in bytes; every entry is measured together with the main one. Report: ${reportPath}`,
@@ -203,4 +231,4 @@ async function main(): Promise<number> {
   return problems.length ? 1 : 0;
 }
 
-process.exit(await main());
+if (import.meta.main) process.exit(await main());

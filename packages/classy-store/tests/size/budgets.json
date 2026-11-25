@@ -1,11 +1,38 @@
 {
-  ".": 3750,
-  "./utils": 2750,
-  "./collections": 750,
-  "./react": 1700,
-  "./react/server": 175,
-  "./vue": 300,
-  "./svelte": 200,
-  "./angular": 300,
-  "./solid": 335
+  ".": {
+    "budget": 3750,
+    "ceiling": 5575
+  },
+  "./utils": {
+    "budget": 2750,
+    "ceiling": 4350
+  },
+  "./collections": {
+    "budget": 750,
+    "ceiling": 950
+  },
+  "./react": {
+    "budget": 1700,
+    "ceiling": 1750
+  },
+  "./react/server": {
+    "budget": 175,
+    "ceiling": 175
+  },
+  "./vue": {
+    "budget": 300,
+    "ceiling": 400
+  },
+  "./svelte": {
+    "budget": 200,
+    "ceiling": 200
+  },
+  "./angular": {
+    "budget": 300,
+    "ceiling": 425
+  },
+  "./solid": {
+    "budget": 335,
+    "ceiling": 375
+  }
 }

@@ -14,3 +14,16 @@ export type SizeBaseline = {
   bun: string;
   entries: Sizes;
 };
+
+/**
+ * One entry of `budgets.json`, in gzipped bytes. The budget is what the entry
+ * may measure today; the ceiling is the most its budget may ever be, and it
+ * changes only in a commit of its own (record 0004).
+ */
+export type Budget = {
+  budget: number;
+  ceiling: number;
+};
+
+/** `budgets.json`: a budget and a ceiling per export name. */
+export type Budgets = Record<string, Budget>;

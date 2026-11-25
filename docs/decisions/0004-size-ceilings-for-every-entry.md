@@ -238,16 +238,20 @@ snapshot (270, record 0046); an index beside live collections (339, record
 
 ## Measured sizes
 
-One line per commit that grows an entry.
+One line per commit that grows an entry. A commit cannot name its own hash,
+so the first column of both tables holds the commit's subject.
 
 | Commit | Entry | Measured bytes | New budget |
 | ------ | ----- | -------------: | ---------: |
 
 ## Changes to the tooling
 
-One line per commit that changes a bar file: `scripts/floor-guard.mjs`,
+One line per commit that changes a bar file (`scripts/floor-guard.mjs`,
 `packages/classy-store/bunfig.toml` or
-`packages/classy-store/tests/mutation/runMutation.ts`.
+`packages/classy-store/tests/mutation/runMutation.ts`), or that loosens or
+removes a rule of `CONSTRAINTS.md`.
 
-| Commit | File | What changed | Why |
-| ------ | ---- | ------------ | --- |
+| Commit                                                                   | File                      | What changed                                                                                                                                                                                                                                                                                                         | Why                                                                                                                                 |
+| ------------------------------------------------------------------------ | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| build: add the size ceilings and make the floor guard judge every commit | `scripts/floor-guard.mjs` | Judges each commit against its parent, from the merge base with `main` or the commit that added `CONSTRAINTS.md`, then the working tree; fails on a merge commit; reads `budgets.json` and `limits.json`; the ceiling rule; the three bar files; a record line in place of a touched record; the `Test-change:` line | This decision. The guard saw one difference for the whole branch, one record anywhere switched it off, and it left its own file out |
+| build: add the size ceilings and make the floor guard judge every commit | `CONSTRAINTS.md`          | The nine size rows become one that names `budgets.json`. The floor's rule on a smaller test admits a `Test-change:` line, and its rule on a loosened rule asks for a line in a record. Three floor rules are added: the bar files, budgets and limits, ceilings                                                      | This decision. A budget has one place, and judged per commit the floor allows the test changes a decision makes                     |

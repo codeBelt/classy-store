@@ -1,59 +1,61 @@
 # Constraints
 
 The quality bar for `@codebelt/classy-store`. Written on 2026-11-18, at the end
-of stage 1 of the pre-1.0 review, from what was measured that day. The owner
-has not reviewed it yet.
+of stage 1 of the pre-1.0 review, from what was measured that day. On
+2026-11-19 the owner handed the decisions of that review, the decision records
+included, to the agent that runs it; merging into `main` and releasing stay
+the owner's.
 
 Read this before changing code. When a check fails, the code is fixed. A rule
-here is loosened or removed only together with a decision record under
-`docs/decisions/` that the owner approved; `bun run check:floor` blocks the
+here is loosened or removed only together with a line in a decision record
+under `docs/decisions/`, in the same commit; `bun run check:floor` blocks the
 change otherwise. Tightening a rule needs nothing.
 
 ## Floor
 
-Checked on every change by `bun run check:floor`. It reads the diff since this
-file was added, or since `origin/main` once that branch contains this file.
+Checked by `bun run check:floor`, in CI and before each push. It judges every
+commit from the merge base with `origin/main` to the head against the commit
+before it, and last the working tree against the head. While `main` does not
+hold this file, it starts at the commit that added it, because the commits
+before it were made with no bar. The branch is kept linear: a merge commit in
+that range fails.
 
 - No new comment that silences a checker: `@ts-ignore`, `@ts-nocheck`, `biome-ignore`, `eslint-disable`, or a comment that hides code from coverage or from the mutation run.
 - No new `@ts-expect-error` or `as any` in library source. A test may use `@ts-expect-error` where the type error is what it tests.
 - No unfinished work: a "not implemented" throw, an empty `catch`, or a `TODO` or `FIXME` in code.
 - No skipped or focused test: `skip`, `todo`, `only`. A skip that states a condition and a reason is allowed, like the one browser test that needs Chromium's clipboard.
-- No deleted test file, and no test file left with fewer assertions.
-- No rule in this file removed or loosened without a decision record.
+- No deleted test file, and no test file left with fewer assertions, unless the commit message has a line `Test-change: <path>: <reason>` for that file, and the reason names a decision or the test of public behaviour that covers the same fact.
+- No rule in this file removed or loosened without a line in a decision record in the same commit.
+- No change to a bar file without a line in a decision record in the same commit. The bar files hold a part of the bar that nothing else checks: `scripts/floor-guard.mjs`, `packages/classy-store/bunfig.toml` and `packages/classy-store/tests/mutation/runMutation.ts`.
+- No size budget or cost limit that rises without a line in record 0004 in the same commit. A ceiling in `budgets.json` changes only in a commit of its own, which holds the new number and its line in record 0004 and nothing else.
 
 ## Enforced with numbers
 
-| Dimension                    | Rule                                                                             | Checked by                               | Runs                                       |
-| ---------------------------- | -------------------------------------------------------------------------------- | ---------------------------------------- | ------------------------------------------ |
-| Lint                         | No error from `biome.json`                                                       | `bun run lint`                           | CI                                         |
-| Types                        | No type error in the package, its harnesses, the examples or the docs site       | `bun run typecheck`                      | CI                                         |
-| Tests                        | No failing test                                                                  | `bun run test:coverage`                  | CI                                         |
-| Line coverage                | At least 100% of lines in every source file                                      | `bun run test:coverage`                  | CI                                         |
-| Function coverage            | At least 100% of functions in every source file                                  | `bun run test:coverage`                  | CI                                         |
-| Mutation                     | At most 0 unexplained surviving mutants in the target files                      | `bun run test:mutation`                  | Before a commit that touches a target file |
-| Size of the main entry       | At most 3750 bytes gzipped                                                       | `bun run size`                           | CI                                         |
-| Size added by utils          | At most 2750 bytes gzipped                                                       | `bun run size`                           | CI                                         |
-| Size added by collections    | At most 750 bytes gzipped                                                        | `bun run size`                           | CI                                         |
-| Size added by react          | At most 1700 bytes gzipped                                                       | `bun run size`                           | CI                                         |
-| Size added by react/server   | At most 175 bytes gzipped                                                        | `bun run size`                           | CI                                         |
-| Size added by vue            | At most 300 bytes gzipped                                                        | `bun run size`                           | CI                                         |
-| Size added by svelte         | At most 200 bytes gzipped                                                        | `bun run size`                           | CI                                         |
-| Size added by angular        | At most 300 bytes gzipped                                                        | `bun run size`                           | CI                                         |
-| Size added by solid          | At most 335 bytes gzipped                                                        | `bun run size`                           | CI                                         |
-| Read cost on Bun             | At most 20 times a forwarding Proxy                                              | `bun run benchmark:core --check`         | Before a commit to library source          |
-| Write cost on Bun            | At most 3.2 times a forwarding Proxy                                             | `bun run benchmark:core --check`         | Before a commit to library source          |
-| Cached getter cost on Bun    | At most 41 times a forwarding Proxy read                                         | `bun run benchmark:core --check`         | Before a commit to library source          |
-| Cached snapshot cost on Bun  | At most 10 times a forwarding Proxy read                                         | `bun run benchmark:core --check`         | Before a commit to library source          |
-| Read cost on Node            | At most 2.5 times a forwarding Proxy                                             | `bun run benchmark:core:node --check`    | Before a commit to library source          |
-| Write cost on Node           | At most 1.7 times a forwarding Proxy                                             | `bun run benchmark:core:node --check`    | Before a commit to library source          |
-| Cached getter cost on Node   | At most 5.3 times a forwarding Proxy read                                        | `bun run benchmark:core:node --check`    | Before a commit to library source          |
-| Cached snapshot cost on Node | At most 1.8 times a forwarding Proxy read                                        | `bun run benchmark:core:node --check`    | Before a commit to library source          |
-| Package shape                | No problem from publint in strict mode or from arethetypeswrong                  | `bun run check:package`                  | CI                                         |
-| Browsers and frameworks      | No failure in the browser, React, Vue, Svelte, Angular, Solid and Next.js suites | The workflows under `.github/workflows/` | CI                                         |
+| Dimension                    | Rule                                                                                                                                       | Checked by                               | Runs                                       |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------- | ------------------------------------------ |
+| Lint                         | No error from `biome.json`                                                                                                                 | `bun run lint`                           | CI                                         |
+| Types                        | No type error in the package, its harnesses, the examples or the docs site                                                                 | `bun run typecheck`                      | CI                                         |
+| Tests                        | No failing test                                                                                                                            | `bun run test:coverage`                  | CI                                         |
+| Line coverage                | At least 100% of lines in every source file                                                                                                | `bun run test:coverage`                  | CI                                         |
+| Function coverage            | At least 100% of functions in every source file                                                                                            | `bun run test:coverage`                  | CI                                         |
+| Mutation                     | At most 0 unexplained surviving mutants in the target files                                                                                | `bun run test:mutation`                  | Before a commit that touches a target file |
+| Size of each entry           | The main entry within its budget, every other entry adding no more than its budget, every budget within its ceiling, all in `budgets.json` | `bun run size`                           | CI                                         |
+| Read cost on Bun             | At most 20 times a forwarding Proxy                                                                                                        | `bun run benchmark:core --check`         | Before a commit to library source          |
+| Write cost on Bun            | At most 3.2 times a forwarding Proxy                                                                                                       | `bun run benchmark:core --check`         | Before a commit to library source          |
+| Cached getter cost on Bun    | At most 41 times a forwarding Proxy read                                                                                                   | `bun run benchmark:core --check`         | Before a commit to library source          |
+| Cached snapshot cost on Bun  | At most 10 times a forwarding Proxy read                                                                                                   | `bun run benchmark:core --check`         | Before a commit to library source          |
+| Read cost on Node            | At most 2.5 times a forwarding Proxy                                                                                                       | `bun run benchmark:core:node --check`    | Before a commit to library source          |
+| Write cost on Node           | At most 1.7 times a forwarding Proxy                                                                                                       | `bun run benchmark:core:node --check`    | Before a commit to library source          |
+| Cached getter cost on Node   | At most 5.3 times a forwarding Proxy read                                                                                                  | `bun run benchmark:core:node --check`    | Before a commit to library source          |
+| Cached snapshot cost on Node | At most 1.8 times a forwarding Proxy read                                                                                                  | `bun run benchmark:core:node --check`    | Before a commit to library source          |
+| Package shape                | No problem from publint in strict mode or from arethetypeswrong                                                                            | `bun run check:package`                  | CI                                         |
+| Browsers and frameworks      | No failure in the browser, React, Vue, Svelte, Angular, Solid and Next.js suites                                                           | The workflows under `.github/workflows/` | CI                                         |
 
-The size numbers live in `packages/classy-store/tests/size/budgets.json` and
-the cost limits in `packages/classy-store/tests/benchmark/limits.json`. Those
-files are what the commands read; this table is the record of why.
+The budgets and their ceilings are only in
+`packages/classy-store/tests/size/budgets.json`, so that a budget that moves
+changes one file. The cost limits are in
+`packages/classy-store/tests/benchmark/limits.json` and are repeated above.
+The commands read those files; this table is the record of why.
 
 ### Where the numbers come from
 
@@ -66,10 +68,14 @@ files are what the commands read; this table is the record of why.
   `packages/classy-store/tests/mutation/runMutation.ts`. Every surviving
   mutant there is either caught by a test or listed with a labelled reason.
   The run takes about ten minutes, so it is not in CI.
-- **Size.** Each budget is the size measured at the end of stage 1, rounded up
-  by two to three percent: room for a fix of a few lines, not for a feature.
-  The main entry measured 3,661 bytes. Every other entry is measured together
-  with the main one and held to what it adds.
+- **Size.** Each budget started as the size measured at the end of stage 1,
+  rounded up by two to three percent: room for a fix of a few lines, not for
+  a feature. The main entry measured 3,661 bytes. Every other entry is
+  measured together with the main one and held to what it adds. Record 0004
+  sets a ceiling for each entry, once, for the changes decided for 1.0. A
+  commit that grows an entry sets its budget to the new measured size plus 2%
+  and adds a line with the measured size to record 0004; no budget passes its
+  ceiling.
 - **Cost.** Each limit is the highest of five baseline runs times 1.2. A cost
   is a ratio to a Proxy that only forwards, timed in the same process, so it
   holds on another machine. The limits differ by engine because a forwarding
