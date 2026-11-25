@@ -7,6 +7,7 @@ const packageDirectory = resolve(sizeDirectory, '../..');
 const repositoryDirectory = resolve(packageDirectory, '../..');
 const baselinePath = join(sizeDirectory, 'baseline.json');
 const budgetsPath = join(sizeDirectory, 'budgets.json');
+const developmentOnlyPath = join(sizeDirectory, 'developmentOnly.json');
 const reportPath = join(repositoryDirectory, 'test-results/size/size.json');
 
 const usage = `Usage: bun run size [--update-baseline]
@@ -18,7 +19,9 @@ size in bytes, and how much each entry adds to the main entry.
 
 Fails when the main entry is larger than its budget in tests/size/budgets.json,
 when another entry adds more than its budget, when a budget is above its
-ceiling, or when an entry has no budget or no ceiling.
+ceiling, or when an entry has no budget or no ceiling. Fails too when a
+production bundle calls console.warn, which only a development-only report
+may use, or holds a code listed in tests/size/developmentOnly.json.
 
   --update-baseline  Record the measured sizes in tests/size/baseline.json.
 `;
@@ -68,15 +71,17 @@ function combine(name: string, files: string[]): string {
   return path;
 }
 
-async function measure(
+/** The minified bundle an application would ship, for the given `NODE_ENV`. */
+export async function bundle(
   file: string,
-): Promise<{minified: number; gzip: number}> {
+  nodeEnv = 'production',
+): Promise<Uint8Array> {
   const build = await Bun.build({
     entrypoints: [file],
     target: 'browser',
     format: 'esm',
     minify: true,
-    define: {'process.env.NODE_ENV': '"production"'},
+    define: {'process.env.NODE_ENV': JSON.stringify(nodeEnv)},
     plugins: [
       {
         name: 'frameworks-stay-outside',
@@ -94,7 +99,43 @@ async function measure(
       `Could not bundle ${file}:\n${build.logs.map(String).join('\n')}`,
     );
   }
-  const bytes = new Uint8Array(await (build.outputs[0] as Blob).arrayBuffer());
+  return new Uint8Array(await (build.outputs[0] as Blob).arrayBuffer());
+}
+
+/**
+ * What a production bundle must not hold: `console.warn`, which only a
+ * development-only report may use, and the code of any development-only
+ * report. The guard form of such a check leaves neither behind.
+ */
+export function checkProductionBundle(
+  name: string,
+  text: string,
+  developmentCodes: readonly string[],
+): string[] {
+  const problems: string[] = [];
+  if (text.includes('console.warn')) {
+    problems.push(
+      `${name}: its production bundle calls console.warn, which only a development-only report may use`,
+    );
+  }
+  for (const code of developmentCodes) {
+    if (text.includes(code)) {
+      problems.push(
+        `${name}: its production bundle holds the development-only code ${code}`,
+      );
+    }
+  }
+  return problems;
+}
+
+const productionText = new Map<string, string>();
+
+async function measure(
+  name: string,
+  file: string,
+): Promise<{minified: number; gzip: number}> {
+  const bytes = await bundle(file);
+  productionText.set(name, new TextDecoder().decode(bytes));
   return {
     minified: bytes.length,
     gzip: Bun.gzipSync(bytes, {level: 9}).length,
@@ -186,13 +227,13 @@ async function main(): Promise<number> {
     console.error(`package.json has no "${mainEntry}" export.`);
     return 2;
   }
-  const mainSize = await measure(main.file);
+  const mainSize = await measure(main.name, main.file);
   const sizes: Sizes = {};
   for (const {name, file} of entries) {
     const size =
       name === mainEntry
         ? mainSize
-        : await measure(combine(name, [main.file, file]));
+        : await measure(name, combine(name, [main.file, file]));
     sizes[name] = {...size, added: size.gzip - mainSize.gzip};
   }
 
@@ -221,7 +262,11 @@ async function main(): Promise<number> {
       `| \`${name}\` | ${size.minified} | ${size.gzip} | ${isMain ? '' : size.added} | ${before ? signed(size.gzip - before.gzip) : 'none'} | ${entry?.budget ?? 'none'} | ${entry?.ceiling ?? 'none'} |`,
     );
   }
+  const developmentCodes = readJson<string[]>(developmentOnlyPath) ?? [];
   const problems = budgets ? checkSizes(sizes, budgets) : [];
+  for (const [name, text] of productionText) {
+    problems.push(...checkProductionBundle(name, text, developmentCodes));
+  }
 
   console.log(
     `\nBun ${Bun.version}. Sizes are in bytes; every entry is measured together with the main one. Report: ${reportPath}`,

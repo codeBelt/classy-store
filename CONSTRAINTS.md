@@ -28,6 +28,7 @@ that range fails.
 - No rule in this file removed or loosened without a line in a decision record in the same commit.
 - No change to a bar file without a line in a decision record in the same commit. The bar files hold a part of the bar that nothing else checks: `scripts/floor-guard.mjs`, `packages/classy-store/bunfig.toml` and `packages/classy-store/tests/mutation/runMutation.ts`.
 - No size budget or cost limit that rises without a line in record 0004 in the same commit. A ceiling in `budgets.json` changes only in a commit of its own, which holds the new number and its line in record 0004 and nothing else.
+- A development-only check reads `process.env.NODE_ENV` inline at its call site, after a cheap test that is almost always false and behind `typeof process !== 'undefined'`, never in a helper or a module constant, and reports with `console.warn`, which nothing else in the library calls. Two checks hold it, not the guard: `bun run size` fails when a production bundle holds `console.warn` or a code listed in `packages/classy-store/tests/size/developmentOnly.json`, and `packages/classy-store/tests/size/productionBundle.test.ts` bundles the form for production and for development.
 
 ## Enforced with numbers
 

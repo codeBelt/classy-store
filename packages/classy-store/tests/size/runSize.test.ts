@@ -1,5 +1,5 @@
 import {describe, expect, it} from 'bun:test';
-import {checkSizes} from './runSize';
+import {checkProductionBundle, checkSizes} from './runSize';
 import type {Budgets, Sizes} from './size.types';
 
 const sizes: Sizes = {
@@ -62,5 +62,27 @@ describe('checkSizes', () => {
     expect(
       checkSizes(sizes, budgets({'./gone': {budget: 1, ceiling: 1}})),
     ).toEqual(['budgets.json names ./gone, which is not an entry point']);
+  });
+});
+
+describe('checkProductionBundle', () => {
+  it('passes a production bundle with no development text', () => {
+    expect(
+      checkProductionBundle('.', 'export const a = 1;', ['lost-write']),
+    ).toEqual([]);
+  });
+
+  it('fails a production bundle that calls console.warn', () => {
+    expect(checkProductionBundle('./vue', 'console.warn("x")', [])).toEqual([
+      './vue: its production bundle calls console.warn, which only a development-only report may use',
+    ]);
+  });
+
+  it('fails a production bundle that holds a development-only code', () => {
+    expect(
+      checkProductionBundle('.', 'throw "[lost-write]"', ['lost-write']),
+    ).toEqual([
+      '.: its production bundle holds the development-only code lost-write',
+    ]);
   });
 });

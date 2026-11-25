@@ -38,5 +38,11 @@ The numbers repeat exactly for a given Bun version and source.
   in a commit of its own, with its reason in record 0004. `bun run
 check:floor` enforces both, and `CONSTRAINTS.md` at the repository root says
   where the numbers come from.
+- Every production bundle is also checked for development text: it fails
+  when it calls `console.warn`, which only a development-only report may
+  use, or holds a code listed in `developmentOnly.json`. A development-only
+  check is written in the guard form of `CONSTRAINTS.md`, which a production
+  bundler removes; `productionBundle.test.ts` bundles that form on a fixture
+  for production and for development.
 - `runSize.test.ts` tests the checks without a build.
 - `test-results/size/size.json` (ignored by Git) holds the last measurement.
