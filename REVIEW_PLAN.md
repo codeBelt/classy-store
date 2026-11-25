@@ -60,38 +60,33 @@ pause on 2026-11-24: "The pause is over, carry on with stage 3."
   again from them, and 21 to 24, 4, 27 and 36 from the review itself.
 
 - The third and last adversarial review: `adversarial-3.md`, 17 objections,
-  4 "wrong". The answers that need no build are in the decision document.
+  4 "wrong", answered in a third table. Two last spikes were run for it:
+  `spike-functions-3.md` (only a class is handed out as data, and a short
+  path for a method already handed out) and `spike-persist-2.md` (the
+  `persist` rules built once and run through 33 paths). Decision 1 and
+  decisions 19 and 21 to 24 were decided again from them.
+- **The decision document is decided.** Its last section says which two
+  decisions were made after the last round and have not been read by a
+  reviewer: 1, and the `persist` rules. The independent review of stage 4
+  reads those first.
+- The core benchmark's `--only` takes a list of metrics, at the owner's
+  request, so a timing of a few metrics takes seconds.
 
-**Running:** two last spikes, for the two parts of the third review that
-need a build. Their briefs are in `review/stage-3/briefs/`, and each report
-is written as the agent goes:
-
-- `spike-functions-3.md`: the rule for functions with two changes. Only a
-  class is handed out as data, so `inc: function () {…}` in an object
-  literal stays a bound method; and the fast path for a method held in a
-  field, with the frozen test kept (decision 1).
-- `spike-persist-2.md`: the `persist` rules as they stand after three
-  rounds, built once (decisions 19 and 21 to 24). Its brief holds the rules
-  in their newest form.
-
-Decisions 1 and 21 are marked "under revision". If an agent was cut off,
-restart it from its brief with the report as its starting point.
+**Running:** step 7, by three agents, each with a brief in
+`review/stage-3/briefs/`: the spec at `review/spec.md` (`step7-spec.md`),
+one decision record per decision under `docs/decisions/`
+(`step7-records.md`), and the stage 4 task list at
+`review/stage-4-tasks.md` (`step7-tasks.md`). If an agent was cut off,
+restart it from its brief with what it wrote as its starting point.
 
 **Then:**
 
-1. Decide decision 1 and the `persist` decisions again from the two
-   reports, and write the third round's table into "Objections and
-   answers". There is no fourth round: an objection that cannot be settled
-   by a change to the text or by a run goes to the owner, with what was
-   tried.
-2. Step 7, by three agents, each with a brief in `review/stage-3/briefs/`:
-   the spec at `review/spec.md` (`step7-spec.md`), one decision record per
-   decision under `docs/decisions/` (`step7-records.md`), and the stage 4
-   task list at `review/stage-4-tasks.md` (`step7-tasks.md`). The
-   orchestrating agent checks each against the decision document.
-3. The stage 3 report and the Status table above. A draft of the report is
+1. Check each of the three against the decision document, and settle the
+   open points they list.
+2. The stage 3 report and the Status table above. A draft of the report is
    in the scratchpad, `stage-3-finish/stage-3-report.draft.md`, and may be
    gone after a reboot.
+3. Stage 4.
 
 The throwaway worktrees and scripts of the spikes are in the scratchpad, which
 does not survive a reboot. Every patch and number that matters is in the
