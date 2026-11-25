@@ -449,15 +449,15 @@ describe('a getter that reads one field of a nested object', () => {
     expect(runs()).toBe(3);
   });
 
-  // FINDING: deleting a key the object never had counts as a change and re-runs the getter.
-  it('is re-run when a key the object never had is deleted', () => {
+  // Deleting a key the object never had is no change (decision 8).
+  it('is not re-run when a key the object never had is deleted', () => {
     const {store, runs} = createPreferences();
     expect(store.theme).toBe('dark');
 
     delete store.settings.added;
 
     expect(store.theme).toBe('dark');
-    expect(runs()).toBe(2);
+    expect(runs()).toBe(1);
   });
 });
 

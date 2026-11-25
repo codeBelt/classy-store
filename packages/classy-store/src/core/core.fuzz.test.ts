@@ -40,13 +40,6 @@ const FIRST_SEED = setting('FUZZ_FIRST_SEED', 1);
 /** Ordinary subscribers are told on a microtask: let it run before asserting. */
 const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 
-// FINDING: "a delete that removes nothing counts as a write", pinned in
-// core.fuzz.findings.test.ts. The store notifies and replaces the snapshot. The
-// mirror follows the store in exactly that case, so the run can keep deleting
-// keys that are not there, and keep calling the array methods that do the same
-// over holes (`sort` and `copyWithin`).
-const DELETING_NOTHING_IS_A_WRITE = true;
-
 // FINDING: "a live getter that reads a property which does not exist is
 // recomputed on every read", pinned in core.fuzz.findings.test.ts. The run
 // expects a new result on each read in exactly that case.
@@ -349,7 +342,8 @@ class WriteLog {
 
   /** `delete owner[key]` */
   remove<T extends object>(owner: T, key: keyof T) {
-    if (!Object.hasOwn(owner, key) && !DELETING_NOTHING_IS_A_WRITE) return;
+    // A delete that removes nothing is no change (decision 8).
+    if (!Object.hasOwn(owner, key)) return;
     Reflect.deleteProperty(owner, key);
     this.touch(owner);
   }

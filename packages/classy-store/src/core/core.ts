@@ -597,6 +597,8 @@ function createNode(target: object, pending?: StoreInternal[]): StoreInternal {
     },
 
     deleteProperty(_target, prop) {
+      // Deleting a key that is not there removes nothing: no change.
+      if (!hasOwn.call(_target, prop)) return true;
       internal.resumeIfDetached();
       const deleted = Reflect.deleteProperty(_target, prop);
       if (deleted) {

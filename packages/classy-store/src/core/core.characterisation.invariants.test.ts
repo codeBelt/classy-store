@@ -1358,8 +1358,8 @@ describe('Object.assign onto a store', () => {
 });
 
 describe('delete on a store', () => {
-  // FINDING: a delete that removes nothing is treated as a change.
-  it('deleting a key the store never had returns true, notifies, and replaces the snapshot with an equal one', async () => {
+  // A delete that removes nothing is no change (decision 8).
+  it('deleting a key the store never had returns true and neither notifies nor replaces the snapshot', async () => {
     const store = createClassyStore<{a: number; missing?: number}>({a: 1});
     const sync = watch(store);
     const batched = watchBatched(store);
@@ -1368,25 +1368,25 @@ describe('delete on a store', () => {
     expect(delete store.missing).toBe(true);
     await flush();
 
-    expect(sync).toHaveBeenCalledTimes(1);
-    expect(batched).toHaveBeenCalledTimes(1);
-    expect(snapshot(store)).not.toBe(before);
+    expect(sync).toHaveBeenCalledTimes(0);
+    expect(batched).toHaveBeenCalledTimes(0);
+    expect(snapshot(store)).toBe(before);
     expect(snapshot(store)).toEqual({a: 1});
   });
 
-  // FINDING: the same holds for an array index that is not there, and for a name the store only inherits.
+  // The same holds for an array index that is not there, and for a name the store only inherits.
   it('so does deleting an index past the end of an array, or a name the store only inherits', () => {
     const store = createClassyStore({list: [1, 2, 3]});
     const listener = watch(store);
     const before = snapshot(store);
 
     expect(delete store.list[10]).toBe(true);
-    expect(listener).toHaveBeenCalledTimes(1);
-    expect(snapshot(store).list).not.toBe(before.list);
+    expect(listener).toHaveBeenCalledTimes(0);
+    expect(snapshot(store).list).toBe(before.list);
     expect(snapshot(store)).toEqual({list: [1, 2, 3]});
 
     expect(Reflect.deleteProperty(store, 'toString')).toBe(true);
-    expect(listener).toHaveBeenCalledTimes(2);
+    expect(listener).toHaveBeenCalledTimes(0);
     expect(typeof store.toString).toBe('function');
   });
 });
@@ -1431,4 +1431,48 @@ describe('the in operator and Object.keys on a store', () => {
     expect(Object.keys(store)).toEqual(['1', '2', 'count']);
     expect(Reflect.ownKeys(store)).toEqual(['1', '2', 'count', 'hidden']);
   });
+});
+
+describe('a delete that removes nothing (decision 8)', () => {
+  const cases: [
+    string,
+    (store: {
+      dict: Record<string, number>;
+      list: number[];
+      frozen: {a: number};
+    }) => boolean,
+  ][] = [
+    ['a missing key', (store) => Reflect.deleteProperty(store.dict, 'missing')],
+    [
+      'an index past the end of a list',
+      (store) => Reflect.deleteProperty(store.list, '5'),
+    ],
+    [
+      'a key of a frozen container',
+      (store) => Reflect.deleteProperty(store.frozen, 'a'),
+    ],
+  ];
+
+  for (const [name, remove] of cases) {
+    it(`notifies no one and changes no snapshot: ${name}`, async () => {
+      const store = createClassyStore({
+        dict: {present: 1} as Record<string, number>,
+        list: [1, 2],
+        frozen: Object.freeze({a: 1}),
+      });
+      const before = snapshot(store);
+      const sync = mock(() => {});
+      const batched = mock(() => {});
+      subscribe(store, sync, {sync: true});
+      subscribe(store, batched);
+
+      const answer = remove(store);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(answer).toBe(name !== 'a key of a frozen container');
+      expect(sync).not.toHaveBeenCalled();
+      expect(batched).not.toHaveBeenCalled();
+      expect(snapshot(store)).toBe(before);
+    });
+  }
 });

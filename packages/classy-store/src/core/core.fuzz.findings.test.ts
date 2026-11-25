@@ -14,9 +14,10 @@ const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 type Row = {id: number; v: number};
 
 describe('core — findings of the differential test', () => {
-  describe('a delete that removes nothing counts as a write', () => {
-    // FINDING: a delete that removes nothing counts as a write: subscribers are called and the snapshot is replaced by an equal one. Expected: no call and the same snapshot, as for a write of the value a property already has.
-    test('deleting a key that is not there notifies and replaces the snapshot', async () => {
+  describe('a delete that removes nothing is no change (decision 8)', () => {
+    // Fixed in 1.0: a delete that removes nothing calls no subscriber and
+    // keeps the snapshot, as a write of the value a property already has.
+    test('deleting a key that is not there neither notifies nor replaces the snapshot', async () => {
       const store = createClassyStore({dict: {} as Record<string, number>});
       const sync = mock(() => {});
       const ordinary = mock(() => {});
@@ -26,12 +27,12 @@ describe('core — findings of the differential test', () => {
 
       delete store.dict.missing;
 
-      expect(sync).toHaveBeenCalledTimes(1);
-      expect(snapshot(store)).not.toBe(before);
-      expect(snapshot(store).dict).not.toBe(before.dict);
+      expect(sync).toHaveBeenCalledTimes(0);
+      expect(snapshot(store)).toBe(before);
+      expect(snapshot(store).dict).toBe(before.dict);
       expect(snapshot(store)).toEqual(before);
       await flush();
-      expect(ordinary).toHaveBeenCalledTimes(1);
+      expect(ordinary).toHaveBeenCalledTimes(0);
     });
 
     test('a write of the value already there does neither, for comparison', async () => {
@@ -50,8 +51,8 @@ describe('core — findings of the differential test', () => {
       expect(ordinary).toHaveBeenCalledTimes(0);
     });
 
-    // FINDING: the same for an array index that is not there, including one past the end.
-    test('deleting an index past the end of a list notifies and replaces the snapshot', () => {
+    // The same for an array index that is not there, including one past the end.
+    test('deleting an index past the end of a list neither notifies nor replaces the snapshot', () => {
       const store = createClassyStore({list: [1, 2]});
       const sync = mock(() => {});
       subscribe(store, sync, {sync: true});
@@ -59,13 +60,13 @@ describe('core — findings of the differential test', () => {
 
       delete store.list[5];
 
-      expect(sync).toHaveBeenCalledTimes(1);
-      expect(snapshot(store).list).not.toBe(before.list);
+      expect(sync).toHaveBeenCalledTimes(0);
+      expect(snapshot(store).list).toBe(before.list);
       expect(snapshot(store)).toEqual(before);
     });
 
-    // FINDING: an array method that deletes a hole does the same: `sort` on a list that is in order already but has a hole, and `copyWithin` of a hole onto a hole. Expected: no call, as for `sort` on a list in order without holes.
-    test('sort and copyWithin over holes notify though the list does not change', () => {
+    // An array method that deletes a hole does the same: `sort` on a list that is in order already but has a hole, and `copyWithin` of a hole onto a hole.
+    test('sort and copyWithin over holes do not notify when the list does not change', () => {
       const store = createClassyStore({list: [1, 2]});
       store.list.length = 4;
       const sync = mock(() => {});
@@ -74,13 +75,13 @@ describe('core — findings of the differential test', () => {
 
       store.list.sort();
 
-      expect(sync).toHaveBeenCalledTimes(1);
-      expect(snapshot(store).list).not.toBe(before.list);
+      expect(sync).toHaveBeenCalledTimes(0);
+      expect(snapshot(store).list).toBe(before.list);
       expect(snapshot(store)).toEqual(before);
 
       store.list.copyWithin(2, 3);
 
-      expect(sync).toHaveBeenCalledTimes(2);
+      expect(sync).toHaveBeenCalledTimes(0);
       expect(snapshot(store)).toEqual(before);
     });
 
