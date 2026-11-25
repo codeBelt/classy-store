@@ -2596,8 +2596,9 @@ The task list that follows refines it.
    guard form for a development-only check as a floor rule, with the test
    that bundles the built file for production (36): decision 27 uses that
    form long before the check of decision 36 itself.
-2. **Codes, and code that is dead today.** The three messages the library
-   has today get codes, and the page of codes is created (35). From here on
+2. **Codes, and code that is dead today.** The six messages the library
+   has today that 1.0 keeps get codes, and the page of codes is created
+   (35). From here on
    every commit that adds a message adds its code and its line on that page.
    Then the dead lines (20).
 3. **The core, reads and writes.** The walk (3). The table per prototype
