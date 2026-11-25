@@ -150,10 +150,14 @@ commit. Its working results are in `review/stage-4/`.
   `if (onError)` and `if (prop.transform)` stay, with reasons in the commit.
   `./utils` adds 2,673 bytes. The list of equivalent mutants is 58 entries.
 
-**Next:** T-06. First the two benchmark rows `collection.has.primitive` and
-`collection.has.object`, then the redundant checks of `equality.ts` and
-`history.ts`, and the object guard of `indexOfMember` only if both rows
-stay inside the spread of the commit before (decision 20).
+- T-06 at `3f5f07d`: the redundant checks of `equality.ts` and `history.ts`
+  go. The object guard of `indexOfMember` stays, measured: without it the
+  new row `collection.has.primitive` is 5.6 times slower on Bun and 5% on
+  Node. The list of equivalent mutants is 51 entries.
+
+**Next:** T-07, the two traps of the React snapshot cache (decision 20):
+they go with their two direct assertions, which need a `Test-change:` line
+naming the public test in the same file.
 
 The throwaway worktrees of the step 7 fixers are in the scratchpad, on the
 branches `step7/fix-spec`, `step7/fix-records` and `step7/fix-tasks`, which
