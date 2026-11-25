@@ -163,10 +163,22 @@ commit. Its working results are in `review/stage-4/`.
 
 - Checkpoint 2 passes; `review/stage-4/README.md` has its figures.
 
-**Next:** step 3, starting with T-08: the walk to a detached parent goes
-(decision 3). Its first test pins a read that never returns today; a
-synchronous hang cannot be stopped by the test runner, so show the failure
-first in a child process with a time limit.
+- `54ec834`: the checkpoint 2 timings were committed in a layout that lint
+  refuses, and are formatted now. Never pipe a check into `tail` inside a
+  chain: it hid that failure; give each check its own exit code.
+- T-08 at `bdaa479`: the walk to a detached parent is gone, and the read
+  that never returned now returns. The traps call a small
+  `resumeIfDetached()`: calling the larger `resume()` from them made a read
+  on Node 9% slower, because V8 could not inline it. The main entry is
+  3,606 bytes.
+- A known flake: under the mutation run's eight workers, the persist test
+  "clear during storage restore wins until a later local write
+  (editAfterClear=false)" can take seconds and fail, which marks a mutant
+  killed and its entry stale. Run the file again before you remove an
+  entry.
+
+**Next:** T-09, the table per prototype in place of a descriptor lookup on
+every access (decision 12).
 
 The throwaway worktrees of the step 7 fixers are in the scratchpad, on the
 branches `step7/fix-spec`, `step7/fix-records` and `step7/fix-tasks`, which
