@@ -134,7 +134,20 @@ commit. Its working results are in `review/stage-4/`.
   `.changeset/stable-one.md`, in its own commit (decision 34 asks for the
   changelog entry); T-03's line is added after it.
 
-**Next:** T-04, the ten dead lines of the three core files (decision 20).
+- `5c25a04`: a fix to T-03. The browser suite still matched the old Solid
+  message, and CI failed on it in all three browsers. Before a commit that
+  changes a message, search `tests/` as well as `src/`; before a commit to
+  library source, run the browser suite in Chromium (WebKit and Firefox are
+  not installed on this machine; CI runs them).
+- T-04 at `0b6b4b3`: the ten dead lines of `core.ts`, `ownership.ts` and
+  `snapshot.ts`. The main entry is 3,641 bytes. The list of equivalent
+  mutants is 69 entries now; `CONSTRAINTS.md` still says 78 under "Measured,
+  not enforced", and T-59 records the final count.
+
+**Next:** T-05, the dead blocks of `persist.ts` (decision 20). Keep the
+`assertActive()` of `save()` and drop the one in `writeToStorage()`: only
+one of the two can go. Keep `if (onError)`: without it the code would rely
+on a swallowed `TypeError`, and T-35 rewrites that function.
 
 The throwaway worktrees of the step 7 fixers are in the scratchpad, on the
 branches `step7/fix-spec`, `step7/fix-records` and `step7/fix-tasks`, which
