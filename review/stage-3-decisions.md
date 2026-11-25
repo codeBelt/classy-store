@@ -30,6 +30,61 @@ finished document as an adversary and its objections are answered in
 - **Bytes** are gzipped bytes of the main entry unless another entry is
   named. Today it measures 3,661 against a budget of 3,750.
 
+## All decisions on one page
+
+"Kind" is one of the plan's five groups: bug, simplification, public API,
+diagnostics, performance; "repository" is for what is not library code.
+"Stage 4" says whether the change is scheduled now.
+
+| No. | Decision                                                                 | Kind                    | Label          | Stage 4          |
+| --: | ------------------------------------------------------------------------ | ----------------------- | -------------- | ---------------- |
+|   1 | A method is a function on the prototype chain; a stored function is data | Public API, bug         | Before 1.0     | Yes              |
+|   2 | `Object.defineProperty` through a store is a write                       | Bug                     | Before 1.0     | Yes              |
+|   3 | Suspension stays; the walk to a detached parent goes                     | Bug, simplification     | Can follow 1.0 | Yes              |
+|   4 | Size ceilings for every entry                                            | Constraint              | Before 1.0     | Yes              |
+|   5 | Raw values on write, one node per raw object                             | Bug                     | Before 1.0     | Yes              |
+|   6 | `includes`, `indexOf`, `lastIndexOf` find an object in any form          | Bug                     | Before 1.0     | Yes              |
+|   7 | `has` and `ownKeys` traps; a missing property is a value                 | Bug                     | Before 1.0     | Yes              |
+|   8 | A delete that removes nothing is not a change                            | Bug                     | Can follow 1.0 | Yes              |
+|   9 | A plain object from another realm is state; no guard for a frozen raw    | Bug                     | Can follow 1.0 | On one condition |
+|  10 | Getters: one kind of dependency; errors; the snapshot layer              | Bug, simplification     | Before 1.0     | Yes              |
+|  11 | Nested instances stay opt-in; the base class `ClassyStore`               | Public API              | Before 1.0     | Yes              |
+|  12 | A table per prototype in place of a descriptor lookup                    | Performance             | Can follow 1.0 | Yes              |
+|  13 | One delivery queue, with a bound                                         | Bug                     | Before 1.0     | Yes              |
+|  14 | A subscriber's error is caught and logged, a rejection too               | Public API, bug         | Before 1.0     | Yes              |
+|  15 | A setter is a transaction                                                | Bug                     | Before 1.0     | Yes              |
+|  16 | `batch()` refuses, by type, a callback that returns a promise            | Public API              | Before 1.0     | Yes              |
+|  17 | `subscribe()` stays batched by default                                   | Public API              | No change      | Docs             |
+|  18 | Writes outside a method stay allowed                                     | Public API              | No change      | No               |
+|  19 | `persist()` restores before it returns when the storage is synchronous   | Public API              | Before 1.0     | Yes              |
+|  20 | Dead and redundant code goes                                             | Simplification          | Can follow 1.0 | Yes              |
+|  21 | Nothing `persist` cannot use is skipped in silence                       | Bug, diagnostics        | Before 1.0     | Yes              |
+|  22 | `persist()` validates its options                                        | Bug                     | Before 1.0     | Yes              |
+|  23 | A restore is all or nothing                                              | Bug                     | Can follow 1.0 | Yes              |
+|  24 | A migrated record is written back; a pending save is flushed             | Bug                     | Can follow 1.0 | Yes              |
+|  25 | Cross-tab sync ignores an event from another storage area                | Bug                     | Can follow 1.0 | Yes              |
+|  26 | `persist` options: `clearOnExpire` goes, `storage` stays required        | Public API              | Before 1.0     | Yes              |
+|  27 | `devtools`: named entries, exact time travel                             | Public API, bug         | Before 1.0     | Yes              |
+|  28 | An edit made in the same tick as `undo()` is recorded                    | Bug                     | Can follow 1.0 | Yes              |
+|  29 | To `withHistory`, a function in an own field is data                     | Public API              | Before 1.0     | Yes              |
+|  30 | Undo and time travel change a nested object in place                     | Bug, performance        | Before 1.0     | Yes              |
+|  31 | `subscribeKey` without a snapshot of the whole store; no selector form   | Performance             | Can follow 1.0 | Yes              |
+|  32 | The publish step gets a job of its own                                   | Repository              | Can follow 1.0 | Yes              |
+|  33 | Dependencies: exact pin, an audit step                                   | Repository              | Can follow 1.0 | Yes              |
+|  34 | Documentation                                                            | Docs                    | With each      | Yes              |
+|  35 | Every error carries a stable code                                        | Diagnostics             | Before 1.0     | Yes              |
+|  36 | No development build in 1.0                                              | Diagnostics             | Can follow 1.0 | No               |
+|  37 | Vue, Angular and Solid build the snapshot when it is read                | Performance             | Can follow 1.0 | Yes              |
+|  38 | Vue: no listener left by a server render; a read-only ref                | Bug, public API         | Before 1.0     | Yes              |
+|  39 | Angular: `untracked()`, an injector option                               | Bug, public API         | Can follow 1.0 | Yes              |
+|  40 | The adapter names stay                                                   | Public API              | No change      | Docs             |
+|  41 | `prepareStoreForHydration` stays explicit; `isEqual` stays               | Public API              | No change      | Docs             |
+|  42 | Collections: one membership rule, a snapshot index                       | Bug, performance        | Before 1.0     | Yes              |
+|  43 | Class getters on one derived prototype per class                         | Public API, performance | Before 1.0     | Yes              |
+|  44 | A snapshot keeps a cycle                                                 | Bug, public API         | Before 1.0     | Yes              |
+|  45 | Snapshot types: tuples, collection snapshots without mutators            | Public API              | Before 1.0     | Yes              |
+|  46 | A snapshot after one row changes still rebuilds the list                 | Performance             | Can follow 1.0 | No               |
+
 ## The four decisions the rest hangs on
 
 ### 1. A method is a function on the prototype chain; a function held in a field or a list is data
@@ -86,8 +141,10 @@ page describes the wrapper cache keyed by function.
 the value becomes the property's child or the old child is detached, and
 subscribers are told when the value, the getter, the kind of property or its
 enumerability changed. Every descriptor is still forwarded to the raw object.
-`Object.freeze(store)` keeps working and stays silent. No `setPrototypeOf`
-trap is added.
+`Object.freeze(store)` keeps working and stays silent. A definition or a
+delete of a property that is or was an accessor clears the node's getter
+cache, so a getter that read it is not left stale (finding 44). No
+`setPrototypeOf` trap is added.
 
 **Why.**
 
@@ -627,7 +684,9 @@ relies on the old timing.
 **Decision.** Remove the ten dead lines of the three core files in the form
 the type checker accepts, and the dead blocks of `persist.ts` (M54, finding
 54), including the per-field bookkeeping of a restore that decisions 22 and
-23 make unreachable. The ternary in `activeTracker()` stays: it looks dead
+23 make unreachable, and the redundant checks stage 1 listed in
+`equality.ts`, `history.ts` and `collections.ts` (finding 59), each after a
+benchmark where it sits in a loop. The ternary in `activeTracker()` stays: it looks dead
 and is on the path of every read.
 
 **Evidence.** `own-code.md`, `r5`: 8 lines added, 17 removed, 32 bytes
@@ -1264,3 +1323,89 @@ detector, and its file says so.
   containers hear of a write stays unspecified.
 - **The type tests fail when an export is added.** They stay as change
   detectors, and rule 11 says what is promised.
+
+## Proposed in a report and not taken
+
+Each is named in the entry it belongs to. In one list:
+
+- Wrapping every stored function and caching the wrapper (M1, MobX's way).
+- Refusing accessor and read-only definitions, `setPrototypeOf`, or
+  `Object.freeze(store)` (M2, M8).
+- A Proxy target of the library's own (M7): both reports that describe it
+  call it too large for 1.0, and it reopens decisions 2 and 7.
+- A guard for a raw object frozen behind the store (M7).
+- Array methods run on the raw array (M10): unmeasured on this library, and
+  decisions 10 and 12 attack the same cost.
+- Wrapping nested class instances by default (M11).
+- Removing suspension as a whole (M14), and holding a subscribed node
+  strongly (M15).
+- Recording reads outside a getter's own node (M21), caching a thrown error
+  (M22), and a throw for every write made while a getter runs (M26).
+- Throwing a subscriber's error to the writer, and `reportError()` (M28).
+- Dropping a write that is undone inside a batch (M30): one notification for
+  a batch that wrote is the simpler rule.
+- A synchronous default for `subscribe()` (M31), and a warning for a write
+  outside a method (M32).
+- Rebuilding only the changed keys of a snapshot (M35), in 1.0.
+- Reactive native `Map` and `Set` (M38), and an index beside the live array
+  of a collection (M40), in 1.0.
+- An optional `storage`, a pause switch and an in-flight flag for `persist`
+  (M49, M55).
+- DevTools entries on the synchronous channel (M57).
+- A selector form of `subscribeKey` (M62), in 1.0.
+- Renaming the Solid adapter (M68) or `isEqual` (M71), and capturing the
+  hydration snapshot automatically (M70).
+- Export conditions for a development build, and any warning in 1.0 (M72,
+  M73).
+
+## Every merged issue, and where it is decided
+
+| Issues     | Decision | Issues     | Decision | Issues   | Decision |
+| ---------- | -------: | ---------- | -------: | -------- | -------: |
+| M1         |        1 | M28        |   13, 14 | M56, M57 |   27, 30 |
+| M2, M8     |        2 | M29        |       15 | M58      |       28 |
+| M3         |        7 | M30        |       16 | M59      |       29 |
+| M4         |        8 | M31        |       17 | M60      |       30 |
+| M5         |        6 | M32        |       18 | M61, M62 |       31 |
+| M6         |        5 | M33, M34   |       43 | M63      |       37 |
+| M7, M13    |        9 | M35        |       46 | M64, M65 |       38 |
+| M9         |       12 | M36        |       44 | M66, M67 |       39 |
+| M10        |     None | M37        |       34 | M68, M69 |       40 |
+| M11, M12   |       11 | M38 to M40 |       42 | M70, M71 |       41 |
+| M14 to M17 |        3 | M41 to M43 |       45 | M72, M73 |   35, 36 |
+| M18 to M27 |       10 | M44        |       22 | M74      |       32 |
+| M23        |        7 | M45, M46   |   21, 26 | M75      |       33 |
+| M54        |       20 | M47, M50   |       24 | M76, M77 |       34 |
+| M55        |     None | M48, M49   |   19, 26 | M51, M52 |       23 |
+|            |          | M53        |       25 |          |          |
+
+## The order for stage 4
+
+One change per commit, test first, each measured against the stage 1
+baselines. The order follows what each change touches and what it needs.
+The task list that follows the adversarial review refines it.
+
+1. **The core, reads and writes.** The walk (3). The table per prototype
+   (12), which tells the trap "own or inherited" before decision 1 asks. The
+   delete (8). `defineProperty` as a write (2). Raw values on write (5).
+   Stored functions (1). The searches (6).
+2. **Getters.** One kind of dependency and the rest of decision 10. Then the
+   `has` and `ownKeys` traps (7), which add two records in that one shape.
+3. **Snapshots.** Class getters on a derived prototype, with `this` (43).
+   Cycles (44). The types (45).
+4. **Delivery.** The queue (13), the setter (15), the rejection handler (14),
+   the type of `batch()` (16).
+5. **Classes.** The realm guard under its condition (9). The base class
+   (11), after 1, 2 and 30.
+6. **Collections.** The membership rule and the snapshot index (42).
+7. **Utilities.** `persist` (19, 21 to 26). `devtools` (27). Restore in place
+   (30). `history` (28, 29). `subscribeKey` (31).
+8. **Adapters.** Vue (37, 38). Angular (37, 39). Solid (37). The `active`
+   flags, in the same change as the queue's adapters work (42).
+9. **Codes** for the three messages the library has today (35); every new
+   message carries its code from the commit that adds it.
+10. **Cleanup.** Dead and redundant code (20), last among the code changes.
+11. **The repository.** The audit step and `CONTRIBUTING.md` (33). The
+    release workflow (32), as the last commit.
+
+Documentation changes go with the change they describe (34).
