@@ -1,8 +1,8 @@
 import {mapOwnArrayElements} from '../../../../utils/internal/internal';
 
+// proxy-compare's tracking proxy refuses a write and a delete before they
+// reach a shared copy, so only the traps it lets through are guarded.
 const readonlyTarget: ProxyHandler<object> = {
-  set: () => false,
-  deleteProperty: () => false,
   defineProperty: () => false,
   setPrototypeOf: () => false,
   preventExtensions: () => false,
