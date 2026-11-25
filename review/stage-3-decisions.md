@@ -3,12 +3,14 @@
 Stage 3 of the pre-1.0 review. No library source has been changed. Stage 4
 implements what is decided here, one change per commit, test first.
 
-**Status: revised after the first adversarial review; the second is
-running.** Three fresh agents reviewed the first complete draft and raised 58
-objections, 28 of them "wrong". Three more spikes were run for the ones
-that reading could not settle, and nine entries were decided again from
-them: 1, 5, 6, 10, 11, 12, 27, 30 and 43. "Objections and answers" at the
-end says what became of each objection.
+**Status: under revision after the second adversarial review.** Two rounds
+of review by agents that took no part in the work raised 58 and then 30
+objections. The first round is answered in full, and nine entries were
+decided again from three spikes. Of the second round, the answers that need
+no build are in the entries; five entries (1, 10, 12, 29 and 30) are marked
+"under revision" and wait for two more spikes. "Objections and answers" at
+the end has the first round; the second round's table follows when the
+spikes have reported.
 
 ## How to read this
 
@@ -35,7 +37,9 @@ end says what became of each objection.
 ## All decisions on one page
 
 "Kind" is one of the plan's five groups: bug, simplification, public API,
-diagnostics, performance; "repository" is for what is not library code.
+diagnostics, performance. Three more are used for what is not a change to
+the library's behaviour: "repository" for the workflows and dependencies,
+"constraint" for the numbers of `CONSTRAINTS.md`, and "docs".
 "Stage 4" says whether the change is scheduled now. The entries are grouped
 by subject below, so their numbers are not in order there.
 
@@ -63,8 +67,8 @@ by subject below, so their numbers are not in order there.
 |  20 | Dead and redundant code goes, in the commit that makes it dead               | Simplification          | Can follow 1.0                                 | Yes                  |
 |  21 | Nothing `persist` cannot use is skipped in silence                           | Bug, diagnostics        | Before 1.0                                     | Yes                  |
 |  22 | `persist()` validates its options                                            | Bug                     | Before 1.0                                     | Yes                  |
-|  23 | A restore is all or nothing                                                  | Bug                     | Can follow 1.0                                 | Yes                  |
-|  24 | A migrated record is written back; a pending save is flushed                 | Bug                     | Can follow 1.0                                 | Yes                  |
+|  23 | A restore is all or nothing                                                  | Bug                     | Before 1.0                                     | Yes                  |
+|  24 | A migrated record is written back; a pending save is flushed                 | Bug                     | Before 1.0                                     | Yes                  |
 |  25 | Cross-tab sync ignores an event from another storage area                    | Bug                     | Can follow 1.0                                 | Yes                  |
 |  26 | `persist` options stay as they are                                           | Public API              | No change                                      | No                   |
 |  27 | `devtools`: named entries, exact time travel, off in production              | Public API, bug         | Before 1.0                                     | Yes                  |
@@ -91,6 +95,15 @@ by subject below, so their numbers are not in order there.
 ## The four decisions the rest hangs on
 
 ### 1. A function an object is born with is a method; one written later to a field that exists is data
+
+**Under revision**, with `spike-functions-2.md`. The second review showed
+what it costs that the store writes its wrapper into the object it is given:
+a store made from a copy of that object or of a snapshot runs the old
+store's methods, and a callback on a snapshot ignores the `this` its caller
+passes (`adversarial-2-core.md`, objections 1, 2, 6, 7 and 8). The spike
+builds the rule in a form that leaves the object and its snapshots as they
+were written: a function in a field is a method only when it is read through
+the store.
 
 **Decision.** One rule for every store. It replaces the "strict" rule this
 entry held in its first draft, and the exception decision 11 made for the
@@ -310,37 +323,64 @@ yes, first, because decisions 2 and 12 touch the same traps.
 ceiling, set here once for the whole set. One decision record carries all of
 them.
 
-| Entry                 | Today | Budget today | Ceiling | What moves it                                                    |
-| --------------------- | ----: | -----------: | ------: | ---------------------------------------------------------------- |
-| `.` (the main entry)  | 3,661 |        3,750 |   5,400 | The first table below                                            |
-| `./utils` adds        | 2,686 |        2,750 |   4,000 | The second table below                                           |
-| `./collections` adds  |   727 |          750 |     950 | The snapshot index, the membership rule, the mutator check       |
-| `./react` adds        | 1,662 |        1,700 |   1,725 | The guard for a cyclic snapshot                                  |
-| `./vue` adds          |   280 |          300 |     390 | The read-time ref, the server path, the setter that throws       |
-| `./angular` adds      |   271 |          300 |     400 | The read-time signal, `untracked()`, the injector, its own check |
-| `./solid` adds        |   312 |          335 |     360 | The read-time accessor                                           |
-| `./svelte` adds       |   182 |          200 |     200 | Nothing                                                          |
-| `./react/server` adds |   153 |          175 |     175 | Nothing                                                          |
+| Entry                 | Today | Budget today | Estimate | Ceiling | What moves it                                                    |
+| --------------------- | ----: | -----------: | -------: | ------: | ---------------------------------------------------------------- |
+| `.` (the main entry)  | 3,661 |        3,750 |    5,255 |   5,450 | The first table below                                            |
+| `./utils` adds        | 2,686 |        2,750 |    3,760 |   4,000 | The second table below                                           |
+| `./collections` adds  |   727 |          750 |      911 |     950 | The snapshot index, the membership rule, the mutator check       |
+| `./react` adds        | 1,662 |        1,700 |    1,693 |   1,750 | The guard for a cyclic snapshot                                  |
+| `./vue` adds          |   280 |          300 |      369 |     400 | The read-time ref, the server path, the setter that throws       |
+| `./angular` adds      |   271 |          300 |      381 |     425 | The read-time signal, `untracked()`, the injector, its own check |
+| `./solid` adds        |   312 |          335 |      346 |     375 | The read-time accessor                                           |
+| `./svelte` adds       |   182 |          200 |      182 |     200 | Nothing                                                          |
+| `./react/server` adds |   153 |          175 |      153 |     175 | Nothing                                                          |
+
+**How a ceiling is set.** The estimate, plus an allowance for what was
+decided and never built, plus the 2% that every budget carries, rounded up
+to the next 25 bytes. The allowances: 80 bytes on the main entry, because
+two built combinations came out above the sum of their parts; 150 on
+`./utils` for the `persist` rules of decisions 21 and 22 that no spike
+holds; 20 on `./vue` for the setter that throws; 30 on `./angular` for its
+own context check. The first draft's ceilings for `./react`, `./vue` and
+`./angular` were below their own estimates plus 2%, so the last step of
+stage 4 would have failed on the reports' own numbers.
 
 **A ceiling is an estimate and a tripwire, not a measurement.** The decided
-set was never built as one. Each figure below is one change measured alone
-against today's source. Two combinations that were built came out above
-the sum of their parts (the trap spikes 650 against 617, the snapshot spikes
-243 against 230), and one below it (raw values, the searches, the freeze,
-`defineProperty` and the table per prototype, 465 against 486). So the
-ceilings sit a little above the sums, and what they
-are for is to stop the work: a change that would pass one is not committed,
-and the question goes back to a decision.
+set was never built as one. Each figure in the two tables below is one
+change measured alone against today's source, or, where a change was built
+on top of another, the bytes it added there; the note under each table says
+which. Two combinations that were built came out above the sum of their
+parts (the trap spikes 650 against 617, the snapshot spikes 243 against
+230), and one below it (raw values, the searches, the freeze,
+`defineProperty` and the table per prototype, 465 against 486). What a
+ceiling is for is to stop the work: a change that would pass one is not
+committed, and the question goes back to a decision.
 
 **How a budget moves in stage 4, and what enforces it.**
 
 - Stage 4's first commit is tooling only. `budgets.json` gets a `ceiling`
   beside each budget, and the size script fails when a budget is above its
-  ceiling. The floor guard reads `budgets.json` and `limits.json` as well as
-  `CONSTRAINTS.md`, compares each commit with the one before it, and blocks a
-  number that rises unless the decision record changes in the same commit.
-  Today it reads `CONSTRAINTS.md` only, and one record anywhere on the branch
-  would switch it off for every later change.
+  ceiling or a measured size above its budget.
+- **A ceiling does not move with the work.** The floor guard refuses a
+  commit that changes a ceiling together with anything else. A ceiling
+  changes only in a commit that holds the new number and the decision
+  record's reason for it, and nothing more, so it cannot ride along with the
+  change that needs it. The first draft let a ceiling rise under the same
+  condition as a budget, which made the tripwire a sentence and not a check.
+- **A budget moves with a line in the record.** The floor guard reads
+  `budgets.json` and `limits.json` as well as `CONSTRAINTS.md`, and blocks a
+  budget or a limit that rises unless the same commit adds a line to the
+  decision record. Today it reads `CONSTRAINTS.md` only, and one record
+  anywhere on the branch would switch it off for every later change.
+- **The guard checks every commit, itself included.** It walks the commits
+  from the merge base with `main` to the head and judges each against the
+  one before it; today it sees one difference for the whole branch. Its own
+  file comes into its scope: today it leaves itself out, so a later commit
+  could weaken it unseen. CI runs it on the pull request, and it is run
+  before each push during stage 4.
+- **Each rule has a test.** The first commit adds tests for the size
+  script's two failures and for each rule of the guard, run on throwaway
+  repositories made by the test.
 - A commit that grows an entry sets that entry's budget to its new measured
   size plus 2%, adds a line with the measured size to the decision record,
   and stays under the ceiling.
@@ -373,6 +413,13 @@ and the question goes back to a decision.
 | A snapshot keeps a cycle                                              |       44 |     −9 |
 | Sum                                                                   |          | +1,594 |
 
+Measured on top of another change, not alone: decision 1 (on the strict
+rule, decision 2 and the base class; the row is the three together less the
+other two), the second parts of decisions 5, 6 and 10 (on the first parts),
+and decision 27 (on the first form of its entries). The row of decision 1
+is the form spiked first and is measured again by the spike that follows
+the second review.
+
 The sum puts the main entry near 5,255 bytes, 44% above today's. The first
 draft of this entry counted 4,820 and left two rows open. The 433 bytes
 since then are what the first review asked for: the rule for functions
@@ -381,7 +428,9 @@ searches that answer correctly for a list of snapshots (68), the throw for a
 getter that writes (74), the table that does not hold a getter's body (46),
 and the slot for `devtools` (12, the other open row). The messages were
 measured as their spikes wrote them; the codes of decision 35 shorten them,
-by about 100 bytes for the first set and unmeasured for the rest.
+by about 100 bytes for the first set and unmeasured for the rest. (The
+report that measured the messages gives 271 bytes of text in all; the
+difference is the text of refusals this document does not take.)
 
 **What `./utils` adds, change by change.**
 
@@ -479,7 +528,9 @@ and a store of rows are both inside the drift of the machine on both
 engines.
 
 **Label.** Before 1.0, because `outer.inner === inner` changes its answer.
-**Stage 4:** yes, with decision 2.
+**Stage 4:** yes, in the commit after decision 2. Decision 2 lands first and
+stores a defined value as it is given; this commit changes both traps to
+store the raw value and adds the swap.
 
 **Not covered, on purpose.** A list built from proxies and then assigned
 (`this.items = this.items.filter(…)`) still holds proxies in its raw array.
@@ -502,6 +553,14 @@ where that is wrong. Every snapshot of one object has the same identity, so
 on a list of saved versions `indexOf(v2)` answered 0 and `includes` was true
 for a version that was never pushed. A list of snapshots kept as values is
 an undo stack, and it has to answer as a plain array does.
+
+**A reactive collection answers differently, on purpose.** `reactiveSet` and
+`reactiveMap` match every member by identity, a value too (decision 42). So
+two snapshots of one object are two elements of a list and one member of a
+set. A list is an array and has to answer as one. A collection is asked
+"is this row selected?" with whatever snapshot of the row a component
+holds, and has to say yes after the row was edited. The collections guide
+states the difference, and a test pins both answers.
 
 **How.** The raw list holds an element that is part of a store by its raw
 object, or in an older list by its proxy, and a value by itself. So the
@@ -597,6 +656,10 @@ test changes. The form without the cache was not measured.
 
 ### 10. Getters: one kind of dependency, on both layers what the other has
 
+**Under revision** for one part, with `spike-core-3.md`, G1: on a snapshot,
+a getter can still write the live store through an arrow-function method or
+a reference to its store (`adversarial-2-core.md`, objection 3).
+
 **Decision.** Take the combination of the getter spikes:
 
 - One kind of getter dependency, `{value, version}` by property. It contains
@@ -611,8 +674,8 @@ test changes. The form without the cache was not measured.
   - On a snapshot, a write to `this` throws a `TypeError` that names the
     field: an assignment, a `delete`, a definition, also through a method
     the getter calls. The traps throw themselves, so it holds in code that
-    is not in strict mode too. A write to a child throws because the child
-    is frozen.
+    is not in strict mode too. A write to a child throws in strict code, because the child
+    is frozen; in code that is not strict it is ignored.
   - On the live store, a write to the getter's own object throws the same
     way. A write to a child, to another store, and the construction of a
     store inside a getter are allowed.
@@ -754,6 +817,10 @@ store, once it can be silenced for a class that is opaque on purpose.
 ## Performance
 
 ### 12. A table per prototype answers "is this key a getter?"
+
+**Under revision**, with `spike-core-3.md`, G2: the table as spiked keeps an
+entry for every key that was looked up and not found, for good
+(`adversarial-2-core.md`, objection 5).
 
 **Decision.** The `get` and `set` traps stop walking the prototype chain with
 `Object.getOwnPropertyDescriptor` on every access. An own key is decided with
@@ -971,7 +1038,8 @@ and `./utils` gets 6 bytes smaller.
   natural place for it, and it is the wrong one: the field initialisers of a
   subclass run after the restore and overwrite it, and under decision 2 they
   count as edits, so the next save writes them over the stored record. Stage
-  4 pins what happens with a test, so that the sentence stays true.
+  4 pins what happens with a test, so that the sentence stays true. The test
+  needs the base class, so it is written in the base-class step, not here.
 - **On the client, `prepareStoreForHydration(store)` is called before
   `persist(store)`** (decision 41).
 
@@ -1011,58 +1079,105 @@ things at once and is timed alone before stage 4 relies on it.
 
 **Label.** Can follow 1.0. **Stage 4:** yes.
 
-### 21. Nothing `persist` cannot use is skipped in silence
+### 21. Nothing `persist` cannot use is skipped in silence, and nothing it could not restore is written over
 
-**Decision.**
+**Decision.** A stored record that is read and not restored is one of three
+kinds. Each is reported through `onError` as `'parse'`, with a code and the
+reason in the message. No new operation name is added.
 
-- Every stored record `persist` cannot use is reported as `'parse'`, with
-  the reason in the message: an envelope that is not an object, a `state`
-  that is not a plain object, a version that is not an integer, a version
-  that differs with no `migrate`, and a `migrate` that returns something
-  other than a plain object. No new operation name is added.
+| Kind                         | What it is                                                                                                                                                                                                                                                         | What happens to it                                                           |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------- |
+| Nothing to keep              | Not JSON; an envelope that is not an object; a `state` that is not a plain object; a version that is not a finite number of zero or more; an `expiresAt` that is neither a number, `null` nor missing. Also a record of a lower version when no `migrate` is given | The next save replaces it                                                    |
+| From a newer version         | Its version is above the configured one                                                                                                                                                                                                                            | `migrate` is not called with it. The handle does not write while it is there |
+| Not migrated or not restored | `migrate` threw, or returned a thenable or something that is not a plain object; a `deserialize` threw; the restore was rolled back (decision 23)                                                                                                                  | The handle does not write while it is there                                  |
+
+- **A handle that does not write** saves nothing, on an edit or on `save()`.
+  It writes again after `clear()`, after a `rehydrate()` that restores a
+  record or finds none, and after a record that can be restored arrives from
+  another tab. The report says that saving has stopped.
 - **When no `onError` is given, the report goes to `console.error`** with
-  its code, in every build. `onError` replaces that default.
-- **The version rule is one rule.** A version is an integer. A record with
-  no `version` field counts as version 0. Any other value, `null` and `"2"`
-  included, is refused.
-- **An `async` `migrate` is refused before it is called.** If a `migrate`
-  that is not an `async` function returns a thenable, a handler is attached
-  to it and the record is refused, so no rejection is left unhandled.
-- A record without a usable `expiresAt` is restored and written back with
-  one.
-- A record that was refused is replaced by the next save.
+  its code, in every build. `onError` replaces that default. An application
+  that prefers to lose the old record calls `clear()` there.
+- **The version rule is one rule, on both sides.** A version is a finite
+  number, zero or above. A record with no `version` field counts as version
+  0. Any other value in a record, `null` and `"2"` included, leaves nothing to
+  keep. The `version` option is checked when `persist()` is called
+  (decision 22).
+- **`migrate` is called only for a lower version**, and never as an `async`
+  function: a native `async` function is refused when `persist()` is called
+  (decision 22). If a `migrate` returns a thenable when it runs, a handler is
+  attached to it, so no rejection is left unhandled, and the record counts
+  as not migrated.
+- **A record without an `expiresAt`, or with `null`,** is restored, and is
+  written back with one when `expireIn` is set.
 
 **Why.**
 
 - One channel for every failure of a read, and a default for it. `onError`
   is optional, and without a default a refused record is as silent as today.
+- A record of a newer version is the data of a newer build of the same
+  application: another tab that has already updated, or a deployment that
+  was rolled back. Today `migrate` is called with it, and the next edit
+  writes the older build's state over it. An older build has no way to read
+  it and no business deleting it.
+- A record that could not be migrated or restored is valid data that a
+  corrected `migrate` or `deserialize` can still read. The first draft
+  replaced it at the next save, which turns a bug in one release into lost
+  data for every user who makes an edit. Not saving is the failure that can
+  be undone; it is reported, and the application can choose the other one
+  with `clear()`.
+- A record that is not a record holds nothing to keep, and keeping it would
+  stop the store from ever saving again. A version raised with no `migrate`
+  is the usual way to say that older records are to be dropped, so such a
+  record is replaced too. It is still reported; an application that wants no
+  report gives a `migrate` that returns the state to start from.
 - Awaiting an `async` `migrate` would put a turn between the read and the
   apply, which is what decision 19 removes. Calling it and dropping its
   promise would turn a silent skip into an unhandled rejection, which ends a
   Node or Bun process.
 - Counting a record without `expiresAt` as expired would wipe every user's
   saved state on the release that adds `expireIn` to an application.
-- Keeping a refused record for good would stop the store from ever saving
-  again. It is replaced, after it has been reported.
+- A version need not be an integer. The first draft demanded one, on the
+  record only: an application configured with `version: 1.1` would then have
+  refused its own record after the upgrade and written over it (objection 2
+  of the second review).
 
-**Evidence.** `persist-devtools.md`, P2. 144 bytes on `./utils`. 8 tests
-change, all pins of the silence. The default report, the `null` version and
-the handler on a thenable are `adversarial-edges.md`, objections 1, 6 and
-20, each reproduced on the spike; none is in the spike, so stage 4 writes
-their tests first.
+**What it costs a user.** After a release whose `migrate` or `deserialize`
+fails for a stored record, that user's state is not saved until a later
+release reads the record, or the application calls `clear()`. An older tab
+stops saving once a newer tab has written. An older tab that does not sync
+and loaded before the newer one wrote cannot know, and still writes over the
+newer record; the guide says so.
+
+**Evidence.** `persist-devtools.md`, P2: 144 bytes on `./utils`, 8 tests
+change, all pins of the silence. Not in that spike, and decided from the two
+reviews: the default report, the version rule, the refusal of an `async`
+`migrate`, and the three kinds with a handle that does not write
+(`adversarial-edges.md`, objections 1, 6 and 20; `adversarial-2-whole.md`,
+objections 1, 2 and 11, each reproduced on the spike or on the unmodified
+source). None was built, so stage 4 writes their tests first: two handles at
+versions 1 and 2 on one key, a `migrate` that throws followed by an edit, a
+version raised with no `migrate`, a version of `1.1` on both sides, and each
+row of the table.
 
 **Label.** Before 1.0. **Stage 4:** yes.
 
 ### 22. `persist()` validates its options when it is called
 
-**Decision.** `persist()` throws a `TypeError` for a prototype key, a getter
-or a method named in `properties`, and for a transform that is half written.
+**Decision.** `persist()` throws a `TypeError` with a code, before it reads
+or writes anything, for: a prototype key, a getter or a method named in
+`properties`; a transform that is half written; a `version` that is not a
+finite number of zero or more; and a `migrate` that is a native `async`
+function.
 
 **Why.** These are mistakes in the application's own code, at a boundary the
 library owns. Today each is accepted and then does the wrong thing later.
+Checking the version and `migrate` here, once, means neither is ever found
+out record by record, where the cost would be a user's stored data.
 
-**Evidence.** `persist-devtools.md`, P3. 82 bytes. 5 tests change: 4 fixes
-and 1 incidental.
+**Evidence.** `persist-devtools.md`, P3: 82 bytes, 5 tests change, 4 fixes
+and 1 incidental. The checks of `version` and `migrate` are not in that
+spike; stage 4 writes their tests first.
 
 **Label.** Before 1.0. **Stage 4:** yes.
 
@@ -1070,26 +1185,41 @@ and 1 incidental.
 
 **Decision.** A restore copies every value first, writes them in one
 transaction, checks that the result can be snapshotted, and rolls back if it
-cannot. A nested `__proto__` key is dropped.
+cannot. A nested `__proto__` key is dropped. A record whose restore was
+rolled back is reported and is not written over (decision 21).
 
 **Why.** Today a deeply nested record restores and then makes every snapshot
 and every save throw, so it is never replaced.
 
+**What it changes for a user.** A synchronous subscriber is told once, after
+the whole record is in, where today it is told once per field and can edit
+another field in between. The persist tutorial describes today's behaviour,
+and that sentence changes in the same commit.
+
 **Evidence.** `persist-devtools.md`, P4. 74 bytes. 1 test changes, a fix.
 
-**Label.** Can follow 1.0. **Stage 4:** yes.
+**Label.** Before 1.0, for the documented sentence. **Stage 4:** yes.
 
 ### 24. A migrated record is written back, and a pending save is written when the page is hidden
 
-**Decision.** After a restore that ran `migrate`, the migrated record is
-saved at once, so the migration does not run again on the next load. A
+**Decision.** After a restore that ran `migrate` on a record of a lower
+version, the migrated record is saved at once, so the migration does not run
+again on the next load. Nothing is written back in any other case. A
 debounced save that is still waiting is written when the page is hidden
 (`pagehide`).
+
+**Why only after an upgrade.** Written back in every case, an older build
+would replace a newer record as soon as it loads, before the user does
+anything (objection 1 of the second review, reproduced on the spike). Under
+decision 21 an older build does not call `migrate` for such a record and
+does not write at all.
 
 **Evidence.** `persist-devtools.md`, P5. 102 bytes. No test changes. A real
 page unload was not tested; stage 4 tests it in the browser suite.
 
-**Label.** Can follow 1.0. **Stage 4:** yes.
+**Label.** Before 1.0: the persist tutorial says that migration and
+hydration do not rewrite storage, and that sentence changes in the same
+commit. **Stage 4:** yes.
 
 ### 25. Cross-tab sync ignores an event from another storage area
 
@@ -1127,24 +1257,34 @@ tidier option list is not worth a deletion that was never tested.
   `STORE_UPDATE` entry per task, from a microtask. So the synchronous
   channel costs one snapshot per outermost method and never one per direct
   write.
-- **How the name reaches `devtools`.** The core holds one slot for a
-  function and nothing else. `devtools()` fills it while at least one
-  connection is open and empties it when the last one is disposed. A method
-  call tests the slot; when it is empty the call is today's code. The naming
-  itself lives in `devtools.ts`. A method takes the name of its key
-  (decision 1).
+- **How the name reaches `devtools`.** The core holds one place for a
+  function, empty unless `devtools` is connected, and nothing else.
+  `devtools()` fills it while at least one connection is open and empties it
+  when the last one is disposed. A method call tests it; when it is empty
+  the call is today's code. The naming itself lives in `devtools.ts`. This
+  is the "hook" form of the spike, not its "slot" form, which keeps a counter
+  and the naming in the core.
+- **The name is the key.** The key a method was read under is handed to
+  that function with the call, for a method of a class and for one held in a
+  field alike. The function's own `name` is not used: it is empty for an
+  arrow function assigned in a constructor.
 - **Time travel.** A jump replaces the state exactly, in one transaction,
   without calling setters. A jump to an entry this session sent restores the
   snapshot that was sent, so a `Date` stays a `Date`; a jump the extension
   sends as JSON restores data.
 - **Messages.** `RESET`, `COMMIT`, `ROLLBACK` and `IMPORT_STATE` are handled.
-- **`enabled` defaults to on, except where `NODE_ENV` is `production`.** It
-  reads the environment the way decision 36 does. The guide says that the
-  extension receives every state, so a store with secrets passes
-  `enabled: false`.
+- **`enabled` defaults to on only where `NODE_ENV` can be read and is not
+  `production`.** It reads the environment the way decision 36 does. Where
+  there is no `process` to read, the default is off: a bundle in which
+  nothing replaced the expression must not hand every state to an extension
+  because of it. `enabled: true` turns it on anywhere. The guide names the
+  builds in which the default is off, and says that the extension receives
+  every state, so a store with secrets passes `enabled: false`.
 - **Computed values.** A snapshot no longer lists class getters (decision
   43), so `devtools` adds the values of the root store's class getters to
-  what it sends. Decision 43 has the details and the cost.
+  what it sends, each read guarded. Decision 43 has the details, the cost
+  and the limit: a getter of an object literal that throws still loses the
+  entry, as today.
 
 **Why.** Every entry is named `STORE_UPDATE` today, which makes the tool's
 list useless, and a jump adds unknown fields, never deletes missing ones and
@@ -1152,9 +1292,9 @@ calls setter-only accessors. The default changes because DevTools on a
 production page hands the whole state to any extension that asks, and a
 default cannot be changed after 1.0.
 
-The slot answers objection W17. The first draft's hook ran on every method
+The hook form answers objection W17. The first draft's hook ran on every method
 call of every user, `devtools()` or not, and cost 5 to 6% of a method call
-on Node. With the slot a method call without `devtools` is inside the spread
+on Node. With it a method call without `devtools` is inside the spread
 of today's on both engines, and the main entry carries 12 bytes for it, not
 20.
 
@@ -1165,9 +1305,12 @@ names fall back to `STORE_UPDATE`; that was read from the code, not run.
 
 **Evidence.** `persist-devtools.md`, P7: 403 bytes on `./utils`, and no test
 changes, because stage 1 added none for `devtools`; stage 4 writes them
-first. `spike-combos.md`, K2: the slot form, 12 bytes on the main entry and
-452 on `./utils` with P7, 1,341 tests pass, `store.method` timed in five
-rounds on each engine against today's and against P7. Not
+first. `spike-combos.md`, K2, the hook form (`k2-hook-on-p7.patch`): 12 bytes on
+the main entry and 452 on `./utils` with P7, 1,341 tests pass,
+`store.method` timed in five rounds on each engine against today's and
+against P7. That patch reads the function's own `name`; passing the key was
+not built, and stage 4 tests an entry for an arrow function written to a
+new key and for one assigned in a constructor first. Not
 verified: the entry ids the Redux DevTools extension sends back.
 
 **Label.** Before 1.0. **Stage 4:** yes.
@@ -1185,6 +1328,8 @@ changes, a fix.
 that sentence goes. **Stage 4:** yes.
 
 ### 29. `withHistory` restores a function held in an own field, by reference
+
+**Under revision** with decision 1 (`adversarial-2-core.md`, objection 6).
 
 **Decision.** Undo removes a function that was added to a field and puts
 back one that was replaced, by reference (finding 60, M59). Methods on the
@@ -1211,6 +1356,10 @@ a store whose methods are own fields, which decision 1 makes common.
 **Label.** Before 1.0. **Stage 4:** yes, after decision 1.
 
 ### 30. Undo and time travel change a nested object in place
+
+**Under revision**, with `spike-core-3.md`, G3: an undo into a container
+that was frozen through the store after the entry was recorded fails
+part-way (`adversarial-2-core.md`, objection 4).
 
 **Decision.** A restore goes down while both sides are containers of the
 same kind and writes only what differs. Where a restored value is the
@@ -1293,8 +1442,11 @@ not `Class.prototype`. A getter on an object literal stays an own accessor,
 listed where the store lists it (finding 70).
 
 `devtools` adds the values of the root store's class getters to what it
-sends, each read guarded, so a getter that throws shows its error text and
-the entry is still sent. Nested objects are sent as they are.
+sends, each read guarded, so a class getter of the root that throws shows
+its error text and the entry is still sent. Nested objects are sent as they
+are. The guard goes no further than that: a getter of an object literal is
+an own accessor of the snapshot, the extension's serialiser runs it, and one
+that throws still loses the entry, at the root or below it, as today.
 
 **Why.**
 
@@ -1302,7 +1454,7 @@ the entry is still sent. Nested objects are sent as they are.
   a copy. Today `Object.keys(store)` and `Object.keys(snapshot(store))`
   differ, and a spread or a `JSON.stringify` of a snapshot runs every getter
   and throws if one does. A DevTools entry is serialised the same way, so
-  today one getter that throws spoils the entry.
+  today one class getter that throws spoils the entry.
 - It is the only form that also removes a cost on the path every write in
   every adapter takes: a snapshot of a class with eight getters is four
   times faster to make and holds sixteen times less memory.
@@ -1342,6 +1494,11 @@ for `devtools`, on a build with this decision, decision 44 and the entries
 of decision 27: 29 lines in `devtools.ts`, 95 bytes on `./utils`, no test
 changes. A jump that carries the added keys back restores the fields and
 adds no key. Not run: the real Redux DevTools extension.
+
+The 239 bytes and the 14 tests are those of the spike, which was built on
+today's snapshot layer. Decision 10 changes that layer first, and the two
+patches do not apply on each other, so both figures are a forecast and stage
+4 takes its own from its own build.
 
 **Label.** Before 1.0. **Stage 4:** yes. The React tracking path is where
 the risk is: a tracked read and a plain read have to share one cached
@@ -1548,6 +1705,12 @@ client `prepareStoreForHydration(store)` is called before `persist(store)`.
 - **One membership rule** (findings 33 and 34, M39). `-0` and `+0` are one
   key, as in a native `Map`, and a collection constructed from a raw object
   and its proxy holds it once.
+- **Membership is by identity for every member**, as today: a raw object,
+  its proxy and each of its snapshots are one member. That is what keeps a
+  selection that was made with one snapshot of a row true for the next. The
+  price is that a collection cannot hold two snapshots of one object as two
+  members: the second `add()` changes nothing, and the guide says so. A list
+  in a store does not work this way (decision 6).
 - **A snapshot of a collection answers `has()` and `get()` from an index**
   (M40), built on the second lookup. A read through the tracking proxy of
   the React hook without a selector still scans, because the tracker has to
@@ -1591,8 +1754,10 @@ build and not in another.
 
 - Message text is where the bytes are. Of the 625 bytes the first-wave
   changes add to the main entry with their messages as written, 271 are
-  text. A code with the names saves those 271 bytes with no build split at
-  all, and a split saves no more on messages.
+  text. About 100 of those belong to messages this document keeps, and a
+  code with the names saves them with no build split at all; the rest
+  belonged to refusals that are not taken. A split saves no more on
+  messages.
 - A program that fails in production and not in development, or the other
   way round, is worse than either. So the bound on delivery rounds and the
   cycle check on snapshots stay in every build.
@@ -1612,8 +1777,20 @@ message, and once for the existing three.
 development only: the report of a lost write. When a snapshot is asked for
 and a field of the raw object has changed without a write through the store,
 the library logs it once, with the code `lost-write` and the name of the
-field. Other warnings follow in a 1.x release. Export conditions are not
-used.
+field. The comparison runs at most once per task for a store, however often
+its snapshot is asked for in that task. Other warnings follow in a 1.x
+release. Export conditions are not used.
+
+**The cost limits come first.** The core benchmark loads the built file as
+it is, with `NODE_ENV` not set, so it measures the development path, and it
+keeps doing so. The limits of `CONSTRAINTS.md` have to hold there with the
+check in. As it was spiked, the check compares the fields every time a
+cached snapshot is handed out, which is eleven to thirteen times dearer and
+would put the cached-snapshot ratio far above its limit on both engines
+(objection 3 of the second review). Once per task, a loop of reads pays for
+one comparison. That form was not built. If stage 4 cannot bring the check
+inside the limits as the benchmark runs today, the check does not ship in
+1.0; it is a report and can arrive in any release.
 
 A development-only check is guarded by an inline read of
 `process.env.NODE_ENV` at its call site, after a test that is cheap and
@@ -1632,9 +1809,11 @@ left in it.
   constructor that starts a timer, and a write through the raw object.
 - It is precise. In its spike it found six of seven lost writes and reported
   nothing that was not one.
-- It cannot be always on: it makes a cached snapshot eleven to thirteen
-  times dearer, and it is 168 to 309 bytes. Behind the guard it costs
-  production a few bytes.
+- It cannot be always on, and it cannot run on every read: it makes a
+  cached snapshot eleven to thirteen times dearer, and it is 168 to 309
+  bytes. Behind the guard it costs production a few bytes, and "this store
+  was already checked in this task" is the cheap test the guard form asks
+  for in front of the read of the environment.
 - The other candidates are not ready. A warning that fires for correct code
   and cannot be silenced is worse than none: the one for an unmarked class
   instance fires for seven kinds of object that are no mistake, and one for a
@@ -1794,12 +1973,15 @@ detector, and its file says so.
 9. **Memory.** The library keeps no strong reference to a store that nothing
    else references, or to a subscriber after its unsubscribe function was
    called, in a runtime that has `WeakRef`.
-10. **`persist`.** Only an elapsed time deletes a stored record that
-    `persist` can read. A record it cannot use is reported, and then replaced
-    by the next save. An edit made while a read is in flight is not lost. The
-    first `save()` or `clear()` of a task reaches a synchronous storage
-    before it returns. After `dispose()` nothing is read, written or
-    scheduled.
+10. **`persist`.** A stored record is removed or replaced only in these
+    cases: its time has elapsed; `clear()` is called; a save follows a
+    restore of that record; a save follows a record with nothing to keep
+    (decision 21 says which), or no record. A record of a newer version, and
+    a record that could not be migrated or restored, is reported and is not
+    written over by the handle that read it. An edit made while a read is in
+    flight is not lost. The first `save()` or `clear()` of a task reaches a
+    synchronous storage before it returns. After `dispose()` nothing is
+    read, written or scheduled.
 11. **Exports.** Every export the reference lists exists with its documented
     signature. The list may grow in a minor release.
 12. **Error codes.** The code in an error or a logged report is stable.
@@ -1841,6 +2023,11 @@ detector, and its file says so.
 - **The shape of a snapshot.** The rows that pin a class getter as an own key
   of a snapshot, and `Class.prototype` as its prototype, change with decision
   43. The rows that pin the throw on a cycle change with decision 44.
+- **Accessors of an object literal and of a class** are labelled the same
+  and guaranteed there. On the store they still are. On a snapshot they
+  differ after decision 43: a getter of an object literal is an own key,
+  carried by a spread and by JSON, and a class getter is neither. The
+  tutorial says where the two differ.
 - **The ownership rows** are folded into rule 7. The order in which removed
   containers hear of a write stays unspecified.
 - **The type tests fail when an export is added.** They stay as change
@@ -1873,8 +2060,12 @@ consumer:
   strongly (M15).
 - Recording reads outside a getter's own node (M21), and caching a thrown
   error (M22).
-- Throwing a subscriber's error to the writer, and `reportError()` (M28).
-  **(final)**
+- Throwing a subscriber's error to the writer (M28). **(final)**
+- `reportError()` as the place a subscriber's error is reported (M28).
+  Where the report goes is unspecified, so this can still change.
+- A subscriber that does not hear of its own write, and a microtask of its
+  own for each batched round (decision 13). **(final)**: guarantee 3 states
+  the other choice.
 - Dropping a write that is undone inside a batch (M30): one notification for
   a batch that wrote is the simpler rule.
 - A synchronous default for `subscribe()` (M31). **(final)**
@@ -1886,15 +2077,21 @@ consumer:
 - Reactive native `Map` and `Set` (M38), and an index beside the live array
   of a collection (M40), in 1.0.
 - Hiding the backing arrays `_entries` and `_items` (M43). **(final)**
-- A `'migrate'` value for the public `PersistOperation` type, and awaiting
-  an `async` `migrate` (M45). **(final)**: a new member of that union would
-  break a consumer's exhaustive `switch`.
+- A `'migrate'` value for the public `PersistOperation` type (M45).
+  **(final)**: a new member of that union would break a consumer's
+  exhaustive `switch`.
+- Awaiting an `async` `migrate` (M45). Accepting later what is refused now
+  is a compatible change, so this is not final.
+- Writing over a record of a newer version, or over one that could not be
+  migrated or restored, at the next save (decision 21). **(final)**
 - An optional `storage`, removing `clearOnExpire`, a pause switch and an
   in-flight flag for `persist` (M46, M49, M55).
 - Refusing a cross-tab event that has no `storageArea` (M53).
 - One snapshot per direct write on the synchronous channel of `devtools`
   (M57), a naming hook that runs on every method call, and the getter values
   of nested objects in what `devtools` sends, in 1.0.
+- `devtools` on by default in every environment (decision 27). **(final)**,
+  as every default is.
 - A table per prototype that caches the whole descriptor of a getter (M9).
 - A selector form of `subscribeKey` (M62), in 1.0.
 - Renaming the Solid adapter (M68) or `isEqual` (M71), and capturing the
@@ -1918,11 +2115,11 @@ consumer:
 | M10        |     None | M37        |       34 | M68, M69 |       40 |
 | M11, M12   |       11 | M38 to M40 |       42 | M70, M71 |       41 |
 | M14 to M17 |        3 | M41 to M43 |       45 | M72, M73 |   35, 36 |
-| M18 to M27 |       10 | M44        |       22 | M74      |       32 |
+| M18 to M22 |       10 | M44        |       22 | M74      |       32 |
 | M23        |        7 | M45, M46   |   21, 26 | M75      |       33 |
 | M54        |       20 | M47, M50   |       24 | M76, M77 |       34 |
 | M55        |     None | M48, M49   |   19, 26 | M51, M52 |       23 |
-|            |          | M53        |       25 |          |          |
+| M24 to M27 |       10 | M53        |       25 |          |          |
 
 "None" means the proposal is in the list of what is not taken.
 
@@ -1941,13 +2138,19 @@ spike patch. The order follows what each change touches and what it needs.
 The task list that follows refines it.
 
 1. **Tooling.** The ceilings in `budgets.json`, the size script and the
-   floor guard (decision 4), with the decision record.
-2. **Code that is dead today** (20).
+   floor guard with their tests (decision 4), with the decision record. The
+   guard form for a development-only check as a floor rule, with the test
+   that bundles the built file for production (36): decision 27 uses that
+   form long before the check of decision 36 itself.
+2. **Codes, and code that is dead today.** The three messages the library
+   has today get codes, and the page of codes is created (35). From here on
+   every commit that adds a message adds its code and its line on that page.
+   Then the dead lines (20).
 3. **The core, reads and writes.** The walk (3). The table per prototype
    (12), which tells the trap "own or inherited" before decision 1 asks. The
-   delete (8). `defineProperty` as a write (2). Raw values on write, with
-   the child kept through a freeze (5). The rule for functions (1). The
-   searches (6). The realm guard (9).
+   delete (8). `defineProperty` as a write (2). Then, as its own commit, raw
+   values on write with the child kept through a freeze (5). The rule for
+   functions (1). The searches (6). The realm guard (9).
 4. **Getters.** One kind of dependency and the rest of decision 10, which is
    the first change built on the table of decision 12 that no spike ran
    together with it. Then the `has` and `ownKeys` traps (7), which add two
@@ -1957,16 +2160,16 @@ The task list that follows refines it.
 6. **Delivery.** The queue (13), the report that cannot throw and the
    rejection handler (14), the setter (15), `batch()` (16).
 7. **Collections.** The membership rule and the snapshot index (42).
-8. **Utilities.** `persist` (19, 21 to 25). `devtools` (27), with the slot
+8. **Utilities.** `persist` (19, 21 to 25). `devtools` (27), with the hook
    in the core and the getter values it sends (43). Restore in place (30),
    which takes over the line decision 44 added to `history.ts`. `history`
    (28, 29). `subscribeKey` (31).
-9. **The base class** (11), which needs 1, 2 and 30.
+9. **The base class** (11), which needs 1, 2 and 30, and with it the test of
+   `persist()` called in a constructor (19).
 10. **Adapters.** Vue (37, 38). Angular (37, 39). Solid (37). The `active`
     flags of Vue, Angular and Svelte (42).
-11. **Codes** for the messages the library has today (35); every new message
-    carries its code from the commit that adds it. The lost-write check and
-    its guard (36).
+11. **The lost-write check** (36), measured against the cost limits before
+    it lands.
 12. **The repository.** The audit step and `CONTRIBUTING.md` (33). The pins
     and permissions of the workflows (32).
 
