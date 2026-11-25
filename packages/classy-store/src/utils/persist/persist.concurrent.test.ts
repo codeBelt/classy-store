@@ -36,6 +36,13 @@ describe('persist async operation ordering', () => {
         state: {count: 1, tail: 2},
       });
       const events: string[] = [];
+      // Wait for a write itself, not for a fixed time: a debounced write
+      // armed after a timer of the test can fire after it on a busy machine.
+      let writeArrived = deferred<void>();
+      const nextWrite = async () => {
+        await writeArrived.promise;
+        writeArrived = deferred<void>();
+      };
       const store = createClassyStore({label: 'initial', count: 0, tail: 0});
       const handle = persist(store, {
         name: 'draft',
@@ -47,6 +54,7 @@ describe('persist async operation ordering', () => {
           setItem: (_key, value) => {
             saved = value;
             events.push('write');
+            writeArrived.resolve();
           },
           removeItem: () => {
             saved = null;
@@ -77,7 +85,9 @@ describe('persist async operation ordering', () => {
           await handle.hydrated;
         }
         await cleared;
-        await new Promise((resolve) => setTimeout(resolve, debounce + 5));
+        if (editAfterClear) await nextWrite();
+        // No write is expected otherwise; give a wrong one the time to arrive.
+        else await new Promise((resolve) => setTimeout(resolve, debounce + 5));
         expect(store.tail).toBe(2);
         expect(events).toEqual(editAfterClear ? ['clear', 'write'] : ['clear']);
         if (editAfterClear) {
@@ -85,7 +95,7 @@ describe('persist async operation ordering', () => {
         } else {
           expect(saved).toBeNull();
           store.label = 'next edit';
-          await new Promise((resolve) => setTimeout(resolve, debounce + 5));
+          await nextWrite();
           expect(JSON.parse(String(saved)).state.label).toBe('next edit');
         }
       } finally {
