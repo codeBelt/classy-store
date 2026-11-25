@@ -75,7 +75,7 @@ function combine(name: string, files: string[]): string {
 export async function bundle(
   file: string,
   nodeEnv = 'production',
-): Promise<Uint8Array> {
+): Promise<Uint8Array<ArrayBuffer>> {
   const build = await Bun.build({
     entrypoints: [file],
     target: 'browser',
