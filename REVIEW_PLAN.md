@@ -192,9 +192,15 @@ commit. Its working results are in `review/stage-4/`.
   entry is 3,776 bytes, budget 3,852. (Its message says 1,409 tests; the
   run had 1,405.)
 
-**Next:** T-11 (`defineProperty` as a write, decision 2), then T-12 (raw
-values on write, decision 5), T-13 (the two benchmark rows decision 1 is
-measured by) and T-14 (the rule for functions, decision 1).
+- T-11 at `684cedf`: a definition through the store is a write. The main
+  entry is 3,847 bytes (71 over the 3,776 before, against an estimate of
+  49), budget 3,924. Running total against decision 4: the main entry has
+  grown 186 bytes for decisions 2, 3, 8, 12, 20 and the codes, against 172
+  estimated for the same set; the ceiling is 5,575.
+
+**Next:** T-12 (raw values on write, and a child kept through a freeze,
+decision 5), then T-13 (the two benchmark rows decision 1 is measured by)
+and T-14 (the rule for functions, decision 1).
 
 The throwaway worktrees of the step 7 fixers are in the scratchpad, on the
 branches `step7/fix-spec`, `step7/fix-records` and `step7/fix-tasks`, which
