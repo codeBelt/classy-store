@@ -69,6 +69,10 @@ above it done.
   `budgets.json`, the size script, the floor guard. Read
   `packages/classy-store/tests/size/` and `scripts/floor-guard.mjs` and say
   exactly what changes and how it is tested.
+- A task with a timing condition names the metrics it times, by their exact
+  names, and the command: `bun run benchmark:core --only <names>` and
+  `bun run benchmark:core:node --only <names>`. A run of a few metrics takes
+  seconds; the full benchmark runs at each checkpoint.
 - Dead code is removed in the commit that makes it dead (decision 20). For
   each task, name the code it makes dead, from `own-code.md` and the
   reports.

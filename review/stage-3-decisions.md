@@ -3,13 +3,12 @@
 Stage 3 of the pre-1.0 review. No library source has been changed. Stage 4
 implements what is decided here, one change per commit, test first.
 
-**Status: under revision after the third and last adversarial review.**
-Three rounds of review by agents that took no part in the work raised 58,
-30 and 17 objections. After each, the entries they touched were decided
-again. Of the third round, the answers that need no build are in the
-entries; decision 1 and the `persist` decisions 19 and 21 to 24 are marked
-"under revision" and wait for two last spikes. "Objections and answers" at
-the end has a table for the first two rounds; the third follows.
+**Status: decided.** Three rounds of review by agents that took no part in
+the work raised 58, 30 and 17 objections. After each, the entries they
+touched were decided again, most of them from a spike that built what the
+objection asked for: seven more spikes in all. "Objections and answers" at
+the end has a table for each round, and says what was decided after the
+last round and has not been reviewed.
 
 ## How to read this
 
@@ -95,14 +94,6 @@ by subject below, so their numbers are not in order there.
 
 ### 1. A function in a field is a method when it is read through the store, and the object is never changed
 
-**Under revision**, with `spike-functions-3.md`. The third review showed that
-handing out every function with its own `prototype` as data also takes the
-binding and the transaction away from `inc: function () {…}` in an object
-literal, which today is a bound method, and that a call of a method held in
-a field is 10 to 15% slower than today (`adversarial-3.md`, objections 1, 5
-and 6). The spike builds two changes: only a class is data, and the fast
-path with the frozen test kept.
-
 **Decision.** A function is a **method**, bound to the proxy of the object
 that holds it and run as one transaction, in two cases:
 
@@ -111,16 +102,23 @@ that holds it and run as one transaction, in two cases:
 2. It is the value of an own data property of an object that is not an
    array, **and it is read through the store**.
 
-Case 2 does not apply, and the function is handed out as it is, when the
-function has its own `prototype` property (a class, a `function` declaration
-or expression, a generator, and every method a store handed out before),
-when it is frozen, when it is a store, and when the property is read-only
-and not configurable.
+Case 2 does not apply, and the function is handed out as it is, when:
+
+- it is a class or a built-in constructor, which is told by its own
+  `prototype` property being read-only;
+- it is a method that a read through any store handed out before;
+- it is frozen, or it is a store;
+- the property that holds it is read-only and not configurable.
+
+So an arrow function, a shorthand method, an `async` function, a bound
+function, a generator method and a function written with the `function`
+keyword are all methods when they are read through the store.
 
 **The rule never changes the object.** The raw object and every snapshot
 hold each function as it was written. Only a read through the store hands
 out the method. There is one method per object and function, so
-`store.f === store.f`, and it takes the name of the key it was read under.
+`store.f === store.f`, and it takes the name of the key it was first read
+under.
 
 Two rules for a method that is written back:
 
@@ -133,77 +131,115 @@ Two rules for a method that is written back:
 A read of a function in a field counts as a read for a getter, so a getter
 that calls a function held in a field sees a later replacement.
 
-**How this entry got here.** It is the third form. The first draft took the
-"strict" rule: only a function on the prototype chain is a method. The first
-review showed that a method in an object literal then loses its transaction
-in silence. The second form made a function an object is "born with" a
-method and wrote the store's wrapper into the object. The second review
-showed what that write costs (objections 1, 2, 3, 6, 7 and 8 of
-`adversarial-2-core.md`, each with a script): a store made from a copy of the
-object or of a snapshot ran the old store's methods; a callback on a snapshot
-ignored the `this` its caller passed; a getter read on a snapshot could write
-the live store through an object's own method; a callback restored by
-`withHistory` came back wrapped; and a read-only definition threw after it
-was made. This form was then built and run against every case table of the
-two earlier forms and against the reviewers' scripts.
+**A read of a method the object has already handed out takes a short
+path.** The full test asks for the property's descriptor, which is what
+makes a read-only property safe to read. Once an object has handed out the
+method for a function, a later read skips the descriptor as long as the
+object is extensible, no definition through the store has made one of its
+properties read-only, and the function is not frozen. A function on the
+prototype chain never needs the descriptor.
+
+**How this entry got here.** It is the fourth form, and each review changed
+it.
+
+1. The first draft took the "strict" rule: only a function on the prototype
+   chain is a method. The first review showed that a method in an object
+   literal then loses its transaction in silence.
+2. The second form made a function an object is "born with" a method and
+   wrote the store's wrapper into the object. The second review showed what
+   that write costs (objections 1, 2, 3, 6, 7 and 8 of
+   `adversarial-2-core.md`, each with a script): a store made from a copy of
+   the object or of a snapshot ran the old store's methods; a callback on a
+   snapshot ignored the `this` its caller passed; a getter read on a
+   snapshot could write the live store through an object's own method; a
+   callback restored by `withHistory` came back wrapped; and a read-only
+   definition threw after it was made.
+3. The third form left the object alone and handed out the method on a read
+   through the store, but handed out every function with a `prototype` of
+   its own as data. The third review showed that this takes the binding and
+   the transaction away from `inc: function () {…}` in an object literal,
+   which today is a bound method (objection 1 of `adversarial-3.md`): two
+   notifications for two writes, a `TypeError` when it is called detached in
+   strict code, and a write to `globalThis` in code that is not strict.
+4. This form hands out only a class as data, and reads a method it has
+   already handed out by a short path.
+
+Each form was built and run against the case tables of the forms before it
+and against the reviewers' scripts.
 
 **Why.**
 
-- It is today's behaviour with today's defects removed, so it adds no silent
-  failure. Wherever today's answer and the second form's differ and today's
-  is right, this form gives today's: the four copies, the caller's `this` on
-  a snapshot and on the object, the restore, the read-only definition.
-- It keeps every fix. A method in an object literal is one transaction and
-  works detached. A class, a `function`, a frozen function and a store held
-  as a value, and a function in a list, are handed out as they are (findings
-  5, 6 and 42). `store.f = store.f` is no change. A getter that calls a
-  function in a field does not go stale. One function held by two stores
-  writes the store it is called on. A subclass's arrow field that overrides
-  the parent's is one transaction, with class fields compiled as assignments
-  and as definitions. A method has a name for `devtools`.
-- It has no rule about when a function was written, so the result does not
-  depend on how a compiler emits a class field, and decision 11 needs no rule
-  of its own.
-- It is the smallest of the three forms that keep an object-literal method a
-  transaction.
+- It is today's behaviour with today's defects removed. On every row that
+  was run, it gives either today's answer or a fix of today's answer; no row
+  was found on which it is wrong where today is right.
+- It keeps every fix. A class, a built-in constructor, a frozen function and
+  a store held as a value, and a function in a list, are handed out as they
+  are (findings 5, 6 and 42). `store.f = store.f` is no change. A getter that
+  calls a function in a field does not go stale. One function held by two
+  stores writes the store it is called on. A subclass's arrow field that
+  overrides the parent's is one transaction, with class fields compiled as
+  assignments and as definitions. A method has a name for `devtools`. A read
+  of a read-only property does not throw.
+- It has no rule about when a function was written or how, so the result
+  does not depend on how a compiler emits a class field, an arrow function
+  or a shorthand method, and decision 11 needs no rule of its own.
+- It never writes into the object it is given. A copy of that object, or of
+  a snapshot, holds plain functions, and a store made from one is
+  independent.
 
 **What it costs a user.**
 
 - **A function read through the store is not the function that was stored.**
-  `store.onSave === cb` is false for an arrow function, a shorthand method,
-  an `async` function and a bound function. That is so today. The identity
-  is kept where a component reads it: `snapshot(store).onSave === cb` is
-  true. The second form kept it on the store for a callback assigned to a
-  field declared `= null`, and lost it on the snapshot for everything else.
+  `store.onSave === cb` is false. That is so today. The identity is kept
+  where a component reads it: `snapshot(store).onSave === cb` is true.
 - **A method read through the store ignores the `this` its caller passes.**
   It always runs on the store. That is so today. A function read from a
   snapshot or from the object itself runs with the `this` its caller gives,
   so an object of callbacks for another library is handed over from a
   snapshot.
 - **A method is called on the store, not on a snapshot.** A snapshot holds
-  the plain function. A shorthand method that writes `this` throws there. An
-  arrow-function field of a `ClassyStore` subclass writes the live store
-  from there, one write at a time and not as one transaction; a component
-  that takes such a method from the hook's snapshot and calls it causes one
-  notification per write. Nothing reports it. The reference already says to
-  call methods on the store.
+  the plain function. A method that writes `this` throws there in strict
+  code. An arrow-function field of a `ClassyStore` subclass writes the live
+  store from there, one write at a time and not as one transaction; a
+  component that takes such a method from the hook's snapshot and calls it
+  causes one notification per write. Nothing reports it. The reference
+  already says to call methods on the store.
 - **A method copied through the store stays bound to the store it came
   from.** `{...store}` reads through the store, so it copies methods, and a
   new store built from that copy calls the old store's methods. That is so
   today. A copy of a snapshot or of the object itself copies plain
-  functions, and a store built from it is independent.
+  functions.
+- **A constructor written as a `function`, held as a value, is still handed
+  out as a method**, as today: it is not `===` to itself, its static
+  properties are not on what is read, and `instanceof` against it is false.
+  `new` on it still builds a real instance and does not touch the store. The
+  same holds for a class that a compiler has turned into such a function
+  with a writable `prototype`, which is what TypeScript emits for ES5. A
+  real class and a built-in constructor are handed out as they are, and so
+  is a class in the shape Babel emits, which has a read-only `prototype`;
+  that shape was written by hand for the run, not compiled. The third form fixed this row and this form gives
+  it back, because a function cannot be both this and a method written with
+  `function`, and the method is the commoner of the two. A constructor that
+  has to keep its identity is frozen, or held in a list.
+- **A call of a method held in a field is a little slower than today on
+  Node.** A call is 270 nanoseconds against 250, about 8%; on Bun it is
+  today's 177. A read and call of an arrow function held in a field is 74
+  against 47 on Node and 39 against 35 on Bun. A method of a class costs
+  what it costs today.
+- **One read can still throw.** After the store has handed out a method, a
+  definition made on the raw object behind the store that makes that
+  property read-only makes the next read throw a `TypeError`: the short path
+  cannot see a change made behind the store. Today every read of a
+  read-only function property throws. What is done to the raw object behind
+  a store is unspecified, and the reference says to make a property
+  read-only through the store.
 - A property that is read-only and not configurable, for example after
-  `Object.freeze(store)`, hands out its function as it is, unbound. Today
-  that read throws.
-- `inc: function () {…}` in an object literal has a `prototype`, so it is
-  data: it works when called on the store, and it is neither bound nor a
-  transaction. The shorthand `inc() {…}` and an arrow function are methods.
-  Code compiled to ES5 turns both into `function` expressions. A method of a
-  class is case 1 and is not affected.
+  `Object.freeze(store)`, hands out its function as it is, unbound.
 - A class that does not extend the base class and has an arrow-function field
   still writes to the raw instance, and no subscriber hears it. No rule
   about wrapping can change what `this` is inside that arrow function.
-  Decision 11 is the answer to it, and decision 36 reports it.
+  Decision 11 is the answer to it. Decision 36 reports it, if its check
+  ships.
 
 **Not taken.**
 
@@ -213,49 +249,57 @@ two earlier forms and against the reviewers' scripts.
 - **Born with, written into the object** (the second form). It keeps the
   identity of a callback assigned to a declared field, and costs the five
   failures listed above.
+- **Every function with a `prototype` of its own as data** (the third form).
+  It fixes a constructor held as a value, and silently breaks a method
+  written with `function`.
 - **Lenient as first spiked:** wrap every function on every read except an
   element of a list, a class and `constructor`. It keeps the copied wrapper
   and the stale getter, which this form removes.
-- **A fast path that skips the descriptor** once an object has handed out a
-  method and no definition through the store has locked a property. It
-  makes a call of a method held in a field as fast as under the second
-  form, for 43 bytes. It was built, and it has a gap: after a read-only
-  definition made on the raw object behind the store, the read throws,
-  where the form taken hands out the function. A read that cannot throw is
-  worth 28 nanoseconds. It can follow 1.0 if the gap is closed.
+- **The same rule without the short path.** It asks for the descriptor at
+  every read of any function, so no read can throw, also after a change
+  made on the raw object. It costs every method of a class 2 to 3% on Node,
+  at the edge of the spread, a call of a method held in a field 10 to 15%
+  against today, and a read and call of an arrow function held in a field
+  1.6 to 1.8 times today's time. The one read it protects is in the
+  unspecified list and throws today.
 - **Telling a bound function by its name.** A user can fake the name.
 
-**Evidence.** `spike-functions-2.md`, built on the strict rule, decision 2
-and the base class. 67 lines added and 18 removed in `core.ts`. 27 tests
-change against 28 on that base, the same 27 as the second form: the nine
-fixes of the strict rule stay fixes, and its one incidental change, the
-object-literal method that stopped being a transaction, passes again. No
-regression. The typecheck shows only the base class's new export. The main
-entry is 3,873 bytes with all three in: 155 more than the strict rule and 15
-fewer than the second form. Fifty-odd rows were run on today's source, the
-strict rule, the second form and this one, among them the reviewers' five
-scripts. Not run: the browser, framework and mutation suites;
-the naming hook of decision 27 reading the key; a component that calls an
-arrow method taken from a snapshot; compilers other than Bun's transpiler
-for the override case.
+**Evidence.** `spike-functions-2.md` for the form without the class test
+and for the short path as first built, and `spike-functions-3.md` for this
+form, all built on the strict rule, decision 2 and the base class. In
+`core.ts`: 67 lines added and 18 removed for the rule, 21 and 6 for the
+class test, and 20 for the short path with its test for a frozen function.
+26 tests change against 28 on that base: the fixes of the strict rule that
+concern a class, a list of functions and an array method stay fixes; its
+one incidental change, the object-literal method that stopped being a
+transaction, passes again; and so does the test that pins a `function` in a
+field as a bound method. No regression. The typecheck shows only the base
+class's new export. The main entry is 3,951 bytes with all three in. Some
+seventy rows were run on today's source and on each form, among them the
+scripts of the second and third reviews, and four rows for a property made
+read-only after a first read.
 
-Timed in two rounds on both engines against the strict rule and the second
-form. Every range touches the strict rule's, store creation included, and
-the 5% that the second form cost a method call on Node is gone, because the
-table of methods is kept on the object itself. A call of a method held in a
-field costs about what a call of a method of a class costs: 200 nanoseconds
-on Bun and 288 on Node. That is 28 and 20 more than under the second form,
-because each such read asks for the property's descriptor, which is also
-what makes a read-only property safe to read.
+Timed in two rounds on both engines against today's source and the two
+forms before. `store.read`, `store.method` and `create.small` touch today's
+ranges on both engines, and the four cost ratios stay inside their limits.
+The rows for a method held in a field are the ones quoted above. Not run:
+the browser, framework and mutation suites; the naming hook of decision 27
+reading the key; a component that calls an arrow method taken from a
+snapshot; a compiler's real ES5 output (the rows are written by hand in
+each compiler's shape).
 
-**Label.** Before 1.0. **Stage 4:** yes. The change lands only if
-`store.method` is inside the spread of the commit before it on both engines;
-the baseline is that commit, not the figures of stage 1, which decision 12
-has moved by then.
+**Label.** Before 1.0. **Stage 4:** yes. The task adds two rows to the core
+benchmark, a call of a method held in a field and a read and call of an
+arrow function held in a field, and records them before and after. The
+change lands only if `store.method` is inside the spread of the commit
+before it on both engines, and the two new rows are no slower than the
+figures above allow: 10% for the call and 1.6 times for the read and call. The baseline is the commit before, not the figures of stage 1, which
+decision 12 has moved by then.
 
-**Docs.** The nine sentences at the end of `spike-functions-2.md` go into
-the tutorial and the reference. The architecture page describes the cache of
-methods, which is per object.
+**Docs.** The sentences at the end of `spike-functions-2.md`, with the
+second and the eighth changed and one added as `spike-functions-3.md` says,
+go into the tutorial and the reference. The architecture page describes the cache of methods, which is
+per object.
 
 ### 2. `Object.defineProperty` through a store is a write, and nothing is refused
 
@@ -344,7 +388,7 @@ them.
 
 | Entry                 | Today | Budget today | Estimate | Ceiling | What moves it                                                    |
 | --------------------- | ----: | -----------: | -------: | ------: | ---------------------------------------------------------------- |
-| `.` (the main entry)  | 3,661 |        3,750 |    5,297 |   5,500 | The first table below                                            |
+| `.` (the main entry)  | 3,661 |        3,750 |    5,375 |   5,575 | The first table below                                            |
 | `./utils` adds        | 2,686 |        2,750 |    4,216 |   4,350 | The second table below                                           |
 | `./collections` adds  |   727 |          750 |      911 |     950 | The snapshot index, the membership rule, the mutator check       |
 | `./react` adds        | 1,662 |        1,700 |    1,693 |   1,750 | The guard for a cyclic snapshot                                  |
@@ -417,7 +461,7 @@ committed, and the question goes back to a decision.
 
 | Change                                                                | Decision |  Bytes |
 | --------------------------------------------------------------------- | -------: | -----: |
-| The rule for functions                                                |        1 |   +150 |
+| The rule for functions                                                |        1 |   +228 |
 | `defineProperty` as a write                                           |        2 |    +49 |
 | The walk to a detached parent removed                                 |        3 |    −36 |
 | Raw values on write, and a child kept when its container is frozen    |        5 |   +104 |
@@ -434,18 +478,18 @@ committed, and the question goes back to a decision.
 | The slot through which `devtools` names a method                      |       27 |    +12 |
 | Class getters on a derived prototype, and `this` in a snapshot getter |       43 |   +239 |
 | A snapshot keeps a cycle                                              |       44 |     −9 |
-| Sum                                                                   |          | +1,636 |
+| Sum                                                                   |          | +1,714 |
 
 Measured on top of another change, not alone: decision 1 (on the strict
-rule, decision 2 and the base class; the row is the three together, 3,873
+rule, decision 2 and the base class; the row is the three together, 3,951
 bytes, less the other two), the later parts of decisions 5, 6, 10 and 12
 (each on the part before it), and decision 27 (on the first form of its
 entries).
 
-The sum puts the main entry near 5,297 bytes, 45% above today's. The first
-draft of this entry counted 4,820 and left two rows open. The 475 bytes
-since then are what the two reviews asked for: the rule for functions (150,
-an open row before), the child kept through a freeze (68), the searches that
+The sum puts the main entry near 5,375 bytes, 47% above today's. The first
+draft of this entry counted 4,820 and left two rows open. The 553 bytes
+since then are what the three reviews asked for: the rule for functions
+(228, an open row before), the child kept through a freeze (68), the searches that
 answer correctly for a list of snapshots (68), the throw for a getter that
 writes, by any path (116), the table that holds no getter body and cannot
 grow without bound (61), and the hook for `devtools` (12, the other open
@@ -488,7 +532,7 @@ not in that build, and the ceiling has 30 bytes for them.
   layers.
 - 168 bytes (decision 6): `includes()` and `indexOf()` find the object the
   caller holds, in about 1% of today's time.
-- 150 bytes (decision 1): one rule for every function a store holds, a
+- 228 bytes (decision 1): one rule for every function a store holds, a
   method in an object literal that stays a transaction, and arrow-function
   methods that work.
 - 156 bytes (decision 7): getters that use `in` or `Object.keys(this)` stop
@@ -833,9 +877,6 @@ arrow-function fields to work, and the docs gain these sentences:
   function that was stored (decision 1).
 - An arrow method is called on the store. Taken from a snapshot it still
   writes the store, one write at a time and not as one transaction.
-- Code compiled to ES5 turns an arrow function into an ordinary function,
-  which is data under decision 1: an arrow method then notifies once per
-  write.
 - Under React's `StrictMode`, `useLocalStore` makes two stores in
   development, so a constructor that starts a timer starts two.
 - A class that has to extend another class uses `createClassyStore(new X())`
@@ -2208,7 +2249,9 @@ detector, and its file says so.
 - What reflection hands out: `Object.getOwnPropertyDescriptor(store, key)`
   and `structuredClone(store)` (findings 50 and 51).
 - Anything reached through the raw object behind a store (finding 11), and
-  a write to the backing array of a reactive collection.
+  a write to the backing array of a reactive collection. One case of it is
+  named in decision 1: a property made read-only on the raw object after
+  the store has handed out its method throws on the next read.
 - A store made from a function or from a typed array (findings 62 and 63).
 - Behaviour in a runtime without `WeakRef` or `FinalizationRegistry`, beyond
   "it works" (finding 68).
@@ -2216,11 +2259,9 @@ detector, and its file says so.
 ### Where this differs from `pinned.md`
 
 - **Functions.** `pinned.md` recommends wrapping every function a store
-  holds, on every read. Decision 1 does that for an arrow function, a
-  shorthand method, an `async` function and a bound function held in a
-  field, as that report asks, and hands out the rest as they are. The rows
-  that pin a new wrapper for a `function` declaration, for an element of a
-  list, and for a class or a constructor held as a value change.
+  holds, on every read. Decision 1 does that for every function held in a
+  field but a class, as that report asks. The rows that pin a new wrapper
+  for an element of a list and for a class held as a value change.
 - **The shape of a snapshot.** The rows that pin a class getter as an own key
   of a snapshot, and `Class.prototype` as its prototype, change with decision
   43. The rows that pin the throw on a cycle change with decision 44.
@@ -2240,12 +2281,15 @@ Each is named in the entry it belongs to. In one list, with **(final)** on
 the ones that 1.0 settles for good, because taking them later would break a
 consumer:
 
-- Three other rules for a function held in a field (M1): "strict", under
+- Four other rules for a function held in a field (M1): "strict", under
   which only a function on the prototype chain is a method; "lenient" as
   first spiked, which wraps every function on every read and keeps a copied
-  wrapper and a stale getter; and "born with", which writes the store's
-  wrapper into the object. Decision 1 keeps the object as it is and hands
-  out the method on a read through the store. **(final)**
+  wrapper and a stale getter; "born with", which writes the store's wrapper
+  into the object; and every function with a `prototype` of its own as
+  data. Decision 1 keeps the object as it is, hands out the method on a read
+  through the store, and treats only a class as data. **(final)**
+- The rule for functions without its short path, which asks for a
+  descriptor at every read of a function (decision 1).
 - Refusing accessor and read-only definitions, `setPrototypeOf`, or
   `Object.freeze(store)` (M2, M8). **(final)**
 - A Proxy target of the library's own (M7): both reports that describe it
@@ -2515,5 +2559,41 @@ Two reviewers read the document as revised after the first round:
 Of the 30, 27 are answered by a change, 7 of those after a spike, and 3 are
 accepted as costs. Three decisions changed in substance: the rule for
 functions (1), what `persist` does with a record it could not use (21), and
-what an undo does with a container it cannot write (30). A third and last
-round of review follows on what changed.
+what an undo does with a container it cannot write (30).
+
+### The third round
+
+One reviewer read what had changed since the second round:
+`adversarial-3.md` (3). It raised 17 objections; 4 were rated "wrong", 1
+"mislabelled", 3 "unsupported" and 9 "unclear". Two last spikes were run:
+`spike-functions-3.md` and `spike-persist-2.md`.
+
+| No.  | Against     | Objection                                                                               | Answer                                                                                                                               |
+| ---- | ----------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| 3-1  | 1, rule 2   | A method written with `function` loses its binding and its transaction, in silence      | Changed after a spike: only a class is handed out as data (1). Accepted: a constructor written as a `function` is as today           |
+| 3-2  | 21, 19      | `clear()` from `onError` cannot work on a synchronous storage                           | Changed after a spike: `onError` receives the handle, and an error it throws is logged (21)                                          |
+| 3-3  | Rule 10, 21 | Rule 10 is false for `skipHydration` and for an edit made during a read                 | Changed after a spike: a handle writes only after it has read, and rule 10 says what happens to such an edit                         |
+| 3-4  | 24, 21      | Writing a migrated record back at load opens two losses                                 | Changed: it is not written back (24). Accepted: a wrong `migrate` is still saved at the next edit                                    |
+| 3-5  | 1           | Slower than today for a method held in a field, and the condition measures another path | Changed after a spike: the short path is taken, the cost against today is stated, and the condition names two new benchmark rows (1) |
+| 3-6  | 1           | The fast path that "can follow" changes documented behaviour                            | Changed after a spike: the gap for a frozen function is closed; the one left is stated and is in the unspecified list (1)            |
+| 3-7  | 21          | What `save()` and `rehydrate()` do on a handle that does not write                      | Changed after a spike: both report and reject (21)                                                                                   |
+| 3-8  | 21, 24      | The two entries disagree on what is written back, and when                              | Changed: one list, in 24                                                                                                             |
+| 3-9  | 21          | No row for a `merge` that fails                                                         | Changed after a spike: it is in the row of `migrate` (21)                                                                            |
+| 3-10 | 36          | The benchmark cannot see a check that runs once per task                                | Changed: a row that takes one snapshot per task, and a condition stated in figures of the benchmark (36)                             |
+| 3-11 | 10, rule 4  | A getter on a nested object that writes the root goes through                           | Accepted: the throw is for the getter's own object, and a write to a parent is in the unspecified list                               |
+| 3-12 | 10, 43      | The fix for a snapshot getter rests on a closure that decision 43 removes               | Changed: 10 says so, and its rows are run again as tests after 43                                                                    |
+| 3-13 | 1, 27       | One function under two keys has one name                                                | Accepted: the name is the key that was read first, and both entries say so                                                           |
+| 3-14 | 12          | Its "answers for now" do not match its own spike                                        | Changed                                                                                                                              |
+| 3-15 | 4           | The guard would flag its own text, and the first commit breaks the rule for ceilings    | Changed: both have a rule                                                                                                            |
+| 3-16 | 30, 29      | The restore's check counts a function field as a key to delete on a jump by JSON        | Changed: the check counts only the writes the restore makes. Not built; stage 4 tests the jump first                                 |
+| 3-17 | Lists       | Loose ends in the lists, an answer of the first round, and the order                    | Changed                                                                                                                              |
+
+Of the 17, 15 are answered by a change, 7 of those after a spike, and 2 are
+accepted as costs.
+
+**There is no fourth round.** The plan allows three. Two things were decided
+after the third round and have not been read by a reviewer: the fourth form
+of the rule for functions (decision 1) and the `persist` rules as built
+(decisions 19 and 21 to 24). Both were built and run, each against the
+scripts of the reviews that came before. They are the first things the
+independent review of stage 4 reads.
