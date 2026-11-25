@@ -166,7 +166,7 @@ bytes because the main entry is 8 bytes smaller with the hook.
 - A commit that grows an entry sets that entry's budget to its new measured
   size plus 2%, adds a line with the measured size to the section "Measured
   sizes" below, and stays under the ceiling.
-- When the 1.0 work ends, every budget is the final measured size plus 2%.
+- When the 1.0 work ends, before the release, every budget is the final measured size plus 2%.
 - **A ceiling is an estimate and a tripwire, not a measurement.** A change
   that would pass a ceiling is not committed, and the question goes back to a
   decision.
@@ -233,7 +233,7 @@ snapshot (270, record 0046); an index beside live collections (339, record
   against 486).
 - Only `CLAUDE.md` gives a size figure: "about 3.7 KB", and "about 4.9 KB
   with the React hooks". The README gives none. Both figures in `CLAUDE.md`
-  change to the measured figures when the work ends.
+  change to the measured figures when the work ends, before the release.
 - Open again when a change cannot be made under its ceiling.
 
 ## Measured sizes

@@ -16,7 +16,8 @@ Code that spreads a snapshot changes without an error under record 0043.
 ## Decision
 
 Each documentation change is made with the code change it belongs to, or,
-where no code changes, in a later documentation pass of its own. A change
+where no code changes, in a documentation pass of its own before 1.0 is
+released. A change
 corrects every page it makes false, in its own commit, even where a later
 change puts something back. These changes are made:
 

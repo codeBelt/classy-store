@@ -1,30 +1,24 @@
 # Stage 3 report: design review
 
-**Draft.** Written by the agent that ran stage 3, before the spec, the
-decision records and the task list were checked. Two things are still to
-fill in: the date the stage ended, and the number of tasks. Check every
-figure against `review/stage-3-decisions.md` before this stops being a
-draft.
-
 Stage 3 of the pre-1.0 review of `@codebelt/classy-store`. It ran from
-2026-11-19 to (date to fill in), with a pause from 2026-11-19 to 2026-11-24 at the
+2026-11-19 to 2026-11-25, with a pause from 2026-11-19 to 2026-11-24 at the
 owner's request. No library source was changed. This report says what the
 stage produced, what it decided, and what stage 4 has to know before it
 starts.
 
 ## Summary
 
-| Question                    | Answer                                                                                                                                                                                                                                                         |
-| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| What was decided?           | 46 decisions, in `review/stage-3-decisions.md`. 31 change the public API or documented behaviour in whole or in part and must land before 1.0; 9 can follow 1.0; 5 keep things as they are; 1 is the documentation                                             |
-| Who decided?                | The agent running the plan. The owner handed the decisions over on 2026-11-19, except merging into `main` and releasing                                                                                                                                        |
-| What is it based on?        | 19 reports of spikes and of our own code under `review/stage-3/`, each with its patches and scripts in an appendix, on top of the 11 reports of stage 2                                                                                                        |
-| Was it challenged?          | Three times, by agents that took no part in writing it. Round 1: 58 objections. Round 2: 30. Round 3: 17. Every objection is answered in the document, in a table per round. Two decisions were made after the last round and have not been read by a reviewer |
-| What does 1.0 guarantee?    | Twelve rules, and a list of what stays unspecified, in the decision document and in `review/spec.md`                                                                                                                                                           |
-| What does it cost in size?  | The main entry goes from 3,661 bytes to about 5,375, 47% more. `./utils` adds about 4,216 where it adds 2,686 today. The ceilings are 5,575 and 4,350                                                                                                          |
-| What does it cost in speed? | The four cost ratios of `CONSTRAINTS.md` held in every combination that was built. A field read gets faster: 2.7 times on Bun, a fifth on Node                                                                                                                 |
-| What was not verified?      | The whole set was never built as one. "What stage 4 has to check first" below lists the rest                                                                                                                                                                   |
-| What comes next?            | Stage 4, from `review/stage-4-tasks.md`: (number to fill in) tasks in twelve steps, one change per commit, test first                                                                                                                                          |
+| Question                    | Answer                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| What was decided?           | 46 decisions, in `review/stage-3-decisions.md`. 31 change the public API or documented behaviour in whole or in part and must land before 1.0; 9 can follow 1.0; 5 keep things as they are; 1 is the documentation                                                                                                                                                                                                      |
+| Who decided?                | The agent running the plan. The owner handed the decisions over on 2026-11-19, except merging into `main` and releasing                                                                                                                                                                                                                                                                                                 |
+| What is it based on?        | 18 reports of spikes and of our own code under `review/stage-3/`, each with its patches and scripts in an appendix, and the merge of the 11 reports of stage 2                                                                                                                                                                                                                                                          |
+| Was it challenged?          | Three times, by agents that took no part in writing it. Round 1: 58 objections. Round 2: 30. Round 3: 17. Every objection is answered in the document, in a table per round. Two decisions were made after the last round and have not been read by a reviewer. Then four agents checked the spec, the records and the task list against it: 65 findings, all applied, and 13 points it left unclear, all settled in it |
+| What does 1.0 guarantee?    | Twelve rules, and a list of what stays unspecified, in the decision document and in `review/spec.md`                                                                                                                                                                                                                                                                                                                    |
+| What does it cost in size?  | The main entry goes from 3,661 bytes to about 5,375, 47% more. `./utils` adds about 4,216 where it adds 2,686 today. The ceilings are 5,575 and 4,350                                                                                                                                                                                                                                                                   |
+| What does it cost in speed? | The four cost ratios of `CONSTRAINTS.md` stayed inside their limits in every spike that timed them; the whole set was never timed. A field read gets faster: 2.7 times on Bun, a fifth on Node                                                                                                                                                                                                                          |
+| What was not verified?      | The whole set was never built as one. "What stage 4 has to check first" below lists the rest                                                                                                                                                                                                                                                                                                                            |
+| What comes next?            | Stage 4, from `review/stage-4-tasks.md`: 59 tasks, 58 in twelve steps and the last after the independent review, one change per commit, test first                                                                                                                                                                                                                                                                      |
 
 ## What the stage produced
 
@@ -35,7 +29,7 @@ starts.
 | 3. Spike what reading cannot settle  | Ten reports in two waves (traps, getters, delivery, pinned behaviour, `persist` and `devtools`, a development build, adapters and collections, snapshots, classes twice), and seven more that the reviews asked for |
 | 4 and 5. The decision document       | `review/stage-3-decisions.md`: the decisions, the guarantees, the proposals not taken, every merged issue mapped to a decision, the order for stage 4                                                               |
 | 6. Decide, and an adversarial review | Three rounds, six reports: `adversarial-whole.md`, `adversarial-core.md`, `adversarial-edges.md`, `adversarial-2-core.md`, `adversarial-2-whole.md`, `adversarial-3.md`                                             |
-| 7. Spec, decision records, task list | `review/spec.md`, `docs/decisions/` (46 records and an index), `review/stage-4-tasks.md`                                                                                                                            |
+| 7. Spec, decision records, task list | `review/spec.md`, `docs/decisions/` (46 records and an index), `review/stage-4-tasks.md`, each checked against the decision document and corrected (below)                                                          |
 
 ## The decisions that shape 1.0
 
@@ -72,9 +66,9 @@ will notice.
 - **`devtools` and history (decisions 27 to 30).** Entries are named after
   the method that wrote. Time travel is exact. Undo changes a nested object
   in place, so a row the caller holds stays the row in the store.
-- **Errors (decisions 35 and 36).** Every error has a stable code. One build,
-  with one development-only check: the report of a write that went to the
-  raw object.
+- **Errors (decisions 35 and 36).** Every error has a stable code, nineteen
+  in all, behind one prefix. One build, with one development-only check: the
+  report of a write that went to the raw object.
 
 ## What the reviews changed
 
@@ -127,8 +121,10 @@ from a whole, or from reading.
   above them. The largest combination built is five core changes, and it came
   out 21 bytes under its sum.
 - **Creating a store is 11 to 18% slower on Bun** with the trap changes
-  together. The cause was not found; raw values on write alone does not show
-  it.
+  together (`spike-traps.md`, the timing of the combination; the decision
+  document does not carry the figure). The cause was not found; raw values
+  on write alone does not show it. Creation has no limit, so stage 4 times
+  it as each trap change lands.
 - **Two decisions were made after the last review**: the fourth form of the
   rule for functions, and the `persist` rules as built. Both were built and
   run. No reviewer has read them.
@@ -151,6 +147,48 @@ from a whole, or from reading.
   a cyclic state, an entry whose getter threw.
 - **The browser, framework and mutation suites** ran on no spike.
 
+## The check of the step 7 documents
+
+The three documents of step 7 were each written by a helper agent from the
+decision document. Four more agents then checked them against it, read-only:
+the spec in two halves (`check-spec-api.md`, 10 findings, and
+`check-spec-rules.md`, 17), the records (`check-records.md`, 19) and the task
+list (`check-tasks.md`, 19). The writers had also listed 70 open points of
+their own: 38 in the spec, 13 for the records and 19 in the task list. The
+spec's part B, 24 of its 38, are things stage 4 checks first rather than
+questions, and stay in the spec as such.
+
+Every open point, and the 13 points the checkers found unclear in the
+decision document, was settled in the decision document itself, in the
+entry it belongs to; its section "Settled when the step 7 documents were
+checked" indexes them. The ones that blocked stage 4:
+
+- **Error codes.** Nineteen, all named now, behind one prefix. Today's
+  messages get theirs in one commit, except the snapshot's circular
+  reference, which decision 44 removes before 1.0 and which gets no code.
+- **The floor guard.** It judges every commit against its parent, from the
+  merge base with `main` (or the commit that added `CONSTRAINTS.md`), then the
+  working tree. A merge commit fails it. Its own file, the coverage settings
+  and the list of mutation targets need a line in a decision record when they
+  change. A test made smaller needs a `Test-change:` line in the commit
+  message that names a decision or the public test that covers the fact.
+- **The production-bundle test.** `console.warn` is used only by a
+  development-only report; `bun run size` fails when a production bundle
+  holds it or a listed development-only code, and a unit test checks the
+  guard form on a fixture.
+- **The redundant checks.** Only the guard in `indexOfMember` sits in a loop;
+  two benchmark rows come first.
+
+Three more were found wrong in the decision document itself and corrected:
+"0.11" is not what the records compare with, because the npm release 0.11.0
+has neither `batch()` nor transactions; the README gives no size figure,
+only `CLAUDE.md` does; and decision 3 said the docs already describe a
+subscription on a removed container, which they do not.
+
+Three helper agents applied the findings and the settled points, each in a
+throwaway worktree on a branch of its own, and the orchestrating agent read
+each diff against the decision document before bringing it in.
+
 ## How the work was done
 
 - One orchestrating agent on Fable, which merged, decided and wrote the
@@ -158,7 +196,9 @@ from a whole, or from reading.
   three documents of step 7. From 2026-11-24 every helper ran on Opus, at the
   owner's request, after the weekly Fable limit had stopped the work. On
   2026-11-25, after the decisions were final, the owner moved the
-  orchestration to a session on Opus 5.5.
+  orchestration to a session on Opus 5.5 at extra-high effort, with its
+  helpers on Opus 5.5 at medium effort. That session checked and corrected
+  the three step 7 documents and settled their open points.
 - Every spike ran in a throwaway worktree in the scratchpad, at commit
   `57404c3`. No spike code is on the branch. Every patch and script is in the
   appendix of its report, and stage 4 writes each change again, test first.

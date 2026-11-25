@@ -3,9 +3,15 @@
 The spec, the decision records and the stage 4 task list were each written
 by a helper agent from `review/stage-3-decisions.md`. A writer decides
 nothing: where the decision document did not give it enough, it wrote the
-point down. This file holds those points as each writer reported them. None
-has been settled yet, and none of the three documents has been checked
-against the decision document.
+point down. This file holds those points as each writer reported them.
+
+**All are settled.** On 2026-11-25 the three documents were checked against
+the decision document (`check-spec-api.md`, `check-spec-rules.md`,
+`check-records.md`, `check-tasks.md`), every point below was settled in the
+decision document, whose section "Settled when the step 7 documents were
+checked" indexes the answers, and the three documents were corrected. Each
+point of the records carries its answer below; the spec's points carry theirs
+in its section 12, and the task list's in its section "Open points".
 
 ## The decision records, `docs/decisions/`
 
@@ -14,9 +20,11 @@ against the decision document.
 1. **The heading in 0004.** The brief asks for a section titled "Measured in
    stage 4", and also forbids naming the review's stages. The title was kept
    as asked. It is the only stage name in the records.
+   **Settled:** the heading is "Measured sizes"; a kept record names no stage of the review.
 2. **The kind "docs" for 0034.** The record template has no such kind; the
    decision document uses it. The record uses "docs", and the README lists
    it.
+   **Settled:** "docs" stays a kind, and the README lists it.
 3. **The field "Changes behaviour that 0.11 documents".** "Yes" where the
    decision document names a documented sentence: 2, 7, 10, 16, 21, 23, 24,
    28, 30, 37, 38, 42, 43, 44. "Yes" also for 29 (the sentence is in the
@@ -24,39 +32,50 @@ against the decision document.
    writer's judgement. Records 1, 5, 6, 8, 9, 13, 15, 19 and 22 are labelled
    "before 1.0" and have no documented sentence the writer could find; 19,
    the timing of the restore, is the least certain.
+   **Settled:** the field is now "Changes documented behaviour", checked per record; 0019 is "yes", because the persist tutorial says hydration is asynchronous even with `localStorage`.
 4. **The naming of `devtools` entries in 0004 and 0027.** Decision 4's row in
    the main-entry table still read "the slot through which `devtools` names a
    method", while decision 27 takes the "hook" form and drops the "slot"
    form. The record 0004 says "hook". In 0027 the 20 bytes belong to the
    first form and 40 to the slot form, both taken from `spike-combos.md`.
+   **Settled:** "hook" everywhere. The 40 bytes of the slot form are gone from 0027; the 57 bytes are what `./utils` adds over the main entry, as decision 4 explains.
 5. **No reason is given for decision 18.** The record takes its reason from
    what decision 36 says about warnings that fire for correct code.
+   **Settled:** decision 18 now has its own reason, and 0018 carries it.
 6. **Decisions that name no alternative:** 8, 15, 19, 23, 28, 33, 34 and 37.
    Those records say that none was proposed. In 0016 the writer added "the
    type alone" as an alternative, from the decision's own reasoning.
+   **Settled:** "None was named" stands where the decision names none; 0016 keeps "the type alone", which the decision's own reasoning weighs.
 7. **Proposals tied to no decision.** "Array methods run on the raw array"
    is in 0006. "A Proxy target of the library's own" and "a guard for a raw
    object frozen behind the store" are in 0009.
+   **Settled:** they stay where they are.
 8. **Where the cost of the lost-write check is recorded.** Decision 36 says
    "the decision record" without naming one. The writer added an empty table
    to 0036; 0004 is the other candidate.
+   **Settled:** record 0036 holds the figure (decision 36 now says so).
 9. **The approval sentence in 0004.** It says that the owner delegated these
    decisions on 2026-11-19, except merging into `main` and releasing. The
    delegation itself is in the plan, which is not kept, so the record cannot
    point to it.
+   **Settled:** the sentence stays, in words; T-01 brings `CONSTRAINTS.md` in line with it.
 10. **The later documentation pass.** Decisions 4 and 34 point to stage 5.
     The records say "when the work ends" and "a later documentation pass",
     without saying whether that is before the release.
+    **Settled:** before 1.0 is released; records 0004 and 0034 now say so.
 11. **The label of 0046.** The brief counts decision 46 as "no change"; its
     label in the decision document is "can follow 1.0". The README keeps
     that label.
+    **Settled:** "Can follow 1.0", as the index table says.
 12. **Figures left out or taken from a report.** "26 tests change against 28
     on that base" is left out of 0001, because it cannot be read without the
     base. The call counts in 0017 are from `spike-delivery.md`. The 40 bytes
     in 0027 are from `spike-combos.md`.
+    **Settled:** figures the decision document does not carry are taken out (0017, 0027, 0033, 0046).
 13. **What "0.11" means.** The records write "0.11" wherever the decision
     document says "today", taking the code on `release/1.0` before the 1.0
     changes to be 0.11.
+    **Settled:** wrong. npm 0.11.0 has no `batch()` and no transactions. A record says "before 1.0" for the code on the 1.0 branch before its change, and the README defines it.
 
 ## The spec, `review/spec.md`
 
