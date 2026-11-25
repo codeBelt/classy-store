@@ -290,17 +290,17 @@ snapshot; a compiler's real ES5 output (the rows are written by hand in
 each compiler's shape).
 
 **Label.** Before 1.0. **Stage 4:** yes. The task adds two rows to the core
-benchmark, a call of a method held in a field and a read and call of an
-arrow function held in a field, and records them before and after. The
-change lands only if `store.method` is inside the spread of the commit
-before it on both engines, and the two new rows are no slower than the
-figures above allow: 10% for the call and 1.6 times for the read and call. The baseline is the commit before, not the figures of stage 1, which
-decision 12 has moved by then.
+benchmark, a call of a method held in a field and a read and call of an arrow
+function held in a field, and records them before and after. The change lands
+only if `store.method` is inside the spread of the commit before it on both
+engines, and the two new rows are no slower than the figures above allow: 10%
+for the call and 1.6 times for the read and call. The baseline is the commit
+before, not the figures of stage 1, which decision 12 has moved by then.
 
-**Docs.** The sentences at the end of `spike-functions-2.md`, with the
-second and the eighth changed and one added as `spike-functions-3.md` says,
-go into the tutorial and the reference. The architecture page describes the cache of methods, which is
-per object.
+**Docs.** The sentences at the end of `spike-functions-2.md`, with the second
+and the eighth changed and one added as `spike-functions-3.md` says, go into
+the tutorial and the reference. The architecture page describes the cache of
+methods, which is per object.
 
 ### 2. `Object.defineProperty` through a store is a write, and nothing is refused
 
@@ -400,13 +400,14 @@ them.
 | `./react/server` adds |   153 |          175 |      153 |     175 | Nothing                                                          |
 
 **How a ceiling is set.** The estimate, plus an allowance for what was
-decided and never built, plus the 2% that every budget carries, rounded up
-to the next 25 bytes. The allowances: 80 bytes on the main entry, because
-two built combinations came out above the sum of their parts; 30 on
-`./utils` for three parts of decisions 21 and 24 that no spike holds; 20 on `./vue` for the setter that throws; 30 on `./angular` for its
-own context check. The first draft's ceilings for `./react`, `./vue` and
-`./angular` were below their own estimates plus 2%, so the last step of
-stage 4 would have failed on the reports' own numbers.
+decided and never built, plus the 2% that every budget carries, rounded up to
+the next 25 bytes. The allowances: 80 bytes on the main entry, because two
+built combinations came out above the sum of their parts; 30 on `./utils` for
+three parts of decisions 21 and 24 that no spike holds; 20 on `./vue` for the
+setter that throws; 30 on `./angular` for its own context check. The first
+draft's ceilings for `./react`, `./vue` and `./angular` were below their own
+estimates plus 2%, so the last step of stage 4 would have failed on the
+reports' own numbers.
 
 **A ceiling is an estimate and a tripwire, not a measurement.** The decided
 set was never built as one. Each figure in the two tables below is one
@@ -438,14 +439,14 @@ committed, and the question goes back to a decision.
   decision record. Today it reads `CONSTRAINTS.md` only, and one record
   anywhere on the branch would switch it off for every later change.
 - **The guard checks every commit, itself included.** It walks the commits
-  from the merge base with `main` to the head and judges each against the
-  one before it; today it sees one difference for the whole branch. Its own
-  file comes into its scope for a rule that is removed or loosened: today it
+  from the merge base with `main` to the head and judges each against the one
+  before it; today it sees one difference for the whole branch. Its own file
+  comes into its scope for a rule that is removed or loosened: today it
   leaves itself out, so a later commit could weaken it unseen. The text of
   its own patterns, in that file and in the fixtures of its tests, is not a
-  finding; the fixtures are put together when a test runs, so that no file
-  in the repository holds a line the guard would flag. CI runs it on the pull request, and it is run
-  before each push during stage 4.
+  finding; the fixtures are put together when a test runs, so that no file in
+  the repository holds a line the guard would flag. CI runs it on the pull
+  request, and it is run before each push during stage 4.
 - **Each rule has a test.** The first commit adds tests for the size
   script's two failures and for each rule of the guard, run on throwaway
   repositories made by the test.
@@ -488,17 +489,16 @@ bytes, less the other two), the later parts of decisions 5, 6, 10 and 12
 entries).
 
 The sum puts the main entry near 5,375 bytes, 47% above today's. The first
-draft of this entry counted 4,820 and left two rows open. The 553 bytes
-since then are what the three reviews asked for: the rule for functions
-(228, an open row before), the child kept through a freeze (68), the searches that
+draft of this entry counted 4,820 and left two rows open. The 553 bytes since
+then are what the three reviews asked for: the rule for functions (228, an
+open row before), the child kept through a freeze (68), the searches that
 answer correctly for a list of snapshots (68), the throw for a getter that
 writes, by any path (116), the table that holds no getter body and cannot
 grow without bound (61), and the hook for `devtools` (12, the other open
-row). The messages were
-measured as their spikes wrote them; the codes of decision 35 shorten them,
-by about 100 bytes for the first set and unmeasured for the rest. (The
-report that measured the messages gives 271 bytes of text in all; the
-difference is the text of refusals this document does not take.)
+row). The messages were measured as their spikes wrote them; the codes of
+decision 35 shorten them, by about 100 bytes for the first set and unmeasured
+for the rest. (The report that measured the messages gives 271 bytes of text
+in all; the difference is the text of refusals this document does not take.)
 
 **What `./utils` adds, change by change.**
 
@@ -939,12 +939,13 @@ value still ran, and a deleted getter still answered. In the form decided
 here a redefined getter runs its new body at its next recompute, as today.
 
 **What it assumes.** A prototype is not changed after its first read through
-a store. The library does not handle that fully today either (findings 44
-and 47), and it is **unspecified**, with these answers for now, two of which differ from today's. A getter
-added to a prototype for a key that was read as absent is seen, and it is
-not memoized: its body runs at every read, where today it runs once. An
-override nearer the instance is not seen. A getter removed or replaced by a
-value is seen at its next recompute, where today it is seen at once.
+a store. The library does not handle that fully today either (findings 44 and
+47), and it is **unspecified**, with these answers for now, two of which
+differ from today's. A getter added to a prototype for a key that was read as
+absent is seen, and it is not memoized: its body runs at every read, where
+today it runs once. An override nearer the instance is not seen. A getter
+removed or replaced by a value is seen at its next recompute, where today it
+is seen at once.
 
 The bound answers objection 5 of the second review. As first spiked, the
 table kept an entry for every key that was ever looked up and not found, and
@@ -958,10 +959,10 @@ instance does not have is then slower than today on Node (107 to 116
 nanoseconds against 97 to 100). No table for `Object.prototype` and
 `Array.prototype`: the tables of class prototypes still grow, and
 `Object.prototype` does carry an accessor, `__proto__`, which needs an
-exception that is easy to miss. The table that caches the descriptor: 46 bytes smaller and
-wrong as described. A table that names the prototype and reads the getter
-at every read: 23 bytes smaller than the form taken, and a cached getter
-read is then 19% slower on Node than today.
+exception that is easy to miss. The table that caches the descriptor: 46
+bytes smaller and wrong as described. A table that names the prototype and
+reads the getter at every read: 23 bytes smaller than the form taken, and a
+cached getter read is then 19% slower on Node than today.
 
 **Evidence.** `spike-core-2.md`, F2, the lazy form: 55 lines added and 12
 removed in `core.ts`, 1 line in `ownership.ts`, 165 bytes, no test fails,
@@ -1120,7 +1121,8 @@ the `subscribe` section that the callback runs in a microtask and that
 microtask is what gives `store.a = 1; store.b = 2` and `Object.assign` one
 call. A synchronous default would hand every caller of `subscribe()` the cost
 only the adapters carry today (one call, and often one snapshot, per direct
-write), and would turn the option of `persist`, `withHistory` and `subscribeKey` around.
+write), and would turn the option of `persist`, `withHistory` and
+`subscribeKey` around.
 
 **Evidence.** `spike-delivery.md`, D5, with the counts per case.
 
@@ -1558,14 +1560,14 @@ the store, so a store that refers to itself is restored like any other.
 an object is restored in place, one check asks whether every write the
 restore would make there is allowed. A key to add to an object that is not
 extensible, a read-only key whose value differs, and a key that cannot be
-deleted each fail it. The check counts only the writes the restore will
-make: a function field that a state from outside does not carry is not a
-key to delete (decision 29), so a jump by JSON on a sealed store whose
-methods are own fields does not fail it. The spike's check was written
-before that rule and counts such a key; stage 4 tests the jump first. The object is then replaced at its parent by a copy.
-The root cannot be replaced: when the root fails the check, the restore
-throws a `TypeError` before it writes anything, and the history does not
-move.
+deleted each fail it. The check counts only the writes the restore will make:
+a function field that a state from outside does not carry is not a key to
+delete (decision 29), so a jump by JSON on a sealed store whose methods are
+own fields does not fail it. The spike's check was written before that rule
+and counts such a key; stage 4 tests the jump first. The object is then
+replaced at its parent by a copy. The root cannot be replaced: when the root
+fails the check, the restore throws a `TypeError` before it writes anything,
+and the history does not move.
 
 **Why.**
 
