@@ -10,9 +10,16 @@ bun run benchmark:core                       # Bun, JavaScriptCore
 bun run benchmark:core:node                  # Node, V8
 bun run benchmark:core --runs 9              # more runs, a tighter spread
 bun run benchmark:core --only snapshot       # only the metrics named so
+bun run benchmark:core --only store.read,store.method   # a list of metrics
 bun run benchmark:core --update-baseline     # record this engine's figures
 bun run benchmark:core --check               # fail when a ratio is over its limit
 ```
+
+`--only` takes one name or several, separated by commas. A name that is a
+metric's exact name selects that metric alone; any other text selects every
+metric whose name contains it. When a selected metric is the top of a ratio,
+the Proxy metric it is divided by runs as well, so the ratio is still
+reported. A run of a few metrics takes a fraction of the time of a full one.
 
 Run it on a quiet machine. Both engines matter: they do not agree on what is
 fast, and most applications run on V8.

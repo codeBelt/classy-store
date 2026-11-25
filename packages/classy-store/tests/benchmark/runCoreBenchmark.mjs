@@ -37,7 +37,10 @@ process; the figure for a metric is the median over the runs, and its spread is
 the lowest and highest run.
 
   --runs <n>          Fresh processes to run. Default: 5.
-  --only <text>       Only metrics whose name contains the text.
+  --only <names>      Only the metrics named, separated by commas. A name that
+                      is a metric's exact name selects that metric; any other
+                      text selects every metric whose name contains it. The
+                      Proxy metric a selected ratio is divided by runs as well.
   --update-baseline   Record this engine's figures in tests/benchmark/baseline.json.
   --check             Fail when a ratio is above its limit in tests/benchmark/limits.json.
 `;
@@ -479,10 +482,37 @@ async function measure(metric) {
   return median(samples);
 }
 
-async function runChild(only) {
+/**
+ * The metrics `--only` selects, or a message when one of its names selects
+ * nothing. A name that is a metric's exact name selects that metric alone, so
+ * `store.read` does not also run `store.read.nested`; any other text selects
+ * by containment, as `snapshot` does. A ratio needs both its operands, so the
+ * metric a selected one is divided by is added.
+ *
+ * @param {string | undefined} only
+ * @returns {{names: Set<string>} | {error: string}}
+ */
+function selectMetrics(only) {
+  const all = metrics.map((metric) => metric.name);
+  if (!only) return {names: new Set(all)};
+  const names = new Set();
+  for (const item of only.split(',').map((text) => text.trim())) {
+    const matched = all.includes(item)
+      ? [item]
+      : all.filter((name) => item && name.includes(item));
+    if (!matched.length) return {error: `--only: no metric matches "${item}"`};
+    for (const name of matched) names.add(name);
+  }
+  for (const ratio of ratios) {
+    if (names.has(ratio.of)) names.add(ratio.over);
+  }
+  return {names};
+}
+
+async function runChild(names) {
   const results = {};
   for (const metric of metrics) {
-    if (only && !metric.name.includes(only)) continue;
+    if (!names.has(metric.name)) continue;
     results[metric.name] = await measure(metric);
   }
   console.log(JSON.stringify({results, sink}));
@@ -535,7 +565,14 @@ function main() {
     return 0;
   }
   const only = optionValue('--only');
-  if (flags.includes('--child')) return runChild(only).then(() => 0);
+  const selected = selectMetrics(only);
+  if ('error' in selected) {
+    console.error(`${selected.error}\n\n${usage}`);
+    return 2;
+  }
+  if (flags.includes('--child')) {
+    return runChild(selected.names).then(() => 0);
+  }
 
   const runs = Number(optionValue('--runs') ?? 5);
   if (!Number.isInteger(runs) || runs < 1) {
