@@ -477,7 +477,7 @@ committed, and the question goes back to a decision.
 | The delivery queue with its bound, setters, the rejection handler     | 13 to 15 |   +219 |
 | The check for an `async` function in `batch()`                        |       16 |    +50 |
 | Dead lines removed                                                    |       20 |    −32 |
-| The slot through which `devtools` names a method                      |       27 |    +12 |
+| The hook through which `devtools` names a method                      |       27 |    +12 |
 | Class getters on a derived prototype, and `this` in a snapshot getter |       43 |   +239 |
 | A snapshot keeps a cycle                                              |       44 |     −9 |
 | Sum                                                                   |          | +1,714 |
