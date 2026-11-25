@@ -67,7 +67,7 @@ by subject below, so their numbers are not in order there.
 |  21 | Nothing `persist` cannot use is skipped in silence                                         | Bug, diagnostics        | Before 1.0                                     | Yes                  |
 |  22 | `persist()` validates its options                                                          | Bug                     | Before 1.0                                     | Yes                  |
 |  23 | A restore is all or nothing                                                                | Bug                     | Before 1.0                                     | Yes                  |
-|  24 | A migrated record is written back; a pending save is flushed                               | Bug                     | Before 1.0                                     | Yes                  |
+|  24 | A pending save is flushed; nothing is written back at load but an expiry stamp             | Bug                     | Before 1.0                                     | Yes                  |
 |  25 | Cross-tab sync ignores an event from another storage area                                  | Bug                     | Can follow 1.0                                 | Yes                  |
 |  26 | `persist` options stay as they are                                                         | Public API              | No change                                      | No                   |
 |  27 | `devtools`: named entries, exact time travel, off in production                            | Public API, bug         | Before 1.0                                     | Yes                  |
@@ -345,7 +345,7 @@ them.
 | Entry                 | Today | Budget today | Estimate | Ceiling | What moves it                                                    |
 | --------------------- | ----: | -----------: | -------: | ------: | ---------------------------------------------------------------- |
 | `.` (the main entry)  | 3,661 |        3,750 |    5,297 |   5,500 | The first table below                                            |
-| `./utils` adds        | 2,686 |        2,750 |    3,971 |   4,225 | The second table below                                           |
+| `./utils` adds        | 2,686 |        2,750 |    4,216 |   4,350 | The second table below                                           |
 | `./collections` adds  |   727 |          750 |      911 |     950 | The snapshot index, the membership rule, the mutator check       |
 | `./react` adds        | 1,662 |        1,700 |    1,693 |   1,750 | The guard for a cyclic snapshot                                  |
 | `./vue` adds          |   280 |          300 |      369 |     400 | The read-time ref, the server path, the setter that throws       |
@@ -357,9 +357,8 @@ them.
 **How a ceiling is set.** The estimate, plus an allowance for what was
 decided and never built, plus the 2% that every budget carries, rounded up
 to the next 25 bytes. The allowances: 80 bytes on the main entry, because
-two built combinations came out above the sum of their parts; 150 on
-`./utils` for the `persist` rules of decisions 21 and 22 that no spike
-holds; 20 on `./vue` for the setter that throws; 30 on `./angular` for its
+two built combinations came out above the sum of their parts; 30 on
+`./utils` for three parts of decisions 21 and 24 that no spike holds; 20 on `./vue` for the setter that throws; 30 on `./angular` for its
 own context check. The first draft's ceilings for `./react`, `./vue` and
 `./angular` were below their own estimates plus 2%, so the last step of
 stage 4 would have failed on the reports' own numbers.
@@ -458,23 +457,24 @@ difference is the text of refusals this document does not take.)
 
 **What `./utils` adds, change by change.**
 
-| Change                                                  |     Decision |  Bytes |
-| ------------------------------------------------------- | -----------: | -----: |
-| `persist`, `history` and `devtools` as one build        | 19 to 25, 27 |   +710 |
-| The naming moved out of the core into `devtools.ts`     |           27 |    +57 |
-| The root store's getter values in what `devtools` sends |       27, 43 |    +95 |
-| Restore in place                                        |           30 |   +113 |
-| Each object entered once per restore                    |           30 |    +16 |
-| A container that would refuse the restore is replaced   |           30 |   +211 |
-| `cloneSnapshot` made safe for a cycle                   |           44 |    +21 |
-| `subscribeKey` without a snapshot of the whole store    |           31 |    +62 |
-| Sum                                                     |              | +1,285 |
+| Change                                                                     |     Decision |  Bytes |
+| -------------------------------------------------------------------------- | -----------: | -----: |
+| `persist`, `history` and `devtools` as one build                           | 19 to 25, 27 |   +710 |
+| The `persist` rules of decisions 21 to 24, as built after the third review |     21 to 24 |   +245 |
+| The naming moved out of the core into `devtools.ts`                        |           27 |    +57 |
+| The root store's getter values in what `devtools` sends                    |       27, 43 |    +95 |
+| Restore in place                                                           |           30 |   +113 |
+| Each object entered once per restore                                       |           30 |    +16 |
+| A container that would refuse the restore is replaced                      |           30 |   +211 |
+| `cloneSnapshot` made safe for a cycle                                      |           44 |    +21 |
+| `subscribeKey` without a snapshot of the whole store                       |           31 |    +62 |
+| Sum                                                                        |              | +1,530 |
 
-The sum is 3,971 bytes. Not in it, because they were decided from the
-reviews and never built: the default report of `persist` when no `onError`
-is given, the rule for the version, the checks made when `persist()` is
-called, and the handle that does not write over a record it could not use
-(decisions 21 and 22). The ceiling has 150 bytes for them.
+The sum is 4,216 bytes. The first row is the first combination of the
+`persist`, `history` and `devtools` changes; the second is what the rules
+of decisions 21 to 24 add to it in their final form, with the write-back
+after a migration taken out again. Three small parts of those decisions are
+not in that build, and the ceiling has 30 bytes for them.
 
 **What each of the larger items buys, so that it can be weighed.**
 
@@ -1102,6 +1102,11 @@ when the store cannot be snapshotted at the start of a read, and
 saved state a microtask later. The change is 15 lines added and 18 removed,
 and `./utils` gets 6 bytes smaller.
 
+The handle exists before the first read starts, so a report made during it
+can hand the handle to `onError` (decision 21). With `skipHydration` nothing
+is read, and so nothing is saved, until `rehydrate()` is called (decision
+21).
+
 **Two things the guide has to say.**
 
 - **Call `persist()` after the store is constructed, never inside a
@@ -1152,96 +1157,128 @@ things at once and is timed alone before stage 4 relies on it.
 
 ### 21. Nothing `persist` cannot use is skipped in silence, and nothing it could not restore is written over
 
-**Under revision**, with `spike-persist-2.md`, together with decisions 19 and
-22 to 24. The third review found four more paths on which a record or an
-edit is lost, or advice that cannot work (`adversarial-3.md`, objections 2,
-3, 4, 7, 8 and 9). The rules were changed after each round and never built;
-the spike builds them as they stand after this round. Its brief,
-`review/stage-3/briefs/spike-persist-2.md`, has the rules in their newest
-form, and where it differs from the text below, the brief is newer.
+**Decision.**
 
-**Decision.** A stored record that is read and not restored is one of three
-kinds. Each is reported through `onError` as `'parse'`, with a code and the
-reason in the message. No new operation name is added.
+**A handle writes only after it has read.** Until its first read has
+settled, a handle saves nothing: with `skipHydration` that is until the
+first `rehydrate()`, and with a storage that returns a promise it is while
+the first read is in flight. An edit made before then is kept in the store.
+When the read restores a record, the edit wins for the field it changed, and
+the result is saved. `save()` rejects before the first read has settled.
+`clear()` works at any time.
 
-| Kind                         | What it is                                                                                                                                                                                                                                                         | What happens to it                                                           |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------- |
-| Nothing to keep              | Not JSON; an envelope that is not an object; a `state` that is not a plain object; a version that is not a finite number of zero or more; an `expiresAt` that is neither a number, `null` nor missing. Also a record of a lower version when no `migrate` is given | The next save replaces it                                                    |
-| From a newer version         | Its version is above the configured one                                                                                                                                                                                                                            | `migrate` is not called with it. The handle does not write while it is there |
-| Not migrated or not restored | `migrate` threw, or returned a thenable or something that is not a plain object; a `deserialize` threw; the restore was rolled back (decision 23)                                                                                                                  | The handle does not write while it is there                                  |
+**A stored record that is read and not restored** is one of five kinds:
 
-- **A handle that does not write** saves nothing, on an edit or on `save()`.
-  It writes again after `clear()`, after a `rehydrate()` that restores a
-  record or finds none, and after a record that can be restored arrives from
-  another tab. The report says that saving has stopped. An edit does not
-  repeat it; a call of `save()` reports again, as `'write'`, each time it
-  writes nothing, and `lastError` of the status holds it.
-- **Expiry comes first.** A record whose time has elapsed is treated as
-  expired whatever its version, as the build that wrote it would treat it.
+| Kind                          | What it is                                                                                                                                                                                                                                                                                     | What happens                                                                                |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| Nothing to keep               | Not JSON; an envelope that is not an object; a `state` that is not a plain object; a version that is not a finite number of zero or more; an `expiresAt` that is neither a number, `null` nor missing; a record the library itself cannot restore, because it is nested too deep (decision 23) | Reported as `'parse'`. The next save replaces it                                            |
+| A lower version, no `migrate` | The documented way to drop an old format                                                                                                                                                                                                                                                       | Not used and not reported. The next save replaces it                                        |
+| From a newer version          | Its version is above the configured one                                                                                                                                                                                                                                                        | Reported as `'parse'`. `migrate` is not called. The handle does not write while it is there |
+| Not migrated or not merged    | `migrate`, `merge` or a `deserialize` threw, or `migrate` or `merge` returned a thenable or something that is not a plain object                                                                                                                                                               | Reported as `'parse'`. The handle does not write while it is there                          |
+| Not read                      | The read itself failed                                                                                                                                                                                                                                                                         | Reported as `'read'`. It counts as no read, so the handle does not write                    |
+
+- **A handle that does not write** saves nothing: on an edit, when the page
+  is hidden, or on `save()`. An edit does not repeat the report. `save()`
+  reports as `'write'` and rejects with the error. A `rehydrate()` that
+  finds such a record again reports and rejects. The handle writes again
+  after `clear()`, after a `rehydrate()` that restores a record, finds none
+  or finds one with nothing to keep, and when such a record, or the removal
+  of the record, arrives from another tab. `lastError` of the status holds
+  the report for as long as the handle does not write.
+- **`onError` receives the handle as its third argument**, so that it can
+  call `clear()`. For a synchronous storage the first read runs inside
+  `persist()` (decision 19), and the report comes before `persist()` has
+  returned anything the callback could use. An error that `onError` throws
+  is logged with `console.error`; today it is swallowed.
 - **When no `onError` is given, the report goes to `console.error`** with
-  its code, in every build. `onError` replaces that default. An application
-  that prefers to lose the old record calls `clear()` there.
+  its code, in every build. `onError` replaces that default.
 - **The version rule is one rule, on both sides.** A version is a finite
   number, zero or above. A record with no `version` field counts as version
-  0. Any other value in a record, `null` and `"2"` included, leaves nothing to
-  keep. The `version` option is checked when `persist()` is called
-  (decision 22).
+  0; any other value, `null` and `"2"` included, leaves nothing to keep. The
+  `version` option is checked when `persist()` is called (decision 22).
 - **`migrate` is called only for a lower version**, and never as an `async`
   function: a native `async` function is refused when `persist()` is called
   (decision 22). If a `migrate` returns a thenable when it runs, a handler is
   attached to it, so no rejection is left unhandled, and the record counts
   as not migrated.
-- **A record without an `expiresAt`, or with `null`,** is restored, and is
-  written back with one when `expireIn` is set.
+- **Expiry comes first.** A record whose time has elapsed is treated as
+  expired whatever its version, as the build that wrote it would treat it.
 
 **Why.**
 
 - One channel for every failure of a read, and a default for it. `onError`
   is optional, and without a default a refused record is as silent as today.
+- A handle that writes before it has read writes over a record it never
+  saw. That is what a handle with `skipHydration` does today on its first
+  edit, and `skipHydration` is the pattern the server-rendering guides
+  teach: a stored record is replaced by the defaults and one edit, and the
+  `rehydrate()` that follows reads the damage back.
 - A record of a newer version is the data of a newer build of the same
   application: another tab that has already updated, or a deployment that
   was rolled back. Today `migrate` is called with it, and the next edit
-  writes the older build's state over it. An older build has no way to read
-  it and no business deleting it.
-- A record that could not be migrated or restored is valid data that a
-  corrected `migrate` or `deserialize` can still read. The first draft
-  replaced it at the next save, which turns a bug in one release into lost
-  data for every user who makes an edit. Not saving is the failure that can
-  be undone; it is reported, and the application can choose the other one
-  with `clear()`.
-- A record that is not a record holds nothing to keep, and keeping it would
+  writes the older build's state over it.
+- A record that the application's own `migrate`, `merge` or `deserialize`
+  failed on is valid data that a corrected release can still read. Replacing
+  it at the next save turns a bug in one release into lost data for every
+  user who makes an edit. Not saving is the failure that can be undone; it
+  is reported, and the application can choose the other one with `clear()`.
+- A record that is not a record, or that the library itself can never
+  restore, holds nothing a later release could use, and keeping it would
   stop the store from ever saving again. A version raised with no `migrate`
-  is the usual way to say that older records are to be dropped, so such a
-  record is replaced too. It is still reported; an application that wants no
-  report gives a `migrate` that returns the state to start from.
+  is the documented way to drop an old format, and it stays silent.
 - Awaiting an `async` `migrate` would put a turn between the read and the
   apply, which is what decision 19 removes. Calling it and dropping its
   promise would turn a silent skip into an unhandled rejection, which ends a
   Node or Bun process.
-- Counting a record without `expiresAt` as expired would wipe every user's
-  saved state on the release that adds `expireIn` to an application.
 - A version need not be an integer. The first draft demanded one, on the
-  record only: an application configured with `version: 1.1` would then have
-  refused its own record after the upgrade and written over it (objection 2
-  of the second review).
+  record only: an application configured with `version: 1.1` would have
+  refused its own record after the upgrade.
 
-**What it costs a user.** After a release whose `migrate` or `deserialize`
-fails for a stored record, that user's state is not saved until a later
-release reads the record, or the application calls `clear()`. An older tab
-stops saving once a newer tab has written. An older tab that does not sync
-and loaded before the newer one wrote cannot know, and still writes over the
-newer record; the guide says so.
+**What it costs a user.**
 
-**Evidence.** `persist-devtools.md`, P2: 144 bytes on `./utils`, 8 tests
-change, all pins of the silence. Not in that spike, and decided from the two
-reviews: the default report, the version rule, the refusal of an `async`
-`migrate`, and the three kinds with a handle that does not write
-(`adversarial-edges.md`, objections 1, 6 and 20; `adversarial-2-whole.md`,
-objections 1, 2 and 11, each reproduced on the spike or on the unmodified
-source). None was built, so stage 4 writes their tests first: two handles at
-versions 1 and 2 on one key, a `migrate` that throws followed by an edit, a
-version raised with no `migrate`, a version of `1.1` on both sides, and each
-row of the table.
+- **With `skipHydration`, nothing is saved until `rehydrate()` has been
+  called.** An application that never calls it saves nothing, and only
+  `save()` says so, by rejecting. `isHydrated` shows the state. The guides
+  say today that `skipHydration` "does not delay writes"; that sentence is
+  reversed.
+- **While a handle does not write, edits are not saved**, and if a later
+  `rehydrate()` restores a record, they are restored over. After a release
+  whose `migrate`, `merge` or `deserialize` fails for a stored record, that
+  user's state is not saved until a later release reads the record or the
+  application calls `clear()`.
+- **After a rollback of a deployment**, a user whose record the newer build
+  saved cannot save on the older build until the newer one is back.
+- **Two losses stay**, and the guide names both. A tab that read before a
+  newer build wrote, and does not sync, writes over the newer record at its
+  next edit: it cannot know. A `migrate` that returns a wrong result without
+  throwing is saved at the user's next edit.
+
+**How this entry got here.** Each of the three reviews found a way to lose
+stored data in it, and it was rewritten each time before anything was
+built: a silent skip without `onError`; an older build that wrote over a
+newer record; advice to call `clear()` from a callback that had no handle; a
+handle with `skipHydration` that wrote before it read. After the third
+review the whole rule set was built once and run through 33 paths on today's
+source, on the first combination of the `persist` changes and on the new
+build.
+
+**Evidence.** `spike-persist-2.md`, on top of the combination of
+`persist-devtools.md`: 98 lines added and 36 removed in `persist.ts` and
+`persist.types.ts`. `./utils` adds 3,641 bytes, 245 more than that
+combination. Of the 33 paths, the ones the reviewers raised now keep the
+record: the rollback, `version: 1.1`, `skipHydration` over a newer record,
+`clear()` from `onError` on both kinds of storage, a `merge` that throws,
+and a `migrate` that returns `null` or a rejected promise. 48 tests change:
+14 of that combination's 15; 24 that use `skipHydration` as a set-up and
+save before any read, incidental; 2 that pin `save()` replacing a record it
+never read, fixes; 3 that pin the read winning over an edit made before
+`rehydrate()`, changed by decision; and 5 that check the arguments of
+`onError`, incidental. The typecheck shows the type test of the two-argument
+`onError`. Three parts are decided here and not in that build: a record
+nested too deep has nothing to keep (the build keeps it, and the handle then
+never saves again); the removal of the record in another tab lets a handle
+write again; and the stamp of decision 24 only for a finite `expireIn`. Not
+run: a real `pagehide`, a real second tab, the browser suites.
 
 **Label.** Before 1.0. **Stage 4:** yes.
 
@@ -1259,8 +1296,10 @@ Checking the version and `migrate` here, once, means neither is ever found
 out record by record, where the cost would be a user's stored data.
 
 **Evidence.** `persist-devtools.md`, P3: 82 bytes, 5 tests change, 4 fixes
-and 1 incidental. The checks of `version` and `migrate` are not in that
-spike; stage 4 writes their tests first.
+and 1 incidental. The checks of `version` and `migrate` were built in
+`spike-persist-2.md`: 56 bytes. A native `async` function is told by its
+`Symbol.toStringTag`, named exactly, because a looser test refused the mock
+functions of the test runner.
 
 **Label.** Before 1.0. **Stage 4:** yes.
 
@@ -1269,10 +1308,12 @@ spike; stage 4 writes their tests first.
 **Decision.** A restore copies every value first, writes them in one
 transaction, checks that the result can be snapshotted, and rolls back if it
 cannot. A nested `__proto__` key is dropped. A record whose restore was
-rolled back is reported and is not written over (decision 21).
+rolled back, or that is nested too deep to copy, has nothing to keep
+(decision 21): it is reported, and the next save replaces it.
 
 **Why.** Today a deeply nested record restores and then makes every snapshot
-and every save throw, so it is never replaced.
+and every save throw, so it is never replaced. No release can restore such a
+record, so keeping it would only stop the store from saving for good.
 
 **What it changes for a user.** A synchronous subscriber is told once, after
 the whole record is in, where today it is told once per field and can edit
@@ -1283,26 +1324,42 @@ and that sentence changes in the same commit.
 
 **Label.** Before 1.0, for the documented sentence. **Stage 4:** yes.
 
-### 24. A migrated record is written back, and a pending save is written when the page is hidden
+### 24. A pending save is written when the page is hidden, and nothing is written back at load but an expiry stamp
 
-**Decision.** After a restore that ran `migrate` on a record of a lower
-version, the migrated record is saved at once, so the migration does not run
-again on the next load. Nothing is written back in any other case. A
-debounced save that is still waiting is written when the page is hidden
-(`pagehide`).
+**Decision.**
 
-**Why only after an upgrade.** Written back in every case, an older build
-would replace a newer record as soon as it loads, before the user does
-anything (objection 1 of the second review, reproduced on the spike). Under
-decision 21 an older build does not call `migrate` for such a record and
-does not write at all.
+- A debounced save that is still waiting is written when the page is hidden
+  (`pagehide`).
+- **A migrated record is not written back at load.** The first save writes
+  it, as today.
+- **One thing is written back at load:** a record of the configured version
+  that has no `expiresAt`, or `null`, read by a handle whose `expireIn` is a
+  finite number, is saved again with an `expiresAt`, through the ordinary
+  save path and its debounce. Its state and its version are unchanged.
+- A record that arrives from another tab is never written back.
 
-**Evidence.** `persist-devtools.md`, P5. 102 bytes. No test changes. A real
-page unload was not tested; stage 4 tests it in the browser suite.
+**Why no write-back after a migration.** The first two drafts wrote a
+migrated record back at once, so that the migration would not run again on
+the next load. The third review showed what that opens (objection 4 of
+`adversarial-3.md`). A `migrate` that is wrong and does not throw would
+replace the source record for every user who opens the release, edit or no
+edit, where without the write-back a user who only looks keeps the old
+record. And after a rollback, every user who merely opened the newer build
+would have a record the older build must not write over. Running a
+`migrate` once more per load costs nothing next to either.
 
-**Label.** Before 1.0: the persist tutorial says that migration and
-hydration do not rewrite storage, and that sentence changes in the same
-commit. **Stage 4:** yes.
+**Evidence.** `persist-devtools.md`, P5, for the `pagehide` flush: no test
+changes; a real page unload was not tested, and stage 4 tests it in the
+browser suite. `spike-persist-2.md` for the rest: a migrated record is kept
+until the first edit (paths 2 and 4), and a record without `expiresAt` is
+written once with one (path 10b). With `expireIn: Infinity` that build
+writes the record again on every load, which is why the stamp is for a
+finite `expireIn` only; that last part is not built. No test pins either
+write-back today; stage 4 writes both.
+
+**Label.** Before 1.0: the persist tutorial says that hydration does not
+rewrite storage, and the stamp is an exception to that sentence. **Stage
+4:** yes.
 
 ### 25. Cross-tab sync ignores an event from another storage area
 
@@ -1320,7 +1377,8 @@ can write to the storage directly.
 **Decision.** No option is renamed, removed or made optional. `storage`
 stays required: making it optional later is an addition, and a default of
 `localStorage` would add a new silence where it is missing. `clearOnExpire`
-stays.
+stays. One callback gains an argument: `onError` receives the handle as its
+third (decision 21). A callback written for two arguments still fits.
 
 **Why.** An earlier draft removed `clearOnExpire` and always cleared an
 expired record. That was reasoned, not spiked, and it would delete data in
@@ -2105,15 +2163,22 @@ detector, and its file says so.
 9. **Memory.** The library keeps no strong reference to a store that nothing
    else references, or to a subscriber after its unsubscribe function was
    called, in a runtime that has `WeakRef`.
-10. **`persist`.** A stored record is removed or replaced only in these
-    cases: its time has elapsed; `clear()` is called; a save follows a
-    restore of that record; a save follows a record with nothing to keep
-    (decision 21 says which), or no record. A record of a newer version, and
-    a record that could not be migrated or restored, is reported and is not
-    written over by the handle that read it. An edit made while a read is in
-    flight is not lost. The first `save()` or `clear()` of a task reaches a
-    synchronous storage before it returns. After `dispose()` nothing is
-    read, written or scheduled.
+10. **`persist`.** A handle writes only after it has read. A stored record
+    is removed or replaced only in these cases: its time has elapsed;
+    `clear()` is called; a save follows a restore of that record; a save
+    follows no record, a record with nothing to keep, or a record of a lower
+    version when no `migrate` is given (decision 21 says which). A record of
+    a newer version, one that the application's `migrate`, `merge` or
+    `deserialize` failed on, and one whose read failed, is reported and is
+    not written over by the handle that read it. Two cases are outside this
+    rule, and the guide names them: a tab that read before a newer build
+    wrote, and does not sync, writes over the newer record; and a `migrate`
+    that returns a wrong result without throwing is saved at the next edit.
+    An edit made before or during the first read is kept in the store, and
+    saved unless the record is one the handle does not write over. The
+    first `save()` or `clear()` of a task reaches a synchronous storage
+    before it returns. After `dispose()` nothing is read, written or
+    scheduled.
 11. **Exports.** Every export the reference lists exists with its documented
     signature. The list may grow in a minor release.
 12. **Error codes.** The code in an error or a logged report is stable.
@@ -2218,7 +2283,12 @@ consumer:
 - Awaiting an `async` `migrate` (M45). Accepting later what is refused now
   is a compatible change, so this is not final.
 - Writing over a record of a newer version, or over one that could not be
-  migrated or restored, at the next save (decision 21). **(final)**
+  migrated or merged, at the next save (decision 21). **(final)**
+- Writing a migrated record back at load (M47), and a handle that saves
+  before it has read (decisions 21 and 24). **(final)**
+- A handle with `skipHydration` that only looks at the stored version before
+  its first save: it would still write the defaults over a record it could
+  have restored.
 - An optional `storage`, removing `clearOnExpire`, a pause switch and an
   in-flight flag for `persist` (M46, M49, M55).
 - Refusing a cross-tab event that has no `storageArea` (M53).
