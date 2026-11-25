@@ -3,11 +3,13 @@
 Stage 3 of the pre-1.0 review. No library source has been changed. Stage 4
 implements what is decided here, one change per commit, test first.
 
-**Status: revised after two adversarial reviews; the third and last is to
-follow.** Two rounds of review by agents that took no part in the work
-raised 58 and then 30 objections. After each, the entries they touched were
-decided again, ten of them from five more spikes. "Objections and answers" at
-the end has a table for each round.
+**Status: under revision after the third and last adversarial review.**
+Three rounds of review by agents that took no part in the work raised 58,
+30 and 17 objections. After each, the entries they touched were decided
+again. Of the third round, the answers that need no build are in the
+entries; decision 1 and the `persist` decisions 19 and 21 to 24 are marked
+"under revision" and wait for two last spikes. "Objections and answers" at
+the end has a table for the first two rounds; the third follows.
 
 ## How to read this
 
@@ -92,6 +94,14 @@ by subject below, so their numbers are not in order there.
 ## The four decisions the rest hangs on
 
 ### 1. A function in a field is a method when it is read through the store, and the object is never changed
+
+**Under revision**, with `spike-functions-3.md`. The third review showed that
+handing out every function with its own `prototype` as data also takes the
+binding and the transaction away from `inc: function () {…}` in an object
+literal, which today is a bound method, and that a call of a method held in
+a field is 10 to 15% slower than today (`adversarial-3.md`, objections 1, 5
+and 6). The spike builds two changes: only a class is data, and the fast
+path with the frozen test kept.
 
 **Decision.** A function is a **method**, bound to the proxy of the object
 that holds it and run as one transaction, in two cases:
@@ -1141,6 +1151,14 @@ things at once and is timed alone before stage 4 relies on it.
 **Label.** Can follow 1.0. **Stage 4:** yes.
 
 ### 21. Nothing `persist` cannot use is skipped in silence, and nothing it could not restore is written over
+
+**Under revision**, with `spike-persist-2.md`, together with decisions 19 and
+22 to 24. The third review found four more paths on which a record or an
+edit is lost, or advice that cannot work (`adversarial-3.md`, objections 2,
+3, 4, 7, 8 and 9). The rules were changed after each round and never built;
+the spike builds them as they stand after this round. Its brief,
+`review/stage-3/briefs/spike-persist-2.md`, has the rules in their newest
+form, and where it differs from the text below, the brief is newer.
 
 **Decision.** A stored record that is read and not restored is one of three
 kinds. Each is reported through `onError` as `'parse'`, with a code and the

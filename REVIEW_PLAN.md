@@ -59,17 +59,31 @@ pause on 2026-11-24: "The pause is over, carry on with stage 3."
   that cannot be written). Decisions 1, 10, 11, 12, 29 and 30 were decided
   again from them, and 21 to 24, 4, 27 and 36 from the review itself.
 
-**Running:** the third and last adversarial review, by one agent that has
-seen none of the work. Its brief is
-`review/stage-3/briefs/adversarial-3.md` and its report
-`review/stage-3/adversarial-3.md`. If the agent was cut off, restart it from
-its brief with the report as its starting point.
+- The third and last adversarial review: `adversarial-3.md`, 17 objections,
+  4 "wrong". The answers that need no build are in the decision document.
+
+**Running:** two last spikes, for the two parts of the third review that
+need a build. Their briefs are in `review/stage-3/briefs/`, and each report
+is written as the agent goes:
+
+- `spike-functions-3.md`: the rule for functions with two changes. Only a
+  class is handed out as data, so `inc: function () {…}` in an object
+  literal stays a bound method; and the fast path for a method held in a
+  field, with the frozen test kept (decision 1).
+- `spike-persist-2.md`: the `persist` rules as they stand after three
+  rounds, built once (decisions 19 and 21 to 24). Its brief holds the rules
+  in their newest form.
+
+Decisions 1 and 21 are marked "under revision". If an agent was cut off,
+restart it from its brief with the report as its starting point.
 
 **Then:**
 
-1. Answer the third round in a third table of "Objections and answers".
-   There is no fourth round: an objection that cannot be settled by a change
-   to the text or by a short run goes to the owner, with what was tried.
+1. Decide decision 1 and the `persist` decisions again from the two
+   reports, and write the third round's table into "Objections and
+   answers". There is no fourth round: an objection that cannot be settled
+   by a change to the text or by a run goes to the owner, with what was
+   tried.
 2. Step 7, by three agents, each with a brief in `review/stage-3/briefs/`:
    the spec at `review/spec.md` (`step7-spec.md`), one decision record per
    decision under `docs/decisions/` (`step7-records.md`), and the stage 4
