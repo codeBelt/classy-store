@@ -106,16 +106,26 @@ agents run on Opus 5.5 at medium effort (ground rule "Models").
 ## Where stage 4 stands
 
 Updated 2026-11-25. Stage 4 follows `review/stage-4-tasks.md`, one task per
-commit.
+commit. Its working results are in `review/stage-4/`.
 
-- T-01, the tooling commit, is written in the working tree and not yet
-  committed: the per-commit floor guard and its 32 tests
+**Done:**
+
+- T-01 at `a46cd96`: the per-commit floor guard and its 34 tests
   (`packages/classy-store/tests/floor/`), the ceilings in `budgets.json`,
-  `checkSizes()` in the size script and its 7 tests, and the new floor of
-  `CONSTRAINTS.md`. All 1,380 tests, lint, typecheck and `bun run size`
-  pass with it. It still needs its lines in record 0004.
+  `checkSizes()` in the size script and its 7 tests, the new floor of
+  `CONSTRAINTS.md`, and its lines in record 0004. (Its commit message says 9
+  and 32 tests; the counts are 7 and 34.)
+- T-02 at `ae990df`, with a type fix at `09ba1f2`: the floor rule for a
+  development-only check, the production-bundle check in `bun run size` with
+  `tests/size/developmentOnly.json`, and `productionBundle.test.ts`.
+  `ae990df` was pushed with a type error, because the command that ran the
+  checks did not stop on it; CI fails on that commit and passes from
+  `09ba1f2`.
+- Checkpoint 1: every check passes on the head, and the starting core
+  timings are in `review/stage-4/` (`README.md` has the ratios).
 
-**Next:** commit T-01, then T-02, then checkpoint 1.
+**Next:** T-03, today's six messages get their codes and the page of codes
+is created (decision 35).
 
 The throwaway worktrees of the step 7 fixers are in the scratchpad, on the
 branches `step7/fix-spec`, `step7/fix-records` and `step7/fix-tasks`, which
