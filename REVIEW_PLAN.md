@@ -188,10 +188,13 @@ commit. Its working results are in `review/stage-4/`.
   run still marks an equivalent mutant killed by that test, run the file
   again before you remove its entry.
 
-**Next:** T-10: a delete that removes nothing is no change (decision 8).
-Then T-11 (`defineProperty` as a write), T-12 (raw values on write), T-13
-(the two benchmark rows decision 1 is measured by) and T-14 (the rule for
-functions).
+- T-10 at `ae8ffec`: a delete that removes nothing is no change. The main
+  entry is 3,776 bytes, budget 3,852. (Its message says 1,409 tests; the
+  run had 1,405.)
+
+**Next:** T-11 (`defineProperty` as a write, decision 2), then T-12 (raw
+values on write, decision 5), T-13 (the two benchmark rows decision 1 is
+measured by) and T-14 (the rule for functions, decision 1).
 
 The throwaway worktrees of the step 7 fixers are in the scratchpad, on the
 branches `step7/fix-spec`, `step7/fix-records` and `step7/fix-tasks`, which
