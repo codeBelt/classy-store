@@ -7,6 +7,7 @@ import {existsSync, mkdirSync, readFileSync, writeFileSync} from 'node:fs';
 import {arch, cpus, platform, release} from 'node:os';
 import {dirname, join, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {reactiveSet} from '../../dist/collections/index.mjs';
 import {
   batch,
   createClassyStore,
@@ -406,6 +407,38 @@ const metrics = [
           sum += createClassyStore({rows: makeRows()}).rows.length;
         }
         return sum;
+      };
+    },
+  },
+  {
+    name: 'collection.has.primitive',
+    about: 'has() of the last of 1,000 numbers in a reactiveSet in a store',
+    setup() {
+      const values = Array.from({length: rowCount}, (_, index) => index);
+      const set = createClassyStore({members: reactiveSet(values)}).members;
+      const last = rowCount - 1;
+      return (iterations) => {
+        let found = 0;
+        for (let index = 0; index < iterations; index++) {
+          if (set.has(last)) found++;
+        }
+        return found;
+      };
+    },
+  },
+  {
+    name: 'collection.has.object',
+    about: 'has() of the last of 1,000 objects in a reactiveSet in a store',
+    setup() {
+      const rows = makeRows();
+      const set = createClassyStore({members: reactiveSet(rows)}).members;
+      const last = rows[rowCount - 1];
+      return (iterations) => {
+        let found = 0;
+        for (let index = 0; index < iterations; index++) {
+          if (set.has(last)) found++;
+        }
+        return found;
       };
     },
   },

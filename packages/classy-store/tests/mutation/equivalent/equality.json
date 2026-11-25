@@ -38,33 +38,6 @@
   {
     "file": "src/utils/equality/equality.ts",
     "scope": "shallowEqual",
-    "mutator": "ConditionalExpression",
-    "original": "b instanceof Date",
-    "replacement": "true",
-    "occurrence": 1,
-    "reason": "No effect: the two values were just found to share a prototype, so when `a` is a Date `b` is one as well and this check always passes."
-  },
-  {
-    "file": "src/utils/equality/equality.ts",
-    "scope": "shallowEqual",
-    "mutator": "ConditionalExpression",
-    "original": "!(b instanceof Map)",
-    "replacement": "false",
-    "occurrence": 1,
-    "reason": "No effect: the two values were just found to share a prototype, so when `a` is a Map `b` is one as well and this check never fails."
-  },
-  {
-    "file": "src/utils/equality/equality.ts",
-    "scope": "shallowEqual",
-    "mutator": "ConditionalExpression",
-    "original": "!(b instanceof Set)",
-    "replacement": "false",
-    "occurrence": 1,
-    "reason": "No effect: the two values were just found to share a prototype, so when `a` is a Set `b` is one as well and this check never fails."
-  },
-  {
-    "file": "src/utils/equality/equality.ts",
-    "scope": "shallowEqual",
     "mutator": "EqualityOperator",
     "original": "i < a.length",
     "replacement": "i <= a.length",

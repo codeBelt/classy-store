@@ -33,20 +33,24 @@ export function shallowEqual<T>(a: T, b: T): boolean {
   }
   if (Object.getPrototypeOf(a) !== Object.getPrototypeOf(b)) return false;
 
+  // With one prototype, `b` is an instance of whatever `a` is an instance of.
+  const other: object = b;
   if (a instanceof Date) {
-    return b instanceof Date && Object.is(a.getTime(), b.getTime());
+    return Object.is(a.getTime(), (other as Date).getTime());
   }
   if (a instanceof Map) {
-    if (!(b instanceof Map) || a.size !== b.size) return false;
+    const map = other as Map<unknown, unknown>;
+    if (a.size !== map.size) return false;
     for (const [key, value] of a) {
-      if (!b.has(key) || !Object.is(value, b.get(key))) return false;
+      if (!map.has(key) || !Object.is(value, map.get(key))) return false;
     }
     return true;
   }
   if (a instanceof Set) {
-    if (!(b instanceof Set) || a.size !== b.size) return false;
+    const set = other as Set<unknown>;
+    if (a.size !== set.size) return false;
     for (const value of a) {
-      if (!b.has(value)) return false;
+      if (!set.has(value)) return false;
     }
     return true;
   }

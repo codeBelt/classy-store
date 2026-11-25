@@ -110,10 +110,8 @@ export function withHistory<T extends object>(
 
   /** Append the store's current state as the newest history entry. */
   function record(): void {
-    // Truncate any redo entries after the current pointer
-    if (pointer < history.length - 1) {
-      history.length = pointer + 1;
-    }
+    // Drop any redo entries after the current pointer.
+    history.length = pointer + 1;
 
     history.push(snapshot(proxyStore));
     pointer = history.length - 1;
@@ -163,7 +161,8 @@ export function withHistory<T extends object>(
     },
 
     redo() {
-      if (disposed || pointer >= history.length - 1) return;
+      // dispose() empties the history, so a disposed handle has nothing to redo.
+      if (pointer >= history.length - 1) return;
       restore(pointer + 1);
     },
 

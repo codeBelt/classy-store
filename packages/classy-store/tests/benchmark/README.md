@@ -24,6 +24,16 @@ reported. A run of a few metrics takes a fraction of the time of a full one.
 Run it on a quiet machine. Both engines matter: they do not agree on what is
 fast, and most applications run on V8.
 
+## Rows beyond the core
+
+Most rows time the main entry. Two time a reactive collection, because a
+lookup there runs a loop over the members:
+
+- `collection.has.primitive`: `has()` of the last of 1,000 numbers in a
+  `reactiveSet` held by a store.
+- `collection.has.object`: the same with 1,000 objects, found by the raw
+  object.
+
 ## How it measures
 
 - Each run is a fresh process, so one run's compiled code and heap do not carry
