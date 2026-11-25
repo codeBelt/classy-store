@@ -102,12 +102,22 @@ agents run on Opus 5.5 at medium effort (ground rule "Models").
   `step7/fix-tasks`). Their commits are brought in by cherry-pick, so the
   branch stays linear.
 
+- The stage 3 report is finished in the working tree except the number of
+  tasks, which waits for the corrected task list.
+- T-01, the tooling commit, is written in the working tree and not yet
+  committed: the per-commit floor guard and its 32 tests
+  (`packages/classy-store/tests/floor/`), the ceilings in `budgets.json`,
+  `checkSizes()` in the size script and its 7 tests, the new `CONSTRAINTS.md`
+  floor. It waits for its line in record 0004, which the records fixer is
+  rewriting, and for stage 3 to end first. All 1,380 tests, lint, typecheck
+  and `bun run size` pass with it.
+
 **Still to do, in order:**
 
 1. Review the three fixers' diffs against the decision document and bring
    them in.
-2. Finish the stage 3 report and fill in the Status table above.
-3. Stage 4, starting with T-01, the tooling commit (decision 4).
+2. Commit the stage 3 report and fill in the Status table above.
+3. Stage 4: commit T-01 with its lines in record 0004, then T-02.
 
 The throwaway worktrees and scripts of the spikes are in the scratchpad, which
 does not survive a reboot. Every patch and number that matters is in the
