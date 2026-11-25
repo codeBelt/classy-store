@@ -19,7 +19,7 @@ commit it ended on, and where its report is.
 
 ## Where stage 3 stands
 
-Updated 2026-11-24. The owner paused the work on 2026-11-19 and lifted the
+Updated 2026-11-25. The owner paused the work on 2026-11-19 and lifted the
 pause on 2026-11-24: "The pause is over, carry on with stage 3."
 
 **Done:**
@@ -28,37 +28,49 @@ pause on 2026-11-24: "The pause is over, carry on with stage 3."
   `M77`), 29 contradictions between reports, and the order the issues depend
   on each other.
 - Step 2, our own code: `review/stage-3/own-code.md`.
-- Step 3, first wave of spikes: `review/stage-3/spike-traps.md`,
-  `review/stage-3/spike-getters.md` and `review/stage-3/spike-delivery.md`.
-  The agents were cut off by the weekly usage limit on 2026-11-19 with the
-  reports nearly complete, and the orchestrating agent finished them.
+- Step 3, the spikes. First wave: `spike-traps.md`, `spike-getters.md` and
+  `spike-delivery.md`. Second wave: `pinned.md`, `persist-devtools.md`,
+  `devbuild.md`, `adapters-collections.md`, `spike-snapshots.md`,
+  `spike-classes.md` and `spike-classes-2.md`. All are in `review/stage-3/`.
+  `spike-ownership.md` was not given to an agent: the own-code review ran its
+  main spikes.
+- Steps 4 to 6, the decision document: `review/stage-3-decisions.md`, 46
+  decisions, the guarantees of 1.0, the proposals not taken, and the order
+  for stage 4.
+- The first adversarial review of that document: `adversarial-whole.md`,
+  `adversarial-core.md` and `adversarial-edges.md`, 58 objections. The
+  section "Objections and answers" of the decision document answers each.
 
-**Stopped by a usage limit on 2026-11-24, to be resumed on Opus.** Four
-second-wave reports are partly written and committed as they stood:
-`spike-classes.md` (its status line says complete for the brief; check its
-"Not done" list), `spike-snapshots.md` (in progress), `devbuild.md` (in
-progress) and `adapters-collections.md` (barely started). Done in the second
-wave: `pinned.md` and `persist-devtools.md`. Restart each unfinished one from
-its brief in `review/stage-3/briefs/` with the report as its starting point.
-`spike-ownership.md` is not given to an agent: the own-code review ran its
-main spikes.
+**Running:** three follow-up spikes the review asked for. Their briefs are in
+`review/stage-3/briefs/`, and each report is written as the agent goes:
+
+- `spike-functions.md`: one rule for which function is a method (decisions 1
+  and 11).
+- `spike-combos.md`: undo on a store with a cycle, the cost of naming a
+  method for `devtools`, and what `devtools` sends for computed values
+  (decisions 30, 27 and 43).
+- `spike-core-2.md`: a freeze through the store, the table per prototype,
+  the list searches, and a getter that writes (decisions 5, 12, 6 and 10).
+
+The nine entries they touch are marked "under revision" in the decision
+document. If an agent was cut off, restart it from its brief with the report
+as its starting point.
 
 **Also open:** the timing of the trap combination, of the ownership patch
-`x2`, of the dead-code patch `r5` and of the `activeTracker()` ternary alone.
-A first run was too noisy to use, because five agents shared the machine. Run
-them when it is quiet.
+`x2`, of the dead-code patch `r5`, of the table per prototype and of the
+`activeTracker()` ternary alone. A first run was too noisy to use. A second
+run is in progress; its results go into the reports that hold the patches.
 
-**The decision document** `review/stage-3-decisions.md` is a draft with 28
-entries. Its open sections wait for the four reports above.
+**Then:**
 
-**Then:** the decision document `review/stage-3-decisions.md`, the
-adversarial review of it, the spec, the decision records and the stage 4 task
-list, as the stage 3 section below describes.
-
-**Known before deciding:** the main entry has 89 bytes of its size budget
-left and every first-wave combination needs more: getters 165, delivery 189,
-traps 650. The decision document has to set a new budget once for the whole
-set of approved changes, with a decision record.
+1. Rewrite the nine entries from the spike reports, and the index table at
+   the top of the decision document.
+2. A second adversarial review of the revised document, by an agent that has
+   seen none of it. At most three rounds in all.
+3. Step 7: the spec at `review/spec.md`, one decision record per change under
+   `docs/decisions/` (the size ceilings are one of them), and the stage 4
+   task list.
+4. The stage 3 report, and the Status table above.
 
 The throwaway worktrees and scripts of the spikes are in the scratchpad, which
 does not survive a reboot. Every patch and number that matters is in the
