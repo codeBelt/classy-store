@@ -40,37 +40,32 @@ pause on 2026-11-24: "The pause is over, carry on with stage 3."
 - The first adversarial review of that document: `adversarial-whole.md`,
   `adversarial-core.md` and `adversarial-edges.md`, 58 objections. The
   section "Objections and answers" of the decision document answers each.
+- Three follow-up spikes the review asked for: `spike-functions.md`,
+  `spike-combos.md` and `spike-core-2.md`. Nine entries of the decision
+  document (1, 5, 6, 10, 11, 12, 27, 30 and 43) were decided again from
+  them, and the size ceilings were set again.
+- The timings that were open: the trap combination, the ownership patch
+  `x2`, the dead-code patch `r5`, the table per prototype and the
+  `activeTracker()` ternary. They are in the reports that hold the patches.
 
-**Running:** three follow-up spikes the review asked for. Their briefs are in
-`review/stage-3/briefs/`, and each report is written as the agent goes:
-
-- `spike-functions.md`: one rule for which function is a method (decisions 1
-  and 11).
-- `spike-combos.md`: undo on a store with a cycle, the cost of naming a
-  method for `devtools`, and what `devtools` sends for computed values
-  (decisions 30, 27 and 43).
-- `spike-core-2.md`: a freeze through the store, the table per prototype,
-  the list searches, and a getter that writes (decisions 5, 12, 6 and 10).
-
-The nine entries they touch are marked "under revision" in the decision
-document. If an agent was cut off, restart it from its brief with the report
-as its starting point.
-
-**Also open:** the timing of the trap combination, of the ownership patch
-`x2`, of the dead-code patch `r5`, of the table per prototype and of the
-`activeTracker()` ternary alone. A first run was too noisy to use. A second
-run is in progress; its results go into the reports that hold the patches.
+**Running:** the second adversarial review of the revised document, by two
+agents that have seen none of it. Their briefs are
+`review/stage-3/briefs/adversarial-2-COMMON.md`, `adversarial-2-core.md` and
+`adversarial-2-whole.md`; their reports are `adversarial-2-core.md` and
+`adversarial-2-whole.md` under `review/stage-3/`. If an agent was cut off,
+restart it from its brief with the report as its starting point.
 
 **Then:**
 
-1. Rewrite the nine entries from the spike reports, and the index table at
-   the top of the decision document.
-2. A second adversarial review of the revised document, by an agent that has
-   seen none of it. At most three rounds in all.
-3. Step 7: the spec at `review/spec.md`, one decision record per change under
-   `docs/decisions/` (the size ceilings are one of them), and the stage 4
-   task list.
-4. The stage 3 report, and the Status table above.
+1. Answer the second round in "Objections and answers" of the decision
+   document. A third round only if the second finds a decision that is
+   wrong; three rounds at most.
+2. Step 7, by three agents, each with a brief in `review/stage-3/briefs/`:
+   the spec at `review/spec.md` (`step7-spec.md`), one decision record per
+   decision under `docs/decisions/` (`step7-records.md`), and the stage 4
+   task list at `review/stage-4-tasks.md` (`step7-tasks.md`). The
+   orchestrating agent checks each against the decision document.
+3. The stage 3 report, and the Status table above.
 
 The throwaway worktrees and scripts of the spikes are in the scratchpad, which
 does not survive a reboot. Every patch and number that matters is in the
