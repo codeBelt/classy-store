@@ -245,6 +245,7 @@ so the first column of both tables holds the commit's subject.
 | ---------------------------------------------------------------------- | ----- | -------------: | ---------: |
 | perf: decide getters from a table per prototype, not a descriptor walk | `.`   |          3,768 |      3,844 |
 | fix: make a delete that removes nothing no change                      | `.`   |          3,776 |      3,852 |
+| fix: make a definition through the store a write                       | `.`   |          3,847 |      3,924 |
 
 ## Changes to the tooling
 

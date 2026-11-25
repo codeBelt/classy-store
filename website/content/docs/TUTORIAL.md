@@ -643,7 +643,7 @@ Undo, redo and rehydration put content back as ordinary data, so a value restore
 
 ### Keep mutations inside the proxy
 
-Create the store once for its owner and use the returned proxy. Mutating the raw instance or using `Object.defineProperty` to change state bypasses assignment/deletion tracking. When stores share a child, edit it through a store proxy to notify its owners. Circular references in traversed state are rejected by `snapshot()`.
+Create the store once for its owner and use the returned proxy. Mutating the raw instance bypasses assignment/deletion tracking. `Object.defineProperty` on the store is a write like an assignment: it notifies when the value, the getter, the kind of property or its enumerability changes, and `Object.freeze(store)` stays silent. When stores share a child, edit it through a store proxy to notify its owners. Circular references in traversed state are rejected by `snapshot()`.
 
 ### Don't destructure the store outside `useClassyStore`
 

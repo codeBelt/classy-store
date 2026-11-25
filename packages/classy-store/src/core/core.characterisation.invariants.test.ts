@@ -952,8 +952,9 @@ describe('writing the length of an array', () => {
     expect(snapshot(store)).toEqual({rows: [{v: 11}]});
   });
 
-  // FINDING: a length set by definition truncates the raw array without the store dropping the removed elements.
-  it('a length defined with Object.defineProperty empties the raw array in silence, and the store still hands out the removed element', () => {
+  // A length set by definition is a write (decision 2): it notifies, and the
+  // removed elements leave the store.
+  it('a length defined with Object.defineProperty empties the array as a write, and the removed element leaves the store', () => {
     const store = createClassyStore({rows: [{v: 0}, {v: 1}]});
     const listener = watch(store);
     const removed = store.rows[1];
@@ -962,12 +963,12 @@ describe('writing the length of an array', () => {
     Object.defineProperty(store.rows, 'length', {value: 0});
 
     expect(store.rows.length).toBe(0);
-    expect(listener).not.toHaveBeenCalled();
-    expect(snapshot(store)).toBe(before);
+    expect(listener).toHaveBeenCalledTimes(1);
+    expect(snapshot(store)).not.toBe(before);
     expect(1 in store.rows).toBe(false);
-    expect(store.rows[1]).toBe(removed);
+    expect(store.rows[1]).toBeUndefined();
 
-    // The removed element is still owned, so a write to it notifies the store.
+    // The removed element is no longer owned, so a write to it is not heard.
     removed.v = 5;
     expect(listener).toHaveBeenCalledTimes(1);
     expect(snapshot(store)).toEqual({rows: []});
@@ -975,10 +976,10 @@ describe('writing the length of an array', () => {
 });
 
 // ── Object.defineProperty ────────────────────────────────────────────────────
+// A definition through the store is a write (decision 2).
 
 describe('Object.defineProperty on a store: a new data property', () => {
-  // FINDING: the definition changes the store without telling anyone.
-  it('is live at once, notifies no one, and is missing from the snapshot cached before it', async () => {
+  it('is live at once, notifies, and reaches the next snapshot', async () => {
     const store = createClassyStore<{a: number; b?: number}>({a: 1});
     const sync = watch(store);
     const batched = watchBatched(store);
@@ -992,10 +993,10 @@ describe('Object.defineProperty on a store: a new data property', () => {
     expect(store.b).toBe(2);
     expect('b' in store).toBe(true);
     expect(Object.keys(store)).toEqual(['a', 'b']);
-    expect(sync).not.toHaveBeenCalled();
-    expect(batched).not.toHaveBeenCalled();
-    expect(snapshot(store)).toBe(before);
-    expect('b' in snapshot(store)).toBe(false);
+    expect(sync).toHaveBeenCalledTimes(1);
+    expect(batched).toHaveBeenCalledTimes(1);
+    expect(snapshot(store)).not.toBe(before);
+    expect('b' in snapshot(store)).toBe(true);
   });
 
   it('is in a snapshot first taken after it, when none was cached', () => {
@@ -1006,24 +1007,24 @@ describe('Object.defineProperty on a store: a new data property', () => {
     expect(snapshot(store)).toEqual({a: 1, b: 2});
   });
 
-  // FINDING: assigning the value the property already holds is no write, so it cannot bring the snapshot up to date.
-  it('reaches a cached snapshot with the next write that changes a field, not with a write of the value it holds', () => {
+  it('reaches a cached snapshot at once, and a later write of the value it holds is no change', () => {
     const store = createClassyStore<{a: number; b?: number}>({a: 1});
     const listener = watch(store);
     const before = snapshot(store);
     Object.defineProperty(store, 'b', {value: 2, ...ordinary});
+    expect(listener).toHaveBeenCalledTimes(1);
+    expect(snapshot(store)).not.toBe(before);
+    expect(snapshot(store)).toEqual({a: 1, b: 2});
 
     store.b = 2;
-    expect(listener).not.toHaveBeenCalled();
-    expect(snapshot(store)).toBe(before);
+    expect(listener).toHaveBeenCalledTimes(1);
 
     store.a = 2;
-    expect(listener).toHaveBeenCalledTimes(1);
+    expect(listener).toHaveBeenCalledTimes(2);
     expect(snapshot(store)).toEqual({a: 2, b: 2});
   });
 
-  // FINDING: a defined object is unknown to the store until it is read, so a snapshot shares it raw.
-  it('holding an object: a snapshot hands it out raw and unfrozen until the store has read it; then it is a proxy', () => {
+  it('holding an object: the object is a child at once, and frozen in a snapshot', () => {
     const store = createClassyStore<{a: number; child?: {n: number}}>({a: 1});
     const listener = watch(store);
     const raw = {n: 1};
@@ -1031,13 +1032,13 @@ describe('Object.defineProperty on a store: a new data property', () => {
 
     store.a = 2;
     const early = snapshot(store);
-    expect(early.child).toBe(raw);
-    expect(Object.isFrozen(early.child)).toBe(false);
+    expect(early.child).not.toBe(raw);
+    expect(Object.isFrozen(early.child)).toBe(true);
 
     const child = present(store.child);
     expect(isStoreProxy(child)).toBe(true);
     child.n = 2;
-    expect(listener).toHaveBeenCalledTimes(2);
+    expect(listener).toHaveBeenCalledTimes(3);
     expect(snapshot(store).child).not.toBe(raw);
     expect(Object.isFrozen(snapshot(store).child)).toBe(true);
     expect(snapshot(store)).toEqual({a: 2, child: {n: 2}});
@@ -1045,8 +1046,7 @@ describe('Object.defineProperty on a store: a new data property', () => {
 });
 
 describe('Object.defineProperty on a store: an existing property', () => {
-  // FINDING: the live store and its cached snapshot disagree until the next write that changes a field.
-  it('a redefined value is read at once, by the store and by a live getter, while the cached snapshot and its getter stay behind', () => {
+  it('a redefined value is read at once by the store, a live getter, the snapshot and its getter', () => {
     class Model {
       a = 1;
 
@@ -1061,17 +1061,17 @@ describe('Object.defineProperty on a store: an existing property', () => {
 
     Object.defineProperty(store, 'a', {value: 5});
 
-    expect(listener).not.toHaveBeenCalled();
+    expect(listener).toHaveBeenCalledTimes(1);
     expect([store.a, store.double]).toEqual([5, 10]);
-    expect(snapshot(store)).toBe(before);
+    expect(snapshot(store)).not.toBe(before);
     expect([before.a, before.double]).toEqual([1, 2]);
+    expect([snapshot(store).a, snapshot(store).double]).toEqual([5, 10]);
 
     store.a = 6;
     expect([snapshot(store).a, snapshot(store).double]).toEqual([6, 12]);
   });
 
-  // FINDING: the store keeps the proxy of the object it first saw under that key, and an assignment cannot repair it.
-  it('a redefined object is ignored: reads, writes and snapshots stay on the old object, even after it is assigned', () => {
+  it('a redefined object replaces the old one: reads, writes and snapshots follow the new object', () => {
     const store = createClassyStore({child: {n: 1}});
     const listener = watch(store);
     const old = store.child;
@@ -1082,37 +1082,36 @@ describe('Object.defineProperty on a store: an existing property', () => {
     expect(Object.getOwnPropertyDescriptor(store, 'child')?.value).toBe(
       replacement,
     );
-    expect(store.child).toBe(old);
+    expect(store.child).not.toBe(old);
+    expect(listener).toHaveBeenCalledTimes(1);
 
-    // The raw object already holds it, so the assignment is taken for no change.
+    // The raw object already holds it, so the assignment is no change.
     store.child = replacement;
-    expect(listener).not.toHaveBeenCalled();
-    expect(store.child).toBe(old);
+    expect(listener).toHaveBeenCalledTimes(1);
 
     store.child.n = 2;
-    expect(replacement.n).toBe(100);
+    expect(replacement.n).toBe(2);
+    expect(old.n).toBe(1);
     expect(snapshot(store)).toEqual({child: {n: 2}});
   });
 
-  // FINDING: the same happens when the new value is a primitive: the store answers with an object the raw data no longer has.
-  it('a field redefined from an object to a primitive keeps returning the old object', () => {
+  it('a field redefined from an object to a primitive reads the primitive at once', () => {
     const store = createClassyStore<{child: {n: number} | number}>({
       child: {n: 1},
     });
-    const old = store.child;
 
     Object.defineProperty(store, 'child', {value: 7});
 
     expect(Object.getOwnPropertyDescriptor(store, 'child')?.value).toBe(7);
-    expect(store.child).toBe(old);
-    expect(snapshot(store)).toEqual({child: {n: 1}});
+    expect(store.child).toBe(7);
+    expect(snapshot(store)).toEqual({child: 7});
 
     store.child = 8;
     expect(store.child).toBe(8);
     expect(snapshot(store)).toEqual({child: 8});
   });
 
-  it('a field made non-enumerable leaves Object.keys and JSON at once, and the keys of a cached snapshot with the next write', () => {
+  it('a field made non-enumerable leaves Object.keys, JSON and the snapshot at once', () => {
     const store = createClassyStore({a: 1, b: 2});
     const listener = watch(store);
     const before = snapshot(store);
@@ -1122,9 +1121,10 @@ describe('Object.defineProperty on a store: an existing property', () => {
     expect(Object.keys(store)).toEqual(['b']);
     expect(JSON.stringify(store)).toBe('{"b":2}');
     expect(store.a).toBe(1);
-    expect(listener).not.toHaveBeenCalled();
-    expect(snapshot(store)).toBe(before);
+    expect(listener).toHaveBeenCalledTimes(1);
+    expect(snapshot(store)).not.toBe(before);
     expect(Object.keys(before)).toEqual(['a', 'b']);
+    expect(Object.keys(snapshot(store))).toEqual(['b']);
 
     store.b = 3;
     expect(Object.keys(snapshot(store))).toEqual(['b']);
@@ -1133,7 +1133,7 @@ describe('Object.defineProperty on a store: an existing property', () => {
 });
 
 describe('Object.defineProperty on a store: accessors, and several properties at once', () => {
-  it('a new accessor is a memoized getter on the live store, and reaches a cached snapshot with the next write', () => {
+  it('a new accessor is a memoized getter on the live store, and reaches the snapshot at once', () => {
     let runs = 0;
     const store = createClassyStore<{a: number; double?: number}>({a: 2});
     const listener = watch(store);
@@ -1150,16 +1150,16 @@ describe('Object.defineProperty on a store: accessors, and several properties at
 
     expect([store.double, store.double]).toEqual([4, 4]);
     expect(runs).toBe(1);
-    expect(listener).not.toHaveBeenCalled();
-    expect(snapshot(store)).toBe(before);
+    expect(listener).toHaveBeenCalledTimes(1);
+    expect(snapshot(store)).not.toBe(before);
+    expect(snapshot(store).double).toBe(4);
 
     store.a = 3;
     expect(store.double).toBe(6);
     expect(snapshot(store).double).toBe(6);
   });
 
-  // FINDING: the object the accessor replaced is still a child of the store.
-  it('an accessor defined over a nested object leaves that object connected: a write to it still notifies the store', () => {
+  it('an accessor defined over a nested object detaches that object: a write to it is not heard', () => {
     const store = createClassyStore<{child: {n: number} | string}>({
       child: {n: 1},
     });
@@ -1174,12 +1174,13 @@ describe('Object.defineProperty on a store: accessors, and several properties at
     });
 
     expect(store.child).toBe('computed');
+    expect(listener).toHaveBeenCalledTimes(1);
     held.n = 2;
     expect(listener).toHaveBeenCalledTimes(1);
     expect(snapshot(store).child).toBe('computed');
   });
 
-  it('Object.defineProperties defines each property and notifies no one', () => {
+  it('Object.defineProperties defines each property as a write', () => {
     const store = createClassyStore<{a: number; b?: number; c?: {n: number}}>({
       a: 1,
     });
@@ -1193,11 +1194,11 @@ describe('Object.defineProperty on a store: accessors, and several properties at
     });
 
     expect([store.a, store.b]).toEqual([10, 2]);
-    expect(listener).not.toHaveBeenCalled();
-    expect(snapshot(store)).toBe(before);
+    expect(listener).toHaveBeenCalledTimes(3);
+    expect(snapshot(store)).not.toBe(before);
 
     present(store.c).n = 4;
-    expect(listener).toHaveBeenCalledTimes(1);
+    expect(listener).toHaveBeenCalledTimes(4);
     expect(snapshot(store)).toEqual({a: 10, b: 2, c: {n: 4}});
   });
 });

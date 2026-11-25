@@ -579,29 +579,60 @@ function createNode(target: object, pending?: StoreInternal[]): StoreInternal {
       return child ? child.proxy : value;
     },
 
+    // A definition is a write (decision 2): the value becomes the property's
+    // child, and subscribers are told when the value, the getter, the kind of
+    // property or its enumerability changed. `Object.freeze(proxy)` arrives
+    // here once per property and changes none of those, so it stays silent.
     defineProperty(_target, prop, descriptor) {
-      const defined = Reflect.defineProperty(_target, prop, descriptor);
-      // `Object.freeze(proxy)` arrives here once per property. A property that
-      // is now read-only holds its value as it is, as if frozen all along.
-      const own = defined && Object.getOwnPropertyDescriptor(_target, prop);
-      if (own) {
-        if (!('value' in own)) {
-          internal.ownAccessors = true;
-        } else if (isReadOnly(own)) {
-          const child = internal.childInternals.get(prop);
-          // An embedded store's proxy is that value: it remains a child.
-          if (child && child.proxy !== own.value) internal.detach(prop);
+      internal.resumeIfDetached();
+      const before = Object.getOwnPropertyDescriptor(_target, prop);
+      if (!Reflect.defineProperty(_target, prop, descriptor)) return false;
+      // The definition succeeded, so the property exists.
+      const own = Object.getOwnPropertyDescriptor(
+        _target,
+        prop,
+      ) as PropertyDescriptor;
+      const isData = 'value' in own;
+      if (isData) {
+        // A read-only property holds its value as it is, as if frozen all
+        // along; an embedded store's proxy is that value and remains a child.
+        if (!linkChild(internal, prop, own.value, undefined, own)) {
+          internal.detach(prop);
         }
+      } else {
+        internal.ownAccessors = true;
+        internal.detach(prop);
       }
-      return defined;
+      // A length defined on an array removes the elements past it, as a write.
+      if (prop === 'length' && Array.isArray(_target)) {
+        detachTruncatedChildren(internal, _target.length);
+      }
+      // A getter that read the accessor this replaces would not see it change.
+      if (before && !('value' in before)) internal.computedCache.clear();
+      if (
+        !before ||
+        isData !== 'value' in before ||
+        !Object.is(before.value, own.value) ||
+        before.get !== own.get ||
+        before.enumerable !== own.enumerable
+      ) {
+        boundMethods.delete(prop);
+        notifyMutation(internal);
+      }
+      return true;
     },
 
     deleteProperty(_target, prop) {
       // Deleting a key that is not there removes nothing: no change.
       if (!hasOwn.call(_target, prop)) return true;
       internal.resumeIfDetached();
+      const wasAccessor = !(
+        'value' in (Object.getOwnPropertyDescriptor(_target, prop) as object)
+      );
       const deleted = Reflect.deleteProperty(_target, prop);
       if (deleted) {
+        // A getter that read the accessor would not see it go.
+        if (wasAccessor) internal.computedCache.clear();
         internal.detach(prop);
         boundMethods.delete(prop);
         notifyMutation(internal);

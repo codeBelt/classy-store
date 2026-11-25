@@ -214,5 +214,41 @@
     "replacement": ";",
     "occurrence": 1,
     "reason": "Memory only: the entry left behind holds the result of a getter that is gone. Its dependencies were already out of date when this line ran, and a version only grows, so the entry is never valid again and is never returned. Deleting it frees it."
+  },
+  {
+    "file": "src/core/core.ts",
+    "scope": "createNode > proxy > defineProperty",
+    "mutator": "ConditionalExpression",
+    "original": "prop === 'length' && Array.isArray(_target)",
+    "replacement": "true",
+    "occurrence": 1,
+    "reason": "Performance only: detachTruncatedChildren() removes only the children at an index at or past the array's length, so calling it for any other definition, or for an object that is not an array, removes nothing. The check spares a scan of every child on each definition, which Object.freeze() makes once per element."
+  },
+  {
+    "file": "src/core/core.ts",
+    "scope": "createNode > proxy > defineProperty",
+    "mutator": "ConditionalExpression",
+    "original": "prop === 'length'",
+    "replacement": "true",
+    "occurrence": 1,
+    "reason": "Performance only: detachTruncatedChildren() removes only the children at an index at or past the array's length, so calling it for any other definition, or for an object that is not an array, removes nothing. The check spares a scan of every child on each definition, which Object.freeze() makes once per element."
+  },
+  {
+    "file": "src/core/core.ts",
+    "scope": "createNode > proxy > defineProperty",
+    "mutator": "LogicalOperator",
+    "original": "prop === 'length' && Array.isArray(_target)",
+    "replacement": "prop === 'length' || Array.isArray(_target)",
+    "occurrence": 1,
+    "reason": "Performance only: detachTruncatedChildren() removes only the children at an index at or past the array's length, so calling it for any other definition, or for an object that is not an array, removes nothing. The check spares a scan of every child on each definition, which Object.freeze() makes once per element."
+  },
+  {
+    "file": "src/core/core.ts",
+    "scope": "createNode > proxy > defineProperty",
+    "mutator": "ConditionalExpression",
+    "original": "Array.isArray(_target)",
+    "replacement": "true",
+    "occurrence": 1,
+    "reason": "Performance only: detachTruncatedChildren() removes only the children at an index at or past the array's length, so calling it for any other definition, or for an object that is not an array, removes nothing. The check spares a scan of every child on each definition, which Object.freeze() makes once per element."
   }
 ]

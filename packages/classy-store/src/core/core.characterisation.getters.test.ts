@@ -1496,8 +1496,8 @@ describe('a getter on an object literal passed to createClassyStore', () => {
     expect(snapshot(writable)).toEqual({count: 2, double: 7});
   });
 
-  // FINDING: the cache is keyed by property name, so a redefined getter keeps the old getter's result.
-  it('keeps returning the old result after the getter is redefined, until a dependency changes', () => {
+  // A definition of an accessor clears the node's getter cache (decision 2).
+  it('returns the new result as soon as the getter is redefined', () => {
     const store = createClassyStore({
       count: 2,
       get view(): string {
@@ -1514,7 +1514,7 @@ describe('a getter on an object literal passed to createClassyStore', () => {
       configurable: true,
     });
 
-    expect(store.view).toBe('old 2');
+    expect(store.view).toBe('new 2');
     store.count = 3;
     expect(store.view).toBe('new 3');
   });

@@ -207,7 +207,7 @@ child versions identify edits to shared rows made while it was detached.
 
 **DELETE trap:** Attempt `Reflect.deleteProperty` first. On success, detach the child, clear the bound-method cache, bump versions, and notify. A failed deletion preserves the connection.
 
-**DEFINE trap:** Forward `Object.defineProperty` to the target. If the property is read-only afterwards, as every property is once `Object.freeze(proxy)` has run, detach its child so later reads return the value itself.
+**DEFINE trap:** A definition is a write. Forward `Object.defineProperty` to the target, then do a write's bookkeeping: a data value becomes the property's child (unless the property is now read-only, as every property is once `Object.freeze(proxy)` has run, so later reads return the value itself), an accessor detaches the old child and marks the node as having own accessors, and a length defined on an array detaches the elements past it. A definition that replaces an accessor clears the node's getter cache. Subscribers are notified when the value, the getter, the kind of property or its enumerability changed, so freezing stays silent.
 
 ### Batching via `queueMicrotask`
 
