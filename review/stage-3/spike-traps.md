@@ -906,7 +906,32 @@ by hand, 37 lines, and timed four builds back to back. The cache passes all
   `CONSTRAINTS.md` has to move to about 4,400, which is the measured size
   plus the 2% headroom stage 1 used. The owner decides that number; no
   subset that includes T2's searches or T4 fits in today's budget.
-- **Timings.** @@COMBO-TIMING@@
+- **Timings.** Run by the orchestrating agent on 2026-11-25, in a worktree at
+  `57404c3` with the combination patch, between two runs of the unmodified
+  source, `bun run benchmark:core` and `benchmark:core:node`, five runs each.
+  Other agents were using the machine: the second unmodified run came out 3
+  to 7% slower than the first on most rows, so only a difference larger than
+  that, with ranges that do not touch, is reported.
+
+  | Ratio (limit)             | Node, unmodified twice | Node, combination | Bun, unmodified twice | Bun, combination |
+  | ------------------------- | ---------------------- | ----------------- | --------------------- | ---------------- |
+  | read (2.5, 20)            | 2.03, 2.09             | 2.07              | 15.7, 15.4            | 15.1             |
+  | write (1.7, 3.2)          | 1.32, 1.37             | 1.30              | 2.57, 2.63            | 2.58             |
+  | cached getter (5.3, 41)   | 3.57, 3.57             | 3.76              | 28.0, 30.7            | 30.3             |
+  | cached snapshot (1.8, 10) | 1.40, 1.36             | 1.42              | 7.36, 7.30            | 7.28             |
+
+  All four ratios stay inside their limits on both engines, and no read or
+  write row moves outside the drift. One thing does: **creating a store is
+  slower on Bun.** `create.small` is 1,685 nanoseconds against 1,444 and
+  1,511, and `create.rows` is 661 microseconds (634 to 685) against 563 (558
+  to 567) and 597 (572 to 613). That is 11 to 18%, and the ranges do not
+  touch. On Node `create.rows` is 1.45 milliseconds against 1.22 and 1.12,
+  but its ranges overlap. Raw values on write alone (`t2a-raw-only.patch`,
+  timed in the same queue) does not show it: `create.rows` is inside the
+  drift on Bun and 10% lower on Node, as the second unmodified run is. So the
+  cost comes from another part of the combination, and the earlier single
+  run that blamed raw values on write is not confirmed. Creation has no limit
+  in `CONSTRAINTS.md`. Stage 4 times creation as each trap change lands.
 
 ### What it breaks or changes for a user
 

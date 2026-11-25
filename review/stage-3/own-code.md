@@ -620,13 +620,23 @@ lines listed here afterwards, or the patches will not apply.
   source and returns 1 with `x2`). `x2` failed the same six tests the first
   run lists.
 - **Read only:** the duplication, naming, state and boundary tables.
-- **Not run:** benchmarks for `r5` and `x2`; the browser, framework and
-  mutation suites.
+- **Timed by the orchestrating agent on 2026-11-25**, `bun run
+  benchmark:core` and `benchmark:core:node`, five runs each, between two
+  runs of the unmodified source. Other agents were using the machine, and
+  the second unmodified run came out 3 to 7% slower than the first.
+  - `x2`, both engines: every row within 1% of the first unmodified run, or
+    inside its spread. The read ratio is 2.03 on Node (2.03 unmodified) and
+    the write ratio 1.36 (1.32, range 1.09 to 1.40).
+  - `r5`, Node only: every row inside the drift of the second unmodified run.
+  - `c06` alone, the `activeTracker()` ternary: `store.read` goes from 45.3
+    to 82.6 nanoseconds on Node and from 31.9 to 59.2 on Bun, and a cached
+    getter from 79.3 to 116 on Node. The read ratio on Node is 3.55, above
+    its limit of 2.5. The line stays.
+- **Not run:** `r5` on Bun; the browser, framework and mutation suites.
 
 ## Not done
 
-1. **Benchmarks for `r5` and `x2`.** Neither should move a ratio, but
-   neither was timed.
+1. **`r5` on Bun.** It was timed on Node only, where it moves nothing.
 2. **Tests for `c58` and `s08`.** Both pieces of code are needed and
    untested. The cases are in their tables above.
 3. **The follow-up to `x2`:** with the walk gone, `resumeScope()` is
