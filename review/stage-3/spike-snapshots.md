@@ -1,7 +1,44 @@
 # Stage 3 spikes: snapshots
 
-Status: **in progress.** This file is written as the work goes, so that a
-cut-off loses nothing. Sections marked "(pending)" are not done yet.
+Status: **finished.** Two agents wrote this. The first ran N2, N3 and N4,
+wrote the N1 patch and its check, and was cut off. The second (me, from here
+on "I") checked what was there, added three questions to N2, measured and
+wrote N1, did N5 and the combination, and wrote this summary and the last
+two sections. Each section says whose it is.
+
+## Summary
+
+- **N2, how a snapshot carries class getters (API question 3): take form A,
+  one derived prototype per class, with the traps report's S1. Before 1.0.**
+  Getters leave `Object.keys`, spread and JSON, as in every compared library;
+  a snapshot of a class with eight getters is four times faster and holds
+  sixteen times less memory; S1 then makes `this` inside a snapshot getter
+  match the store in every row but the prototype identity. Form B (own, not
+  enumerable) is one line but keeps the cost, and needs S1 plus S2's filter
+  to be right everywhere. Under both forms `persist` saves the same fields as
+  today, and the base class of `spike-classes.md` C1 gets a correct snapshot.
+  The prices: 140 bytes (239 with S1), `getPrototypeOf(snapshot)` is no
+  longer `Class.prototype`, and spreads, JSON and the DevTools panel lose
+  getter values, including a collection snapshot's `size`.
+- **N1, rebuild only what changed: do not do it now. Can follow 1.0.** It
+  works (0 failures over 120,000 compared snapshots), and on Node a
+  snapshot after one of 1,000 rows changes is three times faster, five at
+  10,000, and the adapters' loop of 2,000 direct writes goes from 227 to
+  64 ms. On Bun it gains nothing at 1,000 rows, because freezing a new
+  1,000-element array costs 80 microseconds there by itself. It costs 270
+  bytes, for arrays only.
+- **N3, keep a cycle in a snapshot: do it. Before 1.0** (first agent). It
+  replaces a documented throw, costs 9 bytes less, and everything on a cycle
+  gets a new snapshot on every write to any of it.
+- **N4, types: do both. Before 1.0** (first agent). Tuples stay tuples; a
+  collection snapshot drops its mutators from the type and names the cause
+  when one is called. The `./collections` budget moves by 32 to 65 bytes.
+- **N5, `subscribeKey` without a whole snapshot: do it. Can follow 1.0.**
+  21 lines in one file, the same callbacks with the same values in every case
+  run, and a key beside 1,000 rows costs 270 times less on Bun.
+- **The combination** (N2 form A with S1, N3, N4, N5): 21 failing tests,
+  exactly the union of the single spikes; main entry 3,904 bytes, 154 over
+  today's budget; `./utils` 17 over; `./collections` 34 over.
 
 - Worktree: a detached copy of `release/1.0` at `74966f1`, in the scratch
   folder `<scratch>/stage-3-spike-snapshots/wt`. The library source at
@@ -24,9 +61,154 @@ The unmodified worktree, measured before any spike, on Bun 1.4.5 and Node
 
 ## N1. Rebuild only what changed
 
-(pending)
+The first agent wrote the patch and the differential check below and was cut
+off before it measured anything or wrote this section. The patch was sitting
+in the worktree, identical to the saved `n1-changed-keys.patch`. Everything
+measured here is mine.
+
+- **Question.** A snapshot after one of 1,000 rows changes costs time in
+  proportion to the rows (stage 1 findings 2 and 3). Can a node remember
+  which keys changed, so the next snapshot rebuilds only those? Immer finding
+  1 (a floor of 6 microseconds against 56 on Node), M2 and M3, and what the
+  adapters can do about a snapshot per direct write
+  (`review/stage-2/adapters.md` A1).
+
+### What was changed
+
+`n1-changed-keys.patch`, 111 lines added and 30 removed, in three files.
+
+- `ownership.ts`: a node's `parents` map held a count per parent; it now
+  holds the key, or the set of keys, under which that parent holds the node.
+  Each node has a field `changed`: nothing, one key, a set of keys, or `true`
+  for "rebuild it all". A new node starts at `true`.
+- The walk up to the roots that every write already does (`ancestors()`)
+  marks each owner with the key under which its child changed. A node that
+  comes back from being detached is marked `true`, because what changed
+  while it was cut off is not recorded.
+- `core.ts`: a write that replaces an existing array element marks that one
+  index. Any other direct write (a new key, a delete, a length change, a
+  write to an object) marks the node `true`.
+- `snapshot.ts`, arrays only: when the previous snapshot exists, the length
+  is the same and at most half the elements are marked, the new snapshot is
+  a copy of the previous one with only the marked indices visited again.
+  Otherwise it is built as today. The mark is cleared when a snapshot is
+  cached.
+- Objects are not done: an object with a changed child is rebuilt as today.
+
+### Result
+
+- **Differential check** (`repro/n1-fuzz.ts`, the first agent's; I ran it
+  again on the patch): 300 seeds, 120,000 snapshots each compared with the
+  live state read through the store, and every untouched row checked to keep
+  its snapshot object. 22 kinds of operation, among them sort, reverse,
+  splice, holes, a length change, a row shared by two lists, a list held
+  under two keys, and a row written after it left the list. **0 failures**;
+  the fast path was taken 50,780 times.
+- **Tests:** 1,333 pass, 8 fail. All eight are **incidental**: they read the
+  internal `parents` map and expect a count of 1 where it now holds a key
+  (`core.ownership.test.ts`, 7 tests under "createClassyStore memory
+  ownership": "disconnects retired subtrees after replacement", "… after
+  deletion", "array truncation disconnects only removed index subtrees",
+  "truncation preserves object-valued properties that are not array
+  indices", "invalid array lengths leave existing child ownership intact",
+  "preserves the child cache after a rejected write", "… after a rejected
+  deletion"; and `core.memory.test.ts`, "retired descendants stop notifying
+  and retaining their former root"). They pin a data structure, not a
+  behaviour; each would assert the key instead.
+- **Typecheck:** fails in the same two test files, 9 errors, for the same
+  reason (they pass a number where the map now holds a key). No error in
+  library code.
+- **Size:** main entry **3,931 bytes, 270 more** than today, 181 over the
+  budget. Every other entry is within its budget.
+
+**Snapshot timings**, `repro/bench-snap.mjs`, nanoseconds per operation, the
+fastest of 15 samples, three fresh processes per build interleaved (the
+figure is the fastest run, the median of the three in appendix B). Load
+average 11 to 16 on 10 cores.
+
+| Case                                              | Bun: today |        N1 | Node: today |      N1 |
+| ------------------------------------------------- | ---------: | --------: | ----------: | ------: |
+| 100 rows: write one row, snapshot                 |     11,058 |    11,964 |       8,239 |   4,763 |
+| 1,000 rows: write one row, snapshot               |    114,299 |   118,003 |      54,559 |  17,887 |
+| 10,000 rows: the same                             |  2,230,365 | 1,860,253 |     662,721 | 140,775 |
+| 1,000 rows: write 10 rows, snapshot               |    125,683 |   125,812 |      69,071 |  38,197 |
+| 1,000 rows: write 100 rows, snapshot              |    262,653 |   227,676 |     270,821 | 234,741 |
+| 1,000 rows: replace one row, snapshot             |    108,812 |   113,637 |      54,450 |  18,643 |
+| 1,000 rows: push and pop, snapshot (full rebuild) |    131,056 |   132,064 |      75,084 |  85,217 |
+| Record of 1,000 keys: write one (not covered)     |    177,684 |   179,796 |     489,525 | 497,826 |
+| `reactiveMap` of 1,000: change one value          |    117,662 |   119,104 |      58,412 |  24,601 |
+| Cached snapshot                                   |       13.9 |      18.1 |        27.6 |    27.6 |
+| Write one of 1,000 rows, no snapshot              |        335 |       395 |         629 |     657 |
+| Write a field three objects deep, no snapshot     |        363 |       433 |         583 |     592 |
+| Adapters A1: 2,000 row writes, sync snapshot each |     632 ms |    569 ms |      227 ms |   64 ms |
+| A1 inside `batch()`                               |    2.29 ms |   2.41 ms |     4.11 ms | 4.40 ms |
+
+- **On Node it works:** three times faster at 1,000 rows, nearly five times
+  at 10,000, and the adapters' loop of 2,000 direct writes goes from 227 ms
+  to 64 ms. A `reactiveMap` gains as much, since its entries are an array.
+- **On Bun it gains nothing at 1,000 rows.** I measured why
+  (`repro/probe-freeze.mjs`, appendix C): on Bun, `Object.freeze` of a new
+  1,000-element array costs about 80 microseconds by itself, against about
+  0 on Node. The copy is cheap; freezing it is the floor, as the Immer report
+  expected. N1 cannot remove that: any new frozen array of that length costs
+  it. Only not freezing arrays would, and frozen snapshots are documented.
+- **The write path pays** about 60 nanoseconds per nested write on Bun and
+  30 on Node (marking each owner), and a cached snapshot 4 nanoseconds more
+  on Bun. The core benchmark ratios are below.
+- A structural change (push, pop, splice, sort) rebuilds in full as today;
+  push-and-pop is 13% slower on Node, inside or near the spread.
+
+**Core benchmark** (`runCoreBenchmark.mjs` against each saved build, one
+run of its fresh processes each, today then N1 back to back; the median, and
+the limit from `CONSTRAINTS.md`):
+
+| Ratio to a forwarding Proxy | Bun: today |   N1 | Limit | Node: today |   N1 | Limit |
+| --------------------------- | ---------: | ---: | ----: | ----------: | ---: | ----: |
+| read                        |       15.5 | 16.4 |    20 |        2.03 | 2.08 |   2.5 |
+| write                       |       2.56 | 2.62 |   3.2 |        1.33 | 1.41 |   1.7 |
+| cached getter               |       31.4 | 31.2 |    41 |        3.53 | 3.61 |   5.3 |
+| cached snapshot             |       7.46 | 7.96 |    10 |        1.39 | 1.43 |   1.8 |
+
+All within their limits. The benchmark marks Node's write ratio "slower"
+(6% over today, outside its spread) and `create.rows` 29% slower on Node:
+building the key sets of `parents` on creation costs.
+
+### What it breaks or changes for a user
+
+Nothing visible. Snapshots are the same objects with the same sharing; the
+differential check and the 1,333 passing tests say so. It is an internal
+change.
+
+### Recommendation
+
+**Do not do it as it stands. Can follow 1.0.**
+
+- 270 bytes is 7% of the main entry, for a gain that one of the two engines
+  does not see at the sizes that matter (Bun is the engine the project tests
+  and benchmarks on first), and for arrays only.
+- The gain on Node is real and large, and it is the only fix found for the
+  adapters' A1 loop that needs no change of API. If a user on Node (or a
+  browser on V8) reports slow lists, this is the design to take: keys per
+  parent, marks on the walk that already happens, rebuild by copy. Nothing
+  public changes, so it can ship in a 1.x release.
+- A smaller form is likely possible: the set of keys per parent exists so
+  that one child held under two keys of the same parent marks both. A count
+  plus "rebuild all" on that rare case would keep `parents` as it is and drop
+  most of `ownership.ts`'s share of the bytes. Not spiked.
+- For A1 itself, `batch()` remains the answer before 1.0: 2.3 ms against
+  632 on Bun.
+
+### Cost for stage 4
+
+If taken later: `ownership.ts`, `core.ts`, `snapshot.ts` (all mutation
+targets). The differential check as a test, the 8 internal tests rewritten
+to assert keys. Medium risk: a missed mark gives a stale snapshot in
+silence, which is why the differential check must be part of the suite.
+**Size:** 270 bytes on the main entry.
 
 ## N2. How a snapshot carries class getters
+
+_Written and run by the first agent, except where a part says otherwise._
 
 - **Question.** API question 3: should a class getter stay an enumerable own
   accessor of every snapshot? Stage 1 findings 31, 41, 51 and 70; Valtio V4
@@ -284,6 +466,79 @@ are still inherited from the class. Run: `t1-strict.patch` with form A on
 top fails 19 tests, exactly the 10 of T1 strict and the 9 of form A, and
 `repro/n2.ts` prints the same as for form A alone.
 
+### Added by the second agent: S1 or S2, `persist`, and the base class
+
+Everything above in N2 is the first agent's. This part is mine, run on the
+same worktree with `repro/n2-extra.ts` (appendix C; outputs in appendix B).
+
+**Which snapshot variant of the traps report each form needs.** S1 makes the
+frozen snapshot the target of the tracker a snapshot getter runs against; S2
+keeps an empty target and hides the class's getters from `ownKeys`.
+
+| Form                 | Needs | Why                                                                                                                                                                                                                                               |
+| -------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Today's shape        | S2    | Getters are enumerable own keys. S1 on it overflows the stack on `Object.entries(this)` and spread (the first agent's table above).                                                                                                               |
+| Form B, own, hidden  | S1    | Getters leave the enumerable keys, so `Object.keys`, spread, `for...in` and `JSON.stringify` of `this` match the store. One row stays wrong: `Reflect.ownKeys(this)` lists the 12 getters. Hiding those as well is S2's filter, at S2's 86 bytes. |
+| Form A, derived type | S1    | Getters are not own keys at all, so the frozen snapshot as target matches the store in every row but the prototype identity, with no filter.                                                                                                      |
+
+So form A takes S1 and only S1; form B takes S1 and is right except for
+`Reflect.ownKeys`, or takes S1 with S2's filter to be right everywhere.
+
+**What `persist` saves by default.** `persist` builds its default property
+list from `Object.keys(snapshot(store))` and drops a key when the store has a
+getter by that name, or when its value is a function. Run on a class with an
+own getter, an inherited getter and a setter without a getter, and on an
+object literal with a getter:
+
+| Store                                              | Today: `Object.keys(snapshot)`         | Forms A and B      | Saved by `persist`, all three        |
+| -------------------------------------------------- | -------------------------------------- | ------------------ | ------------------------------------ |
+| Class: `id`, `items`, `_note`, 2 getters, 1 setter | `id, items, _note, total, note, label` | `id, items, _note` | `{"id":2,"items":[1,2],"_note":"n"}` |
+| Object literal: `count` and a getter `double`      | `count, double`                        | `count, double`    | `{"count":3}`                        |
+
+- **What is saved does not change under either form.** Today the getters are
+  listed and then dropped by name. The setter without a getter is listed,
+  kept, read as `undefined`, and dropped by `JSON.stringify`; under both forms
+  it is not listed. So the only difference is that the getter check no longer
+  has anything to drop for a class getter.
+- **The getter check must stay.** An object-literal getter is an own
+  enumerable key of the snapshot under every form, and only that check keeps
+  it out of storage.
+- The `persist` unit tests pass under both forms, as the first agent found.
+
+**The base class of `spike-classes.md` C1.** `c1-t1strict.patch` (that
+report's C1 on T3 (a) and T1 strict) applies to the unmodified commit, and
+`n2a-one-loop.patch` and `apply-s1.py` apply on top of it without a conflict
+(`c1-n2a-s1.patch` in appendix A). A class `Pinned extends Todos extends
+ClassyStore`, with two fields, an arrow-function field and three getters, one
+of which returns `this`:
+
+| Asked of a snapshot                               | Today, with a local copy of the base class | Form A with S1, on C1                |
+| ------------------------------------------------- | ------------------------------------------ | ------------------------------------ |
+| `Object.keys`                                     | 3 fields and 3 getters                     | `items, filter, add`                 |
+| `JSON.stringify`                                  | Fields, getter values, and `"self":{}`     | `{"items":["a"],"filter":"all"}`     |
+| `instanceof Pinned`, `Todos`, `ClassyStore`       | All true                                   | All true                             |
+| `constructor === Pinned`                          | true                                       | true                                 |
+| `getPrototypeOf(snapshot) === Pinned.prototype`   | true                                       | false, as for any class              |
+| Getter values; memoized across an unrelated write | Right                                      | Right                                |
+| A getter that returns `this`                      | The tracker                                | The snapshot                         |
+| Structural sharing after a write to another field | Kept                                       | Kept                                 |
+| proxy-compare: changed after an unrelated write   | No                                         | No                                   |
+| After one undo: prototype layers above `Pinned`   | 0                                          | 1, the derived one, as for any class |
+
+**One more change the combination run showed** (`repro/n5.ts` on the
+combination): `size` is a class getter of `ReactiveMap` and `ReactiveSet`, so
+under either form `JSON.stringify` and `Object.keys` of a collection's
+snapshot no longer carry `size`: `{"_entries":[…]}` where today it is
+`{"_entries":[…],"size":1}`. `snap.size` still reads right. Nothing in the
+tests reads it from a serialised snapshot.
+
+The arrow-function field `add` is an own data property holding a function, so
+under T1 strict it is data, and the snapshot carries it as it carries any
+field. **The base class gets a correct snapshot under form A**; nothing in
+the base class needs a change for it. Tests on C1 + form A + S1: 1,299 pass,
+42 fail, exactly the 28 that C1 fails alone and the 14 of form A with S1. No
+new failure.
+
 ### Recommendation
 
 **Change the shape, and take form A. Before 1.0.**
@@ -302,6 +557,12 @@ top fails 19 tests, exactly the 10 of T1 strict and the 9 of form A, and
 - If the owner would rather keep getter values in a spread, the fallback is
   today's shape with the traps report's S2, and a sentence that a snapshot
   has more keys than its store.
+- (Second agent.) I checked and agree. The three decisions that wait on this
+  get: **form A takes S1, not S2**; `persist` saves the same fields as today
+  and keeps its getter check for object-literal getters; and the base class
+  of C1 needs nothing more. With form B the answer for the traps report is
+  S1, and S2's filter only if `Reflect.ownKeys(this)` inside a getter must
+  match the store.
 
 ### Cost for stage 4
 
@@ -316,6 +577,8 @@ React path. **Size:** the main entry needs 140 bytes more, which is over
 today's budget by 51 by itself.
 
 ## N3. A cycle in the data
+
+_Written and run by the first agent, except where a part says otherwise._
 
 - **Question.** What does a snapshot do with a store that refers to itself,
   and can it keep the cycle? Stage 1 findings 8 and 13; Valtio V3, Svelte 9,
@@ -453,6 +716,8 @@ Medium risk: the cache and the freeze order are the heart of `snapshot.ts`.
 
 ## N4. Types
 
+_Written and run by the first agent, except where a part says otherwise._
+
 - **Question.** Can `Snapshot<T>` keep a tuple a tuple, and can a snapshot of
   a reactive collection lose its mutators in the type and name the cause when
   one is called? Stage 1 findings 14 and 16; Valtio V10 and V11, Immer 8 and
@@ -572,15 +837,206 @@ Medium risk: the cache and the freeze order are the heart of `snapshot.ts`.
 
 ## N5. `subscribeKey` without a snapshot of the whole store
 
-(pending)
+All of N5 is mine; the first agent had not started it.
+
+- **Question.** `subscribeKey(store, 'count', …)` takes a snapshot of the
+  whole store on every notification to learn whether `count` changed. Can it
+  learn that without one, and keep its callback contract (new and previous
+  snapshot values)? Valtio V8, M61.
+
+### What was changed
+
+`n5-subscribe-key.patch`, 21 lines added and 4 removed, in
+`subscribe-key.ts` only. One function `read()` gives the value a whole
+snapshot would hold under the key:
+
+- the key is a getter: today's path, `snapshot(store)[key]`, because a live
+  getter and a snapshot getter return different objects;
+- the live value is a function: today's path, because the live read returns
+  a bound wrapper and the snapshot holds the original;
+- the live value is a nested store object: `snapshot(thatNode)`, which builds
+  or reuses only that subtree, and returns the same frozen object a whole
+  snapshot would hold there (the cache is per node);
+- anything else (a primitive, a `Date`, a frozen object, a missing key): the
+  live value, which is what the snapshot holds by reference.
+
+This is Valtio's V8 proposal, done with `snapshot(node)` in place of a
+version comparison: the cache already compares the version.
+
+### Result
+
+- **Behaviour** (`repro/n5.ts`, appendix C): ten keys of every kind above,
+  `count`, a nested object, a list, a `Date`, a frozen object, a
+  `reactiveMap`, an optional key, a getter, a getter returning an object, a
+  method; fourteen writes, among them a nested write, a same-object
+  assignment, a new equal object, a delete, a method call; once with
+  `{sync: true}` and once batched. The output on the spike is **byte for
+  byte the output of the unmodified worktree**: the same calls, the same
+  values, each `===` the matching field of `snapshot(store)`.
+- **Tests:** 1,341 pass, 0 fail. **Typecheck:** passes (after one cast of
+  the key, `keyof T` to `string | symbol`). Lint passes.
+- **Size:** main entry unchanged (3,661). `./utils` adds 2,748 bytes, **62
+  more, 2 under its budget of 2,750**.
+- **Timings**, `repro/bench-snap.mjs`, nanoseconds per write, the fastest of
+  15 samples, three fresh processes per build interleaved; the range of the
+  three runs:
+
+  | Case, a store with `count` and 1,000 rows         | Bun: today      | Spike           | Node: today   | Spike         |
+  | ------------------------------------------------- | --------------- | --------------- | ------------- | ------------- |
+  | `subscribeKey(count, sync)`, write one row        | 115,789–120,540 | 404–440         | 51,693–56,586 | 784–807       |
+  | `subscribeKey(rows, sync)`, write one row         | 120,524–123,792 | 114,573–118,310 | 57,924–63,030 | 56,952–58,726 |
+  | `subscribeKey(count, sync)`, write `count`        | 848–858         | 291–314         | 1,357–1,593   | 366–386       |
+  | For scale: a plain sync subscriber, write one row | 412             |                 | 658           |               |
+
+  A key beside the rows costs what a plain subscriber costs, **270 times
+  less on Bun and 65 times less on Node**. A key that holds the rows still
+  snapshots the rows, as it must to hand the callback a snapshot; that is
+  N1's case.
+- **Core benchmark:** not run for N5. It changes only the `./utils` entry,
+  which the core benchmark does not load.
+
+### What it breaks or changes for a user
+
+Nothing found: the same calls with the same values in every case run. A
+snapshot runs no getter when it is taken, so the whole snapshot that the
+spike no longer builds had no effect a user could see except its cost.
+
+### Recommendation
+
+**Do it. Can follow 1.0**: no public behaviour changes. It is cheap enough
+to do before 1.0 anyway.
+
+### Cost for stage 4
+
+One file. Tests first: the rows of `repro/n5.ts` as tests against the
+contract (each value `===` the field of a whole snapshot), a getter key, a
+method key, and one test that a write elsewhere builds no root snapshot (a
+spy on `snapshot`, or a getter elsewhere that counts its runs). Low risk.
+**Size:** `./utils` is left 2 bytes under its budget, so with M62's additions
+the budget moves.
 
 ## The combination
 
-(pending)
+Mine. What I recommend together: **N2 form A with S1, N3, N4 with the
+backing arrays kept, and N5.** Not N1. The patches stack with one conflict
+in `snapshot.ts`, resolved by hand (appendix D, `combination.patch`).
+
+- **Tests:** 1,320 pass, 21 fail: exactly the 14 of form A with S1 and the 7
+  of N3, each classified above. No test fails that no single spike fails.
+- **Typecheck:** the 14 errors of N4, all in the three type tests that pin
+  findings 14 and 16 (fixes). None in library code.
+- **Reproductions on the combination:** `repro/n4.ts` and `repro/n2-this.ts`
+  print what they print on their own spikes. `repro/n2.ts` differs from form
+  A alone only in the rows S1 fixes (`this` inside a getter). `repro/n3.ts`
+  differs only in its timings. `repro/n5.ts` differs only in `size` leaving
+  the JSON of a collection snapshot, from form A. The two React tests of N3
+  (`spikeCycle.test.tsx`) pass.
+- **Size**, gzipped, against today and the budgets:
+
+  | Entry           | Today |                  Combination | Budget | Over by |
+  | --------------- | ----: | ---------------------------: | -----: | ------: |
+  | `.`             | 3,661 |                        3,904 |  3,750 |     154 |
+  | `./utils`       | 2,686 |                        2,767 |  2,750 |      17 |
+  | `./collections` |   727 |                          784 |    750 |      34 |
+  | `./react`       | 1,662 |                        1,693 |  1,700 |       — |
+  | the other five  |       | within 1 to 4 bytes of today |        |       — |
+
+  The main entry's 243 bytes are form A with S1 (239 on its own) and N3
+  (−9 on its own), plus 13 that gzip does not share between them. N4 and N5
+  add nothing to it. If N1 were added later, about 270 more.
+
+### Combination timings
+
+Today against the combination, back to back, the same scripts and method as
+above. Nanoseconds; the fastest of three interleaved runs.
+
+| Case                                                     | Bun: today | Combination | Node: today | Combination |
+| -------------------------------------------------------- | ---------: | ----------: | ----------: | ----------: |
+| Class, 0 getters: write, snapshot                        |        722 |         478 |       1,741 |       1,284 |
+| Class, 8 getters: write, snapshot                        |      1,876 |         493 |       5,610 |       1,277 |
+| The same, read all eight                                 |      2,949 |       1,556 |       7,763 |       2,849 |
+| A cached getter read on one snapshot                     |       13.5 |         2.9 |        22.7 |        17.7 |
+| 1,000 rows of a class with 8 getters, first snapshot/row |      2,716 |       1,130 |       6,584 |       2,577 |
+| 1,000 rows: write one row, snapshot                      |    114,489 |     114,527 |      52,633 |      52,618 |
+| Record of 1,000 keys: write one, snapshot                |    182,921 |     121,742 |     508,258 |     390,805 |
+| Cached snapshot                                          |       13.4 |        10.9 |        26.8 |        29.6 |
+| `subscribeKey(count, sync)` beside 1,000 rows            |    112,970 |         453 |      49,408 |         783 |
+| Write one of 1,000 rows, no snapshot                     |        381 |         361 |         613 |         615 |
+| Adapters A1, 2,000 row writes                            |     633 ms |      626 ms |      206 ms |      202 ms |
+
+`runCoreBenchmark.mjs`, medians, with the limits of `CONSTRAINTS.md`:
+
+| Ratio to a forwarding Proxy | Bun: today | Combination | Limit | Node: today | Combination | Limit |
+| --------------------------- | ---------: | ----------: | ----: | ----------: | ----------: | ----: |
+| read                        |       15.6 |        15.6 |    20 |        2.02 |        2.01 |   2.5 |
+| write                       |       2.59 |        2.58 |   3.2 |        1.35 |        1.37 |   1.7 |
+| cached getter               |       28.6 |        28.0 |    41 |        3.56 |        3.62 |   5.3 |
+| cached snapshot             |       7.24 |        4.90 |    10 |        1.36 |        1.31 |   1.8 |
+
+- Every ratio is within its limit; none is slower outside its spread. The
+  benchmark marks Bun's cached snapshot "faster" and its `create.small` 5%
+  "slower".
+- The gains are form A's (classes with getters, and every object, because
+  the second walk of the prototype chain is gone) and N5's. The row cases
+  are unchanged, as expected without N1; the A1 loop is still the adapters'
+  problem, and `batch()` is still its answer.
 
 ## Verified and not verified
 
-(pending)
+**Run, by the first agent** (its outputs in appendix B): the baseline
+measures; for N2 forms A and B, alone and with S1, the unit suite,
+typecheck, size, `repro/n2.ts`, `repro/n2-this.ts`, `repro/bench-n2.mjs` on
+both engines and `repro/mem-n2.mjs` on Node; form A with `t1-strict.patch`;
+for N3 the suite, typecheck, size, `repro/n3.ts`,
+`repro/n3-failed-build.ts`, `spikeCycle.test.tsx` and
+`repro/bench-guard.mjs` on both engines; for N4 the suite, typecheck,
+`repro/n4.ts`, `spikeTypes.test.ts`, the example and docs type checks, and
+`bun run check:package`.
+
+**Run, by me** (outputs in appendix D):
+
+- N2: `repro/n2-extra.ts` on today, form B, form B with S1, C1 with form A,
+  and C1 with form A and S1; the unit suite on C1 alone and on C1 with form
+  A and S1, with the failure lists compared.
+- N1: the unit suite, typecheck, size, the differential check again,
+  `repro/bench-snap.mjs` on both engines (three interleaved runs per build),
+  `runCoreBenchmark.mjs` on both engines (one run of its own processes per
+  build, back to back), and `repro/probe-freeze.mjs` on both engines.
+- N5: the unit suite, typecheck, lint of the file, size, `repro/n5.ts` before
+  and after, `repro/bench-snap.mjs subscribeKey` on both engines.
+- The combination: the unit suite with the failure list compared to the
+  single spikes', typecheck, size, `repro/n2.ts`, `n2-this.ts`, `n3.ts`,
+  `n4.ts`, `n5.ts`, `spikeCycle.test.tsx`, `spikeTypes.test.ts` under the
+  package's typecheck (no error in it); and the timings under
+  "Combination timings".
+
+**Only read or reasoned:**
+
+- That N1's eight failing tests and nine type errors pin a data structure and
+  not a behaviour: read, not proved by rewriting them.
+- That a smaller N1 (a count plus "rebuild all" for a child held twice) would
+  save most of its bytes: reasoning, not spiked.
+- That N5 changes nothing a user can see beyond the cases in `repro/n5.ts`:
+  those cases are run; others are reasoning from the snapshot cache being
+  per node.
+- The machine was shared: load averages 11 to 44 during the runs. Every
+  timing difference called "the same" is inside the spread of its runs.
+
+**Not run, as the common brief says:** the browser, framework and mutation
+suites. What the Redux DevTools extension shows for a snapshot without
+getter values, or with a cycle, was not checked.
+
+## Not done
+
+- A smaller form of N1, and N1 for objects (a record of 1,000 keys gains
+  nothing: 178 against 180 microseconds on Bun).
+- Valtio V10's general hook for a class to name its snapshot type (N4): an
+  addition that can follow 1.0.
+- Refusing the write that closes a cycle, the alternative to N3.
+- What `devtools()` should send now that a snapshot carries no getter values.
+- The core benchmark for N5: it changes only `./utils`, which that benchmark
+  does not load.
+- N1 inside the combination: not recommended, so not stacked.
 
 ## Appendix A: patches
 
@@ -3916,4 +4372,1473 @@ for (const [name, setup] of Object.entries(cases)) {
   out[name] = value >= 100 ? Math.round(value) : Math.round(value * 10) / 10;
 }
 console.log(JSON.stringify(out));
+```
+
+## Appendix D: the second agent's patches, outputs and scripts
+
+Everything in this appendix is mine. Patches are saved in `<scratch>/stage-3-spike-snapshots/patches2/`; outputs in `out/`, scripts in `repro/`.
+
+### `n5-subscribe-key.patch`
+
+N5. Applies to the unmodified commit.
+
+```diff
+diff --git a/packages/classy-store/src/utils/subscribe-key/subscribe-key.ts b/packages/classy-store/src/utils/subscribe-key/subscribe-key.ts
+index 9ddb5d0..d107aeb 100644
+--- a/packages/classy-store/src/utils/subscribe-key/subscribe-key.ts
++++ b/packages/classy-store/src/utils/subscribe-key/subscribe-key.ts
+@@ -1,5 +1,6 @@
+-import {snapshot, subscribe} from '../../storeRuntime';
++import {snapshot, subscribe, unwrap} from '../../storeRuntime';
+ import type {Snapshot, SubscribeOptions} from '../../types';
++import {findGetterDescriptor} from '../internal/internal';
+ 
+ /**
+  * Subscribe to changes on a single property of a store proxy.
+@@ -23,13 +24,29 @@ export function subscribeKey<
+   callback: (value: Snapshot<T>[K], previousValue: Snapshot<T>[K]) => void,
+   options?: SubscribeOptions,
+ ): () => void {
+-  let previousValue = snapshot(proxyStore)[key];
++  // The value a snapshot of the whole store would hold under `key`, without
++  // building that snapshot: a nested store object is snapshotted alone, and a
++  // primitive or an object the store keeps as a value is read live. A getter
++  // or a function reads differently on a snapshot, so it keeps the old path.
++  const read = (): Snapshot<T>[K] => {
++    if (!findGetterDescriptor(proxyStore, key as string | symbol)) {
++      const live = proxyStore[key] as unknown;
++      if (typeof live !== 'function') {
++        return (
++          typeof live === 'object' && live !== null && unwrap(live) !== live
++            ? snapshot(live)
++            : live
++        ) as Snapshot<T>[K];
++      }
++    }
++    return snapshot(proxyStore)[key];
++  };
++  let previousValue = read();
+ 
+   return subscribe(
+     proxyStore,
+     () => {
+-      const snap = snapshot(proxyStore);
+-      const currentValue = snap[key];
++      const currentValue = read();
+ 
+       if (!Object.is(currentValue, previousValue)) {
+         const prev = previousValue;
+```
+
+### `c1-n2a-s1.patch` and `combination.patch`
+
+Both are stacks of patches already in this report, so they are given as steps
+rather than in full.
+
+- `c1-n2a-s1.patch`: apply `c1-t1strict.patch` from
+  `<scratch>/stage-3-spike-classes/patches/` (it applies to the unmodified
+  commit by itself), then `n2a-one-loop.patch` without `--3way`, then run
+  `apply-s1.py`. No conflict.
+- `combination.patch`: apply `n2a-one-loop-with-s1.patch`,
+  `n4-types-with-backing.patch`, `n5-subscribe-key.patch`, then
+  `n3-cycles.patch` with `--reject`. One hunk of `snapshot.ts` is refused
+  because form A changed the line that creates an object's snapshot. Its
+  resolution: take the N3 hunk as written, with that line kept in form A's
+  shape, and the import of `forEachOwnArrayElement` in place of
+  `mapOwnArrayElements`:
+
+```ts
+  } else {
+    // Preserve the prototype chain and install memoized getters on the snapshot.
+    snap = Object.create(snapshotPrototype(Object.getPrototypeOf(target)));
+    inProgress.set(target, snap);
+```
+
+### `repro/n2-extra.ts` on the unmodified worktree
+
+N2. The base class is a local copy of C1's function.
+
+```text
+## persist with no properties: what is saved
+class with getters, an inherited getter, a setter only     {"version":0,"state":{"id":2,"items":[1,2],"_note":"n"}}
+  Object.keys(snapshot)                                    ["id","items","_note","total","note","label"]
+object literal with a getter                               {"version":0,"state":{"count":3}}
+  Object.keys(snapshot)                                    ["count","double"]
+
+## the base class of spike-classes C1
+ClassyStore exported by this build                         no, a local copy
+Object.keys(snapshot)                                      ["items","filter","add","first","count","self"]
+JSON.stringify(snapshot)                                   {"items":["a"],"filter":"all","first":"a","count":1,"self":{}}
+instanceof Pinned, Todos, ClassyStore                      [true,true,true]
+constructor === Pinned                                     true
+getPrototypeOf(snapshot) === Pinned.prototype              true
+count, first                                               [1,"a"]
+a getter returning this: is the snapshot                   false
+add is a function on the snapshot (own field)              function
+after add(): count, first, items shared?                   [2,"a",false]
+old snapshot unchanged                                     1
+after a filter write: items shared with previous           true
+count cached across that write (same value)                2
+tracked: count read through proxy-compare                  2
+tracked: changed after a write to filter only              false
+tracked: changed after a write to items                    true
+after undo: filter, count, prototype chain depth to Pinned ["all",3,0]
+```
+
+### `repro/n2-extra.ts` on form B
+
+-
+
+```text
+## persist with no properties: what is saved
+class with getters, an inherited getter, a setter only     {"version":0,"state":{"id":2,"items":[1,2],"_note":"n"}}
+  Object.keys(snapshot)                                    ["id","items","_note"]
+object literal with a getter                               {"version":0,"state":{"count":3}}
+  Object.keys(snapshot)                                    ["count","double"]
+
+## the base class of spike-classes C1
+ClassyStore exported by this build                         no, a local copy
+Object.keys(snapshot)                                      ["items","filter","add"]
+JSON.stringify(snapshot)                                   {"items":["a"],"filter":"all"}
+instanceof Pinned, Todos, ClassyStore                      [true,true,true]
+constructor === Pinned                                     true
+getPrototypeOf(snapshot) === Pinned.prototype              true
+count, first                                               [1,"a"]
+a getter returning this: is the snapshot                   false
+add is a function on the snapshot (own field)              function
+after add(): count, first, items shared?                   [2,"a",false]
+old snapshot unchanged                                     1
+after a filter write: items shared with previous           true
+count cached across that write (same value)                2
+tracked: count read through proxy-compare                  2
+tracked: changed after a write to filter only              false
+tracked: changed after a write to items                    true
+after undo: filter, count, prototype chain depth to Pinned ["all",3,0]
+```
+
+### `repro/n2-extra.ts` on form B with S1
+
+-
+
+```text
+## persist with no properties: what is saved
+class with getters, an inherited getter, a setter only     {"version":0,"state":{"id":2,"items":[1,2],"_note":"n"}}
+  Object.keys(snapshot)                                    ["id","items","_note"]
+object literal with a getter                               {"version":0,"state":{"count":3}}
+  Object.keys(snapshot)                                    ["count","double"]
+
+## the base class of spike-classes C1
+ClassyStore exported by this build                         no, a local copy
+Object.keys(snapshot)                                      ["items","filter","add"]
+JSON.stringify(snapshot)                                   {"items":["a"],"filter":"all"}
+instanceof Pinned, Todos, ClassyStore                      [true,true,true]
+constructor === Pinned                                     true
+getPrototypeOf(snapshot) === Pinned.prototype              true
+count, first                                               [1,"a"]
+a getter returning this: is the snapshot                   true
+add is a function on the snapshot (own field)              function
+after add(): count, first, items shared?                   [2,"a",false]
+old snapshot unchanged                                     1
+after a filter write: items shared with previous           true
+count cached across that write (same value)                2
+tracked: count read through proxy-compare                  2
+tracked: changed after a write to filter only              false
+tracked: changed after a write to items                    true
+after undo: filter, count, prototype chain depth to Pinned ["all",3,0]
+```
+
+### `repro/n2-extra.ts` on C1 with form A
+
+-
+
+```text
+## persist with no properties: what is saved
+class with getters, an inherited getter, a setter only     {"version":0,"state":{"id":2,"items":[1,2],"_note":"n"}}
+  Object.keys(snapshot)                                    ["id","items","_note"]
+object literal with a getter                               {"version":0,"state":{"count":3}}
+  Object.keys(snapshot)                                    ["count","double"]
+
+## the base class of spike-classes C1
+ClassyStore exported by this build                         yes
+Object.keys(snapshot)                                      ["items","filter","add"]
+JSON.stringify(snapshot)                                   {"items":["a"],"filter":"all"}
+instanceof Pinned, Todos, ClassyStore                      [true,true,true]
+constructor === Pinned                                     true
+getPrototypeOf(snapshot) === Pinned.prototype              false
+count, first                                               [1,"a"]
+a getter returning this: is the snapshot                   false
+add is a function on the snapshot (own field)              function
+after add(): count, first, items shared?                   [2,"a",false]
+old snapshot unchanged                                     1
+after a filter write: items shared with previous           true
+count cached across that write (same value)                2
+tracked: count read through proxy-compare                  2
+tracked: changed after a write to filter only              false
+tracked: changed after a write to items                    true
+after undo: filter, count, prototype chain depth to Pinned ["all",3,1]
+```
+
+### `repro/n2-extra.ts` on C1 with form A and S1
+
+-
+
+```text
+## persist with no properties: what is saved
+class with getters, an inherited getter, a setter only     {"version":0,"state":{"id":2,"items":[1,2],"_note":"n"}}
+  Object.keys(snapshot)                                    ["id","items","_note"]
+object literal with a getter                               {"version":0,"state":{"count":3}}
+  Object.keys(snapshot)                                    ["count","double"]
+
+## the base class of spike-classes C1
+ClassyStore exported by this build                         yes
+Object.keys(snapshot)                                      ["items","filter","add"]
+JSON.stringify(snapshot)                                   {"items":["a"],"filter":"all"}
+instanceof Pinned, Todos, ClassyStore                      [true,true,true]
+constructor === Pinned                                     true
+getPrototypeOf(snapshot) === Pinned.prototype              false
+count, first                                               [1,"a"]
+a getter returning this: is the snapshot                   true
+add is a function on the snapshot (own field)              function
+after add(): count, first, items shared?                   [2,"a",false]
+old snapshot unchanged                                     1
+after a filter write: items shared with previous           true
+count cached across that write (same value)                2
+tracked: count read through proxy-compare                  2
+tracked: changed after a write to filter only              false
+tracked: changed after a write to items                    true
+after undo: filter, count, prototype chain depth to Pinned ["all",3,1]
+```
+
+### `repro/bench-snap.mjs`, today against N1, Bun 1.4.5
+
+N1. Fastest of 15 samples; the fastest of three runs, then their median.
+
+```text
+| Case | base | n1 |
+| --- | ---: | ---: |
+| rows 1,000: write one row, snapshot | 114299 (median 118208) | 118003 (median 118568) |
+| rows 10,000: write one row, snapshot | 2230365 (median 2318297) | 1860253 (median 1865398) |
+| rows 100: write one row, snapshot | 11058 (median 11259) | 11964 (median 12058) |
+| rows 1,000: write 10 rows, snapshot | 125683 (median 126073) | 125812 (median 126752) |
+| rows 1,000: write 100 rows, snapshot | 262653 (median 267543) | 227676 (median 241033) |
+| rows 1,000: replace one row, snapshot | 108812 (median 109066) | 113637 (median 113934) |
+| rows 1,000: push and pop, snapshot | 131056 (median 132629) | 132064 (median 135428) |
+| record of 1,000 keys: write one, snapshot | 177684 (median 186638) | 179796 (median 189509) |
+| reactiveMap of 1,000: change one value, snapshot | 117662 (median 118726) | 119104 (median 120145) |
+| cached snapshot | 13.9 (median 14.3) | 18.1 (median 19.1) |
+| rows 1,000: create a store and take its first snapshot | 1346138 (median 1371336) | 1200378 (median 1213362) |
+| write a root field, no snapshot | 161 (median 227) | 175 (median 178) |
+| write one of 1,000 rows, no snapshot | 335 (median 347) | 395 (median 407) |
+| write a field three objects deep, no snapshot | 363 (median 384) | 433 (median 435) |
+| push and pop on 1,000 rows, no snapshot | 22804 (median 22907) | 22856 (median 23120) |
+| A1: 2,000 direct row writes, sync subscriber that snapshots (whole loop) | 631881292 (median 642305500) | 568595875 (median 570551791) |
+| A1 inside batch() (whole loop) | 2294896 (median 2350547) | 2408609 (median 2565073) |
+| subscribeKey(count, sync) beside 1,000 rows: write one row | 113241 (median 113845) | 111663 (median 111832) |
+| subscribeKey(rows, sync) beside 1,000 rows: write one row | 115066 (median 116030) | 111385 (median 112530) |
+| subscribeKey(count, sync): write count | 535 (median 1052) | 629 (median 1061) |
+| plain sync subscriber beside 1,000 rows: write one row | 412 (median 587) | 400 (median 584) |
+```
+
+### `repro/bench-snap.mjs`, today against N1, Node 24.21.0
+
+N1.
+
+```text
+| Case | base | n1 |
+| --- | ---: | ---: |
+| rows 1,000: write one row, snapshot | 54559 (median 54681) | 17887 (median 18276) |
+| rows 10,000: write one row, snapshot | 662721 (median 668359) | 140775 (median 142010) |
+| rows 100: write one row, snapshot | 8239 (median 8328) | 4763 (median 4864) |
+| rows 1,000: write 10 rows, snapshot | 69071 (median 70753) | 38197 (median 38305) |
+| rows 1,000: write 100 rows, snapshot | 270821 (median 271394) | 234741 (median 236992) |
+| rows 1,000: replace one row, snapshot | 54450 (median 55231) | 18643 (median 18694) |
+| rows 1,000: push and pop, snapshot | 75084 (median 76756) | 85217 (median 89951) |
+| record of 1,000 keys: write one, snapshot | 489525 (median 514761) | 497826 (median 517253) |
+| reactiveMap of 1,000: change one value, snapshot | 58412 (median 71731) | 24601 (median 25344) |
+| cached snapshot | 27.6 (median 28.3) | 27.6 (median 28.5) |
+| rows 1,000: create a store and take its first snapshot | 2465422 (median 2487708) | 2461380 (median 2468109) |
+| write a root field, no snapshot | 203 (median 203) | 203 (median 206) |
+| write one of 1,000 rows, no snapshot | 629 (median 645) | 657 (median 660) |
+| write a field three objects deep, no snapshot | 583 (median 588) | 592 (median 595) |
+| push and pop on 1,000 rows, no snapshot | 20955 (median 21141) | 21946 (median 22014) |
+| A1: 2,000 direct row writes, sync subscriber that snapshots (whole loop) | 226604458 (median 249649083) | 64417834 (median 64908250) |
+| A1 inside batch() (whole loop) | 4108484 (median 4554479) | 4400844 (median 4602052) |
+| subscribeKey(count, sync) beside 1,000 rows: write one row | 52243 (median 52312) | 18454 (median 18466) |
+| subscribeKey(rows, sync) beside 1,000 rows: write one row | 49772 (median 51128) | 18376 (median 18622) |
+| subscribeKey(count, sync): write count | 1321 (median 1400) | 1386 (median 1455) |
+| plain sync subscriber beside 1,000 rows: write one row | 658 (median 677) | 663 (median 683) |
+```
+
+### `runCoreBenchmark.mjs`, today then N1, Bun
+
+N1. The tail of each run.
+
+```text
+== bun base run 1
+| create.small | 1405 | 1357 | 1943 | 1431 | -1.8% | same |
+| create.rows | 598982 | 554080 | 611776 | 555739 | 7.8% | same |
+| subscribe | 43.4 | 41.2 | 43.9 | 42.4 | 2.4% | same |
+
+| Ratio | Median | Lowest | Highest | Baseline | Limit | |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| read: store.read / proxy.read | 15.5 | 14.2 | 15.9 | 14.3 | 20 | same |
+| write: store.write / proxy.write | 2.56 | 2.51 | 2.63 | 2.6 | 3.2 | same |
+| getter: getter.cached / proxy.read | 31.4 | 29.4 | 37.9 | 26.1 | 41 | same |
+| snapshot: snapshot.cached / proxy.read | 7.46 | 6.5 | 7.66 | 7.28 | 10 | same |
+
+== bun n1 run 1
+| create.small | 1446 | 1426 | 1540 | 1431 | 1.0% | same |
+| create.rows | 567206 | 561863 | 581806 | 555739 | 2.1% | same |
+| subscribe | 40.7 | 40.5 | 41 | 42.4 | -4.0% | faster |
+
+| Ratio | Median | Lowest | Highest | Baseline | Limit | |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| read: store.read / proxy.read | 16.4 | 11.6 | 16.9 | 14.3 | 20 | same |
+| write: store.write / proxy.write | 2.62 | 2.6 | 2.67 | 2.6 | 3.2 | same |
+| getter: getter.cached / proxy.read | 31.2 | 23.7 | 34.7 | 26.1 | 41 | same |
+| snapshot: snapshot.cached / proxy.read | 7.96 | 5.25 | 8.36 | 7.28 | 10 | same |
+```
+
+### `runCoreBenchmark.mjs`, today then N1, Node
+
+N1.
+
+```text
+== node base
+| create.small | 5571 | 5313 | 5998 | 5063 | 10.0% | same |
+| create.rows | 1103325 | 1001663 | 1437655 | 1101774 | 0.1% | same |
+| subscribe | 57 | 56.1 | 57.2 | 53.7 | 6.1% | same |
+
+| Ratio | Median | Lowest | Highest | Baseline | Limit | |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| read: store.read / proxy.read | 2.03 | 1.98 | 2.04 | 2.04 | 2.5 | same |
+| write: store.write / proxy.write | 1.33 | 1.32 | 1.38 | 1.33 | 1.7 | same |
+| getter: getter.cached / proxy.read | 3.53 | 3.48 | 3.71 | 3.65 | 5.3 | same |
+| snapshot: snapshot.cached / proxy.read | 1.39 | 1.35 | 1.42 | 1.36 | 1.8 | same |
+
+== node n1
+| create.small | 5816 | 5338 | 6141 | 5063 | 14.9% | same |
+| create.rows | 1426881 | 1198478 | 1580178 | 1101774 | 29.5% | same |
+| subscribe | 60.3 | 59 | 62.9 | 53.7 | 12.3% | slower |
+
+| Ratio | Median | Lowest | Highest | Baseline | Limit | |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| read: store.read / proxy.read | 2.08 | 2.01 | 2.1 | 2.04 | 2.5 | same |
+| write: store.write / proxy.write | 1.41 | 1.37 | 1.46 | 1.33 | 1.7 | slower |
+| getter: getter.cached / proxy.read | 3.61 | 3.53 | 3.68 | 3.65 | 5.3 | same |
+| snapshot: snapshot.cached / proxy.read | 1.43 | 1.25 | 1.46 | 1.36 | 1.8 | same |
+```
+
+### `repro/n5.ts` on the unmodified worktree
+
+N5. The spike prints the same, byte for byte.
+
+```text
+
+## sync: true
+count++                    count: 1 <- 0 | double: 2 <- 0
+other++ (unrelated)        (none)
+user.name = b              user: frozen {"name":"b","tags":["x"]} (=== snapshot.user) <- frozen {"name":"a","tags":["x"]} | userView: frozen {"name":"b","tags":["x"]} (=== snapshot.user) <- frozen {"name":"a","tags":["x"]}
+user.tags.push(y)          user: frozen {"name":"b","tags":["x","y"]} (=== snapshot.user) <- frozen {"name":"b","tags":["x"]} | userView: frozen {"name":"b","tags":["x","y"]} (=== snapshot.user) <- frozen {"name":"b","tags":["x"]}
+user = same object         (none)
+user = new equal object    user: frozen {"name":"b","tags":["x","y"]} (=== snapshot.user) <- frozen {"name":"b","tags":["x","y"]} | userView: frozen {"name":"b","tags":["x","y"]} (=== snapshot.user) <- frozen {"name":"b","tags":["x","y"]}
+list[0] = 9                list: frozen [9,2] (=== snapshot.list) <- frozen [1,2]
+when = new Date(1)         when: live "1970-01-01T00:00:00.001Z" (=== snapshot.when) <- live "1970-01-01T00:00:00.000Z"
+frozen = new frozen        frozen: frozen {"k":2} (=== snapshot.frozen) <- frozen {"k":1}
+map.get(a).n++             map: frozen {"_entries":[["a",{"n":2}]],"size":1} (=== snapshot.map) <- frozen {"_entries":[["a",{"n":1}]],"size":1}
+map.set(b)                 map: frozen {"_entries":[["a",{"n":2}],["b",{"n":2}]],"size":2} (=== snapshot.map) <- frozen {"_entries":[["a",{"n":2}]],"size":1}
+missing = 1                missing: 1 <- undefined
+delete missing             missing: undefined <- 1
+bump()                     count: 2 <- 1 | double: 4 <- 2
+
+## sync: false
+count++                    count: 1 <- 0 | double: 2 <- 0
+other++ (unrelated)        (none)
+user.name = b              user: frozen {"name":"b","tags":["x"]} (=== snapshot.user) <- frozen {"name":"a","tags":["x"]} | userView: frozen {"name":"b","tags":["x"]} (=== snapshot.user) <- frozen {"name":"a","tags":["x"]}
+user.tags.push(y)          user: frozen {"name":"b","tags":["x","y"]} (=== snapshot.user) <- frozen {"name":"b","tags":["x"]} | userView: frozen {"name":"b","tags":["x","y"]} (=== snapshot.user) <- frozen {"name":"b","tags":["x"]}
+user = same object         (none)
+user = new equal object    user: frozen {"name":"b","tags":["x","y"]} (=== snapshot.user) <- frozen {"name":"b","tags":["x","y"]} | userView: frozen {"name":"b","tags":["x","y"]} (=== snapshot.user) <- frozen {"name":"b","tags":["x","y"]}
+list[0] = 9                list: frozen [9,2] (=== snapshot.list) <- frozen [1,2]
+when = new Date(1)         when: live "1970-01-01T00:00:00.001Z" (=== snapshot.when) <- live "1970-01-01T00:00:00.000Z"
+frozen = new frozen        frozen: frozen {"k":2} (=== snapshot.frozen) <- frozen {"k":1}
+map.get(a).n++             map: frozen {"_entries":[["a",{"n":2}]],"size":1} (=== snapshot.map) <- frozen {"_entries":[["a",{"n":1}]],"size":1}
+map.set(b)                 map: frozen {"_entries":[["a",{"n":2}],["b",{"n":2}]],"size":2} (=== snapshot.map) <- frozen {"_entries":[["a",{"n":2}]],"size":1}
+missing = 1                missing: 1 <- undefined
+delete missing             missing: undefined <- 1
+bump()                     count: 2 <- 1 | double: 4 <- 2
+```
+
+### `repro/bench-snap.mjs subscribeKey`, today against N5
+
+N5. Three interleaved runs per engine.
+
+```text
+== bun
+base {"subscribeKey(count, sync) beside 1,000 rows: write one row":117828,"subscribeKey(rows, sync) beside 1,000 rows: write one row":122020,"subscribeKey(count, sync): write count":853}
+n5 {"subscribeKey(count, sync) beside 1,000 rows: write one row":420,"subscribeKey(rows, sync) beside 1,000 rows: write one row":114573,"subscribeKey(count, sync): write count":294}
+base {"subscribeKey(count, sync) beside 1,000 rows: write one row":115789,"subscribeKey(rows, sync) beside 1,000 rows: write one row":123792,"subscribeKey(count, sync): write count":848}
+n5 {"subscribeKey(count, sync) beside 1,000 rows: write one row":440,"subscribeKey(rows, sync) beside 1,000 rows: write one row":118064,"subscribeKey(count, sync): write count":314}
+base {"subscribeKey(count, sync) beside 1,000 rows: write one row":120540,"subscribeKey(rows, sync) beside 1,000 rows: write one row":120524,"subscribeKey(count, sync): write count":858}
+n5 {"subscribeKey(count, sync) beside 1,000 rows: write one row":404,"subscribeKey(rows, sync) beside 1,000 rows: write one row":118310,"subscribeKey(count, sync): write count":291}
+== node
+base {"subscribeKey(count, sync) beside 1,000 rows: write one row":56586,"subscribeKey(rows, sync) beside 1,000 rows: write one row":59320,"subscribeKey(count, sync): write count":1357}
+n5 {"subscribeKey(count, sync) beside 1,000 rows: write one row":792,"subscribeKey(rows, sync) beside 1,000 rows: write one row":57924,"subscribeKey(count, sync): write count":366}
+base {"subscribeKey(count, sync) beside 1,000 rows: write one row":51842,"subscribeKey(rows, sync) beside 1,000 rows: write one row":63030,"subscribeKey(count, sync): write count":1593}
+n5 {"subscribeKey(count, sync) beside 1,000 rows: write one row":784,"subscribeKey(rows, sync) beside 1,000 rows: write one row":56952,"subscribeKey(count, sync): write count":373}
+base {"subscribeKey(count, sync) beside 1,000 rows: write one row":51693,"subscribeKey(rows, sync) beside 1,000 rows: write one row":61823,"subscribeKey(count, sync): write count":1516}
+n5 {"subscribeKey(count, sync) beside 1,000 rows: write one row":807,"subscribeKey(rows, sync) beside 1,000 rows: write one row":58726,"subscribeKey(count, sync): write count":386}
+```
+
+### `n2-extra.ts`
+
+N2: persist and the base class of C1.
+
+```ts
+// N2, second agent: what persist saves by default, and a snapshot of a class
+// built on the base class of spike-classes C1. Run from the worktree root.
+import * as lib from '../wt/packages/classy-store/src/index';
+import {persist} from '../wt/packages/classy-store/src/utils/index';
+import {
+  createProxy,
+  isChanged,
+} from '../wt/packages/classy-store/src/storeRuntime';
+import {SnapshotTargetCache} from '../wt/packages/classy-store/src/frameworks/react/utils/snapshotTargetCache/snapshotTargetCache';
+import {TrackedProxyCache} from '../wt/packages/classy-store/src/frameworks/react/utils/trackedProxyCache/trackedProxyCache';
+import {withHistory} from '../wt/packages/classy-store/src/utils/index';
+
+const {createClassyStore, snapshot} = lib;
+const show = (label: string, run: () => unknown) => {
+  let text: string;
+  try {
+    const v = run();
+    text = typeof v === 'string' ? v : JSON.stringify(v);
+  } catch (e) {
+    text = `threw ${(e as Error).name}: ${(e as Error).message}`;
+  }
+  console.log(`${label.padEnd(58)} ${text}`);
+};
+const flush = () => new Promise((r) => setTimeout(r, 0));
+const memory = () => {
+  const data = new Map<string, string>();
+  return {
+    data,
+    getItem: (k: string) => data.get(k) ?? null,
+    setItem: (k: string, v: string) => void data.set(k, v),
+    removeItem: (k: string) => void data.delete(k),
+  };
+};
+
+console.log('## persist with no properties: what is saved');
+class Base {
+  id = 1;
+  get label() {
+    return `#${this.id}`;
+  }
+}
+class Cart extends Base {
+  items: number[] = [1, 2];
+  _note = 'n';
+  get total() {
+    return this.items.length;
+  }
+  set note(v: string) {
+    this._note = v;
+  }
+  add() {
+    this.items.push(0);
+  }
+}
+for (const [label, make] of [
+  ['class with getters, an inherited getter, a setter only', () => new Cart()],
+  [
+    'object literal with a getter',
+    () => ({
+      count: 2,
+      get double() {
+        return this.count * 2;
+      },
+    }),
+  ],
+] as const) {
+  const storage = memory();
+  const store = createClassyStore(make() as object);
+  persist(store, {name: 'k', storage});
+  (store as {id?: number; count?: number}).id !== undefined
+    ? ((store as {id: number}).id = 2)
+    : ((store as {count: number}).count = 3);
+  await flush();
+  await flush();
+  show(label, () => storage.data.get('k'));
+  show('  Object.keys(snapshot)', () => Object.keys(snapshot(store)));
+}
+
+console.log('\n## the base class of spike-classes C1');
+const ClassyStore =
+  (lib as {ClassyStore?: new () => object}).ClassyStore ??
+  (function (this: object) {
+    return createClassyStore(this);
+  } as unknown as new () => object);
+show('ClassyStore exported by this build', () =>
+  'ClassyStore' in lib ? 'yes' : 'no, a local copy',
+);
+class Todos extends ClassyStore {
+  items: string[] = ['a'];
+  filter = 'all';
+  add = (text: string) => {
+    this.items.push(text);
+  };
+  get count() {
+    return this.items.length;
+  }
+  get self() {
+    return this;
+  }
+}
+class Pinned extends Todos {
+  get first() {
+    return this.items[0];
+  }
+}
+const todos = new Pinned();
+const s1 = snapshot(todos);
+show('Object.keys(snapshot)', () => Object.keys(s1));
+show('JSON.stringify(snapshot)', () => JSON.stringify(s1));
+show('instanceof Pinned, Todos, ClassyStore', () => [
+  s1 instanceof Pinned,
+  s1 instanceof Todos,
+  s1 instanceof ClassyStore,
+]);
+show('constructor === Pinned', () => s1.constructor === Pinned);
+show(
+  'getPrototypeOf(snapshot) === Pinned.prototype',
+  () => Object.getPrototypeOf(s1) === Pinned.prototype,
+);
+show('count, first', () => [s1.count, s1.first]);
+show('a getter returning this: is the snapshot', () => s1.self === s1);
+show('add is a function on the snapshot (own field)', () => typeof s1.add);
+todos.add('b');
+const s2 = snapshot(todos);
+show('after add(): count, first, items shared?', () => [
+  s2.count,
+  s2.first,
+  s1.items === s2.items,
+]);
+show('old snapshot unchanged', () => s1.count);
+todos.filter = 'done';
+const s3 = snapshot(todos);
+show(
+  'after a filter write: items shared with previous',
+  () => s3.items === s2.items,
+);
+show('count cached across that write (same value)', () => s3.count);
+
+// Tracked read as the React hook does it.
+const targets = new SnapshotTargetCache();
+const affected = new WeakMap<object, unknown>();
+const tracked = createProxy(
+  s3,
+  affected,
+  new TrackedProxyCache(),
+  targets,
+) as Pinned;
+show('tracked: count read through proxy-compare', () => tracked.count);
+todos.filter = 'all';
+show('tracked: changed after a write to filter only', () =>
+  isChanged(s3, snapshot(todos), affected),
+);
+todos.items.push('c');
+show('tracked: changed after a write to items', () =>
+  isChanged(s3, snapshot(todos), affected),
+);
+
+const history = withHistory(todos);
+todos.filter = 'x';
+await flush();
+history.undo();
+const s4 = snapshot(todos);
+show('after undo: filter, count, prototype chain depth to Pinned', () => {
+  let depth = 0;
+  let p = Object.getPrototypeOf(s4);
+  while (p && p !== Pinned.prototype) {
+    depth++;
+    p = Object.getPrototypeOf(p);
+  }
+  return [s4.filter, s4.count, depth];
+});
+```
+
+### `n5.ts`
+
+N5: what subscribeKey hands its callback.
+
+```ts
+// N5: what subscribeKey hands its callback, for each kind of value under the
+// key. Run on the unmodified worktree and on the spike, and diff the output.
+import {
+  createClassyStore,
+  snapshot,
+} from '../wt/packages/classy-store/src/index';
+import {reactiveMap} from '../wt/packages/classy-store/src/collections/index';
+import {subscribeKey} from '../wt/packages/classy-store/src/utils/index';
+
+class Model {
+  count = 0;
+  user = {name: 'a', tags: ['x']};
+  list = [1, 2];
+  when = new Date(0);
+  frozen = Object.freeze({k: 1});
+  map = reactiveMap<string, {n: number}>([['a', {n: 1}]]);
+  other = 0;
+  missing?: number;
+  get double() {
+    return this.count * 2;
+  }
+  get userView() {
+    return this.user;
+  }
+  bump() {
+    this.count++;
+  }
+}
+
+const describe = (v: unknown, store: Model) => {
+  if (typeof v !== 'object' || v === null)
+    return JSON.stringify(v) ?? String(v);
+  const snap = snapshot(store) as unknown as Record<string, unknown>;
+  const where = Object.keys(snap).find((k) => snap[k] === v);
+  return `${Object.isFrozen(v) ? 'frozen' : 'live'} ${JSON.stringify(v)}${where ? ` (=== snapshot.${where})` : ''}`;
+};
+
+for (const sync of [true, false]) {
+  console.log(`\n## sync: ${sync}`);
+  const store = createClassyStore(new Model());
+  const log: string[] = [];
+  for (const key of [
+    'count',
+    'user',
+    'list',
+    'when',
+    'frozen',
+    'map',
+    'missing',
+    'double',
+    'userView',
+    'bump',
+  ] as const) {
+    subscribeKey(
+      store,
+      key,
+      (value, previous) =>
+        log.push(
+          `${key}: ${describe(value, store)} <- ${describe(previous, store)}`,
+        ),
+      {sync},
+    );
+  }
+  const steps: Array<[string, () => void]> = [
+    ['count++', () => store.count++],
+    ['other++ (unrelated)', () => store.other++],
+    ['user.name = b', () => (store.user.name = 'b')],
+    ['user.tags.push(y)', () => store.user.tags.push('y')],
+    ['user = same object', () => (store.user = store.user)],
+    [
+      'user = new equal object',
+      () => (store.user = {name: 'b', tags: ['x', 'y']}),
+    ],
+    ['list[0] = 9', () => (store.list[0] = 9)],
+    ['when = new Date(1)', () => (store.when = new Date(1))],
+    ['frozen = new frozen', () => (store.frozen = Object.freeze({k: 2}))],
+    ['map.get(a).n++', () => store.map.get('a')!.n++],
+    ['map.set(b)', () => store.map.set('b', {n: 2})],
+    ['missing = 1', () => (store.missing = 1)],
+    ['delete missing', () => delete store.missing],
+    ['bump()', () => store.bump()],
+  ];
+  for (const [label, run] of steps) {
+    log.length = 0;
+    run();
+    if (!sync) await new Promise((r) => setTimeout(r, 0));
+    console.log(`${label.padEnd(26)} ${log.join(' | ') || '(none)'}`);
+  }
+}
+```
+
+### `probe-freeze.mjs`
+
+N1: the cost of copying and freezing a 1,000-element array.
+
+```js
+// What a copy and a freeze of a 1,000-element array of frozen objects costs.
+const prev = Object.freeze(
+  Array.from({length: 1000}, (_, id) => Object.freeze({id})),
+);
+const t = (label, f) => {
+  for (let w = 0; w < 2000; w++) f();
+  const n = 20000;
+  const s = performance.now();
+  for (let i = 0; i < n; i++) f();
+  console.log(
+    label.padEnd(40),
+    (((performance.now() - s) * 1e6) / n).toFixed(0),
+    'ns',
+  );
+};
+t('slice', () => prev.slice());
+t('slice + freeze', () => Object.freeze(prev.slice()));
+t('slice + set one + freeze', () => {
+  const a = prev.slice();
+  a[5] = {id: 5};
+  return Object.freeze(a);
+});
+t('loop copy + freeze', () => {
+  const a = new Array(prev.length);
+  for (let i = 0; i < prev.length; i++) a[i] = prev[i];
+  return Object.freeze(a);
+});
+const ws = new WeakSet();
+t('slice + freeze + WeakSet add', () => {
+  const a = Object.freeze(prev.slice());
+  ws.add(a);
+  return a;
+});
+```
+
+### `n1-changed-keys.patch`
+
+N1, the first agent's patch, as found in the worktree. Applies to the unmodified commit.
+
+```diff
+diff --git a/packages/classy-store/src/core/core.ts b/packages/classy-store/src/core/core.ts
+index 252b9f1..68202a3 100644
+--- a/packages/classy-store/src/core/core.ts
++++ b/packages/classy-store/src/core/core.ts
+@@ -218,8 +218,12 @@ export function getInternal(proxy: object): StoreInternal {
+  * Version propagation is what enables structural sharing in snapshots: unchanged
+  * children keep their old version, so the snapshot cache returns the same frozen ref.
+  */
+-function notifyMutation(internal: StoreInternal): void {
++function notifyMutation(internal: StoreInternal, key?: string | symbol): void {
+   const owners = internal.ancestors();
++  // An array element that was replaced is one changed key. Any other direct
++  // write may add, remove or move keys, so the next snapshot rebuilds the node.
++  if (key === undefined) internal.changed = true;
++  else internal.mark(key);
+   // Invalidate every path before any synchronous subscriber reads a snapshot.
+   for (const node of owners) node.version++;
+   if (transactionDepth) {
+@@ -418,8 +422,9 @@ function createNode(target: object, pending?: StoreInternal[]): StoreInternal {
+       }
+       const oldValue = Reflect.get(_target, prop);
+       const previousChild = internal.childInternals.get(prop);
++      const had = Object.hasOwn(_target, prop);
+       if (
+-        Object.hasOwn(_target, prop) &&
++        had &&
+         (Object.is(oldValue, value) ||
+           (previousChild &&
+             (previousChild.proxy === value || previousChild.target === value)))
+@@ -454,7 +459,10 @@ function createNode(target: object, pending?: StoreInternal[]): StoreInternal {
+       // Drop any cached bound method — the previous binding is dead now.
+       boundMethods.delete(prop);
+ 
+-      notifyMutation(internal);
++      notifyMutation(
++        internal,
++        had && Array.isArray(_target) ? prop : undefined,
++      );
+       return written;
+     },
+ 
+diff --git a/packages/classy-store/src/core/ownership.ts b/packages/classy-store/src/core/ownership.ts
+index 69843a3..fef9f6e 100644
+--- a/packages/classy-store/src/core/ownership.ts
++++ b/packages/classy-store/src/core/ownership.ts
+@@ -1,6 +1,9 @@
+ import type {ComputedEntry} from './core.types';
+ 
+ type ParentReference = {deref(): StoreInternal | undefined};
++type Key = string | symbol;
++/** The key, or the keys, under which one owner holds a child. */
++type Keys = Key | Set<Key>;
+ 
+ /** One canonical node per raw object. Each property owns one edge to a child. */
+ export class StoreInternal {
+@@ -12,7 +15,13 @@ export class StoreInternal {
+   readonly syncListeners = new Set<() => void>();
+   readonly computedCache = new Map<string | symbol, ComputedEntry>();
+   readonly childInternals = new Map<string | symbol, StoreInternal>();
+-  readonly parents = new Map<ParentReference, number>();
++  readonly parents = new Map<ParentReference, Keys>();
++  /**
++   * What changed in this node since its last snapshot: nothing, one key,
++   * several keys, or `true` for "rebuild all of it". A node that was written
++   * directly, or has no snapshot yet, is `true`.
++   */
++  changed: Keys | true | undefined = true;
+   readonly reference: ParentReference =
+     typeof WeakRef === 'function' ? new WeakRef(this) : {deref: () => this};
+   private parentCleanup?: FinalizationRegistry<ParentReference>;
+@@ -31,7 +40,7 @@ export class StoreInternal {
+     if (this.childInternals.get(key) === child) return;
+     this.detach(key);
+     this.childInternals.set(key, child);
+-    this.connect(child);
++    this.connect(child, key);
+     child.resume();
+   }
+ 
+@@ -39,18 +48,43 @@ export class StoreInternal {
+     const child = this.childInternals.get(key);
+     if (!child) return;
+     this.childInternals.delete(key);
+-    this.disconnect(child);
++    this.disconnect(child, key);
+     child.suspendIfDetached();
+   }
+ 
+-  private connect(child: StoreInternal): void {
++  private connect(child: StoreInternal, key: Key): void {
+     child.detachedParent = undefined;
+-    const count = child.parents.get(this.reference) ?? 0;
+-    if (!count) {
++    const keys = child.parents.get(this.reference);
++    if (keys === undefined) {
+       child.trackSharedParents();
+       child.parentCleanup?.register(this, this.reference, this.reference);
++      child.parents.set(this.reference, key);
++    } else if (typeof keys === 'object') {
++      keys.add(key);
++    } else {
++      child.parents.set(this.reference, new Set([keys, key]));
+     }
+-    child.parents.set(this.reference, count + 1);
++  }
++
++  /** Record that the children under these keys changed. */
++  mark(keys: Keys): void {
++    const changed = this.changed;
++    if (changed === true || changed === keys) return;
++    if (changed === undefined && typeof keys !== 'object') {
++      // One key is the usual case, and it needs no set.
++      this.changed = keys;
++      return;
++    }
++    let set: Set<Key>;
++    if (typeof changed === 'object') {
++      set = changed;
++    } else {
++      set = new Set();
++      if (changed !== undefined) set.add(changed);
++      this.changed = set;
++    }
++    if (typeof keys === 'object') for (const key of keys) set.add(key);
++    else set.add(keys);
+   }
+ 
+   // A single-owner node has at most one stale reference. Start collecting
+@@ -75,11 +109,11 @@ export class StoreInternal {
+     }
+   }
+ 
+-  private disconnect(child: StoreInternal): void {
+-    const count = child.parents.get(this.reference);
+-    if (count === undefined) return;
+-    if (count > 1) {
+-      child.parents.set(this.reference, count - 1);
++  private disconnect(child: StoreInternal, key: Key): void {
++    const keys = child.parents.get(this.reference);
++    if (keys === undefined) return;
++    if (typeof keys === 'object' && keys.size > 1) {
++      keys.delete(key);
+       return;
+     }
+     child.parents.delete(this.reference);
+@@ -102,9 +136,9 @@ export class StoreInternal {
+     for (const node of pending) {
+       const versions = new Map<StoreInternal, number>();
+       node.detachedVersions = versions;
+-      for (const child of node.childInternals.values()) {
++      for (const [key, child] of node.childInternals) {
+         versions.set(child, child.version);
+-        node.disconnect(child);
++        node.disconnect(child, key);
+         if (child.canSuspend()) {
+           child.detachedParent = node.reference;
+           pending.push(child);
+@@ -129,14 +163,17 @@ export class StoreInternal {
+         for (const [child, previous] of versions) {
+           if (child.version !== previous) {
+             node.version++;
++            // Which children changed while this node was cut off is not
++            // recorded: its next snapshot visits them all.
++            node.changed = true;
+             break;
+           }
+         }
+       } else if (node.detachedVersions) {
+         pending.push({node, versions: node.detachedVersions});
+         node.detachedVersions = undefined;
+-        for (const child of node.childInternals.values()) {
+-          node.connect(child);
++        for (const [key, child] of node.childInternals) {
++          node.connect(child, key);
+           if (child.detachedVersions) pending.push({node: child});
+         }
+       }
+@@ -155,14 +192,21 @@ export class StoreInternal {
+     scope.resume();
+   }
+ 
+-  /** This node and every container that currently owns it, up to each root. */
++  /**
++   * This node and every container that currently owns it, up to each root.
++   * Each owner is told under which key its child changed.
++   */
+   ancestors(): Set<StoreInternal> {
+     const visited = new Set<StoreInternal>([this]);
+     for (const node of visited) {
+-      for (const reference of node.parents.keys()) {
++      for (const [reference, keys] of node.parents) {
+         const parent = reference.deref();
+-        if (parent) visited.add(parent);
+-        else node.parents.delete(reference);
++        if (parent) {
++          visited.add(parent);
++          parent.mark(keys);
++        } else {
++          node.parents.delete(reference);
++        }
+       }
+     }
+     return visited;
+diff --git a/packages/classy-store/src/snapshot/snapshot.ts b/packages/classy-store/src/snapshot/snapshot.ts
+index afd3c51..1095a84 100644
+--- a/packages/classy-store/src/snapshot/snapshot.ts
++++ b/packages/classy-store/src/snapshot/snapshot.ts
+@@ -2,7 +2,7 @@ import {markToTrack} from 'proxy-compare';
+ import {getInternal, registerSnapshot} from '../core/core';
+ import type {StoreInternal} from '../core/ownership';
+ import type {Snapshot} from '../types';
+-import {mapOwnArrayElements} from '../utils/internal/internal';
++import {getArrayIndex, mapOwnArrayElements} from '../utils/internal/internal';
+ 
+ // ── Caches ────────────────────────────────────────────────────────────────────
+ 
+@@ -253,12 +253,41 @@ function createSnapshotRecursive<T extends object>(
+   let snap: Record<string | symbol, unknown> | unknown[];
+ 
+   if (Array.isArray(target)) {
+-    // Only objects can be child nodes; primitives need no key lookup.
+-    snap = mapOwnArrayElements(target, (value, index) =>
+-      typeof value === 'object' && value !== null
+-        ? snapshotValue(value, internal, String(index), inProgress)
+-        : value,
+-    );
++    const changed = internal.changed;
++    const previous = cached?.[1] as unknown[] | undefined;
++    const count =
++      typeof changed === 'object' ? changed.size : changed === true ? -1 : 1;
++    if (
++      previous &&
++      changed !== undefined &&
++      count >= 0 &&
++      previous.length === target.length &&
++      count * 2 <= target.length
++    ) {
++      // Few elements changed and none was added, removed or moved: copy the
++      // previous snapshot and visit only what changed.
++      const elements = mapOwnArrayElements(previous, (value) => value);
++      const refresh = (key: string | symbol): void => {
++        const index = getArrayIndex(key);
++        // A named property of an array is not part of its snapshot.
++        if (index === undefined || index >= elements.length) return;
++        const value = target[index];
++        elements[index] =
++          typeof value === 'object' && value !== null
++            ? snapshotValue(value, internal, key, inProgress)
++            : value;
++      };
++      if (typeof changed === 'object') changed.forEach(refresh);
++      else refresh(changed as string | symbol);
++      snap = elements;
++    } else {
++      // Only objects can be child nodes; primitives need no key lookup.
++      snap = mapOwnArrayElements(target, (value, index) =>
++        typeof value === 'object' && value !== null
++          ? snapshotValue(value, internal, String(index), inProgress)
++          : value,
++      );
++    }
+   } else {
+     // Preserve the prototype chain and install memoized getters on the snapshot.
+     snap = Object.create(Object.getPrototypeOf(target));
+@@ -283,6 +312,7 @@ function createSnapshotRecursive<T extends object>(
+   registerSnapshot(snap, target);
+   // Cache AFTER populating + freezing. The reference is stable.
+   snapshotCache.set(target, [internal.version, snap]);
++  internal.changed = undefined;
+   inProgress.delete(target);
+   return snap as T;
+ }
+```
+
+### `n1-fuzz.ts`
+
+N1, the first agent's differential check. Run from the worktree root: `bun <scratch>/stage-3-spike-snapshots/repro/n1-fuzz.ts 300`.
+
+```ts
+// N1: a differential check of the incremental array rebuild. After every
+// random operation the snapshot must equal the live state, read through the
+// store, and every row that was not touched must keep its snapshot object.
+// Usage: bun n1-fuzz.ts [seeds] [operations per seed]
+import {
+  createClassyStore,
+  snapshot,
+  subscribe,
+} from '../wt/packages/classy-store/src/index';
+
+function random(seed: number) {
+  let state = seed >>> 0;
+  return () => {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let t = state;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+type Row = {id: number; value: number; tags: string[]; inner: {n: number}};
+type State = {
+  rows: Row[];
+  other: Row[];
+  grid: number[][];
+  holder: {list?: Row[]};
+  count: number;
+};
+
+/** A plain copy of what the store holds now, read through its proxies. */
+function plain(value: unknown, seen = new Map<object, unknown>()): unknown {
+  if (typeof value !== 'object' || value === null) return value;
+  const hit = seen.get(value);
+  if (hit) return hit;
+  if (Array.isArray(value)) {
+    const copy: unknown[] = new Array(value.length);
+    seen.set(value, copy);
+    for (const key of Object.keys(value)) {
+      const index = Number(key);
+      if (Number.isInteger(index) && String(index) === key)
+        copy[index] = plain(value[index], seen);
+    }
+    return copy;
+  }
+  const copy: Record<string, unknown> = {};
+  seen.set(value, copy);
+  for (const key of Object.keys(value))
+    copy[key] = plain((value as Record<string, unknown>)[key], seen);
+  return copy;
+}
+
+function same(a: unknown, b: unknown, path: string): string | undefined {
+  if (
+    typeof a !== 'object' ||
+    a === null ||
+    typeof b !== 'object' ||
+    b === null
+  ) {
+    return Object.is(a, b)
+      ? undefined
+      : `${path}: ${String(a)} against ${String(b)}`;
+  }
+  if (Array.isArray(a) !== Array.isArray(b))
+    return `${path}: array against object`;
+  if (Array.isArray(a) && Array.isArray(b)) {
+    if (a.length !== b.length)
+      return `${path}: length ${a.length} against ${b.length}`;
+    for (let i = 0; i < a.length; i++) {
+      if (i in a !== i in b) return `${path}[${i}]: hole on one side`;
+      const diff = same(a[i], b[i], `${path}[${i}]`);
+      if (diff) return diff;
+    }
+    return undefined;
+  }
+  const keysA = Object.keys(a);
+  const keysB = Object.keys(b);
+  if (keysA.join() !== keysB.join())
+    return `${path}: keys ${keysA} against ${keysB}`;
+  for (const key of keysA) {
+    const diff = same(
+      (a as Record<string, unknown>)[key],
+      (b as Record<string, unknown>)[key],
+      `${path}.${key}`,
+    );
+    if (diff) return diff;
+  }
+  return undefined;
+}
+
+const seeds = Number(process.argv[2] ?? 300);
+const steps = Number(process.argv[3] ?? 400);
+let checks = 0;
+let incremental = 0;
+let failures = 0;
+const counts: Record<string, number> = {};
+
+for (let seed = 1; seed <= seeds && failures < 5; seed++) {
+  const next = random(seed);
+  const pick = (n: number) => Math.floor(next() * n);
+  let ids = 0;
+  const row = (): Row => ({
+    id: ids++,
+    value: pick(100),
+    tags: ['a'],
+    inner: {n: 0},
+  });
+  const size = 2 + pick(40);
+  const store = createClassyStore<State>({
+    rows: Array.from({length: size}, row),
+    other: [],
+    grid: [
+      [1, 2, 3],
+      [4, 5, 6],
+    ],
+    holder: {},
+    count: 0,
+  });
+  if (next() < 0.5) subscribe(store, () => {}, {sync: true});
+  // Rows kept by the test after they left the store, to write to later.
+  const kept: Row[] = [];
+  let previous = snapshot(store);
+
+  for (let step = 0; step < steps; step++) {
+    const rows = store.rows;
+    const at = rows.length ? pick(rows.length) : 0;
+    const touched = new Set<unknown>();
+    const op = pick(24);
+    const name = [
+      'field',
+      'field',
+      'field',
+      'nested',
+      'tag push',
+      'replace',
+      'push',
+      'pop',
+      'splice',
+      'sort',
+      'reverse',
+      'length',
+      'delete index',
+      'hole write',
+      'share',
+      'unshare',
+      'move list',
+      'write kept',
+      'grid',
+      'named',
+      'swap',
+      'same value',
+      'count',
+      'two fields',
+    ][op];
+    counts[name] = (counts[name] ?? 0) + 1;
+    let structural = false;
+    switch (name) {
+      case 'field':
+        if (rows[at]) rows[at].value = pick(1000) + 1000;
+        break;
+      case 'nested':
+        if (rows[at]) rows[at].inner.n++;
+        break;
+      case 'tag push':
+        if (rows[at]) rows[at].tags.push('t');
+        break;
+      case 'replace':
+        if (rows.length) rows[at] = row();
+        break;
+      case 'push':
+        rows.push(row());
+        structural = true;
+        break;
+      case 'pop': {
+        const gone = rows.pop();
+        if (gone && next() < 0.5) kept.push(gone);
+        structural = true;
+        break;
+      }
+      case 'splice':
+        rows.splice(at, pick(3), ...(next() < 0.5 ? [row()] : []));
+        structural = true;
+        break;
+      case 'sort':
+        rows.sort((a, b) => (a?.value ?? 0) - (b?.value ?? 0));
+        structural = true;
+        break;
+      case 'reverse':
+        rows.reverse();
+        structural = true;
+        break;
+      case 'length':
+        rows.length = Math.max(0, rows.length + pick(5) - 2);
+        structural = true;
+        break;
+      case 'delete index':
+        if (rows.length) delete rows[at];
+        structural = true;
+        break;
+      case 'hole write':
+        rows[rows.length + pick(3)] = row();
+        structural = true;
+        break;
+      case 'share':
+        if (rows[at]) store.other.push(rows[at]);
+        break;
+      case 'unshare':
+        store.other.pop();
+        break;
+      case 'move list':
+        if (next() < 0.5) store.holder.list = store.rows;
+        else delete store.holder.list;
+        break;
+      case 'write kept':
+        if (kept.length) kept[pick(kept.length)].value++;
+        break;
+      case 'grid':
+        store.grid[pick(2)][pick(3)] = pick(50);
+        break;
+      case 'named':
+        (rows as unknown as Record<string, unknown>).label = pick(9);
+        break;
+      case 'swap':
+        if (rows.length > 1) {
+          const j = pick(rows.length);
+          const t = rows[at];
+          rows[at] = rows[j];
+          rows[j] = t;
+        }
+        break;
+      case 'same value':
+        if (rows[at]) rows[at].value = rows[at].value;
+        break;
+      case 'count':
+        store.count++;
+        break;
+      case 'two fields': {
+        const a = rows[at];
+        const b = rows[(at + 1) % (rows.length || 1)];
+        if (a && b) {
+          a.value += 2000;
+          b.inner.n += 5;
+        }
+        break;
+      }
+    }
+    void touched;
+    void structural;
+    const snap = snapshot(store);
+    checks++;
+    const diff = same(snap, plain(store), 'snapshot');
+    if (diff) {
+      failures++;
+      console.log(`seed ${seed} step ${step} (${name}): ${diff}`);
+      break;
+    }
+    // Sharing: a row that reads the same as before must be the same object,
+    // unless the list itself was restructured around it.
+    if (snap.rows.length === previous.rows.length) {
+      for (let i = 0; i < snap.rows.length; i++) {
+        const now = snap.rows[i];
+        const before = previous.rows[i];
+        if (
+          now !== before &&
+          typeof now === 'object' &&
+          typeof before === 'object' &&
+          now &&
+          before
+        ) {
+          if (
+            !same(now, before, 'row') &&
+            now.id === before.id &&
+            name !== 'replace' &&
+            name !== 'swap' &&
+            name !== 'same value'
+          ) {
+            // equal content at the same index but a new object: sharing was lost
+            if (
+              ![
+                'splice',
+                'sort',
+                'reverse',
+                'length',
+                'hole write',
+                'delete index',
+                'pop',
+                'push',
+              ].includes(name)
+            ) {
+              failures++;
+              console.log(
+                `seed ${seed} step ${step} (${name}): row ${i} lost its snapshot identity`,
+              );
+            }
+          }
+        }
+      }
+    }
+    if (
+      snap.rows !== previous.rows &&
+      snap.rows.length === previous.rows.length
+    )
+      incremental++;
+    if (!Object.isFrozen(snap.rows) || !Object.isFrozen(snap)) {
+      failures++;
+      console.log(`seed ${seed} step ${step}: not frozen`);
+    }
+    previous = snap;
+  }
+}
+console.log(
+  `${seeds} seeds, ${checks} snapshots compared with the live state, ${failures} failures`,
+);
+console.log(`rows array rebuilt at the same length: ${incremental} times`);
+console.log(
+  `operations: ${Object.entries(counts)
+    .map(([k, v]) => `${k} ${v}`)
+    .join(', ')}`,
+);
+```
+
+### `repro/n1-fuzz.ts` on N1, my run
+
+N1.
+
+```text
+300 seeds, 120000 snapshots compared with the live state, 0 failures
+rows array rebuilt at the same length: 50780 times
+operations: grid 5008, two fields 5128, nested 5035, hole write 5115, share 4954, replace 5057, sort 5014, move list 4931, count 5056, field 14925, same value 5017, unshare 5040, delete index 4951, named 4928, swap 5066, write kept 4929, tag push 4953, pop 4972, splice 5001, push 5052, length 4921, reverse 4947
+```
+
+### Combination benchmarks, today against the combination
+
+`repro/bench-n2.mjs` and `repro/bench-snap.mjs` through `compare.mjs`, then `runCoreBenchmark.mjs`, on Bun 1.4.5 and Node 24.21.0.
+
+```text
+== bench-n2 bun
+| Case | base | combo |
+| --- | ---: | ---: |
+| class, 0 getters: write, snapshot | 722.4 (median 724.2) | 477.6 (median 481.1) |
+| class, 8 getters: write, snapshot | 1875.8 (median 1889.4) | 492.6 (median 496.7) |
+| class, 8 getters: write, snapshot, read one getter | 2196.7 (median 2201.7) | 771.9 (median 774.9) |
+| class, 8 getters: write, snapshot, read all eight | 2948.5 (median 2968.4) | 1556.1 (median 1562.5) |
+| cached getter read on one snapshot | 13.5 (median 13.6) | 2.9 (median 2.9) |
+| object literal, 2 own getters: write, snapshot | 938.1 (median 980.3) | 693.3 (median 711.3) |
+| 1,000 rows of a class with 8 getters: first snapshot, per row | 2716.3 (median 2901.5) | 1130.4 (median 1179.9) |
+| 1,000 rows of a class with 0 getters: first snapshot, per row | 1361.5 (median 1413) | 886.5 (median 1142.3) |
+== bench-snap bun
+| Case | base | combo |
+| --- | ---: | ---: |
+| rows 1,000: write one row, snapshot | 114489 (median 116250) | 114527 (median 114605) |
+| rows 10,000: write one row, snapshot | 2231005 (median 2342229) | 2172117 (median 2195776) |
+| rows 100: write one row, snapshot | 10876 (median 11068) | 10706 (median 10785) |
+| rows 1,000: write 10 rows, snapshot | 124435 (median 127072) | 121520 (median 122078) |
+| rows 1,000: write 100 rows, snapshot | 215673 (median 269026) | 190637 (median 201027) |
+| rows 1,000: replace one row, snapshot | 106637 (median 111040) | 106845 (median 110942) |
+| rows 1,000: push and pop, snapshot | 131824 (median 138005) | 128982 (median 129603) |
+| record of 1,000 keys: write one, snapshot | 182921 (median 182984) | 121742 (median 121885) |
+| reactiveMap of 1,000: change one value, snapshot | 120063 (median 121733) | 117708 (median 120159) |
+| cached snapshot | 13.4 (median 19.3) | 10.9 (median 12.6) |
+| rows 1,000: create a store and take its first snapshot | 1302195 (median 1342180) | 743771 (median 1077143) |
+| write a root field, no snapshot | 201 (median 220) | 176 (median 180) |
+| write one of 1,000 rows, no snapshot | 381 (median 403) | 361 (median 370) |
+| write a field three objects deep, no snapshot | 366 (median 371) | 373 (median 396) |
+| push and pop on 1,000 rows, no snapshot | 22361 (median 22382) | 22274 (median 22511) |
+| A1: 2,000 direct row writes, sync subscriber that snapshots (whole loop) | 633139583 (median 647172292) | 625522292 (median 628462833) |
+| A1 inside batch() (whole loop) | 2168615 (median 2249953) | 1796828 (median 1913396) |
+| subscribeKey(count, sync) beside 1,000 rows: write one row | 112970 (median 113664) | 453 (median 585) |
+| subscribeKey(rows, sync) beside 1,000 rows: write one row | 115903 (median 117147) | 112557 (median 113259) |
+| subscribeKey(count, sync): write count | 509 (median 738) | 272 (median 331) |
+| plain sync subscriber beside 1,000 rows: write one row | 399 (median 422) | 386 (median 451) |
+== bench-n2 node
+| Case | base | combo |
+| --- | ---: | ---: |
+| class, 0 getters: write, snapshot | 1740.7 (median 1743.7) | 1283.7 (median 1284) |
+| class, 8 getters: write, snapshot | 5609.9 (median 5993.2) | 1277.1 (median 1279.9) |
+| class, 8 getters: write, snapshot, read one getter | 6236.4 (median 6499.8) | 1694.2 (median 1713.4) |
+| class, 8 getters: write, snapshot, read all eight | 7763.1 (median 7789.5) | 2849.3 (median 2869.5) |
+| cached getter read on one snapshot | 22.7 (median 23.1) | 17.7 (median 17.9) |
+| object literal, 2 own getters: write, snapshot | 2427.1 (median 2457.4) | 2060.1 (median 2158.3) |
+| 1,000 rows of a class with 8 getters: first snapshot, per row | 6584 (median 6962.7) | 2577.3 (median 2587.3) |
+| 1,000 rows of a class with 0 getters: first snapshot, per row | 3181 (median 3280.7) | 2609.5 (median 2658.3) |
+== bench-snap node
+| Case | base | combo |
+| --- | ---: | ---: |
+| rows 1,000: write one row, snapshot | 52633 (median 53111) | 52618 (median 52700) |
+| rows 10,000: write one row, snapshot | 597095 (median 611203) | 602467 (median 607066) |
+| rows 100: write one row, snapshot | 8092 (median 8405) | 8296 (median 8696) |
+| rows 1,000: write 10 rows, snapshot | 70786 (median 71765) | 73218 (median 83665) |
+| rows 1,000: write 100 rows, snapshot | 267885 (median 269322) | 234736 (median 259154) |
+| rows 1,000: replace one row, snapshot | 54173 (median 54801) | 54618 (median 59452) |
+| rows 1,000: push and pop, snapshot | 75189 (median 75935) | 66088 (median 76844) |
+| record of 1,000 keys: write one, snapshot | 508258 (median 514603) | 390805 (median 399113) |
+| reactiveMap of 1,000: change one value, snapshot | 70772 (median 72622) | 58278 (median 62462) |
+| cached snapshot | 26.8 (median 26.9) | 29.6 (median 29.7) |
+| rows 1,000: create a store and take its first snapshot | 2443547 (median 2585109) | 2312391 (median 2556672) |
+| write a root field, no snapshot | 202 (median 203) | 202 (median 203) |
+| write one of 1,000 rows, no snapshot | 613 (median 622) | 615 (median 639) |
+| write a field three objects deep, no snapshot | 567 (median 578) | 570 (median 571) |
+| push and pop on 1,000 rows, no snapshot | 20812 (median 21323) | 20914 (median 21230) |
+| A1: 2,000 direct row writes, sync subscriber that snapshots (whole loop) | 206399375 (median 222215167) | 201611458 (median 269472792) |
+| A1 inside batch() (whole loop) | 4036703 (median 4119344) | 3444531 (median 3705969) |
+| subscribeKey(count, sync) beside 1,000 rows: write one row | 49408 (median 50746) | 783 (median 806) |
+| subscribeKey(rows, sync) beside 1,000 rows: write one row | 49571 (median 51343) | 47893 (median 56310) |
+| subscribeKey(count, sync): write count | 1359 (median 1362) | 372 (median 382) |
+| plain sync subscriber beside 1,000 rows: write one row | 660 (median 663) | 652 (median 665) |
+== core bun base
+| create.small | 1480 | 1358 | 1560 | 1431 | 3.4% | same |
+| create.rows | 590997 | 573490 | 596012 | 555739 | 6.3% | same |
+| subscribe | 43.2 | 41.7 | 43.6 | 42.4 | 1.9% | same |
+
+| Ratio | Median | Lowest | Highest | Baseline | Limit | |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| read: store.read / proxy.read | 15.6 | 12.3 | 15.8 | 14.3 | 20 | same |
+| write: store.write / proxy.write | 2.59 | 2.56 | 2.65 | 2.6 | 3.2 | same |
+| getter: getter.cached / proxy.read | 28.6 | 23.6 | 32.9 | 26.1 | 41 | same |
+| snapshot: snapshot.cached / proxy.read | 7.24 | 5.83 | 7.82 | 7.28 | 10 | same |
+
+== core bun combo
+| create.small | 1504 | 1475 | 1562 | 1431 | 5.1% | slower |
+| create.rows | 584920 | 580299 | 600572 | 555739 | 5.3% | same |
+| subscribe | 43.2 | 42.4 | 43.3 | 42.4 | 1.9% | same |
+
+| Ratio | Median | Lowest | Highest | Baseline | Limit | |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| read: store.read / proxy.read | 15.6 | 10.9 | 16.2 | 14.3 | 20 | same |
+| write: store.write / proxy.write | 2.58 | 2.57 | 2.62 | 2.6 | 3.2 | same |
+| getter: getter.cached / proxy.read | 28 | 19.5 | 36 | 26.1 | 41 | same |
+| snapshot: snapshot.cached / proxy.read | 4.9 | 3.42 | 5.03 | 7.28 | 10 | faster |
+
+== core node base
+| create.small | 5142 | 4001 | 5745 | 5063 | 1.6% | same |
+| create.rows | 1380255 | 1058717 | 1463155 | 1101774 | 25.3% | same |
+| subscribe | 55.1 | 54.5 | 55.9 | 53.7 | 2.6% | same |
+
+| Ratio | Median | Lowest | Highest | Baseline | Limit | |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| read: store.read / proxy.read | 2.02 | 1.95 | 2.04 | 2.04 | 2.5 | same |
+| write: store.write / proxy.write | 1.35 | 1.32 | 1.38 | 1.33 | 1.7 | same |
+| getter: getter.cached / proxy.read | 3.56 | 3.48 | 3.57 | 3.65 | 5.3 | faster |
+| snapshot: snapshot.cached / proxy.read | 1.36 | 1.24 | 1.37 | 1.36 | 1.8 | same |
+
+== core node combo
+| create.small | 5774 | 4003 | 6148 | 5063 | 14.0% | same |
+| create.rows | 1364779 | 1039360 | 1383531 | 1101774 | 23.9% | same |
+| subscribe | 56 | 55.6 | 57 | 53.7 | 4.3% | same |
+
+| Ratio | Median | Lowest | Highest | Baseline | Limit | |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| read: store.read / proxy.read | 2.01 | 2 | 2.04 | 2.04 | 2.5 | same |
+| write: store.write / proxy.write | 1.37 | 1.36 | 1.37 | 1.33 | 1.7 | same |
+| getter: getter.cached / proxy.read | 3.62 | 3.51 | 3.69 | 3.65 | 5.3 | same |
+| snapshot: snapshot.cached / proxy.read | 1.31 | 1.22 | 1.37 | 1.36 | 1.8 | same |
+
 ```
