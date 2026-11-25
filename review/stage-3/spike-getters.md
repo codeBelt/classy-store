@@ -23,13 +23,19 @@ cleared.
 
 Measured against the unmodified worktree:
 
-| Measure             | Today       | Combination                                                                                        |
-| ------------------- | ----------- | -------------------------------------------------------------------------------------------------- |
-| Lines               |             | 182 added, 144 removed, in `core.ts`, `core.types.ts` and `snapshot.ts`                            |
-| Tests               | 1,341 pass  | 1,325 pass, 16 fail. 15 pin a stage 1 finding the change removes. 1 pins behaviour nobody promised |
-| Typecheck           | passes      | passes                                                                                             |
-| Main entry, gzipped | 3,661 bytes | 3,826 bytes. The budget is 3,750, so it fails by 76                                                |
-| (being measured)    |
+| Measure             | Today                                             | Combination                                                                                                                                    |
+| ------------------- | ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| Lines               |                                                   | 182 added, 144 removed, in `core.ts`, `core.types.ts` and `snapshot.ts`                                                                        |
+| Tests               | 1,341 pass                                        | 1,325 pass, 16 fail. 15 pin a stage 1 finding the change removes. 1 pins behaviour nobody promised                                             |
+| Typecheck           | passes                                            | passes                                                                                                                                         |
+| Main entry, gzipped | 3,661 bytes                                       | 3,826 bytes. The budget is 3,750, so it fails by 76                                                                                            |
+| Cost ratios on Node | read 2.01, write 1.31, getter 3.63, snapshot 1.39 | read 2.04, write 1.38, getter 2.69, snapshot 1.38. All inside their limits (2.5, 1.7, 5.3, 1.8)                                                |
+| Cost ratios on Bun  | read 15.4, write 2.69, getter 35.3, snapshot 7.37 | read 14.3, write 2.68, getter 26.4, snapshot 6.97. All inside their limits (20, 3.2, 41, 10)                                                   |
+| Timings             |                                                   | On Node a cached getter read is 26 percent faster and a recompute 6 to 9 percent slower. On Bun both are inside the spread. Nothing else moves |
+
+The Node row and the Node timings were measured by the orchestrating agent on
+2026-11-24, after the agent that wrote this report was cut off. See appendix
+A.
 
 **The three results that matter most.**
 
@@ -841,7 +847,20 @@ a decision on the gap above. Risk low.
 
   Only the main entry fails its budget, by 76 bytes. Roughly: G3c 43, G5
   70, the dependency of G4 30, G7a 20.
-  (being measured)
+- **Timings,** appendix A. On Node, three runs of five processes each, the
+  unmodified build before and after the combination:
+  - `getter.cached` 60.7 nanoseconds against 81.7 and 83.6: 26 percent
+    faster. This is the stamp.
+  - `getter.recompute` 421 (411 to 431) against 386 (384 to 398) and 397
+    (393 to 403): 6 to 9 percent slower. The ranges do not touch.
+  - `getter.rows.recompute`, `store.write`, `snapshot.afterWrite` and every
+    read are inside the spread of the two base runs.
+  - The four ratios `CONSTRAINTS.md` limits: read 2.04, write 1.38, getter
+    2.69, snapshot 1.38, against limits of 2.5, 1.7, 5.3 and 1.8.
+
+  On Bun, five runs: `getter.cached` 56.9 against 74 and `getter.recompute`
+  550 against 482, both inside a wide spread. The four ratios are 14.3,
+  2.68, 26.4 and 6.97, against limits of 20, 3.2, 41 and 10.
 
 ### With the traps report
 
@@ -1049,6 +1068,51 @@ build before and after it.
 | write    | 1.38 (1.37 to 1.41) |
 | getter   |  3.58 (3.5 to 3.72) |
 | snapshot |  1.36 (1.35 to 1.5) |
+
+The agent was cut off by a usage limit before the combination's column of
+this table was run. The table below replaces it.
+
+### The combination on Node (V8), run again on 2026-11-24
+
+Run by the orchestrating agent in a fresh worktree at `57404c3`, with the
+combination patch of appendix E: `bun run benchmark:core:node` on the
+unmodified source, then with the patch applied, then on the unmodified source
+again. Each is five fresh processes. Node 24.21.0. Other agents were starting
+on the same machine during the third run.
+
+| Metric                  |                 Base, before |                  Combination |                  Base, after |
+| ----------------------- | ---------------------------: | ---------------------------: | ---------------------------: |
+| `raw.read`              |        0.513 (0.507 to 0.53) |        0.52 (0.508 to 0.526) |        0.529 (0.52 to 0.534) |
+| `proxy.read`            |          22.5 (22.3 to 22.8) |            22.6 (22.5 to 23) |            23 (22.7 to 23.1) |
+| `store.read`            |          45.3 (44.9 to 47.8) |          46.1 (45.5 to 48.6) |          46.5 (45.5 to 47.2) |
+| `store.read.nested`     |             136 (134 to 140) |             138 (137 to 142) |             141 (139 to 145) |
+| `snapshot.read`         |        0.457 (0.454 to 0.47) |        0.458 (0.456 to 0.47) |       0.466 (0.465 to 0.472) |
+| `raw.write`             |       0.444 (0.438 to 0.447) |        0.447 (0.438 to 0.45) |       0.452 (0.447 to 0.461) |
+| `proxy.write`           |             151 (148 to 217) |             151 (149 to 155) |             154 (151 to 190) |
+| `store.write`           |             197 (196 to 212) |             209 (200 to 213) |             207 (201 to 212) |
+| `store.write.same`      |          54.1 (53.6 to 57.9) |          57.1 (54.9 to 58.2) |          55.8 (54.6 to 57.4) |
+| `store.write.sync`      |             238 (235 to 259) |             251 (241 to 273) |             248 (239 to 259) |
+| `store.write.batched`   |             207 (204 to 215) |             212 (206 to 216) |             216 (210 to 239) |
+| `store.write.nested`    |             490 (482 to 496) |             494 (491 to 510) |             508 (498 to 511) |
+| `store.method`          |             281 (276 to 292) |             287 (282 to 293) |             292 (287 to 295) |
+| `store.batch10`         |          1613 (1593 to 1674) |          1646 (1632 to 1700) |          1687 (1649 to 1716) |
+| `array.pushPop`         |          3561 (3213 to 3729) |          3573 (3348 to 3909) |          3780 (3392 to 3916) |
+| `snapshot.cached`       |          31.8 (30.6 to 34.1) |          31.3 (28.9 to 31.5) |            32 (25.7 to 32.8) |
+| `snapshot.afterWrite`   |       59695 (57705 to 65768) |       64494 (62736 to 64952) |       66413 (65119 to 67215) |
+| `snapshot.first`        | 3385776 (2909609 to 3677546) | 3402948 (2887226 to 3685187) | 3506828 (3165321 to 3718622) |
+| `getter.cached`         |            81.7 (79 to 86.3) |            60.7 (60 to 61.1) |          83.6 (81.6 to 99.3) |
+| `getter.recompute`      |             386 (384 to 398) |             421 (411 to 431) |             397 (393 to 403) |
+| `getter.rows.recompute` |    251593 (251213 to 256281) |    262612 (257448 to 276581) |    259054 (255899 to 267777) |
+| `create.small`          |          5597 (5433 to 6228) |          5431 (4105 to 6254) |          5823 (4078 to 6949) |
+| `create.rows`           | 1223233 (1021633 to 1396560) | 1180483 (1029708 to 1294330) | 1224167 (1137388 to 1516637) |
+| `subscribe`             |          54.6 (53.7 to 55.2) |          56.2 (55.3 to 60.7) |          58.6 (55.1 to 59.4) |
+
+| Ratio    |         Base, before |         Combination |         Base, after | Limit |
+| -------- | -------------------: | ------------------: | ------------------: | ----: |
+| read     |     2.01 (2 to 2.09) | 2.04 (2.02 to 2.14) |    2.02 (2 to 2.04) |   2.5 |
+| write    | 1.31 (0.973 to 1.37) |  1.38 (1.33 to 1.4) | 1.33 (1.09 to 1.38) |   1.7 |
+| getter   |  3.63 (3.54 to 3.84) |  2.69 (2.62 to 2.7) | 3.66 (3.53 to 4.31) |   5.3 |
+| snapshot |  1.39 (1.36 to 1.52) | 1.38 (1.28 to 1.39) | 1.39 (1.13 to 1.45) |   1.8 |
 
 ## Appendix B: the extra measures, per spike
 

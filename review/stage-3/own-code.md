@@ -4,9 +4,12 @@ Stage 3 step 2 of the pre-1.0 review. Written on 2026-11-19 against
 `release/1.0` at `57404c3`. No library source was changed. Every deletion was
 made in a throwaway worktree, and every patch is in Appendix A of this file.
 
-**Status: in progress.** The work was interrupted once by a usage limit. What
-is below is complete for the single-deletion spikes of all three files (101
-spikes). The "Not done" list at the end says what is still open.
+**Status: complete for the brief.** The agent that wrote this was cut off
+by a usage limit on 2026-11-19 while it was writing the summary. The
+orchestrating agent finished the report on 2026-11-24. It ran two patches
+again in a fresh worktree (`r5` and `x2`, marked "run again" in Appendix A)
+and wrote the summary, the section on the combinations, the total and the
+"Not done" list from what this file already held.
 
 The three files reviewed:
 
@@ -19,19 +22,32 @@ The lists here were written before reading any stage 2 report. The section
 
 ## Summary
 
-Interim, to be rewritten when the open items are done:
-
-- Every function in the three files has a reason, and 101 deletions were run
-  to check them. Only **9 lines are dead** in the strict sense.
-- The larger result is that **several findings from stage 1 are caused by one
-  or two lines each**, and deleting those lines fails only the tests that pin
-  the finding: findings 5, 32, 36 and 71, and the suspension findings 61, 66,
-  67 and 68.
-- **Suspension can be removed as a whole** with 9 tests failing (`o16`). Five
-  pin findings 61 and 67, two pin the owner order of finding 69, one reads an
-  internal count, and one simulates a runtime without `WeakRef`. The full
-  deletion, its line count, its typecheck and its memory measurements are
-  still to be run (`x1`).
+- **Every function in the three files has a reason**, and 101 single
+  deletions were run against the unit suite to check each one.
+- **Ten lines are dead.** Removed in a form the type checker accepts, all
+  1,341 tests pass, the typecheck passes, and the main entry is 32 bytes
+  smaller (`r5`).
+- **Several stage 1 findings are caused by one or two lines each.** Deleting
+  those lines fails only the tests that pin the finding: findings 5, 32, 36
+  and 71, and the suspension findings 61, 66, 67 and 68.
+- **The walk to a detached parent can go, and suspension should stay.**
+  Removing the walk and the `detachedParent` pointer (`x2`) takes ten lines
+  out of `ownership.ts`, removes findings 61, 66, 67 and 68, and fails six
+  tests, all of them pins of those findings. The read of finding 66 returns.
+  Removing suspension as a whole (`x1`) is not worth it: a write to a row
+  that outlived 2,000 replaced lists then costs 122,610 nanoseconds against
+  446, until the collector runs.
+- **One line that looks dead is worth half of every read.** The mutation
+  list calls the ternary in `activeTracker()` "same behaviour". Without it a
+  store read costs 85 percent more on Node and 89 percent more on Bun, and
+  the read ratio goes over its limit on both engines (`r2`).
+- **The hard part of the getter code is two engines, not three kinds of
+  dependency.** The live store and the snapshot memoize getters with
+  different rules, and nine stage 1 findings are a difference between the
+  two or a gap in one.
+- **Two pieces of code are needed and no test says so** (`c58`, `s08`).
+- **The three files could lose 18 lines of 1,092** with `r5` and `x2`. This
+  review's value is the causes it found, not the line count.
 
 ## Method
 
@@ -156,32 +172,32 @@ Line numbers are those of `57404c3`.
 
 "Lines" is the change in line count of the file.
 
-| Spike  | File           | What                                                                    | Lines | Kind                                                                                                                                                                                                            |
-| ------ | -------------- | ----------------------------------------------------------------------- | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `c06`  | `core.ts`      | The ternary in `activeTracker()`                                        | 0     | **Fast path, and a large one.** The mutation list calls it "same behaviour". Without it every read looks up index −1 of an empty array, and a read costs almost twice as much. See "The combination".           |
-| `c11`  | `core.ts`      | `if (!cached) return false` in `areDepsValid()`                         | −1    | Dead at run time. The type checker needs the narrowing, so the check is merged into the next line instead of deleted.                                                                                           |
-| `c28`  | `core.ts`      | `existing ??` in `linkChild()`                                          | 0     | Dead. `createNode()` begins with the same lookup.                                                                                                                                                               |
-| `c56`  | `core.ts`      | The `if` around `suspendIfDetached()` in the unsubscribe function       | 0     | Dead. `suspendIfDetached()` checks its own conditions.                                                                                                                                                          |
-| `o07`  | `ownership.ts` | `if (count === undefined) return` in `disconnect()`                     | −1    | Dead at run time. The type checker needs the narrowing: `?? 0` on the line above does the same in less.                                                                                                         |
-| `o21`  | `ownership.ts` | `if (!frame) break` in `resume()`                                       | −2    | Dead. `pop()` runs only while the list is not empty. Written as `for (let frame = pending.pop(); frame; frame = pending.pop())` the loop needs no check.                                                        |
-| `s12`  | `snapshot.ts`  | `inProgress.delete(target)`                                             | −1    | Dead. A finished node is in the cache, and the cache is read before `inProgress`.                                                                                                                               |
-| `s13`  | `snapshot.ts`  | `configurable: true` twice and `writable: true`                         | −3    | Dead. `Object.freeze` sets both to false before the snapshot leaves.                                                                                                                                            |
-| `s18`  | `snapshot.ts`  | `descriptor && 'value' in descriptor &&` in `markSnapshotForTracking()` | −2    | Dead. The `typeof descriptor.value === 'object'` test that follows rejects the same cases.                                                                                                                      |
-| `s23`  | `snapshot.ts`  | `getter &&` in `originalSnapshotAccessor()`                             | 0     | Dead. `WeakMap.get(undefined)` is `undefined`.                                                                                                                                                                  |
-| `c03`  | `core.ts`      | The early return in `identityOf()`                                      | −1    | Fast path.                                                                                                                                                                                                      |
-| `c21`  | `core.ts`      | `&& pendingSync.size` in `settleTransaction()`                          | 0     | Fast path.                                                                                                                                                                                                      |
-| `c27b` | `core.ts`      | The `descriptor` parameter of `linkChild()`                             | −1    | Fast path. It saves one descriptor lookup per linked object. Removing it takes `linkChild()` from five parameters to four.                                                                                      |
-| `o22`  | `ownership.ts` | `if (child.detachedVersions)` in `resume()`                             | 0     | Fast path.                                                                                                                                                                                                      |
-| `s04`  | `snapshot.ts`  | `readProps` in `computeWithTracking()`                                  | −4    | Fast path. Without it a property read twice is recorded twice and compared twice.                                                                                                                               |
-| `o18`  | `ownership.ts` | Pruning a dead link in `ancestors()`                                    | 0     | Memory only.                                                                                                                                                                                                    |
-| `c58`  | `core.ts`      | The re-read of the own descriptor in the `set` trap                     | −5    | **Untested.** See below.                                                                                                                                                                                        |
-| `s08`  | `snapshot.ts`  | The memoizing getter installed for an accessor that has only a setter   | 0     | **Untested.** See below.                                                                                                                                                                                        |
-| `s22`  | `snapshot.ts`  | `this` passed to `evaluateSnapshotGetter()`, where `snap` would do      | 0     | **Untested.** `this` differs from `snap` only for an object that inherits from a snapshot, or for the copy proxy-compare makes of a frozen snapshot. Not a deletion; noted because no test tells the two apart. |
+| Spike  | File           | What                                                                    | Lines | Kind                                                                                                                                                                                                                            |
+| ------ | -------------- | ----------------------------------------------------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `c06`  | `core.ts`      | The ternary in `activeTracker()`                                        | 0     | **Fast path, and a large one.** The mutation list calls it "same behaviour". Without it every read looks up index −1 of an empty array, and a read costs almost twice as much. See `r2` under "The combinations that were run". |
+| `c11`  | `core.ts`      | `if (!cached) return false` in `areDepsValid()`                         | −1    | Dead at run time. The type checker needs the narrowing, so the check is merged into the next line instead of deleted.                                                                                                           |
+| `c28`  | `core.ts`      | `existing ??` in `linkChild()`                                          | 0     | Dead. `createNode()` begins with the same lookup.                                                                                                                                                                               |
+| `c56`  | `core.ts`      | The `if` around `suspendIfDetached()` in the unsubscribe function       | 0     | Dead. `suspendIfDetached()` checks its own conditions.                                                                                                                                                                          |
+| `o07`  | `ownership.ts` | `if (count === undefined) return` in `disconnect()`                     | −1    | Dead at run time. The type checker needs the narrowing: `?? 0` on the line above does the same in less.                                                                                                                         |
+| `o21`  | `ownership.ts` | `if (!frame) break` in `resume()`                                       | −2    | Dead. `pop()` runs only while the list is not empty. Written as `for (let frame = pending.pop(); frame; frame = pending.pop())` the loop needs no check.                                                                        |
+| `s12`  | `snapshot.ts`  | `inProgress.delete(target)`                                             | −1    | Dead. A finished node is in the cache, and the cache is read before `inProgress`.                                                                                                                                               |
+| `s13`  | `snapshot.ts`  | `configurable: true` twice and `writable: true`                         | −3    | Dead. `Object.freeze` sets both to false before the snapshot leaves.                                                                                                                                                            |
+| `s18`  | `snapshot.ts`  | `descriptor && 'value' in descriptor &&` in `markSnapshotForTracking()` | −2    | Dead. The `typeof descriptor.value === 'object'` test that follows rejects the same cases.                                                                                                                                      |
+| `s23`  | `snapshot.ts`  | `getter &&` in `originalSnapshotAccessor()`                             | 0     | Dead. `WeakMap.get(undefined)` is `undefined`.                                                                                                                                                                                  |
+| `c03`  | `core.ts`      | The early return in `identityOf()`                                      | −1    | Fast path.                                                                                                                                                                                                                      |
+| `c21`  | `core.ts`      | `&& pendingSync.size` in `settleTransaction()`                          | 0     | Fast path.                                                                                                                                                                                                                      |
+| `c27b` | `core.ts`      | The `descriptor` parameter of `linkChild()`                             | −1    | Fast path. It saves one descriptor lookup per linked object. Removing it takes `linkChild()` from five parameters to four.                                                                                                      |
+| `o22`  | `ownership.ts` | `if (child.detachedVersions)` in `resume()`                             | 0     | Fast path.                                                                                                                                                                                                                      |
+| `s04`  | `snapshot.ts`  | `readProps` in `computeWithTracking()`                                  | −4    | Fast path. Without it a property read twice is recorded twice and compared twice.                                                                                                                                               |
+| `o18`  | `ownership.ts` | Pruning a dead link in `ancestors()`                                    | 0     | Memory only.                                                                                                                                                                                                                    |
+| `c58`  | `core.ts`      | The re-read of the own descriptor in the `set` trap                     | −5    | **Untested.** See below.                                                                                                                                                                                                        |
+| `s08`  | `snapshot.ts`  | The memoizing getter installed for an accessor that has only a setter   | 0     | **Untested.** See below.                                                                                                                                                                                                        |
+| `s22`  | `snapshot.ts`  | `this` passed to `evaluateSnapshotGetter()`, where `snap` would do      | 0     | **Untested.** `this` differs from `snap` only for an object that inherits from a snapshot, or for the copy proxy-compare makes of a frozen snapshot. Not a deletion; noted because no test tells the two apart.                 |
 
-The dead rows total **10 lines** over the three files (`r5` in Appendix A
-applies them all: 1,341 tests pass and the typecheck passes). The fast paths
-are another 6 lines. None of them should go without a benchmark: `c06` shows
-why.
+The dead rows total **10 lines** over the three files. `r5` in Appendix A
+applies them all in a form the type checker accepts: 1,341 tests pass and the
+typecheck passes. The fast paths are another 6 lines. None of them should go
+without a benchmark: `c06` shows why.
 
 **`c58` is untested, not dead.** The `set` trap writes the value and then
 reads the property back, to link what the object now holds. `c58` links the
@@ -489,15 +505,51 @@ through a work list. Nothing states the invariant, and no single function
 enforces it. Findings 1, 11, 45, 46 and 71 are all cases where the mirror
 and the object disagree.
 
+## The combinations that were run
+
+Each row is one patch in Appendix A, measured against the unmodified
+worktree (`r0`: 1,341 tests pass, main entry 3,661 bytes gzipped).
+
+| Patch | What is in it                                                                             | Lines  | Tests               | Typecheck | Main entry      |
+| ----- | ----------------------------------------------------------------------------------------- | ------ | ------------------- | --------- | --------------- |
+| `r1`  | The dead rows, and the ternary of `c06`                                                   | +7 −15 | 1,341 pass          | Fails     | 3,613, 48 fewer |
+| `r2`  | `r1`, the walk of `x2`, and the one-line causes of findings 5 and 32 (`c44`, `c14`)       | +8 −31 | 1,328 pass, 13 fail | Fails     | Not recorded    |
+| `r5`  | The dead rows only, with the two narrowings kept in another form. Run again on 2026-11-24 | +8 −17 | 1,341 pass          | Passes    | 3,629, 32 fewer |
+| `x2`  | The walk and `detachedParent` only. Run again on 2026-11-24                               | +1 −10 | 1,335 pass, 6 fail  | Passes    | 3,625, 36 fewer |
+
+- **`r1` fails the typecheck** because two of the dead checks narrow a type:
+  `if (!cached) return false` in `areDepsValid()` and
+  `if (count === undefined) return` in `disconnect()`. `r5` merges the first
+  into the next line and replaces the second with `?? 0`.
+- **`r2` is the evidence for `c06`, not a recommendation.** It was assembled
+  before `c06` had been timed. With the ternary gone, `store.read` goes from
+  31.8 to 60.2 nanoseconds on Bun and from 45.1 to 83.2 on Node. The read
+  ratio is then 28.9 on Bun against a limit of 20, and 3.55 on Node against
+  2.5. Of its 13 failing tests, six are the pins `x2` flips, four pin finding
+  32, two pin finding 5, and one is the randomized test, which has a switch
+  for finding 32.
+- **`c44` and `c14` are superseded.** The trap spikes return a stored
+  function as it is (`review/stage-3/spike-traps.md`, T1), which removes
+  finding 5 at its cause. The getter spikes treat a missing property as a
+  value (`review/stage-3/spike-getters.md`), which removes finding 32
+  without the cost `c14` leaves. Take those, not these two deletions.
+- **What to take from this report:** `r5` and `x2`.
+
 ## How many lines the three files could lose
 
-Not computed yet. Known so far: 9 dead lines, 6 lines of fast paths, and the finding-fixing deletions in the table above.
+18 of 1,092, with behaviour unchanged except for the defects `x2` removes:
+
+- 9 lines net from the dead rows (`r5`: 8 added, 17 removed).
+- 9 lines net from the walk and `detachedParent` (`x2`: 1 added, 10 removed).
+
+The six lines of fast paths stay: each needs a benchmark first, and `c06`
+shows what a "dead" fast path can be worth. Removing suspension as a whole
+would take 85 more lines and is not recommended ("Hardest places", 1).
 
 ## Compared with the stage 2 report
 
 I read `review/stage-2-report.md` after the tables above and the suspension
-and reproduction results were in this file. The combination run and the
-total were written after it. I did not read any report under
+and reproduction results were in this file. I did not read any report under
 `review/stage-2/`.
 
 ### Where the two agree
@@ -558,32 +610,33 @@ lines listed here afterwards, or the patches will not apply.
 
 ## Verified and not verified
 
-- **Run:** 101 single deletions, each against the full unit suite. Results
-  and patches are in Appendix A.
+- **Run:** 101 single deletions, each against the full unit suite. The
+  suspension variants `x0` to `x3` and the reproductions `y0` to `y8`, each
+  with the script named in its entry. The combinations `r0` to `r2`, with
+  size and both benchmarks. Results and patches are in Appendix A.
+- **Run again by the orchestrating agent on 2026-11-24**, in a fresh worktree
+  at `57404c3`: `r5` (tests, typecheck, size) and `x2` (tests, typecheck,
+  size, and the read of stage 1 finding 66, which hangs on the unmodified
+  source and returns 1 with `x2`). `x2` failed the same six tests the first
+  run lists.
 - **Read only:** the duplication, naming, state and boundary tables.
-- **Not run:** typecheck, size and benchmarks for any spike; the browser,
-  framework and mutation suites.
+- **Not run:** benchmarks for `r5` and `x2`; the browser, framework and
+  mutation suites.
 
 ## Not done
 
-A later agent with an empty scratchpad can continue from here. Recreate a
-worktree as the common brief says, apply a patch from Appendix A with
-`git apply`, and run `bun test src tests/memory/heapSnapshot.test.ts tests/mutation`
-in `packages/classy-store`.
-
-1. Run the full removal of suspension (`x1`): delete `isStoreRoot`,
-   `detachedVersions`, `detachedParent`, `canSuspend`, `suspendIfDetached`,
-   `resume` and `resumeScope` from `ownership.ts`, and the six calls in
-   `core.ts`. Record tests, typecheck, size, benchmarks, and reproductions of
-   findings 61, 66, 67 and 69 before and after.
-2. Measure what suspension buys: owner links on a row that outlives 2,000
-   replaced lists, before and after garbage collection, with and without it.
-3. Classify `c58` and `s08` as dead or untested with a script.
-4. Reproduce findings 5, 32, 36 and 71 before and after `c44`, `c14`, `c07`
-   and `s07`, and benchmark `c07`.
-5. Run the recommended combination with typecheck, size and both benchmarks.
-6. Read `review/stage-2-report.md` and write the comparison section.
-7. Compute the total.
+1. **Benchmarks for `r5` and `x2`.** Neither should move a ratio, but
+   neither was timed.
+2. **Tests for `c58` and `s08`.** Both pieces of code are needed and
+   untested. The cases are in their tables above.
+3. **The follow-up to `x2`:** with the walk gone, `resumeScope()` is
+   `resume()`, and the five calls in `core.ts` could move behind
+   `ownership.ts`. Not spiked.
+4. **The owner links without `WeakRef`** (stage 1 finding 68) after `x2`:
+   the pin flips, and what the corrected behaviour should be was not
+   written as a test.
+5. **A stated invariant for `childInternals`** ("Hardest places", 4). The
+   trap spikes change four of the five places that write it.
 
 ## Appendix A: every spike, its patch and the tests it fails
 
@@ -5096,4 +5149,156 @@ index afd3c51..03e3f6c 100644
 -  inProgress.delete(target);
    return snap as T;
  }
+```
+
+### `r5-dead-code-type-safe`
+
+Run again by the orchestrating agent on 2026-11-24, in a fresh worktree at
+`57404c3`. It is `r1` without the ternary of `c06`, and with the two
+narrowings kept in another form.
+
+Lines: +8 -17. Result: 1341 pass, 0 fail, typecheck ok.
+
+```text
+| Entry | Minified | Gzipped | Adds to main | Against baseline | Budget |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `.` | 10584 | 3629 |  | -32 | 3750 |
+| `./utils` | 17700 | 6328 | 2699 | -19 | 2750 |
+| `./collections` | 13335 | 4360 | 731 | -28 | 750 |
+| `./react` | 15122 | 5303 | 1674 | -20 | 1700 |
+| `./react/server` | 10938 | 3782 | 153 | -32 | 175 |
+| `./vue` | 11197 | 3915 | 286 | -26 | 300 |
+| `./svelte` | 11001 | 3815 | 186 | -28 | 200 |
+| `./angular` | 11176 | 3904 | 275 | -28 | 300 |
+| `./solid` | 11236 | 3946 | 317 | -27 | 335 |
+```
+
+The other entries each add a few bytes more than before, because they are
+measured as what they add to a main entry that got smaller.
+
+```diff
+diff --git a/packages/classy-store/src/core/core.ts b/packages/classy-store/src/core/core.ts
+index 252b9f1..ba1224e 100644
+--- a/packages/classy-store/src/core/core.ts
++++ b/packages/classy-store/src/core/core.ts
+@@ -137,8 +137,7 @@ function areDepsValid(deps: DepEntry[]): boolean {
+     } else if (dep.kind === 'computed') {
+       // Validate through the computed cache — never re-execute the raw getter.
+       const cached = dep.internal.computedCache.get(dep.prop);
+-      if (!cached) return false; // no cache → must recompute
+-      if (!areDepsValid(cached.deps)) return false; // nested deps changed
++      if (!cached || !areDepsValid(cached.deps)) return false; // no cache, or nested deps changed
+       if (!Object.is(cached.value, dep.value)) return false; // value changed
+     } else {
+       // Check that the property still exists — if it was deleted and
+@@ -373,7 +372,7 @@ function linkChild(
+     )
+       return;
+   }
+-  const child = existing ?? createNode(value, pending);
++  const child = createNode(value, pending);
+   owner.attach(key, child);
+   return child;
+ }
+@@ -595,7 +594,8 @@ export function subscribe(
+   const listener = () => callback();
+   listeners.add(listener);
+   return () => {
+-    if (listeners.delete(listener)) internal.suspendIfDetached();
++    listeners.delete(listener);
++    internal.suspendIfDetached();
+   };
+ }
+ 
+diff --git a/packages/classy-store/src/core/ownership.ts b/packages/classy-store/src/core/ownership.ts
+index 69843a3..60a35b2 100644
+--- a/packages/classy-store/src/core/ownership.ts
++++ b/packages/classy-store/src/core/ownership.ts
+@@ -76,8 +76,7 @@ export class StoreInternal {
+   }
+ 
+   private disconnect(child: StoreInternal): void {
+-    const count = child.parents.get(this.reference);
+-    if (count === undefined) return;
++    const count = child.parents.get(this.reference) ?? 0;
+     if (count > 1) {
+       child.parents.set(this.reference, count - 1);
+       return;
+@@ -121,9 +120,7 @@ export class StoreInternal {
+       node: StoreInternal;
+       versions?: Map<StoreInternal, number>;
+     }[] = [{node: this}];
+-    while (pending.length) {
+-      const frame = pending.pop();
+-      if (!frame) break;
++    for (let frame = pending.pop(); frame; frame = pending.pop()) {
+       const {node, versions} = frame;
+       if (versions) {
+         for (const [child, previous] of versions) {
+diff --git a/packages/classy-store/src/snapshot/snapshot.ts b/packages/classy-store/src/snapshot/snapshot.ts
+index afd3c51..03e3f6c 100644
+--- a/packages/classy-store/src/snapshot/snapshot.ts
++++ b/packages/classy-store/src/snapshot/snapshot.ts
+@@ -29,7 +29,7 @@ const originalAccessors = new WeakMap<
+ >();
+ 
+ export function originalSnapshotAccessor(getter: (() => unknown) | undefined) {
+-  return getter && originalAccessors.get(getter);
++  return originalAccessors.get(getter as () => unknown);
+ }
+ 
+ // ── Cross-snapshot getter memoization ─────────────────────────────────────────
+@@ -170,9 +170,7 @@ function markSnapshotForTracking(value: object): void {
+   const hasObjectSymbol = Object.getOwnPropertySymbols(value).some((key) => {
+     const descriptor = Object.getOwnPropertyDescriptor(value, key);
+     return (
+-      descriptor &&
+-      'value' in descriptor &&
+-      typeof descriptor.value === 'object' &&
++      typeof descriptor?.value === 'object' &&
+       descriptor.value !== null
+     );
+   });
+@@ -213,7 +211,6 @@ function installMemoizedGetters(snap: object, target: object): void {
+       Object.defineProperty(snap, key, {
+         get: memoizedGetter,
+         enumerable: own ? descriptor.enumerable : true,
+-        configurable: true,
+       });
+     }
+     proto = Object.getPrototypeOf(proto);
+@@ -269,8 +266,6 @@ function createSnapshotRecursive<T extends object>(
+       Object.defineProperty(snap, key, {
+         value: snapshotValue(desc.value, internal, key, inProgress),
+         enumerable: desc.enumerable,
+-        configurable: true,
+-        writable: true,
+       });
+     }
+ 
+@@ -283,7 +278,6 @@ function createSnapshotRecursive<T extends object>(
+   registerSnapshot(snap, target);
+   // Cache AFTER populating + freezing. The reference is stable.
+   snapshotCache.set(target, [internal.version, snap]);
+-  inProgress.delete(target);
+   return snap as T;
+ }
+ 
+```
+
+### `x2-no-detached-parent`, run again
+
+Run again by the orchestrating agent on 2026-11-24, in a fresh worktree at
+`57404c3`, with the patch of `x2-no-detached-parent` above.
+
+Lines: +1 -10. Result: 1335 pass, 6 fail, typecheck ok. The six failing
+tests are the six listed under `x2-no-detached-parent`. Main entry: 10,547
+bytes minified, 3,625 gzipped, 36 fewer.
+
+The reproduction of stage 1 finding 66, run as a child process that is
+killed after six seconds:
+
+```text
+unmodified:  prints "before the read", then nothing; killed (exit 143)
+with x2:     prints "before the read", then "read returned 1"; exit 0
 ```
