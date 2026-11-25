@@ -163,17 +163,17 @@ yes, first, because decisions 2 and 12 touch the same traps.
 ceiling, set here once for the whole set. One decision record carries all of
 them.
 
-| Entry                 | Today | Budget today | Ceiling | What moves it                                                 |
-| --------------------- | ----: | -----------: | ------: | ------------------------------------------------------------- |
-| `.` (the main entry)  | 3,661 |        3,750 |   4,850 | The table below                                               |
-| `./utils` adds        | 2,686 |        2,750 |   3,500 | `persist` and `devtools` (decisions 19 to 28), `subscribeKey` |
-| `./collections` adds  |   727 |          750 |     900 | The snapshot index, the membership rule, the mutator check    |
-| `./react` adds        | 1,662 |        1,700 |   1,725 | The guard for a cyclic snapshot                               |
-| `./vue` adds          |   280 |          300 |     380 | The read-time ref and the server path                         |
-| `./angular` adds      |   271 |          300 |     390 | The read-time signal, `untracked()`, the injector option      |
-| `./solid` adds        |   312 |          335 |     360 | The read-time accessor                                        |
-| `./svelte` adds       |   182 |          200 |     200 | Nothing                                                       |
-| `./react/server` adds |   153 |          175 |     175 | Nothing                                                       |
+| Entry                 | Today | Budget today | Ceiling | What moves it                                              |
+| --------------------- | ----: | -----------: | ------: | ---------------------------------------------------------- |
+| `.` (the main entry)  | 3,661 |        3,750 |   4,850 | The table below                                            |
+| `./utils` adds        | 2,686 |        2,750 |   3,650 | `persist`, `devtools`, restore in place, `subscribeKey`    |
+| `./collections` adds  |   727 |          750 |     900 | The snapshot index, the membership rule, the mutator check |
+| `./react` adds        | 1,662 |        1,700 |   1,725 | The guard for a cyclic snapshot                            |
+| `./vue` adds          |   280 |          300 |     380 | The read-time ref and the server path                      |
+| `./angular` adds      |   271 |          300 |     390 | The read-time signal, `untracked()`, the injector option   |
+| `./solid` adds        |   312 |          335 |     360 | The read-time accessor                                     |
+| `./svelte` adds       |   182 |          200 |     200 | Nothing                                                    |
+| `./react/server` adds |   153 |          175 |     175 | Nothing                                                    |
 
 **How a budget moves in stage 4.** A commit that grows an entry sets that
 entry's budget to its new measured size plus 2%, in the same commit, and
@@ -197,14 +197,14 @@ wrote them, before the codes of decision 35 shorten them by about 100 bytes.
 | A delete that removes nothing                                         |        8 |    +11 |
 | A plain object from another realm, at most                            |        9 |    +40 |
 | Getters: one kind of dependency, errors, the snapshot layer           |       10 |   +165 |
-| The base class and its arrow-function fields, if they ship in 1.0     |       11 |    +96 |
+| The base class and its arrow-function fields                          |       11 |   +103 |
 | A table per prototype in place of a descriptor lookup                 |       12 |   +119 |
 | The delivery queue with its bound, setters, the rejection handler     | 13 to 15 |   +189 |
 | Dead lines removed                                                    |       20 |    −32 |
 | The method name for `devtools`                                        |       27 |    +20 |
 | Class getters on a derived prototype, and `this` in a snapshot getter |       43 |   +239 |
 | A snapshot keeps a cycle                                              |       44 |     −9 |
-| Sum                                                                   |          | +1,143 |
+| Sum                                                                   |          | +1,150 |
 
 That puts the main entry near 4,700 bytes, 28% above today's.
 
@@ -395,15 +395,14 @@ the sentence about an absent field goes. **Stage 4:** yes.
   store. Such a class is reactive wherever it is placed, with no marker.
   `createClassyStore(new X())` stays, for a plain object and for a class
   that cannot extend it.
-- **In such a class an arrow function in a field is a method**: bound to the
-  store and run as one transaction. This is the one exception to decision 1.
+- **In such a class an arrow function that creates a field is a method**:
+  bound to the store and run as one transaction. This is the one exception
+  to decision 1. A function written to a field that already exists is data
+  and is kept as it is, as on every other store.
 - **A `#private` field is never state.** The docs say so. With the base
   class it can be used on the live store; a snapshot cannot carry it.
-- **Whether the base class ships in 1.0 or in a 1.x release is open.** It
-  ships in 1.0 only if a second spike confirms what the first only reasoned:
-  real compilers, the four other adapters, undo and time travel of a nested
-  base-class store, and getters that construct one. Adding it later breaks
-  nothing, so nothing forces it.
+- **The base class ships in 1.0.** A second spike ran what the first only
+  reasoned, and each point holds or has a fix that was run.
 
 **Why.**
 
@@ -422,23 +421,37 @@ the sentence about an absent field goes. **Stage 4:** yes.
   took 150 milliseconds on Bun against 1 in a prototype method, and nothing
   says so.
 
-**What it costs a user.** A callback assigned to a field of a base-class
-store reads back as its wrapper, not as the function that was assigned. In a
-store made with `createClassyStore()` it reads back as itself. Two rules for
-a function in a field is the price, and the second spike is asked whether
-the exception can be limited to what the constructor installs.
+**What it costs a user.** Two rules for a function in a field, and nine
+sentences in the docs. The ones that matter most:
+
+- A callback field is declared with an initialiser, such as
+  `onSave: (() => void) | null = null`. A function assigned to it later is
+  then data and keeps its identity. Without the initialiser, whether the
+  field exists at that point depends on the compiler.
+- Code compiled to ES5 turns an arrow function into an ordinary function, and
+  an arrow method then notifies once per write.
+- Under React's `StrictMode`, `useLocalStore` makes two stores in
+  development, so a constructor that starts a timer starts two.
+- A class that has to extend another class uses `createClassyStore(new X())`.
 
 **Not taken.** Detecting an arrow function by its source text: it finds 6 of
 7 lost writes, reports 2 fields that lose nothing, and costs 256 to 342
 bytes. An `opaque()` helper and a mixin form of the base class.
 
-**Evidence.** `spike-classes.md`. The base class: 4 lines, 13 bytes. The
-exception for arrow functions: 83 bytes. With decisions 1 and 2 in one
-build: 28 tests change, 27 of them the trap patches' and 1 the export list.
-Run with React only; the other points are what `spike-classes-2.md` is for.
+**Evidence.** `spike-classes.md` and `spike-classes-2.md`. The base class is
+4 lines and 13 bytes; the rule for arrow functions 90 more. One subclass was
+compiled 17 ways (TypeScript with class fields as definitions and as
+assignments, Bun, Oxc, esbuild, the SWC of Next.js with the example's
+configuration, Babel in spec and loose mode), and in every output the first
+snapshot is right, an arrow method notifies once, and a field write and a
+timer's write are seen. Seven throwaway tests pass for Vue, Svelte, Solid,
+Angular, `createStoreHook` and `useLocalStore`. A base-class store made
+inside a getter works on both layers. With decisions 1 and 2 in one build,
+28 tests change: 27 are the trap patches' and 1 is the export list.
 
 **Label.** The default for nested instances: before 1.0, and no code. The
-base class: can follow 1.0. **Stage 4:** open, see above.
+base class: an addition. **Stage 4:** yes, after decisions 1 and 2, and
+together with decision 30, which it needs.
 
 **After 1.0** (decision 36): a report of a write that was lost because it
 went to the raw object, which is precise, and a warning for an unmarked class
@@ -600,9 +613,9 @@ saved state a microtask later. The change is 15 lines added and 18 removed,
 and `./utils` gets 6 bytes smaller.
 
 **What it needs.** With it, a store prepared for hydration after a
-module-level `persist()` would capture the restored state. How the React
-server snapshot is captured is decided with the adapters. **Open** for that
-part (M70).
+module-level `persist()` would capture the restored state. Decision 41
+keeps the capture an explicit call, and the guide says to make it before
+`persist()`.
 
 **Evidence.** `persist-devtools.md`, P1. 1 test changes, incidental: it
 relies on the old timing.
@@ -750,11 +763,32 @@ change turns out larger than a few lines in `history.ts`.
 
 **Label.** Before 1.0. **Stage 4:** yes, after decision 1.
 
-### 30. Undo and time travel change a nested object in place where they can
+### 30. Undo and time travel change a nested object in place
 
-**Open**, with `spike-classes-2.md` (M60). Today a restore replaces a changed
-branch with a deep copy: every row of a changed list is a new object, and a
-base-class store inside another store comes back as a frozen copy.
+**Decision.** A restore goes down while both sides are containers of the
+same kind and writes only what differs. Where a restored value is the
+snapshot of an object that is still live, the live object is put back. Undo,
+redo and a DevTools jump share that one function (M60).
+
+**Why.**
+
+- Today a restore replaces a changed branch with a copy. After undoing an
+  edit to one row, every row of the list is a new object, every row
+  component renders again, and a row the caller held is detached.
+- It is worse for a store that holds other stores, which decision 11 makes
+  ordinary. After one undo every row is a frozen snapshot: a prototype
+  method on it throws, and an arrow method writes the old store.
+- It is faster. Undo of one row in 1,000 goes from 2,315 microseconds to
+  273 on Bun, and 999 row snapshots are kept.
+
+**What stays.** A DevTools jump that the extension sends as JSON restores
+data, not class instances. The guide says so.
+
+**Evidence.** `spike-classes-2.md`, V4. 80 lines added, 48 removed, 113
+bytes on `./utils`. Not timed on Node.
+
+**Label.** Before 1.0: the reference says "changed fields are replaced with
+mutable copies". **Stage 4:** yes, on top of decision 27.
 
 ### 31. `subscribeKey`
 
@@ -1183,7 +1217,8 @@ detector, and its file says so.
 6. **Identity.** One object has one proxy, however it is reached and in
    however many stores it sits. `createClassyStore()` on a proxy, or on the
    raw object behind one, returns that proxy. A function, a class and any
-   other opaque value held in a store read back as themselves.
+   other opaque value held in a store read back as themselves; decision 11
+   has the one exception.
 7. **An object that has left the store** stays a working store of its own:
    reads, writes, subscriptions and snapshots work, and the store it left is
    no longer told. Put back, it is the same proxy.
