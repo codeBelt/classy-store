@@ -144,10 +144,16 @@ commit. Its working results are in `review/stage-4/`.
   mutants is 69 entries now; `CONSTRAINTS.md` still says 78 under "Measured,
   not enforced", and T-59 records the final count.
 
-**Next:** T-05, the dead blocks of `persist.ts` (decision 20). Keep the
-`assertActive()` of `save()` and drop the one in `writeToStorage()`: only
-one of the two can go. Keep `if (onError)`: without it the code would rely
-on a swallowed `TypeError`, and T-35 rewrites that function.
+- T-05 at `319a478`: the dead and redundant blocks of `persist.ts`: one
+  `cancelPendingSave()` for the five copies, the unreachable disposed check
+  in `writeToStorage()` (a new test pins `save()`'s), two redundant guards.
+  `if (onError)` and `if (prop.transform)` stay, with reasons in the commit.
+  `./utils` adds 2,673 bytes. The list of equivalent mutants is 58 entries.
+
+**Next:** T-06. First the two benchmark rows `collection.has.primitive` and
+`collection.has.object`, then the redundant checks of `equality.ts` and
+`history.ts`, and the object guard of `indexOfMember` only if both rows
+stay inside the spread of the commit before (decision 20).
 
 The throwaway worktrees of the step 7 fixers are in the scratchpad, on the
 branches `step7/fix-spec`, `step7/fix-records` and `step7/fix-tasks`, which
