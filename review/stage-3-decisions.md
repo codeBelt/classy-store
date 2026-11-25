@@ -212,15 +212,16 @@ and against the reviewers' scripts.
 - **A constructor written as a `function`, held as a value, is still handed
   out as a method**, as today: it is not `===` to itself, its static
   properties are not on what is read, and `instanceof` against it is false.
-  `new` on it still builds a real instance and does not touch the store. The
-  same holds for a class that a compiler has turned into such a function
-  with a writable `prototype`, which is what TypeScript emits for ES5. A
-  real class and a built-in constructor are handed out as they are, and so
-  is a class in the shape Babel emits, which has a read-only `prototype`;
-  that shape was written by hand for the run, not compiled. The third form fixed this row and this form gives
-  it back, because a function cannot be both this and a method written with
-  `function`, and the method is the commoner of the two. A constructor that
-  has to keep its identity is frozen, or held in a list.
+  `new` on it still builds a real instance and does not touch the store.
+  The same holds for a class that a compiler has turned into such a
+  function with a writable `prototype`, which is what TypeScript emits for
+  ES5. A real class and a built-in constructor are handed out as they are,
+  and so is a class in the shape Babel emits, which has a read-only
+  `prototype`; that shape was written by hand for the run, not compiled.
+  The third form fixed this row and this form gives it back, because a
+  function cannot be both this and a method written with `function`, and
+  the method is the commoner of the two. A constructor that has to keep its
+  identity is frozen, or held in a list.
 - **A call of a method held in a field is a little slower than today on
   Node.** A call is 270 nanoseconds against 250, about 8%; on Bun it is
   today's 177. A read and call of an arrow function held in a field is 74
