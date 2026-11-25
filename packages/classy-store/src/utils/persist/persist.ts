@@ -122,7 +122,7 @@ export function persist<T extends object>(
   // ── Mutable state shared by handle closures ─────────────────────────────
 
   let disposed = false;
-  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+  let debounceTimer: ReturnType<typeof setTimeout> | undefined;
   let hydratedFlag = false;
   let expiredFlag = false;
   let hydrationRequest = 0;
@@ -224,7 +224,6 @@ export function persist<T extends object>(
 
   /** Write the current state to storage. */
   async function writeToStorage(): Promise<void> {
-    assertActive();
     hydrationRequest++;
     let json: string;
     try {
@@ -248,17 +247,21 @@ export function persist<T extends object>(
     void writeToStorage().catch(() => {});
   }
 
+  /** Cancel the debounced save that has not run yet, if there is one. */
+  function cancelPendingSave(): void {
+    clearTimeout(debounceTimer);
+    debounceTimer = undefined;
+  }
+
   /** Write after the configured debounce (or immediately if it is 0). */
   function queueAutoSave(): void {
     if (debounceMs <= 0) {
       autoSave();
       return;
     }
-    if (debounceTimer !== null) {
-      clearTimeout(debounceTimer);
-    }
+    cancelPendingSave();
     debounceTimer = setTimeout(() => {
-      debounceTimer = null;
+      debounceTimer = undefined;
       autoSave();
     }, debounceMs);
   }
@@ -291,7 +294,6 @@ export function persist<T extends object>(
 
     if (
       !envelope ||
-      typeof envelope !== 'object' ||
       envelope.state === null ||
       typeof envelope.state !== 'object'
     ) {
@@ -410,12 +412,9 @@ export function persist<T extends object>(
       if (!isCurrent()) return;
       if (raw !== null) {
         // A debounced local write may be pending from a mutation issued
-        // before the data arrived. Fold it into the save that follows the read.
-        if (debounceTimer !== null) {
-          clearTimeout(debounceTimer);
-          debounceTimer = null;
-          saveAfterRead = true;
-        }
+        // before the data arrived. Fold it into the save that follows the
+        // read, which queueAutoSave() arms again, cancelling this timer.
+        if (debounceTimer !== undefined) saveAfterRead = true;
         let expired: boolean;
         try {
           expired = applyPersistedState(raw, baseline);
@@ -459,10 +458,7 @@ export function persist<T extends object>(
     hydrationRequest++;
     // A pending local debounced write would otherwise overwrite the remote
     // state once its timer fires.
-    if (debounceTimer !== null) {
-      clearTimeout(debounceTimer);
-      debounceTimer = null;
-    }
+    cancelPendingSave();
     // Suppress writes triggered by mutations from this apply, otherwise
     // tabs ping-pong storage events forever.
     try {
@@ -505,10 +501,7 @@ export function persist<T extends object>(
   function dispose() {
     if (disposed) return;
     disposed = true;
-    if (debounceTimer !== null) {
-      clearTimeout(debounceTimer);
-      debounceTimer = null;
-    }
+    cancelPendingSave();
     unsubscribeFromStore();
     if (syncTabs) globalThis.removeEventListener('storage', onStorageEvent);
     status.dispose(readStatus());
@@ -532,10 +525,7 @@ export function persist<T extends object>(
       assertActive();
       // Cancel pending debounce and write immediately.
       saveAfterRead = false;
-      if (debounceTimer !== null) {
-        clearTimeout(debounceTimer);
-        debounceTimer = null;
-      }
+      cancelPendingSave();
       await writeToStorage();
     },
 
@@ -544,10 +534,7 @@ export function persist<T extends object>(
       hydrationRequest++;
       saveAfterRead = false;
       clearedVersion = getVersion(proxyStore);
-      if (debounceTimer !== null) {
-        clearTimeout(debounceTimer);
-        debounceTimer = null;
-      }
+      cancelPendingSave();
       await enqueueStorageMutation(() => storage.removeItem(name), 'remove');
     },
 
@@ -558,10 +545,8 @@ export function persist<T extends object>(
       try {
         await hydrateFromStorage();
       } finally {
-        if (!hydratedFlag) {
-          hydratedFlag = true;
-          resolveHydrated();
-        }
+        hydratedFlag = true;
+        resolveHydrated();
         status.update(readStatus());
       }
     },

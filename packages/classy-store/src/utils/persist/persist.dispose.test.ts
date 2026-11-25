@@ -66,6 +66,30 @@ describe('persist after dispose', () => {
     });
   });
 
+  test('save() on a disposed handle rejects as disposed before it serializes anything', async () => {
+    const serialize = mock((value: Date) => value.toISOString());
+    const setItem = mock(() => {});
+    const handle = persist(createClassyStore({when: new Date(0)}), {
+      name: 'clock',
+      storage: {getItem: () => null, setItem, removeItem: () => {}},
+      properties: [
+        {
+          key: 'when',
+          serialize,
+          deserialize: (value) => new Date(value as string),
+        },
+      ],
+    });
+    handles.push(handle);
+    handle.dispose();
+
+    await expect(handle.save()).rejects.toThrow(
+      '@codebelt/classy-store [persist-disposed]: clock',
+    );
+    expect(serialize).not.toHaveBeenCalled();
+    expect(setItem).not.toHaveBeenCalled();
+  });
+
   test('clear() on a disposed handle rejects at once, without waiting for a write still in flight', async () => {
     const write = deferred<void>();
     const removeItem = mock(() => {});
