@@ -221,6 +221,27 @@ describe('floor guard: the walk', () => {
     expect(result.code).toBe(1);
   });
 
+  it.concurrent('judges the head it is given, not the merge a pull request is checked out as', async () => {
+    const repo = await repository();
+    repo.write('packages/classy-store/src/core.ts', 'export const two = 2;\n');
+    const head = await repo.commit('the pull request head');
+    // CI checks a pull request out as a merge of its head into main.
+    await repo.git('checkout', '--quiet', '--detach', 'main');
+    await repo.git(
+      'merge',
+      '--no-ff',
+      '--quiet',
+      '--message',
+      'merge the pull request',
+      'work',
+    );
+    expect((await repo.run()).out).toContain('[merge-commit]');
+    const result = await repo.run('--head', head);
+    expect(result.out).toContain('clean (1 commit after');
+    expect(result.out).not.toContain('working tree');
+    expect(result.code).toBe(0);
+  });
+
   it.concurrent('judges the working tree last, untracked files included', async () => {
     const repo = await repository();
     repo.write('packages/classy-store/src/new.ts', `${unfinished}\n`);

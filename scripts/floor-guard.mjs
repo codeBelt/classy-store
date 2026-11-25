@@ -12,9 +12,12 @@
 // commit gives its reason: a line in a decision record, or a Test-change line
 // in the commit message for a test made smaller.
 //
-// Usage: node scripts/floor-guard.mjs [--base <ref>] [--main <ref>]
+// Usage: node scripts/floor-guard.mjs [--base <ref>] [--main <ref>] [--head <ref>]
 //   --base <ref>  judge the commits after <ref> instead of finding the start
 //   --main <ref>  the branch the work merges into (default origin/main)
+//   --head <ref>  judge the commits up to <ref> instead of HEAD, and not the
+//                 working tree. CI passes the pull request's head, because it
+//                 checks a pull request out as a merge of that head into main.
 // Exit codes: 0 clean, 1 at least one violation, 2 the guard could not run.
 import {execFileSync} from 'node:child_process';
 import {existsSync, readFileSync} from 'node:fs';
@@ -25,6 +28,7 @@ function option(name) {
 }
 const requestedBase = option('--base');
 const mainRef = option('--main') ?? 'origin/main';
+const requestedHead = option('--head');
 
 // `git diff --no-index` exits 1 whenever the two sides differ, which is the
 // normal case for a new file, so that output is kept. Any other failure is
@@ -54,6 +58,11 @@ process.chdir(top);
 
 // ── Where the walk starts ────────────────────────────────────────────────────
 
+const head = requestedHead
+  ? git(['rev-parse', '--verify', `${requestedHead}^{commit}`])?.trim()
+  : 'HEAD';
+if (!head) bail(`unknown head ${requestedHead}`);
+
 function resolveStart() {
   if (requestedBase) {
     const commit = git([
@@ -64,7 +73,7 @@ function resolveStart() {
     if (!commit) bail(`unknown base ${requestedBase}`);
     return commit;
   }
-  const mergeBase = git(['merge-base', mainRef, 'HEAD'])?.trim();
+  const mergeBase = git(['merge-base', mainRef, head])?.trim();
   if (!mergeBase) bail(`no merge base against ${mainRef}`);
   if (git(['cat-file', '-e', `${mainRef}:CONSTRAINTS.md`]) !== null) {
     return mergeBase;
@@ -73,7 +82,7 @@ function resolveStart() {
     'log',
     '--diff-filter=A',
     '--format=%H',
-    `${mergeBase}..HEAD`,
+    `${mergeBase}..${head}`,
     '--',
     'CONSTRAINTS.md',
   ])
@@ -524,7 +533,7 @@ function judge(diffText, {before, after, message}) {
 // ── The walk ─────────────────────────────────────────────────────────────────
 
 const start = resolveStart();
-const walk = git(['rev-list', '--reverse', '--parents', `${start}..HEAD`]);
+const walk = git(['rev-list', '--reverse', '--parents', `${start}..${head}`]);
 if (walk === null) bail(`could not list the commits after ${start}`);
 
 const results = [];
@@ -556,33 +565,37 @@ for (const line of walk.split('\n').filter(Boolean)) {
   });
 }
 
-const tracked = git(['diff', '-M', '--unified=0', 'HEAD', '--']);
-if (tracked === null) bail('could not diff the working tree');
-const untrackedFiles = git(['ls-files', '--others', '--exclude-standard']);
-if (untrackedFiles === null) bail('could not list untracked files');
-const untracked = untrackedFiles
-  .split('\n')
-  .filter(Boolean)
-  .map((file) => {
-    const diff = git(['diff', '--no-index', '--unified=0', '/dev/null', file], {
-      diffExit: true,
-    });
-    if (diff === null) bail(`could not diff untracked file ${file}`);
-    return diff;
-  })
-  .join('\n');
-results.push({
-  where: 'working tree',
-  ...judge(`${tracked}\n${untracked}`, {
-    before: 'HEAD',
-    after: null,
-    message: null,
-  }),
-});
+// The working tree belongs to HEAD, so it is judged only when HEAD is the head.
+if (!requestedHead) {
+  const tracked = git(['diff', '-M', '--unified=0', 'HEAD', '--']);
+  if (tracked === null) bail('could not diff the working tree');
+  const untrackedFiles = git(['ls-files', '--others', '--exclude-standard']);
+  if (untrackedFiles === null) bail('could not list untracked files');
+  const untracked = untrackedFiles
+    .split('\n')
+    .filter(Boolean)
+    .map((file) => {
+      const diff = git(
+        ['diff', '--no-index', '--unified=0', '/dev/null', file],
+        {diffExit: true},
+      );
+      if (diff === null) bail(`could not diff untracked file ${file}`);
+      return diff;
+    })
+    .join('\n');
+  results.push({
+    where: 'working tree',
+    ...judge(`${tracked}\n${untracked}`, {
+      before: 'HEAD',
+      after: null,
+      message: null,
+    }),
+  });
+}
 
 // ── The report ───────────────────────────────────────────────────────────────
 
-const commits = results.length - 1;
+const commits = results.length - (requestedHead ? 0 : 1);
 let violations = 0;
 for (const {where, findings, notices} of results) {
   for (const notice of notices) {
@@ -599,7 +612,7 @@ for (const {where, findings, notices} of results) {
 }
 if (violations === 0) {
   console.log(
-    `floor-guard: clean (${commits} commit${commits === 1 ? '' : 's'} after ${start.slice(0, 7)}, and the working tree)`,
+    `floor-guard: clean (${commits} commit${commits === 1 ? '' : 's'} after ${start.slice(0, 7)}${requestedHead ? '' : ', and the working tree'})`,
   );
   process.exit(0);
 }
