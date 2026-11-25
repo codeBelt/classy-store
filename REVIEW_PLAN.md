@@ -161,9 +161,12 @@ commit. Its working results are in `review/stage-4/`.
   accepts it. The React compatibility suite (four versions) and the Compiler
   suite pass.
 
-**Next:** checkpoint 2 (the full mutation run and both core benchmarks are
-running), then step 3, starting with T-08: the walk to a detached parent
-goes (decision 3).
+- Checkpoint 2 passes; `review/stage-4/README.md` has its figures.
+
+**Next:** step 3, starting with T-08: the walk to a detached parent goes
+(decision 3). Its first test pins a read that never returns today; a
+synchronous hang cannot be stopped by the test runner, so show the failure
+first in a child process with a time limit.
 
 The throwaway worktrees of the step 7 fixers are in the scratchpad, on the
 branches `step7/fix-spec`, `step7/fix-records` and `step7/fix-tasks`, which
