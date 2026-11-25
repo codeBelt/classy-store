@@ -79,24 +79,24 @@ pause on 2026-11-24: "The pause is over, carry on with stage 3."
   writers left open; the spec's 38 open points are in its own section 12.
 - A draft of the stage 3 report: `review/stage-3-report.md`.
 
-**Stopped here by a usage limit on 2026-11-25, in the middle of a
-handover.** The owner approved moving the work to a new session on Opus 5.5
-at extra-high effort, which runs its helper agents on Opus 5.5 at medium
-effort (ground rule "Models"). That session has not been started yet.
+- Step 7, the third document: the stage 4 task list,
+  `review/stage-4-tasks.md`, 59 tasks, committed as its writer left it and
+  not yet checked. Its 19 open points are in its own section "Open points".
+
+**The handover happened on 2026-11-25.** The old session on Fable stopped
+and writes nothing more to this checkout. A new session on Opus 5.5 at
+extra-high effort runs the plan from here, and is the one writer. Its helper
+agents run on Opus 5.5 at medium effort (ground rule "Models").
 
 **Still to do, in order:**
 
-1. Done: the stage 4 task list, `review/stage-4-tasks.md`, 59 tasks, is
-   committed as its writer left it and has not been checked. Its 19 open
-   points are in its own section "Open points".
-2. Start the new session, in this folder and on this branch, and give it
-   this plan as its brief. From then on the old session writes nothing.
-3. In the new session: check the spec, the records and the task list
-   against the decision document, and settle the open points. The ones that
-   block stage 4 are the names of eleven error codes, which the spec
-   proposed and nobody decided.
-4. Finish the stage 3 report and fill in the Status table above.
-5. Stage 4.
+1. Check the spec, the records and the task list against the decision
+   document, and settle the open points. The ones that block stage 4 are
+   the names of eleven error codes, which the spec proposed and nobody
+   decided, the floor guard, the production-bundle test, and the benchmark
+   before the two redundant checks go.
+2. Finish the stage 3 report and fill in the Status table above.
+3. Stage 4.
 
 The throwaway worktrees and scripts of the spikes are in the scratchpad, which
 does not survive a reboot. Every patch and number that matters is in the
