@@ -683,3 +683,161 @@ changes, a fix (finding 57).
 
 **Label.** Can follow 1.0, though the history guide describes the old
 behaviour and that sentence goes. **Stage 4:** yes.
+
+### 29. To `withHistory`, a function in an own field is data
+
+**Decision.** Undo removes a function that was added to a field and puts
+back one that was replaced, by reference (finding 60, M59). Methods on the
+prototype are untouched, as today.
+
+**Why.** It follows from decision 1. Once a function in a field is data to
+the store, history cannot be the one place that treats it as behaviour.
+
+**Evidence.** None beyond the stage 1 test that pins today's behaviour. It
+was reasoned, not spiked, so stage 4 writes the test first and stops if the
+change turns out larger than a few lines in `history.ts`.
+
+**Label.** Before 1.0. **Stage 4:** yes, after decision 1.
+
+### 30. Undo and time travel change a nested object in place where they can
+
+**Open**, with `spike-classes-2.md` (M60). Today a restore replaces a changed
+branch with a deep copy: every row of a changed list is a new object, and a
+base-class store inside another store comes back as a frozen copy.
+
+### 31. `subscribeKey`
+
+**Decision.**
+
+- A selector form, an equality option and an immediate first call (M62) are
+  additions and are not part of 1.0.
+- Whether it stops taking a snapshot of the whole store per notification
+  (M61) is **open**, with the snapshot report.
+
+## The release workflow, dependencies and documentation
+
+### 32. The publish step gets a job of its own
+
+**Decision.** `release.yml` is split in two. The first job installs, builds,
+runs Changesets and, on a commit that is to be published, packs the tarball
+and uploads it. The second holds `id-token: write`, installs nothing,
+downloads the tarball and publishes it. Every third-party action is pinned to
+a commit. Checkouts that do not push set `persist-credentials: false`. The
+three workflows that declare no permissions get `contents: read`.
+
+**Why.** Today one job holds the publishing identity and also runs
+`bun install`, the build and Changesets, so a compromised development
+dependency or a moved action tag could publish a version with valid
+provenance. The change costs no library code.
+
+**What it risks.** A release workflow cannot be tried without releasing, and
+no agent runs it. The change is therefore one small commit, read line by line
+against the workflow that published 0.11.0, and the stage 5 report lists it
+as something the owner should watch on the first release.
+
+**Only the owner can do** two steps, and the workflow works without them: a
+GitHub environment for the publish job with a required reviewer, and the npm
+settings that accept only that environment and refuse publishing with a
+token.
+
+**Evidence.** `review/stage-2/security.md`, finding 12 (M74). That code in
+the job can take the token comes from how GitHub and npm document the
+mechanism; nobody tried it.
+
+**Label.** Can follow 1.0. **Stage 4:** yes, as its last commit.
+
+### 33. Dependencies
+
+**Decision.** `proxy-compare` stays pinned to an exact version, and
+`CONTRIBUTING.md` says why. CI gets a `bun audit` step that reports and does
+not fail. The published tarball is accepted as it is (M75).
+
+**Stage 4:** yes.
+
+### 34. Documentation
+
+**Decision.** The documentation changes listed under M76 are made in stage
+4, each with the code change it belongs to, or in stage 5 where no code
+changes. The limits listed under M77 stay as they are and go into the
+unspecified list below or stay documented where they are documented.
+
+## What 1.0 guarantees, and what it leaves unspecified
+
+Stage 1 added 547 tests that pin what the library does today.
+`review/stage-3/pinned.md` sorts the behaviours behind them into 250 rows: 56
+the docs already promise, 47 that are defects, and 147 that needed a label.
+Its table is the evidence. This section is the decision.
+
+A guarantee is written as a rule, not as a row. A rule is documented, and
+changing it is a breaking change. Everything not covered by a rule here or
+by a sentence in the reference is unspecified, and may change in a minor
+release. The stage 1 tests stay; a test of unspecified behaviour is a change
+detector, and its file says so.
+
+### Guaranteed
+
+1. **Subscribers.** The subscribers of one node are called in the order they
+   subscribed. A subscriber hears only writes made after `subscribe()`
+   returned, and none after its unsubscribe function returned. A subscriber
+   that throws leaves the write applied, the other subscribers called and
+   itself subscribed; the code that wrote is never told.
+2. **Transactions.** A prototype method, a setter, an array method and
+   `batch()` each notify synchronous subscribers once, when the outermost
+   call returns, and that covers every store written inside it. A write that
+   changes nothing notifies no one.
+3. **Delivery.** A write made while subscribers are being called is delivered
+   after the round that is running, and before the outermost write returns.
+4. **Getters.** A getter is lazy. It returns the same result while nothing it
+   read through `this` changed, and a correct one after anything it read
+   changed. A cycle of getters throws, and the other getters keep working.
+5. **Snapshots.** A snapshot is frozen. An unchanged subtree keeps its
+   snapshot object across snapshots. Taking a snapshot runs no getter.
+6. **Identity.** One object has one proxy, however it is reached and in
+   however many stores it sits. `createClassyStore()` on a proxy, or on the
+   raw object behind one, returns that proxy. A function, a class and any
+   other opaque value held in a store read back as themselves.
+7. **An object that has left the store** stays a working store of its own:
+   reads, writes, subscriptions and snapshots work, and the store it left is
+   no longer told. Put back, it is the same proxy.
+8. **The native rules of an object hold through a store**: key order, holes,
+   `TypeError` on a refused write, `false` from `Reflect`, and the meaning of
+   sealed and frozen.
+9. **Memory.** The library keeps no strong reference to a store that nothing
+   else references, or to a subscriber after its unsubscribe function was
+   called, in a runtime that has `WeakRef`.
+10. **`persist`.** Only an elapsed time deletes stored data. An edit made
+    while a read is in flight is not lost. `save()` and `clear()` reach a
+    synchronous storage before they return. After `dispose()` nothing is
+    read, written or scheduled.
+11. **Exports.** Every export the reference lists exists with its documented
+    signature. The list may grow in a minor release.
+
+### Unspecified
+
+- The order in which different nodes, owners and stores are notified
+  (findings 24 and 69).
+- How calls nest when a subscriber writes, and which microtask a batched
+  round runs in.
+- Where a subscriber's error is reported, and the text of every error
+  message.
+- Whether a getter re-runs more often than rule 4 requires, and whether a
+  thrown error is cached.
+- What a prototype that gains a getter after its first read through a store
+  does (findings 44 and 47).
+- What reflection hands out: `Object.getOwnPropertyDescriptor(store, key)`
+  and `structuredClone(store)` (findings 50 and 51).
+- Anything reached through the raw object behind a store (finding 11).
+- A store made from a function or from a typed array (findings 62 and 63).
+- Behaviour in a runtime without `WeakRef` or `FinalizationRegistry`, beyond
+  "it works" (finding 68).
+
+### Where this differs from `pinned.md`
+
+- **A method of an object literal** is labelled guaranteed there. Under
+  decision 1 it is not a method at all.
+- **Rows about the shape of a snapshot** (which keys it lists, where a getter
+  lives on it) wait for the snapshot decisions.
+- **The ownership rows** are folded into rule 7. The order in which removed
+  containers hear of a write stays unspecified.
+- **The type tests fail when an export is added.** They stay as change
+  detectors, and rule 11 says what is promised.
