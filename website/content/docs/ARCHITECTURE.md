@@ -200,7 +200,7 @@ child versions identify edits to shared rows made while it was detached.
 
 **GET trap (priority order):**
 
-1. **Memoized getter detection** — walk prototype chain with `Object.getOwnPropertyDescriptor`. If a getter is found, call `evaluateComputed()` which checks dependency validity and returns the cached result or re-evaluates with dependency tracking.
+1. **Memoized getter detection** — an own key is data unless the node has seen an own accessor (`ownAccessors`), so a field read takes no descriptor. An inherited key is answered by a table per prototype, filled on the first miss: it records which prototype holds an accessor for the key, or that none does. The table holds no function, and a key absent from the whole chain is recorded only while the table holds fewer than 256 keys. If an accessor is found, `evaluateComputed()` checks dependency validity and returns the cached result; only a recompute asks the holder for its current getter and runs it with dependency tracking.
 2. **Method binding** — wrap function values so they run with the proxy as `this`, which sends `this.count++` in methods through the SET trap, and so each call is a [transaction](#transactions). Object methods reuse a cached wrapper. Array method reads create a fresh one.
 3. **Nested state** — if `canProxy()` accepts it (plain object, array, or a class that opts in with the exported `PROXYABLE` symbol, as the library's reactive collections do), return its canonical child proxy. A frozen object, a snapshot included, is never proxied: it is returned as the immutable value it is. Neither is the value of a non-writable, non-configurable property, which a Proxy is required to return unchanged. Whether an object is frozen is worked out once and remembered, because the check scans every property. Record a dependency if a getter is currently being tracked.
 4. **Primitives and opaque values** — return as-is and record a value dependency when a getter is being tracked.
@@ -589,7 +589,7 @@ No special handling is needed — three mechanisms in the existing design make i
 
 1. **Methods** — The GET trap uses `Reflect.get(target, prop)`, which naturally walks the JavaScript prototype chain. Methods from any ancestor class are found and bound to the proxy via `.bind(receiver)`, so `this` mutations inside inherited methods go through the SET trap. **Important:** Arrow function properties (`increment = () => {}`) are own properties whose `this` is lexically bound to the raw instance at construction time. `.bind()` is a no-op on arrow functions, so mutations inside them bypass the proxy entirely. Always use prototype methods (`increment() {}`) for reactive mutations.
 
-2. **Getters** — `findPropertyDescriptor()` returns the nearest own or inherited descriptor. The write proxy evaluates a getter when that descriptor defines one. For snapshots, `installMemoizedGetters()` visits the instance and its prototypes in order, so a nearer data field or accessor shadows a base getter with the same key.
+2. **Getters** — the table per prototype records the nearest prototype that holds an accessor for each key, so a nearer data field shadows a base getter. The write proxy evaluates a getter when that prototype still defines one. For snapshots, `installMemoizedGetters()` visits the instance and its prototypes in order, so a nearer data field or accessor shadows a base getter with the same key.
 
 3. **Snapshot prototype** — `createSnapshotRecursive()` creates snapshot objects with `Object.create(Object.getPrototypeOf(target))`, preserving the full prototype chain. This means `snapshot(store) instanceof DerivedClass` is `true`, and `installMemoizedGetters()` installs getters from all levels with cross-snapshot memoization.
 
@@ -599,7 +599,7 @@ No special handling is needed — three mechanisms in the existing design make i
 
 | Operation                    | Complexity                              | Notes                                                                                                                                  |
 | ---------------------------- | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| Data property read           | Prototype lookup and proxy lookup       | Getter detection walks the prototype chain and existing child proxies are reused                                                       |
+| Data property read           | One table lookup and proxy lookup       | An own key needs no descriptor; an inherited key is answered by the table of its prototype; existing child proxies are reused          |
 | Property write               | Depends on the changed ownership graph  | Includes indexing new subtrees, detaching old ones, and visiting owners                                                                |
 | Notification                 | Visited owners and callback work        | Synchronous listeners run once per direct write and once per method or array call. Snapshot, selector, and render costs are additional |
 | Getter (cache hit)           | Depends on recorded dependencies        | Nested computed dependencies are validated recursively                                                                                 |

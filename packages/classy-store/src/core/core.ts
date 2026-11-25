@@ -1,11 +1,83 @@
 import type {SubscribeOptions} from '../types';
-import {
-  canProxy,
-  findPropertyDescriptor,
-  getArrayIndex,
-} from '../utils/internal/internal';
+import {canProxy, getArrayIndex} from '../utils/internal/internal';
 import type {DepEntry} from './core.types';
 import {StoreInternal} from './ownership';
+
+// ── Getters, decided per prototype ────────────────────────────────────────────
+
+const hasOwn = Object.prototype.hasOwnProperty;
+
+/**
+ * Per prototype and key: the prototype object that holds an accessor for the
+ * key, or `null` when the key is data there or absent everywhere. The table
+ * holds no function, so a recompute asks the holder for the getter the class
+ * has now. A prototype is assumed not to change after its first read through
+ * a store; what happens when it does is unspecified.
+ */
+const accessorHolders = new WeakMap<
+  object,
+  Map<string | symbol, object | null>
+>();
+
+/**
+ * A key absent from the whole chain is recorded only while the table is
+ * smaller than this, so reads by keys an object does not have cannot grow
+ * it without bound. Past it, such a key is looked up at each read.
+ */
+const absentKeyLimit = 256;
+
+function inheritedAccessorHolder(
+  proto: object | null,
+  prop: string | symbol,
+): object | null {
+  if (!proto) return null;
+  let table = accessorHolders.get(proto);
+  if (!table) {
+    table = new Map();
+    accessorHolders.set(proto, table);
+  }
+  let holder = table.get(prop);
+  if (holder !== undefined) return holder;
+  holder = null;
+  let found = false;
+  for (let at: object | null = proto; at; at = Object.getPrototypeOf(at)) {
+    const desc = Object.getOwnPropertyDescriptor(at, prop);
+    if (desc) {
+      if (!('value' in desc)) holder = at;
+      found = true;
+      break;
+    }
+  }
+  if (found || table.size < absentKeyLimit) table.set(prop, holder);
+  return holder;
+}
+
+/**
+ * The object that holds an accessor for `prop` as seen from the node's raw
+ * object, or `null` for data. An own key is data unless the node has an own
+ * accessor, so the common read allocates no descriptor.
+ */
+function accessorHolder(
+  internal: StoreInternal,
+  prop: string | symbol,
+): object | null {
+  const target = internal.target;
+  if (!hasOwn.call(target, prop)) {
+    return inheritedAccessorHolder(Object.getPrototypeOf(target), prop);
+  }
+  if (!internal.ownAccessors) return null;
+  // `hasOwnProperty` found a descriptor for the key a line above.
+  const desc = Object.getOwnPropertyDescriptor(
+    target,
+    prop,
+  ) as PropertyDescriptor;
+  return 'value' in desc ? null : target;
+}
+
+/** How many keys the table of one prototype holds. For tests. */
+export function prototypeTableSize(proto: object): number {
+  return accessorHolders.get(proto)?.size ?? 0;
+}
 
 // ── Global state ──────────────────────────────────────────────────────────────
 
@@ -159,7 +231,7 @@ function areDepsValid(deps: DepEntry[]): boolean {
 function evaluateComputed(
   internal: StoreInternal,
   prop: string | symbol,
-  getterFn: () => unknown,
+  holder: object,
   receiver: object,
 ): unknown {
   const cached = internal.computedCache.get(prop);
@@ -178,6 +250,14 @@ function evaluateComputed(
         .join(' → ');
       throw new Error(codedMessage('getter-cycle', cycle));
     }
+  }
+
+  // The getter is read from its holder only when it has to run. One that was
+  // removed since, or replaced by a value, leaves the key to be read as data.
+  const getterFn = Object.getOwnPropertyDescriptor(holder, prop)?.get;
+  if (!getterFn) {
+    internal.computedCache.delete(prop);
+    return Reflect.get(internal.target, prop, receiver);
   }
 
   // Push a new tracker frame for this getter evaluation.
@@ -416,8 +496,7 @@ function createNode(target: object, pending?: StoreInternal[]): StoreInternal {
         typeof incoming === 'object' && incoming !== null
           ? (trackedSnapshots.get(incoming) ?? incoming)
           : incoming;
-      const descriptor = findPropertyDescriptor(_target, prop);
-      if (descriptor && !('value' in descriptor)) {
+      if (accessorHolder(internal, prop)) {
         // Setters perform their own writes. Use the proxy as `this` so nested
         // mutations invalidate their actual owners and notify just once.
         return Reflect.set(_target, prop, value, receiver);
@@ -466,16 +545,11 @@ function createNode(target: object, pending?: StoreInternal[]): StoreInternal {
 
     get(_target, prop, receiver) {
       internal.resumeIfDetached();
-      // 1. Check for getters on the prototype chain (computed values).
-      const getterDesc = findPropertyDescriptor(_target, prop);
-      if (getterDesc?.get) {
+      // 1. A getter, own or inherited, is a computed value.
+      const holder = accessorHolder(internal, prop);
+      if (holder) {
         // Memoized: evaluate with dependency tracking, return cached if deps unchanged.
-        const value = evaluateComputed(
-          internal,
-          prop,
-          getterDesc.get,
-          receiver,
-        );
+        const value = evaluateComputed(internal, prop, holder, receiver);
         // Record as a computed dependency for any parent getter currently tracking.
         // Uses 'computed' dep kind so validation goes through the cache, not raw getter.
         recordComputedDep(internal, prop, value);
@@ -510,10 +584,14 @@ function createNode(target: object, pending?: StoreInternal[]): StoreInternal {
       // `Object.freeze(proxy)` arrives here once per property. A property that
       // is now read-only holds its value as it is, as if frozen all along.
       const own = defined && Object.getOwnPropertyDescriptor(_target, prop);
-      if (own && isReadOnly(own)) {
-        const child = internal.childInternals.get(prop);
-        // An embedded store's proxy is that value: it remains a child.
-        if (child && child.proxy !== own.value) internal.detach(prop);
+      if (own) {
+        if (!('value' in own)) {
+          internal.ownAccessors = true;
+        } else if (isReadOnly(own)) {
+          const child = internal.childInternals.get(prop);
+          // An embedded store's proxy is that value: it remains a child.
+          if (child && child.proxy !== own.value) internal.detach(prop);
+        }
       }
       return defined;
     },
@@ -542,8 +620,10 @@ function createNode(target: object, pending?: StoreInternal[]): StoreInternal {
     for (const owner of nodes) {
       for (const key of Reflect.ownKeys(owner.target)) {
         const desc = Object.getOwnPropertyDescriptor(owner.target, key);
-        if (desc && 'value' in desc)
-          linkChild(owner, key, desc.value, nodes, desc);
+        // A Proxy can list a key it does not describe.
+        if (!desc) continue;
+        if ('value' in desc) linkChild(owner, key, desc.value, nodes, desc);
+        else owner.ownAccessors = true;
       }
     }
   }

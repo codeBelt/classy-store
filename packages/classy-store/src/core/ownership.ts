@@ -6,6 +6,8 @@ type ParentReference = {deref(): StoreInternal | undefined};
 export class StoreInternal {
   version = 0;
   isStoreRoot = false;
+  /** Set once the raw object has an own accessor, so an own key may be one. */
+  ownAccessors?: true;
   // Each subscribe() call owns one entry, so the same callback can be
   // registered more than once and released independently.
   readonly batchedListeners = new Set<() => void>();

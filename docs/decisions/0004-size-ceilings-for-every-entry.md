@@ -241,8 +241,9 @@ snapshot (270, record 0046); an index beside live collections (339, record
 One line per commit that grows an entry. A commit cannot name its own hash,
 so the first column of both tables holds the commit's subject.
 
-| Commit | Entry | Measured bytes | New budget |
-| ------ | ----- | -------------: | ---------: |
+| Commit                                                                 | Entry | Measured bytes | New budget |
+| ---------------------------------------------------------------------- | ----- | -------------: | ---------: |
+| perf: decide getters from a table per prototype, not a descriptor walk | `.`   |          3,768 |      3,844 |
 
 ## Changes to the tooling
 

@@ -190,29 +190,29 @@
   },
   {
     "file": "src/core/core.ts",
-    "scope": "createNode > proxy > defineProperty",
-    "mutator": "ConditionalExpression",
-    "original": "own",
-    "replacement": "true",
-    "occurrence": 1,
-    "reason": "Same behaviour: when the definition is refused `own` is false, and `isReadOnly(false)` is false, so the block is skipped either way."
-  },
-  {
-    "file": "src/core/core.ts",
-    "scope": "createNode",
-    "mutator": "ConditionalExpression",
-    "original": "'value' in desc",
-    "replacement": "true",
-    "occurrence": 1,
-    "reason": "Same behaviour: for an accessor `desc.value` is undefined, and `linkChild` returns at once for anything that is not an object."
-  },
-  {
-    "file": "src/core/core.ts",
     "scope": "createNode > proxy > deleteProperty",
     "mutator": "StatementRemoval",
     "original": "internal.resumeIfDetached();",
     "replacement": ";",
     "occurrence": 1,
     "reason": "Same behaviour: only a node with no subscriber and no parent is suspended, so a delete on it notifies no one whether it resumes first or not. The next touch resumes it, and resuming reconnects the children that are left and compares the versions it saved, which bumps the node's version as often as resuming first would have. Every trap resumes the node it touches, so that no path has to rely on this."
+  },
+  {
+    "file": "src/core/core.ts",
+    "scope": "accessorHolder",
+    "mutator": "ConditionalExpression",
+    "original": "!internal.ownAccessors",
+    "replacement": "false",
+    "occurrence": 1,
+    "reason": "Performance only: without the flag an own key always gets its descriptor, which says data for every object that has no own accessor, so the answer is the same. The flag spares that descriptor on the most common read, a field of a class instance or a plain object."
+  },
+  {
+    "file": "src/core/core.ts",
+    "scope": "evaluateComputed",
+    "mutator": "StatementRemoval",
+    "original": "internal.computedCache.delete(prop);",
+    "replacement": ";",
+    "occurrence": 1,
+    "reason": "Memory only: the entry left behind holds the result of a getter that is gone. Its dependencies were already out of date when this line ran, and a version only grows, so the entry is never valid again and is never returned. Deleting it frees it."
   }
 ]
