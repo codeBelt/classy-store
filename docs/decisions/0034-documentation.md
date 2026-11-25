@@ -3,19 +3,22 @@
 - **Status:** Accepted
 - **Date:** 2026-11-25
 - **Kind:** docs
-- **Changes behaviour that 0.11 documents:** no
+- **Label:** With each change
+- **Changes documented behaviour:** no
 
 ## Context
 
-Several limits and defaults of 0.11 are not stated in the docs, and several
-limits are shared with other libraries and have no proposal to change them.
+Before 1.0, several limits and defaults are not stated in the docs, and
+several limits are shared with other libraries and have no plan to change
+them.
 Code that spreads a snapshot changes without an error under record 0043.
 
 ## Decision
 
 Each documentation change is made with the code change it belongs to, or,
-where no code changes, in a later documentation pass of its own. These
-changes are made:
+where no code changes, in a later documentation pass of its own. A change
+corrects every page it makes false, in its own commit, even where a later
+change puts something back. These changes are made:
 
 - "Frozen objects are values" needs the whole value frozen: the mutable
   contents of a shallowly frozen object are shared with every snapshot.
@@ -58,7 +61,7 @@ Two more sentences go into the reference:
 
 ## Alternatives considered
 
-None was proposed.
+None was named.
 
 ## Consequences
 

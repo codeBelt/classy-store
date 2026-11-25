@@ -3,11 +3,15 @@
 - **Status:** Accepted
 - **Date:** 2026-11-25
 - **Kind:** performance
-- **Changes behaviour that 0.11 documents:** yes
+- **Label:** Before 1.0 for Vue: the reference says the adapter returns a
+  ref "backed by `shallowRef`", and it becomes a custom ref that
+  `isShallow()` can tell apart. Can follow 1.0 for Angular and Solid
+- **Changes documented behaviour:** yes
 
 ## Context
 
-In 0.11 every adapter takes a snapshot inside its listener. Adapters
+Before 1.0, every adapter takes
+a snapshot inside its listener. Adapters
 subscribe synchronously, so a loop of direct writes takes one snapshot per
 write: 2,000 direct row writes followed by one read cost about 650
 milliseconds. The reference says the Vue adapter returns a ref "backed by
@@ -26,7 +30,7 @@ guides name.
 
 ## Alternatives considered
 
-None was proposed for these three adapters.
+None was named for these three adapters.
 
 ## Consequences
 

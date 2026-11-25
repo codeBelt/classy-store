@@ -3,11 +3,12 @@
 - **Status:** Accepted
 - **Date:** 2026-11-25
 - **Kind:** bug
-- **Changes behaviour that 0.11 documents:** no
+- **Label:** Before 1.0
+- **Changes documented behaviour:** no
 
 ## Context
 
-In 0.11 `persist()` accepts any options and does the wrong thing later:
+Before 1.0, `persist()` accepts any options and does the wrong thing later:
 
 - A getter named in `properties` is saved, and restoring it fails part-way.
   With `properties: ['count', 'doubled', 'tail']`, `save()` stores the
@@ -24,8 +25,8 @@ owns.
 
 ## Decision
 
-`persist()` throws a `TypeError` with a code, before it reads or writes
-anything, for:
+`persist()` throws a `TypeError` with the code `persist-option` (record
+0035), before it reads or writes anything, for:
 
 - a prototype key, a getter or a method named in `properties`;
 - a transform that is half written;

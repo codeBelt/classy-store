@@ -3,11 +3,13 @@
 - **Status:** Accepted
 - **Date:** 2026-11-25
 - **Kind:** bug
-- **Changes behaviour that 0.11 documents:** no
+- **Label:** Before 1.0: the order of calls changes, and what a removed or a
+  late subscriber gets becomes guaranteed
+- **Changes documented behaviour:** no
 
 ## Context
 
-In 0.11 a write made inside a subscriber is delivered by a nested call:
+Before 1.0, a write made inside a subscriber is delivered by a nested call:
 
 - A synchronous subscriber that writes to the store it listens to recurses
   until the stack overflows. The `RangeError` goes to `console.error`, and
@@ -40,11 +42,13 @@ In 0.11 a write made inside a subscriber is delivered by a nested call:
   subscriber that corrects state has to stop writing once the state is
   right.
 - **The first round reads the owners directly**, a variant that keeps a
-  direct write with a synchronous subscriber as fast as in 0.11. The commit
-  confirms on a quiet machine that the benchmark's `store.write.sync` stays
-  inside the spread of 0.11 on both engines. If the variant does not achieve
-  that, the plain queue is taken and the slowdown is stated in the
-  reference.
+  direct write with a synchronous subscriber as fast as before this change.
+  The commit confirms on a quiet machine that the benchmark's
+  `store.write.sync` stays inside the spread of the commit before this
+  change on both engines. That is the same baseline as record 0001, because
+  records 0012, 0001 and 0010 move the write path first. If the variant does
+  not achieve that, the plain queue is taken and the slowdown is stated in
+  the reference. The figures go into the commit message.
 
 ## Alternatives considered
 
@@ -73,7 +77,8 @@ if the variant fails its condition.
 - A synchronous subscriber of store A that writes store B makes B current at
   once, and B's subscribers hear a round later. Another subscriber of A in
   that round therefore reads the new B through the store and the old B
-  through an adapter; in 0.11 it read the new B in both. The reference says
+  through an adapter; before 1.0 it read the new B in both.
+  The reference says
   that adapter values of another store may lag inside one delivery round.
 - The order of calls changes, and what a removed or a late subscriber gets
   becomes guaranteed.

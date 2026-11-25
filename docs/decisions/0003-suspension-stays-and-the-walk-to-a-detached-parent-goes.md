@@ -3,19 +3,20 @@
 - **Status:** Accepted
 - **Date:** 2026-11-25
 - **Kind:** bug, simplification
-- **Changes behaviour that 0.11 documents:** no
+- **Label:** Can follow 1.0: no documented behaviour changes
+- **Changes documented behaviour:** no
 
 ## Context
 
 When a subtree leaves the store and nothing observes it, the library
-suspends it: each node saves its children's versions and drops its links. In
-0.11 a suspended node also keeps a `detachedParent` pointer, and
+suspends it: each node saves its children's versions and drops its links.
+Before 1.0, a suspended node also keeps a `detachedParent` pointer, and
 `resumeScope()` walks those pointers up before a node resumes.
 
 That walk can loop. The `defineProperty` trap detaches a child of a
 suspended container without resuming it first; the child keeps a pointer to
 a container that no longer lists it, and two such pointers can form a loop.
-This read never returns on 0.11:
+Before 1.0, this read never returns:
 
 ```ts
 const store = createClassyStore({outer: {inner: {x: 1}}});
@@ -46,9 +47,18 @@ Left as it is:
 - The order in which owners are notified is unspecified.
 - A subscription on a container that has left the store lasts while the
   caller holds the store, the container or the unsubscribe function. The
-  docs say so.
+  tutorial gains that sentence in this change.
 - A raw object changed while it is out of the store shows its old content in
-  the next snapshot. It is a case of "writes outside the proxy are not seen".
+  the next snapshot. It is a case of "writes outside the proxy are not seen",
+  which the docs already state.
+
+The test of a runtime without `WeakRef`, which pinned the strong link,
+changes with this decision. It asserts what the change makes true: with
+`WeakRef` removed, a row that is held after its list was replaced no longer
+keeps that list alive, and the row still reads, writes, notifies and
+snapshots as a store of its own. Only "it works" is guaranteed in such a
+runtime, so the memory half of the test is a change detector, and its file
+says so.
 
 ## Alternatives considered
 

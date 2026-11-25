@@ -3,11 +3,13 @@
 - **Status:** Accepted
 - **Date:** 2026-11-25
 - **Kind:** performance
-- **Changes behaviour that 0.11 documents:** no
+- **Label:** Can follow 1.0
+- **Changes documented behaviour:** no
 
 ## Context
 
-In 0.11 `subscribeKey(store, key, cb)` takes a snapshot of the whole store
+Before 1.0, `subscribeKey(store,
+ key, cb)` takes a snapshot of the whole store
 on every notification, to compare one top-level key. Beside 1,000 rows that
 costs 113 microseconds on Bun and 49 on Node per notification.
 

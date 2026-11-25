@@ -3,11 +3,12 @@
 - **Status:** Accepted
 - **Date:** 2026-11-25
 - **Kind:** bug, diagnostics
-- **Changes behaviour that 0.11 documents:** yes
+- **Label:** Before 1.0
+- **Changes documented behaviour:** yes
 
 ## Context
 
-In 0.11 `persist` can lose stored data in several ways:
+Before 1.0, `persist` can lose stored data in several ways:
 
 - A record it refuses is reported only to `onError`, which is optional;
   without it the refusal is silent, and the next save replaces the record.
@@ -49,18 +50,40 @@ the result is saved. `save()` rejects before the first read has settled.
 
 - **A handle that does not write** saves nothing: on an edit, when the page
   is hidden, or on `save()`. An edit does not repeat the report. `save()`
-  reports as `'write'` and rejects with the error. A `rehydrate()` that finds
-  such a record again reports and rejects. The handle writes again after
-  `clear()`; after a `rehydrate()` that restores a record, finds none or finds
-  one with nothing to keep; and when such a record, or the removal of the
-  record, arrives from another tab. `lastError` of the status holds the
-  report for as long as the handle does not write.
+  reports as `'write'` and rejects with the error that `lastError` holds,
+  the report that stopped the handle from writing. A `rehydrate()` that
+  finds such a record again reports and rejects with that record's error. A
+  `rehydrate()` whose own read fails reports as `'read'` and rejects with
+  that error, as before 1.0. The handle writes again after `clear()`; after
+  a `rehydrate()` that restores a record, finds none or finds one with
+  nothing to keep; and when such a record, or the removal of the record,
+  arrives from another tab. `lastError` of the status holds the report for
+  as long as the handle does not write.
 - **`onError` receives the handle as its third argument**, so that it can
   call `clear()`. For a synchronous storage the first read runs inside
   `persist()` (record 0019), so the report comes before `persist()` has
   returned. An error that `onError` throws is logged with `console.error`.
 - **When no `onError` is given, the report goes to `console.error`** with
   its code, in every build. `onError` replaces that default.
+- **What a report carries.** `onError(error, operation, handle)` receives
+  the value that was thrown when the library did not throw it: the
+  storage's error, the error of a `serialize`, `deserialize`, `migrate` or
+  `merge`, or the `SyntaxError` of the default `JSON.parse`. When the
+  library refuses a record or a call itself, `error` is an `Error` whose
+  message carries one of these codes (record 0035): `persist-invalid` for a
+  record with nothing to keep that parses, `persist-newer` for a record of a
+  newer version, `persist-not-plain` for a `migrate` or `merge` that
+  returned a thenable or a value that is not a plain object, and
+  `persist-unread` for a `save()` before the first read has settled. The
+  default report is one `console.error` call: its first argument is
+  `@codebelt/classy-store [persist-failed]: <operation> "<key>"` and its
+  second is the error.
+- **Every failure of `save()` is reported as `'write'` and rejects with the
+  same error**, as before 1.0; that includes a `save()` before the first
+  read has settled. A call on a disposed handle rejects with
+  `persist-disposed` and is not reported, because after `dispose()` the
+  handle reports nothing.
+
 - **One version rule, on both sides.** A version is a finite number, zero or
   above. A record with no `version` field counts as version 0; any other
   value, `null` and `"2"` included, leaves nothing to keep. The `version`

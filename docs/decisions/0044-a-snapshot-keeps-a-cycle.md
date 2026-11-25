@@ -3,11 +3,12 @@
 - **Status:** Accepted
 - **Date:** 2026-11-25
 - **Kind:** bug, public API
-- **Changes behaviour that 0.11 documents:** yes
+- **Label:** Before 1.0: it reverses a documented sentence
+- **Changes documented behaviour:** yes
 
 ## Context
 
-In 0.11 a store that refers to itself can be written but not read:
+Before 1.0, a store that refers to itself can be written but not read:
 
 ```ts
 store.self = store; // succeeds and notifies
@@ -35,8 +36,8 @@ jump share.
 
 It would need a walk from the new parent to the roots on every assignment of
 an object, and would also have to reject a cycle already in the object given
-to `createClassyStore()`, which works on the live side in 0.11. Not taken,
-and final for 1.0.
+to `createClassyStore()`, which works on the live side before 1.0. Not
+taken, and final for 1.0.
 
 ## Consequences
 

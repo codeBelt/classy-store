@@ -3,11 +3,12 @@
 - **Status:** Accepted
 - **Date:** 2026-11-25
 - **Kind:** bug
-- **Changes behaviour that 0.11 documents:** no
+- **Label:** Before 1.0, because `outer.inner === inner` changes its answer
+- **Changes documented behaviour:** no
 
 ## Context
 
-In 0.11 the `set` trap stores whatever it is given, a proxy included, and
+Before 1.0, the `set` trap stores whatever it is given, a proxy included, and
 `linkChild` finds an existing node by the proxy only. Two defects follow:
 
 - A class instance that is already a store, placed in another store by its
@@ -35,7 +36,7 @@ Record 0002 needs a definition to store the raw value too.
   the store, and a read-only property defined with an object as its value
   (both engines refuse a swap there). Such an object is handed out as it is;
   a write through it is not seen, and the snapshot holds it unfrozen. That is
-  the behaviour of 0.11.
+  the behaviour before 1.0 as well.
 
 This lands in the commit after record 0002: record 0002 stores a defined
 value as it is given, and this commit changes both traps to store the raw
@@ -46,8 +47,8 @@ value and adds the swap.
 ### Raw values on write without the swap
 
 Then a child reads back raw after its container is frozen through the
-store, and a write through it tells no one, where in 0.11 a child that was
-assigned as a proxy stays reactive.
+store, and a write through it tells no one, where before 1.0 a child that
+was assigned as a proxy stays reactive.
 
 ### Replace the proxies in a list built from proxies
 
@@ -60,10 +61,11 @@ done.
 - `outer.inner === inner` changes its answer for an instance placed by its
   raw object.
 - A child that was assigned as a plain object, or was present at creation,
-  stays reactive after its container is frozen through the store, where in
-  0.11 it read back raw.
+  stays reactive after its container is frozen through the store, where
+  before 1.0 it read back raw.
 - Size: +104 bytes on the main entry in all (36 for raw values on write, 68
   for the swap, measured on top of it). 3 unit tests changed, all fixes.
 - One run showed store creation about 20% slower on Node. A second run,
-  between two runs of 0.11, did not: creating a small store and a store of
+  between two runs of the code before this change, did not:
+  creating a small store and a store of
   rows were both inside the drift of the machine on both engines.

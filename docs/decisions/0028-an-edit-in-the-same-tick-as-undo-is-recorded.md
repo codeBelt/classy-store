@@ -3,11 +3,13 @@
 - **Status:** Accepted
 - **Date:** 2026-11-25
 - **Kind:** bug
-- **Changes behaviour that 0.11 documents:** yes
+- **Label:** Before 1.0: the history guide describes the behaviour from
+  before 1.0, and that sentence goes
+- **Changes documented behaviour:** yes
 
 ## Context
 
-In 0.11 `withHistory` keeps a `restoring` counter while it applies an undo or
+Before 1.0, `withHistory` keeps a `restoring` counter while it applies an undo or
 a redo, and skips what is written while it is set:
 
 ```ts
@@ -18,7 +20,7 @@ store.value = 9; // no flush in between
 Here `canRedo` stays `true`, and `redo()` discards the 9. With a flush
 between the two lines, the edit is recorded. The version check already
 skips the restore's own notification, so the counter is redundant as well as
-wrong. The history guide describes the behaviour of 0.11.
+wrong. The history guide describes this behaviour.
 
 ## Decision
 
@@ -28,7 +30,7 @@ then recorded like any other.
 
 ## Alternatives considered
 
-None was proposed.
+None was named.
 
 ## Consequences
 

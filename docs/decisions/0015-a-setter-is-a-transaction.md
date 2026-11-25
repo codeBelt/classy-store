@@ -3,11 +3,13 @@
 - **Status:** Accepted
 - **Date:** 2026-11-25
 - **Kind:** bug
-- **Changes behaviour that 0.11 documents:** no
+- **Label:** Before 1.0: one sentence in the reference
+- **Changes documented behaviour:** no
 
 ## Context
 
-In 0.11 a method and an array method are transactions, and a setter is not:
+Before 1.0, a method and
+an array method are transactions, and a setter is not:
 
 ```ts
 class Range {
@@ -31,7 +33,7 @@ The reference gets one sentence for it.
 
 ## Alternatives considered
 
-None was proposed.
+None was named.
 
 ## Consequences
 

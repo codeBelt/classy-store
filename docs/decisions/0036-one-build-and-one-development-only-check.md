@@ -3,7 +3,9 @@
 - **Status:** Accepted
 - **Date:** 2026-11-25
 - **Kind:** diagnostics
-- **Changes behaviour that 0.11 documents:** no
+- **Label:** Before 1.0 for the guard's rule and the default of `devtools`;
+  the check can follow 1.0
+- **Changes documented behaviour:** no
 
 ## Context
 
@@ -38,6 +40,11 @@ the cost limits of `CONSTRAINTS.md`.
   figure goes into this record as the stated cost of the development path.
   If the check cannot meet that, it does not ship in 1.0; it is a report and
   can arrive in any release.
+- **The row awaits between two snapshots.** It awaits a resolved promise
+  between two snapshots, so each snapshot is taken after the microtasks
+  queued before it have run, and the await is part of its time. "Once per
+  task" therefore means: the check marks the store as checked, and a
+  microtask it queues clears the mark.
 - **The guard form.** A development-only check is guarded by an inline read
   of `process.env.NODE_ENV` at its call site, after a test that is cheap and
   almost always false, and behind `typeof process`. That form becomes a floor
@@ -45,13 +52,24 @@ the cost limits of `CONSTRAINTS.md`.
   production and asserts that no development text and no `console.warn` is
   left in it. The default of `devtools({enabled})` reads the environment the
   same way (record 0027).
+- **How the test knows development text.** A development-only report is
+  written with `console.warn`, and nothing else in the library calls
+  `console.warn`. Its code is listed in
+  `packages/classy-store/tests/size/developmentOnly.json`, which is empty
+  until the check of this record lands. `bun run size` already bundles every
+  entry for production, with `NODE_ENV` set to `production`; it fails when
+  such a bundle holds `console.warn` or a listed code. A unit test bundles a
+  fixture written in the guard form, once for production and once for
+  development, and asserts that its marker text and its `console.warn` are
+  gone from the first and present in the second. So the form is held from
+  the first commit, before any check exists, and the floor rule names both.
 - **What 1.0 still does not catch** is listed on the page of error codes
   (record 0035): a native `Map` or `Set` in a store, an unmarked nested class
   instance, a `Date` changed in place, a getter that reads another store or a
   static, a result of a getter that is mutated, a named property on an
   array, an own-property check inside a getter, and a prototype changed after
   its first read through a store.
-- Other warnings may follow in a 1.x release.
+- Other warnings follow in a 1.x release.
 
 ## Alternatives considered
 
@@ -71,12 +89,14 @@ cached-snapshot ratio far above its limit on both engines.
 
 It is 168 to 309 bytes. Behind the guard it costs production a few bytes.
 
-### Five development warnings
+### Four more development warnings
 
-A warning that fires for correct code and cannot be silenced is worse than
-none. The one for an unmarked class instance fires for seven kinds of object
-that are no mistake, and one for a write after an `await` would fire for the
-ordinary `async` method. Four of the five are not taken in 1.0.
+Five development warnings were built. The fifth, the report of a lost
+write, ships in the better form described above. The other four are not
+ready: a warning that fires for correct code and cannot be silenced is worse
+than none. The one for an unmarked class instance fires for seven kinds of
+object that are no mistake, and one for a write after an `await` would fire
+for the ordinary `async` method.
 
 ### A module-level constant for the environment
 

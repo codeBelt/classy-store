@@ -3,15 +3,15 @@
 - **Status:** Accepted
 - **Date:** 2026-11-25
 - **Kind:** performance
-- **Changes behaviour that 0.11 documents:** no
+- **Label:** Can follow 1.0
+- **Changes documented behaviour:** no
 
 ## Context
 
 When one row of a list changes, the next snapshot builds a new frozen array
 for the whole list, reusing the snapshots of the unchanged rows. The cost
-grows with the number of rows: writing one of 1,000 rows and taking a
-snapshot took about 70 microseconds on Node and 150 on Bun on a busy
-machine, against well under a microsecond for a cached snapshot.
+grows with the number of rows. On Bun, freezing a new 1,000-element array
+costs about 80 microseconds by itself.
 
 ## Decision
 

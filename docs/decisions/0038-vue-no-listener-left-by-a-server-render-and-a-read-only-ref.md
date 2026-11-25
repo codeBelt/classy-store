@@ -3,7 +3,8 @@
 - **Status:** Accepted
 - **Date:** 2026-11-25
 - **Kind:** bug, public API
-- **Changes behaviour that 0.11 documents:** yes
+- **Label:** Before 1.0, for the documented return type
+- **Changes documented behaviour:** yes
 
 ## Context
 
@@ -17,9 +18,12 @@
 ## Decision
 
 - On the server the Vue adapter subscribes to nothing and reads the store at
-  every read.
+  every read. The adapter is on the server when it runs inside a component
+  and `inject(ssrContextKey, null)` is set, which is so exactly inside
+  `renderToString`. The check for an active effect scope from before 1.0
+  stays, and comes first.
 - The returned ref is typed `Readonly<Ref<Snapshot<T>>>`, and a write to it
-  throws a `TypeError` with a code.
+  throws a `TypeError` with the code `vue-readonly` (record 0035).
 - This lands in one change with the Vue part of record 0037.
 
 ## Alternatives considered
@@ -38,7 +42,9 @@ form.
 ## Consequences
 
 - 0 listeners after three server renders, and the `onServerPrefetch` write
-  still renders.
+  still renders. The prototype told the server by the same test of
+  `ssrContextKey`.
+
 - The documented return type changes.
 - The type was not compiled against Vue 3.2.0, the floor of the peer range;
   that is done first. The throwing setter was not built in a prototype.

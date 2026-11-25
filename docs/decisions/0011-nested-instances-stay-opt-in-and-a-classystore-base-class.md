@@ -3,7 +3,9 @@
 - **Status:** Accepted
 - **Date:** 2026-11-25
 - **Kind:** public API
-- **Changes behaviour that 0.11 documents:** no
+- **Label:** Before 1.0 for the default of nested instances, which needs no
+  code; the base class is an addition
+- **Changes documented behaviour:** no
 
 ## Context
 
@@ -19,7 +21,8 @@ class Counter {
 const store = createClassyStore(new Counter());
 ```
 
-This is the most prominent silent failure of 0.11, and the docs can only
+Before 1.0, this is the most prominent silent failure of the library, and
+the docs can only
 warn about it. The same holds for a method bound in the constructor and for
 a timer the constructor starts.
 
@@ -46,7 +49,12 @@ instances by default.
 - **A `#private` field is never state.** With the base class it can be used
   on the live store; a snapshot cannot carry it. The docs say so.
 - The base class lands after records 0001, 0002 and 0030, which it needs.
-  The compilations listed under Consequences are run again on the real code.
+  The 17 compilations listed under Consequences are run again on the real
+  code. The forms the repository can compile with what it already installs
+  (TypeScript with class fields as definitions and as assignments, and
+  Bun's transpiler) become committed tests. The other compilers run once in
+  a scratch folder, because adding them would change `bun.lock`; the commit
+  message carries their results.
 
 ## Alternatives considered
 
@@ -56,7 +64,8 @@ Run and not taken. Eight tests change, six of them the documented rule. A
 class with `#private` fields throws. An object that changes itself leaves a
 stale copy that no check can see. A graph of 5,461 objects placed in a store
 costs 20 milliseconds. What stays opaque by default is what the user does
-not own, and for those objects opaque is right.
+not own, and for those objects opaque is right. Not taken, and final for
+1.0.
 
 ### Detect an arrow function by its source text
 
@@ -95,6 +104,6 @@ covers the base class with no rule of its own.
   throwaway tests passed for Vue, Svelte, Solid, Angular, `createStoreHook`
   and `useLocalStore`. A base-class store made inside a getter works on both
   layers.
-- After 1.0, a warning for an unmarked class placed in a store may follow,
+- After 1.0, a warning for an unmarked class placed in a store follows,
   once it can be silenced for a class that is opaque on purpose (record
   0036).

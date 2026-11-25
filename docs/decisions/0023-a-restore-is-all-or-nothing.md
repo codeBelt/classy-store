@@ -3,11 +3,12 @@
 - **Status:** Accepted
 - **Date:** 2026-11-25
 - **Kind:** bug
-- **Changes behaviour that 0.11 documents:** yes
+- **Label:** Before 1.0, for the documented sentence
+- **Changes documented behaviour:** yes
 
 ## Context
 
-In 0.11 `persist` restores a record field by field through the store:
+Before 1.0, `persist` restores a record field by field through the store:
 
 - A deeply nested record restores and then makes every snapshot and every
   save throw, so it is never replaced, and the store never saves again.
@@ -32,11 +33,12 @@ In 0.11 `persist` restores a record field by field through the store:
 
 ## Alternatives considered
 
-None was proposed.
+None was named.
 
 ## Consequences
 
 - A synchronous subscriber is told once, after the whole record is in. The
-  persist tutorial describes the behaviour of 0.11, and that sentence changes
-  in the same commit.
+  persist tutorial describes the behaviour from before 1.0, and that
+  sentence changes in the same commit.
+
 - Size: 74 bytes on `./utils`. 1 unit test changed, a fix.

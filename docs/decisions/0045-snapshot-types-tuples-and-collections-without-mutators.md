@@ -3,11 +3,12 @@
 - **Status:** Accepted
 - **Date:** 2026-11-25
 - **Kind:** public API
-- **Changes behaviour that 0.11 documents:** yes
+- **Label:** Before 1.0: public types
+- **Changes documented behaviour:** yes
 
 ## Context
 
-In the public types of 0.11:
+In the public types before 1.0:
 
 - `Snapshot<[string, number]>` is `readonly (string | number)[]`.
 - A snapshot of a reactive collection keeps its mutators in the type.
@@ -23,10 +24,13 @@ In the public types of 0.11:
 
 - `Snapshot<[string, number]>` is `readonly [string, number]`.
 - `Snapshot<ReactiveMap<K, V>>` and `Snapshot<ReactiveSet<T>>` are two
-  exported types with the queries and the iterators and without `set`,
-  `add`, `delete` and `clear`.
+  exported types, `ReactiveMapSnapshot<K, V>` and `ReactiveSetSnapshot<T>`
+  from `./collections`, with the queries and the iterators and without
+  `set`, `add`, `delete` and `clear`.
 - Calling a mutator on a snapshot, through a tracking proxy, or on a
-  collection its owner froze throws a `TypeError` with a code (record 0035).
+  collection its owner froze throws a `TypeError` with the code
+  `frozen-collection` (record 0035).
+
 - The backing arrays `_entries` and `_items` stay public, read-only in the
   snapshot types. The docs say that writing to them directly, on a live
   collection, is unspecified: use the methods.

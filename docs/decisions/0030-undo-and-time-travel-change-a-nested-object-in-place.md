@@ -3,11 +3,13 @@
 - **Status:** Accepted
 - **Date:** 2026-11-25
 - **Kind:** bug, performance
-- **Changes behaviour that 0.11 documents:** yes
+- **Label:** Before 1.0: the reference says "changed fields are replaced
+  with mutable copies"
+- **Changes documented behaviour:** yes
 
 ## Context
 
-In 0.11 a restore by `withHistory` replaces a changed branch with a mutable
+Before 1.0, a restore by `withHistory` replaces a changed branch with a mutable
 copy; the reference says "changed fields are replaced with mutable copies".
 After undoing an edit to one row, every row of the list is a new object,
 every row component renders again, and a row the caller held is detached.
@@ -27,7 +29,7 @@ a word. A DevTools jump uses a restore of its own (record 0027).
 - The function enters each live object at most once per restore, and treats
   the recorded root as the store, so a store that refers to itself is
   restored like any other (record 0044).
-- **A container that would refuse the restore is replaced, as in 0.11.**
+- **A container that would refuse the restore is replaced, as before 1.0.**
   Before an object is restored in place, one check asks whether every write
   the restore would make there is allowed. A key to add to an object that is
   not extensible, a read-only key whose value differs, and a key that cannot
@@ -37,8 +39,9 @@ a word. A DevTools jump uses a restore of its own (record 0027).
   methods are own fields does not fail it. The object is then replaced at its
   parent by a copy.
 - The root cannot be replaced. When the root fails the check, the restore
-  throws a `TypeError` before it writes anything, and the history does not
-  move.
+  throws a `TypeError` with the code `restore-locked` (record 0035) before
+  it writes anything, and the history does not move. A DevTools jump on
+  such a root writes nothing, and `devtools` logs the error (record 0027).
 - **The restore follows the object, not the place it was recorded in.** An
   object that was in the store when the entry was recorded and is still live
   is put back and restored in place, wherever else it now sits. If it is also
@@ -67,8 +70,8 @@ Record 0005 keeps the children of a container that is frozen through the
 store, and record 0002 keeps that freeze silent, so no history entry records
 it. Without the check, an undo into such a container was refused part-way:
 the store was half restored, its one notification carried the half state,
-and the history had moved. In 0.11 the same undo works, because it replaces
-the branch.
+and the history had moved. Before 1.0 the same undo works, because it
+replaces the branch.
 
 ## Consequences
 
@@ -76,8 +79,8 @@ the branch.
   999 row snapshots are kept.
 - A container that was locked after the entry comes back as a new copy
   without the lock, child objects included, so a reference to the old
-  container no longer points into the store. That is the behaviour of 0.11
-  for every restored branch.
+  container no longer points into the store. That is the behaviour before
+  1.0 for every restored branch.
 - An undo in one store can take back an edit made through another store that
   shares the object.
 - Size on `./utils`: 113 bytes for the restore in place, 16 for entering each
@@ -91,11 +94,14 @@ the branch.
   that moved to another store or is shared by two were run.
 - With the check, seven kinds of locked container that threw part-way return
   with the recorded values and one notification. A frozen root throws with
-  nothing written and the history unmoved, where 0.11 throws with the history
-  moved. The 1,000-row undo stays inside the spread, with medians 5 to 8%
+  nothing written and the history unmoved, where the code before 1.0 throws
+  with the history moved. The 1,000-row undo stays inside the spread, with medians 5 to 8%
   higher, on Bun.
 - Not timed on Node. Not run: a DevTools jump on a frozen root. The check as
   built counted a function field as a key to delete; the rule above was not
   built, and a jump by JSON is tested first.
+- Its tests are the six rows of a store with a cycle (undo, redo and a
+  jump), the four rows of an object that moved or is shared, and ten rows of
+  a container that would refuse the restore.
 - This lands on top of record 0027, and takes over the line record 0044 adds
   to `history.ts`.

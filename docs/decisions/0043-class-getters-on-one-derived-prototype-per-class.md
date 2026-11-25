@@ -3,11 +3,12 @@
 - **Status:** Accepted
 - **Date:** 2026-11-25
 - **Kind:** public API, performance
-- **Changes behaviour that 0.11 documents:** yes
+- **Label:** Before 1.0
+- **Changes documented behaviour:** yes
 
 ## Context
 
-In 0.11 every snapshot of a class instance gets each class getter as an
+Before 1.0, every snapshot of a class instance gets each class getter as an
 enumerable own accessor. So:
 
 - `Object.keys(store)` and `Object.keys(snapshot(store))` differ.
@@ -53,7 +54,7 @@ copy.
 One line, the same visible change for `Object.keys` and JSON, none of the
 gain in time and memory, and `this` then needs a filter to match the store.
 
-### Keep the shape of 0.11
+### Keep the shape from before 1.0
 
 No compared library does it, and it keeps every defect above.
 
@@ -80,8 +81,9 @@ No compared library does it, and it keeps every defect above.
 - Size: +239 bytes on the main entry and 14 unit tests changed (fixes, and
   eight tests of the old shape changed by this decision); 95 bytes on
   `./utils` for the `devtools` values. The 239 bytes and the 14 tests were
-  measured on the snapshot layer of 0.11. Record 0010 changes that layer first, so
-  they are a forecast, and the commit takes its own figures from its own
+  measured on the snapshot layer as it is before 1.0. Record 0010 changes
+  that layer first, so they are a forecast,
+  and the commit takes its own figures from its own
   build.
 - A jump that carries the added keys back restores the fields and adds no
   key. Not run: the real Redux DevTools extension.

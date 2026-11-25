@@ -3,11 +3,13 @@
 - **Status:** Accepted
 - **Date:** 2026-11-25
 - **Kind:** public API
-- **Changes behaviour that 0.11 documents:** yes
+- **Label:** Before 1.0
+- **Changes documented behaviour:** yes
 
 ## Context
 
-In 0.11 `withHistory` treats a function held in an own field as behaviour,
+Before 1.0, `withHistory` treats
+a function held in an own field as behaviour,
 not state. The history guide says that keys that resolve to a getter or a
 function on the live store are skipped. So undo neither removes a callback
 that was added nor puts back one that was replaced.

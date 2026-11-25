@@ -3,11 +3,13 @@
 - **Status:** Accepted
 - **Date:** 2026-11-25
 - **Kind:** bug
-- **Changes behaviour that 0.11 documents:** yes
+- **Label:** Before 1.0: the reference says "A live getter that reads an
+  absent field recomputes on subsequent reads", and that sentence goes
+- **Changes documented behaviour:** yes
 
 ## Context
 
-In 0.11 the store proxy has no `has` and no `ownKeys` trap, and a getter
+Before 1.0, the store proxy has no `has` and no `ownKeys` trap, and a getter
 records nothing for a property that is not there:
 
 - A live getter that reads `Object.keys(this)` or `'b' in this` goes stale.
@@ -35,7 +37,7 @@ library is built around.
 Not tracked in 1.0: `Object.hasOwn(this, key)`, `this.hasOwnProperty(key)`
 and `Object.getOwnPropertyDescriptor(this, key)` inside a getter. They do
 not go through the two traps, and a getter that uses one stays stale after a
-key is added, as in 0.11. The docs say to use `in`.
+key is added, as it does before 1.0. The docs say to use `in`.
 
 What `this` is inside a snapshot getter is record 0043.
 
@@ -44,11 +46,6 @@ What `this` is inside a snapshot getter is record 0043.
 ### A trap that also records own-property checks
 
 It is an addition and can follow 1.0.
-
-### Leave the getters stale
-
-The reference sentence would stay, and a memoized getter would keep
-returning wrong answers.
 
 ## Consequences
 

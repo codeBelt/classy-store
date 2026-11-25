@@ -3,7 +3,8 @@
 - **Status:** Accepted
 - **Date:** 2026-11-25
 - **Kind:** public API
-- **Changes behaviour that 0.11 documents:** yes
+- **Label:** Before 1.0
+- **Changes documented behaviour:** yes
 
 ## Context
 
@@ -23,7 +24,14 @@ breaking one.
   promise, with a type whose error message says why.
 - At run time, `batch()` throws a `TypeError` with the code `batch-async`
   when it is given a native `async` function, before the function is called,
-  in every build. Nothing is half applied and no promise is lost.
+  in every build. Nothing is half applied and no promise is lost. It tells
+  an `async` function by `Symbol.toStringTag` equal to `'AsyncFunction'`,
+  the test record 0022 uses, because a looser test refuses the mock
+  functions of the test runner. A test pins that a mock function is
+  accepted.
+- The type of the parameter is not exported in 1.0. Exporting it later is
+  an addition.
+
 - The reference states the rule for an `async` method: it is a transaction
   up to its first `await`.
 

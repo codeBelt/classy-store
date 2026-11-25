@@ -3,11 +3,13 @@
 - **Status:** Accepted
 - **Date:** 2026-11-25
 - **Kind:** bug
-- **Changes behaviour that 0.11 documents:** yes
+- **Label:** Before 1.0: the persist tutorial says that hydration does not
+  rewrite storage, and the stamp is an exception to that sentence
+- **Changes documented behaviour:** yes
 
 ## Context
 
-- In 0.11 a debounced save that is still waiting is lost when the page goes
+- Before 1.0, a debounced save that is still waiting is lost when the page goes
   away: `debounce` has no flush.
 - After a restore that migrates version 1 to 2, the stored record still says
   version 1, so the migration runs on every load until the first edit.
@@ -19,7 +21,7 @@
 - A debounced save that is still waiting is written when the page is hidden
   (`pagehide`).
 - **A migrated record is not written back at load.** The first save writes
-  it, as in 0.11.
+  it, as before 1.0.
 - **One thing is written back at load:** a record of the configured version
   that has no `expiresAt`, or `null`, read by a handle whose `expireIn` is a
   finite number, is saved again with an `expiresAt`, through the ordinary
@@ -50,5 +52,5 @@ With `expireIn: Infinity` the record is written again on every load.
   tested; it is tested in the browser suite.
 - A migrated record was kept until the first edit, and a record without
   `expiresAt` was written once with one, in a prototype. The limit to a
-  finite `expireIn` was not built. No test pins either write-back in 0.11;
+  finite `expireIn` was not built. No test pins either write-back before 1.0;
   both get tests.

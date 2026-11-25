@@ -3,11 +3,13 @@
 - **Status:** Accepted
 - **Date:** 2026-11-25
 - **Kind:** public API
-- **Changes behaviour that 0.11 documents:** no
+- **Label:** No change
+- **Changes documented behaviour:** no
 
 ## Context
 
-Several changes to the options of `persist` were proposed before 1.0: make
+Several changes to the options of `persist` were weighed before 1.0:
+make
 `storage` optional with a default of `localStorage`, as Zustand and Jotai
 do; merge `expireIn` and `clearOnExpire` into one option; add a switch to
 pause saving and a flag for a write in flight.

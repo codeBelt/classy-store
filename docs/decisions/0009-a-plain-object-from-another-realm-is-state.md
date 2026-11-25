@@ -3,11 +3,12 @@
 - **Status:** Accepted
 - **Date:** 2026-11-25
 - **Kind:** bug
-- **Changes behaviour that 0.11 documents:** no
+- **Label:** Before 1.0
+- **Changes documented behaviour:** no
 
 ## Context
 
-In 0.11, `isPlainObject` accepts only this realm's `Object.prototype`. An
+Before 1.0, `isPlainObject` accepts only this realm's `Object.prototype`. An
 object made in an iframe or a Node `vm` context is kept by reference: writes
 to it notify no one and its snapshot is not frozen, in silence.
 
@@ -18,8 +19,7 @@ compares or writes through a snapshot would break in a minor release.
 ## Decision
 
 A plain object made in another realm is proxied and frozen in snapshots like
-any other plain object. A prototype whose constructor is another realm's
-`Object` is accepted.
+any other plain object.
 
 The commit first builds it without the per-prototype cache, and keeps the
 smaller form that leaves store creation inside the spread.

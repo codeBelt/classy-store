@@ -3,14 +3,14 @@
 - **Status:** Accepted
 - **Date:** 2026-11-25
 - **Kind:** repository
-- **Changes behaviour that 0.11 documents:** no
+- **Label:** Can follow 1.0
+- **Changes documented behaviour:** no
 
 ## Context
 
-`proxy-compare` 3.0.1 is the library's one runtime dependency. It has one
-maintainer and is pinned to an exact version. `bun audit` reported 17
-advisories in development dependencies, none of which reaches the published
-tarball.
+`proxy-compare` is the library's one runtime dependency, and it is pinned to
+an exact version. `bun audit` reports advisories in development
+dependencies; the published tarball is accepted as it is.
 
 ## Decision
 
@@ -21,7 +21,7 @@ tarball.
 
 ## Alternatives considered
 
-None was proposed.
+None was named.
 
 ## Consequences
 

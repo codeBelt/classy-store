@@ -3,7 +3,8 @@
 - **Status:** Accepted
 - **Date:** 2026-11-25
 - **Kind:** repository
-- **Changes behaviour that 0.11 documents:** no
+- **Label:** Can follow 1.0
+- **Changes documented behaviour:** no
 
 ## Context
 
@@ -11,19 +12,19 @@ One job of `release.yml` holds the npm publishing identity
 (`id-token: write`) and also runs `bun install`, the build and Changesets
 before `npm publish`. Actions are pinned by major tag. A compromised
 development dependency or a moved action tag could take the token and
-publish a version of its own. That code in the job can take the token comes
-from how GitHub and npm document the mechanism; nobody tried it. Three
-workflows declare no permissions.
+publish a version of its own. Three workflows declare no permissions.
 
 ## Decision
 
 - **Now:** every third-party action in every workflow is pinned to the
   commit its tag points to, with a Dependabot configuration that keeps the
-  pins current. The three workflows that declare no permissions get
+  pins current. "Third-party" means every action this repository does not
+  define, GitHub's own `actions/*` included: a moved tag is the same risk
+  whoever owns it. The three workflows that declare no permissions get
   `contents: read`. Neither changes what a run does.
 - **After 1.0:** `release.yml` is split into a job that installs, builds,
   runs Changesets and packs the tarball, and a job that holds
-  `id-token: write`, installs nothing and publishes that tarball. The plan
+  `id-token: write`, installs nothing and publishes that tarball. The design
   for it names where each step goes, the tag step and the "already
   published" check included, and sets `persist-credentials: false` on the
   release checkout with the token passed to the push. The owner tries it
@@ -48,3 +49,5 @@ split has to ship with 1.0.
   Pinning closes the moved-tag half of both.
 - Until the split, a compromised development dependency in the release job
   could still take the token.
+- Not tried: that code in the job can take the token. It comes from how
+  GitHub and npm document the mechanism.

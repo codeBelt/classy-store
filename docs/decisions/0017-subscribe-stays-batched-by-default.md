@@ -3,7 +3,8 @@
 - **Status:** Accepted
 - **Date:** 2026-11-25
 - **Kind:** public API
-- **Changes behaviour that 0.11 documents:** no
+- **Label:** No change
+- **Changes documented behaviour:** no
 
 ## Context
 
@@ -32,8 +33,9 @@ write), and would turn the option of `persist`, `withHistory` and
 ## Consequences
 
 - Nothing changes in the code. The reference states the timing first.
-- Counted on a prototype: the batched default gives 1 call per turn in every
-  case measured. A synchronous default gives 2 for two direct writes and for
-  `Object.assign`, and 4 around an `await`.
+- Counted on a prototype: the batched default gives one call per turn in
+  every case measured; a synchronous default gives more for two direct
+  writes, for `Object.assign` and around an `await`.
+
 - Open again only with a new reason; changing the default after 1.0 is a
   breaking change.

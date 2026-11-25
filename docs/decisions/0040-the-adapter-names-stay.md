@@ -3,14 +3,15 @@
 - **Status:** Accepted
 - **Date:** 2026-11-25
 - **Kind:** public API
-- **Changes behaviour that 0.11 documents:** no
+- **Label:** No change
+- **Changes documented behaviour:** no
 
 ## Context
 
 The adapters are `useClassyStore` for React, Vue and Solid,
 `toSvelteStore` for Svelte and `injectClassyStore` for Angular. In Solid the
 adapter behaves like Solid's `from()`, and `use*` there usually means a
-context lookup, so `fromClassyStore` was proposed for Solid.
+context lookup, so `fromClassyStore` was weighed for Solid.
 
 ## Decision
 

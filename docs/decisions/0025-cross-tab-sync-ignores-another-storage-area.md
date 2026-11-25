@@ -3,12 +3,14 @@
 - **Status:** Accepted
 - **Date:** 2026-11-25
 - **Kind:** bug
-- **Changes behaviour that 0.11 documents:** no
+- **Label:** Can follow 1.0
+- **Changes documented behaviour:** no
 
 ## Context
 
-With cross-tab sync on, `persist` listens to the `storage` event. In 0.11
-the handler applies an event under the same key from another storage area,
+With cross-tab sync on, `persist` listens to the `storage` event. Before
+1.0, the handler
+applies an event under the same key from another storage area,
 for example a write to `sessionStorage` to a store kept in `localStorage`,
 and a synthetic event that has no `storageArea`.
 

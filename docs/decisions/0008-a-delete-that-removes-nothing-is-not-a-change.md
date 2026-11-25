@@ -3,11 +3,14 @@
 - **Status:** Accepted
 - **Date:** 2026-11-25
 - **Kind:** bug
-- **Changes behaviour that 0.11 documents:** no
+- **Label:** Before 1.0: the rule that a write which changes nothing
+  notifies no one is false without this
+- **Changes documented behaviour:** no
 
 ## Context
 
-In 0.11, `delete store.dict.missing` calls every subscriber and replaces the
+Before 1.0, `delete
+ store.dict.missing` calls every subscriber and replaces the
 snapshot with an equal one. The same holds for `delete list[5]` past the end
 of a list. Writing the value a field already holds does neither.
 
@@ -21,7 +24,7 @@ bump, no notification, no new snapshot.
 
 ## Alternatives considered
 
-None was proposed.
+None was named.
 
 ## Consequences
 

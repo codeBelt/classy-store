@@ -3,11 +3,13 @@
 - **Status:** Accepted
 - **Date:** 2026-11-25
 - **Kind:** bug, simplification
-- **Changes behaviour that 0.11 documents:** yes
+- **Label:** Before 1.0: a getter that writes becomes an error, and the
+  sentence about an absent field goes
+- **Changes documented behaviour:** yes
 
 ## Context
 
-In 0.11 a getter records three kinds of dependency, and the two layers (the
+Before 1.0, a getter records three kinds of dependency, and the two layers (the
 live store and the snapshot) differ:
 
 - A getter that reads a property which does not exist is recomputed on every
@@ -34,11 +36,12 @@ live store and the snapshot) differ:
 - A getter that reads a getter which threw records that dependency, on both
   layers, inside a frame that also covers validation.
 - The snapshot layer keeps the memo that nested getters filled, and reports a
-  cycle with the live layer's error.
+  cycle with the live layer's error, the code `getter-cycle` of record 0035.
 - **A getter must not write to the object it is computed on, by any path.**
   - On the live store, a write to the getter's own object throws a
-    `TypeError` that names the field: an assignment, a `delete`, a
-    definition, also through a method the getter calls.
+    `TypeError` with the code `getter-write` (record 0035) that names the
+    field: an assignment, a `delete`, a definition, also through a method
+    the getter calls.
   - On a snapshot, a write to `this` throws the same way, and the traps throw
     themselves, so it holds in code that is not strict too. While a snapshot
     getter runs, the live object the snapshot was taken from counts as
@@ -56,7 +59,8 @@ live store and the snapshot) differ:
     unspecified.
 - Whether a thrown error is cached is unspecified.
 
-The snapshot part is written first on the snapshot layer of 0.11. Record
+The snapshot part is written first on the snapshot layer as it is before
+1.0. Record
 0043 then installs a class's getters once, on a shared prototype, so the
 live object has to be found from `this` at each run; the rows for this
 decision are run again as tests after record 0043.
@@ -109,5 +113,7 @@ the pattern that works: hold the other store as a field.
   throw on both layers, 42 for the throw around `this`, each on the one
   before). 16 unit tests changed for the combination (15 fixes, 1
   incidental), then 3 more that pinned a getter writing its own store.
-- Not built: these changes on top of record 0001 and of record 0043.
+- Not built: the throw around `this` on top of record 0001 and on top of
+  record 0043.
+
 - Open again if a case is found where a getter must write its own object.

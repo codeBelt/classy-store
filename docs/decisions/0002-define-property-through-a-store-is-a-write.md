@@ -3,11 +3,13 @@
 - **Status:** Accepted
 - **Date:** 2026-11-25
 - **Kind:** bug
-- **Changes behaviour that 0.11 documents:** yes
+- **Label:** Before 1.0: the tutorial says that `Object.defineProperty`
+  "bypasses assignment/deletion tracking"
+- **Changes documented behaviour:** yes
 
 ## Context
 
-In 0.11 the `defineProperty` trap handles freezing only. The tutorial says
+Before 1.0, the `defineProperty` trap handles freezing only. The tutorial says
 that `Object.defineProperty` "bypasses assignment/deletion tracking". The
 result:
 
@@ -48,20 +50,21 @@ the trap to store the raw value.
 Immer does this. It costs 160 bytes more, most of it message text, and it
 rules out the base class, whose fields arrive as definitions. An accessor or
 a read-only definition works correctly on both layers after this decision,
-so refusing it would forbid something that is right.
+so refusing it would forbid something that is right. Not taken, and final
+for 1.0.
 
 ### Refuse `Object.freeze(store)`
 
 MobX does this. It gives up a feature added on purpose and removes no code,
 because a frozen root passed to `createClassyStore()` still needs the
-read-only case.
+read-only case. Not taken, and final for 1.0.
 
 ### A `setPrototypeOf` trap that throws
 
 After record 0001, a method replaced on the prototype or a swapped prototype
 is picked up. `persist` cannot swap a prototype. What is left is an
 application that swaps the prototype of its own store on purpose, and that
-is not the library's to forbid.
+is not the library's to forbid. Not taken, and final for 1.0.
 
 ## Consequences
 

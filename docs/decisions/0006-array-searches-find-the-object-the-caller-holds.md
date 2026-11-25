@@ -3,11 +3,12 @@
 - **Status:** Accepted
 - **Date:** 2026-11-25
 - **Kind:** bug
-- **Changes behaviour that 0.11 documents:** no
+- **Label:** Before 1.0
+- **Changes documented behaviour:** no
 
 ## Context
 
-In 0.11:
+Before 1.0:
 
 ```ts
 const row = {id: 1};
@@ -61,7 +62,8 @@ this library, and records 0010 and 0012 attack the same cost.
 ## Consequences
 
 - A search for an object in a list of 1,000 rows takes 0.5 microseconds on
-  Bun and 0.9 on Node, against 95 and 180 in 0.11, and 0.15 and 0.2 for a
+  Bun and 0.9 on Node, against 95 and 180 before this change, and
+  0.15 and 0.2 for a
   plain array. It allocates two short arrays per search for an object.
 - 18 rows of searches agree with a plain array wherever a plain array has an
   answer. 7 unit tests changed, all fixes.

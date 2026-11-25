@@ -3,11 +3,12 @@
 - **Status:** Accepted
 - **Date:** 2026-11-25
 - **Kind:** bug, public API
-- **Changes behaviour that 0.11 documents:** no
+- **Label:** Can follow 1.0 for the fix; the option is an addition
+- **Changes documented behaviour:** no
 
 ## Context
 
-- In 0.11 a store write made while an Angular `computed` runs makes Angular
+- Before 1.0, a store write made while an Angular `computed` runs makes Angular
   throw inside the adapter's listener. The core logs the error, and the
   signal stays stale until the next write.
 - `injectClassyStore` works only inside an injection context.
@@ -21,7 +22,10 @@
 - `injectClassyStore(store, {injector})` works outside an injection context.
   The option is added while the signature is written down for 1.0.
 - The adapter checks for an injection context itself and throws its own
-  error, with the library's prefix and a code, in every Angular build.
+  error, with the library's prefix and the code `angular-no-context`
+  (record 0035), in every Angular build. The same code covers a context
+  that is already destroyed, which the message from before 1.0 reports.
+- The type of the options object is not exported in 1.0.
 
 ## Alternatives considered
 

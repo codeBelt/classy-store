@@ -3,11 +3,12 @@
 - **Status:** Accepted
 - **Date:** 2026-11-25
 - **Kind:** public API, bug
-- **Changes behaviour that 0.11 documents:** yes
+- **Label:** Before 1.0
+- **Changes documented behaviour:** yes
 
 ## Context
 
-In 0.11:
+Before 1.0:
 
 - Every entry `devtools` sends is named `STORE_UPDATE`, which makes the
   tool's list useless.
@@ -31,7 +32,8 @@ In 0.11:
   function, empty unless `devtools` is connected, and nothing else.
   `devtools()` fills it while at least one connection is open and empties it
   when the last one is disposed. A method call tests it; when it is empty the
-  call runs the code of 0.11. The naming itself lives in `devtools.ts`.
+  call runs the same code as before 1.0. The naming itself lives in
+  `devtools.ts`.
 - **The name is the key.** The key a method was first read under is handed
   to that function with the call, for a class method and a method held in a
   field alike. The function's own `name` is not used: it is empty for an
@@ -43,6 +45,17 @@ In 0.11:
   entry this session sent restores the snapshot that was sent, so a `Date`
   stays a `Date`; a jump the extension sends as JSON restores data.
 - **Messages.** `RESET`, `COMMIT`, `ROLLBACK` and `IMPORT_STATE` are handled.
+  A jump that the shared restore refuses, because the root fails its check
+  (record 0030), writes nothing: `devtools` catches the `restore-locked`
+  error and logs it with `console.error`, and the extension's panel shows
+  the entry it jumped to until the next entry arrives.
+- **Options.** `devtools(store, options)` takes `name` and `enabled`, as
+  before 1.0, and five options of the extension that the build passes to its
+  `connect()`: `maxAge`, `trace`, `traceLimit`, `actionsDenylist` and
+  `actionsAllowlist`. `maxAge`, 50 by default as in the extension, also
+  bounds how many sent snapshots this session keeps for exact time travel.
+  The list is named, not an index signature, so a misspelt option is a type
+  error. Their bytes are inside the figures of record 0004.
 - **`enabled` defaults to on only where `NODE_ENV` can be read and is not
   `production`.** It reads the environment the way record 0036 does. Where
   there is no `process` to read, the default is off: a bundle in which
@@ -64,8 +77,8 @@ of a method call on Node, and 20 bytes on the main entry.
 
 ### A "slot" in the core with a counter and the naming
 
-It keeps the naming in the core and costs 40 bytes on the main entry. The
-hook form keeps the core to one empty place and costs 12.
+It keeps a counter and the naming in the core. The hook form keeps the core
+to one empty place and costs 12 bytes on the main entry.
 
 ### One snapshot per direct write on the synchronous channel
 
@@ -84,18 +97,19 @@ Not taken, and final for 1.0, as every default is.
 ## Consequences
 
 - With the hook, a method call without `devtools` is inside the spread of
-  0.11 on both engines. The main entry carries 12 bytes for it.
+  the code before this change on both engines. The main entry carries 12 bytes for it.
 - While `devtools` is connected, a method call allocates one closure.
 - An application that loads `./utils` twice, once as ESM and once as
   CommonJS, and connects `devtools` from both, has one copy's names fall back
   to `STORE_UPDATE`. That was read from the code, not run.
-- Size on `./utils`: 403 bytes for the entries, the messages and the jump;
-  the hook form measured 452 with them, and 57 bytes of that are the naming
-  moved out of the core. The getter values add 95.
+- Size on `./utils`: 403 bytes for the entries, the messages and the jump,
+  and 452 with the hook form. Record 0004 counts the naming moved out of the
+  core as +57 on `./utils`. The getter values add 95.
 - 1,341 unit tests passed with the hook. `store.method` was timed in five
   rounds on each engine. The prototype read the function's own `name`;
   passing the key was not built, and an entry for an arrow function written
   to a new key and for one assigned in a constructor is tested first.
-- 0.11 has no tests for `devtools`; they are written first.
+- Before 1.0 there are no tests for `devtools`; they are written first.
+
 - Not verified: the entry ids the Redux DevTools extension sends back, and
   the real extension at all.

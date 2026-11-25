@@ -3,11 +3,12 @@
 - **Status:** Accepted
 - **Date:** 2026-11-25
 - **Kind:** public API
-- **Changes behaviour that 0.11 documents:** no
+- **Label:** Before 1.0
+- **Changes documented behaviour:** yes
 
 ## Context
 
-In 0.11 `persist()` reads the storage after it returns, even when the
+Before 1.0, `persist()` reads the storage after it returns, even when the
 storage is synchronous. A store on `localStorage` renders its defaults first,
 and the saved state a microtask later.
 
@@ -23,7 +24,7 @@ and the saved state a microtask later.
 - `hydrated` settles even when the store cannot be snapshotted at the start
   of a read, and `rehydrate()` keeps the `finally` that guarantees it.
 
-The persist guide has to say two things:
+The persist tutorial has to say two things:
 
 - **Call `persist()` after the store is constructed, never inside a
   constructor.** With the base class of record 0011 a constructor is a
@@ -33,11 +34,14 @@ The persist guide has to say two things:
   A test pins what happens, so that the sentence stays true. The test needs
   the base class, so it is written with record 0011.
 - **On the client, `prepareStoreForHydration(store)` is called before
-  `persist(store)`** (record 0041).
+  `persist(store)`** (record 0041). The React SSR guide already says that
+  `prepareStoreForHydration` captures the snapshot "before persistence or
+  other live updates begin"; this change names `persist()` there, and the
+  persist tutorial gains the same sentence.
 
 ## Alternatives considered
 
-None was named. There is no option that keeps the timing of 0.11.
+None was named. There is no option that keeps the timing from before 1.0.
 
 ## Consequences
 
@@ -45,5 +49,7 @@ None was named. There is no option that keeps the timing of 0.11.
   returns, so its first render shows that state.
 - 15 lines added and 18 removed; `./utils` gets 6 bytes smaller. 1 unit test
   changed, incidental: it relied on the old timing.
-- Nothing can detect a `persist()` call made inside a constructor; the guide
-  forbids it.
+- The persist tutorial says that hydration is asynchronous even with
+  `localStorage`. That sentence changes.
+- A test pins what a `persist()` call inside a constructor of a
+  `ClassyStore` subclass does; the persist tutorial forbids the call.

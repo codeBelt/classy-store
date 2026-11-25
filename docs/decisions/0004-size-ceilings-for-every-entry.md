@@ -3,17 +3,18 @@
 - **Status:** Accepted
 - **Date:** 2026-11-25
 - **Kind:** constraint
-- **Changes behaviour that 0.11 documents:** no
+- **Label:** Before 1.0
+- **Changes documented behaviour:** no
 
 ## Context
 
-`CONSTRAINTS.md` holds a gzipped size budget for each entry point. Each
-budget was the measured size of 0.11 plus two to three percent: room for a
+`CONSTRAINTS.md` holds a gzipped size budget for each entry point. Before
+1.0, each budget was the measured size plus two to three percent: room for a
 fix of a few lines, not for a feature. The main entry measured 3,661 bytes
 against a budget of 3,750.
 
 The changes decided for 1.0 in records 0001 to 0046 do not fit those
-budgets, and no subset worth shipping does. The floor guard
+budgets, and no subset worth shipping does. Before 1.0, the floor guard
 (`bun run check:floor`) read only `CONSTRAINTS.md`, saw one difference for
 the whole branch, and left its own file out of its scope. One decision
 record anywhere on the branch would have switched it off for every later
@@ -25,17 +26,17 @@ This record is the one `CONSTRAINTS.md` points to for every size budget.
 
 Each budget gets a **ceiling**, set here once for the whole set of changes.
 
-| Entry                 |  0.11 | Budget of 0.11 | Estimate | Ceiling | What moves it                                                    |
-| --------------------- | ----: | -------------: | -------: | ------: | ---------------------------------------------------------------- |
-| `.` (the main entry)  | 3,661 |          3,750 |    5,375 |   5,575 | The first table below                                            |
-| `./utils` adds        | 2,686 |          2,750 |    4,216 |   4,350 | The second table below                                           |
-| `./collections` adds  |   727 |            750 |      911 |     950 | The snapshot index, the membership rule, the mutator check       |
-| `./react` adds        | 1,662 |          1,700 |    1,693 |   1,750 | The guard for a cyclic snapshot                                  |
-| `./vue` adds          |   280 |            300 |      369 |     400 | The read-time ref, the server path, the setter that throws       |
-| `./angular` adds      |   271 |            300 |      381 |     425 | The read-time signal, `untracked()`, the injector, its own check |
-| `./solid` adds        |   312 |            335 |      346 |     375 | The read-time accessor                                           |
-| `./svelte` adds       |   182 |            200 |      182 |     200 | Nothing                                                          |
-| `./react/server` adds |   153 |            175 |      153 |     175 | Nothing                                                          |
+| Entry                 | Before 1.0 | Budget before 1.0 | Estimate | Ceiling | What moves it                                                    |
+| --------------------- | ---------: | ----------------: | -------: | ------: | ---------------------------------------------------------------- |
+| `.` (the main entry)  |      3,661 |             3,750 |    5,375 |   5,575 | The first table below                                            |
+| `./utils` adds        |      2,686 |             2,750 |    4,216 |   4,350 | The second table below                                           |
+| `./collections` adds  |        727 |               750 |      911 |     950 | The snapshot index, the membership rule, the mutator check       |
+| `./react` adds        |      1,662 |             1,700 |    1,693 |   1,750 | The guard for a cyclic snapshot                                  |
+| `./vue` adds          |        280 |               300 |      369 |     400 | The read-time ref, the server path, the setter that throws       |
+| `./angular` adds      |        271 |               300 |      381 |     425 | The read-time signal, `untracked()`, the injector, its own check |
+| `./solid` adds        |        312 |               335 |      346 |     375 | The read-time accessor                                           |
+| `./svelte` adds       |        182 |               200 |      182 |     200 | Nothing                                                          |
+| `./react/server` adds |        153 |               175 |      153 |     175 | Nothing                                                          |
 
 All figures are gzipped bytes. An entry other than the main one is measured
 together with the main entry and held to what it adds.
@@ -74,11 +75,11 @@ Measured on top of another change, not alone: record 0001 (on the strict
 rule, record 0002 and the base class; the row is the three together, 3,951
 bytes, less the other two), the later parts of records 0005, 0006, 0010 and
 0012 (each on the part before it), and record 0027 (on the first form of its
-entries). Every other row is one change measured alone against 0.11. The sum
-puts the main entry near 5,375 bytes, 47% above 0.11. The messages were
-measured as the prototypes wrote them; the codes of record 0035 shorten
-them, by about 100 bytes for the first set and an unmeasured amount for the
-rest.
+entries). Every other row is one change measured alone against the code
+before 1.0. The sum puts the main entry near 5,375 bytes, 47% above its size
+before 1.0. The messages were measured as the prototypes wrote them; the
+codes of record 0035 shorten them, by about 100 bytes for the first set and
+an unmeasured amount for the rest.
 
 **What `./utils` adds, change by change.**
 
@@ -101,6 +102,11 @@ records 0021 to 0024 add to it in their final form, without a write-back
 after a migration. Three small parts of those records are in neither build,
 and the ceiling has 30 bytes for them.
 
+The +57 for the naming is what `./utils` adds on top of the main entry, as
+every row of this table counts. Record 0027 gives 403 bytes for its entries
+and 452 with the hook form, a difference of 49. The two figures differ by 8
+bytes because the main entry is 8 bytes smaller with the hook.
+
 **How a budget moves, and what enforces it.**
 
 - The first commit of the work is tooling only. `budgets.json` gets a
@@ -108,26 +114,58 @@ and the ceiling has 30 bytes for them.
   above its ceiling or a measured size is above its budget.
 - **A ceiling does not move with the work.** The floor guard refuses a
   commit that changes an existing ceiling together with anything else. The
-  first commit, which adds the ceilings, is the one exception. A ceiling
-  changes only in a commit that holds the new number and this record's
-  reason for it, and nothing more.
+  first commit, which adds the ceilings, is the one exception, because there
+  is none before it. A ceiling changes only in a commit that holds the new
+  number and this record's reason for it, and nothing more, so it cannot
+  ride along with the change that needs it.
 - **A budget moves with a line in this record.** The floor guard reads
   `budgets.json` and `limits.json` as well as `CONSTRAINTS.md`, and blocks a
   budget or a cost limit that rises unless the same commit adds a line to
-  this record.
+  this record: a budget or a cost limit that rises needs its line here. A
+  rule of `CONSTRAINTS.md` that is loosened needs a line in any record.
 - **The guard checks every commit, itself included.** It walks the commits
-  from the merge base with `main` to the head and judges each against the one
-  before it. Its own file is in its scope for a rule that is removed or
-  loosened. The text of its own patterns, in that file and in the fixtures of
-  its tests, is not flagged; the fixtures are put together when a test
-  runs, so that no file in the repository holds a line the guard would flag.
-  CI runs it on the pull request, and it is run before each push.
+  from its start to the head and judges each against its parent. Its start
+  is the merge base with `main`, or, while `main` does not hold
+  `CONSTRAINTS.md`, the commit that added that file: the commits before it
+  were made with no bar. The branch is kept linear, and the guard fails on a
+  merge commit in its range rather than judge one. Last, it judges the
+  working tree (staged, unstaged and untracked files) against the head, so
+  that it is useful before a commit too. CI runs it on the pull request, and
+  it is run before each push.
+- **Bar files.** Three files hold a part of the bar outside
+  `CONSTRAINTS.md`: the guard's own file `scripts/floor-guard.mjs`, the
+  coverage settings in `packages/classy-store/bunfig.toml`, and the list of
+  target files in `packages/classy-store/tests/mutation/runMutation.ts`.
+  The guard cannot read a loosened rule out of its own regular expressions,
+  so every change to one of these files counts as a change to the bar: the
+  commit passes only if it adds a line to a record under `docs/decisions/`
+  that says what changed and why. A change that tightens needs the line
+  too; it is one line. The guard does not scan its own file for its own
+  patterns, and the fixtures of its tests are put together when a test
+  runs, so that no file in the repository holds a line the guard would
+  flag. The first commit passes this rule like any other, with its lines in
+  the section "Changes to the tooling" below.
+- **A test made smaller is named in the commit message.** The floor forbids
+  a deleted test file and a test file left with fewer assertions. Judged
+  per commit, that rule would also block two changes the work allows: a
+  test of public behaviour that a decision changes, and a test of internal
+  state rewritten when the internals change. Such a commit passes only if
+  its message has a line `Test-change: <path>: <reason>` for each such
+  file, and the reason names a decision (`decision N`) or the test of
+  public behaviour that covers the same fact (a path to a test file). In
+  the working tree, where no message exists yet, the guard reports it as a
+  note.
+- **Where the numbers live.** `budgets.json` holds each entry as
+  `{"budget": …, "ceiling": …}`. An entry with no ceiling fails the size
+  script, as one with no budget does. The size rows of `CONSTRAINTS.md`
+  stop repeating the numbers and name `budgets.json`, so that a budget that
+  moves changes one file and the two cannot drift apart.
 - **Each rule has a test.** The first commit adds tests for the size
   script's two failures and for each rule of the guard, run on throwaway
   repositories made by the test.
 - A commit that grows an entry sets that entry's budget to its new measured
-  size plus 2%, adds a line with the measured size to the table below, and
-  stays under the ceiling.
+  size plus 2%, adds a line with the measured size to the section "Measured
+  sizes" below, and stays under the ceiling.
 - When the 1.0 work ends, every budget is the final measured size plus 2%.
 - **A ceiling is an estimate and a tripwire, not a measurement.** A change
   that would pass a ceiling is not committed, and the question goes back to a
@@ -145,7 +183,7 @@ and the ceiling has 30 bytes for them.
 
 ## Alternatives considered
 
-### Keep the budgets of 0.11
+### Keep the budgets from before 1.0
 
 No subset of the decided changes worth shipping fits them.
 
@@ -179,8 +217,10 @@ snapshot (270, record 0046); an index beside live collections (339, record
     quarter faster, and a getter that writes its own store is told so on
     both layers.
   - 168 bytes (0006): `includes()` and `indexOf()` find the object the
-    caller holds, in about 1% of the time of 0.11.
-  - 228 bytes (0001): one rule for every function a store holds.
+    caller holds, in about 1% of the time they took before 1.0.
+  - 228 bytes (0001): one rule for every function a store holds, a method
+    in an object literal that stays a transaction, and arrow-function
+    methods that work.
   - 156 bytes (0007): getters that use `in` or `Object.keys(this)` stop
     going stale. It serves fewer users than the others.
   - 180 bytes (0012): a field read 2.7 times faster on JavaScriptCore and a
@@ -191,13 +231,23 @@ snapshot (270, record 0046); an index beside live collections (339, record
   snapshot changes 243 against 230) and one below it (raw values, the
   searches, the freeze, `defineProperty` and the table per prototype, 465
   against 486).
-- The README and `CLAUDE.md` say "about 3.7 KB". That changes to the measured
-  figure when the work ends.
+- Only `CLAUDE.md` gives a size figure: "about 3.7 KB", and "about 4.9 KB
+  with the React hooks". The README gives none. Both figures in `CLAUDE.md`
+  change to the measured figures when the work ends.
 - Open again when a change cannot be made under its ceiling.
 
-## Measured in stage 4
+## Measured sizes
 
 One line per commit that grows an entry.
 
 | Commit | Entry | Measured bytes | New budget |
 | ------ | ----- | -------------: | ---------: |
+
+## Changes to the tooling
+
+One line per commit that changes a bar file: `scripts/floor-guard.mjs`,
+`packages/classy-store/bunfig.toml` or
+`packages/classy-store/tests/mutation/runMutation.ts`.
+
+| Commit | File | What changed | Why |
+| ------ | ---- | ------------ | --- |

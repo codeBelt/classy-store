@@ -3,11 +3,13 @@
 - **Status:** Accepted
 - **Date:** 2026-11-25
 - **Kind:** public API, bug
-- **Changes behaviour that 0.11 documents:** no
+- **Label:** Before 1.0, as a guaranteed rule
+- **Changes documented behaviour:** no
 
 ## Context
 
-In 0.11 a subscriber's synchronous error is caught and sent to
+Before 1.0, a subscriber's
+synchronous error is caught and sent to
 `console.error`, and the other subscribers run. Two gaps:
 
 - A subscriber that returns a rejected promise is not reported. It becomes
